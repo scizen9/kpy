@@ -79,6 +79,9 @@ def identify_observations(headers):
                         Str = "%s%1.1f" % (Str, adcspeed)
                         prefix = ""
                         suffix = ""
+		    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str:
+			prefix = "b_"
+			suffix = ""
                     else:
                         prefix = "crr_b_"
                         suffix = ""
@@ -134,15 +137,15 @@ make_preamble = '''
 PY = ~/spy
 PYC = ~/kpy/SEDM
 EXTSINGLE =  $(PY) $(PYC)r/Extracter.py 
-ATM =  ~/spy $(PYC)r/AtmCorr.py 
-EXTPAIR =  ~/spy $(PYC)r/Extracter.py 
-FLEXCMD = ~/spy $(PYC)r/Flexure.py
-DEBIAS = ~/spy $(PYC)r/Debias.py
-IMCOMBINE = ~/spy $(PYC)r/Imcombine.py
+ATM =  $(PY) $(PYC)r/AtmCorr.py 
+EXTPAIR =  $(PY) $(PYC)r/Extracter.py 
+FLEXCMD = $(PY) $(PYC)r/Flexure.py
+DEBIAS = $(PY) $(PYC)r/Debias.py
+IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
 
 BSUB = $(PY) $(PYC)/Bias.py
 BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
-CRRSUB =  $(UR_DIR)/variants/common/bin/PyCosmic --fwhm=3 --iter 4 --rlim 1.8 --siglim 8
+CRRSUB =  $(UR_DIR)/variants/common/bin/CosmicX --gain 1.0 --readnoise 5.0 --psffwhm=2 --niter 4 --objlim 1.8 --sigclip 8.0 --fsmode convolve --psfmodel gaussy --sepmed --verbose
 
 SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
@@ -150,39 +153,44 @@ CRRS = $(addprefix crr_,$(BIAS))
 BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
 
+crr_b_% : b_%
+	$(CRRSUB) $< $@ mask$@
+
+bs_crr_b_%.gz : crr_b_%
+	$(BGDSUB) fine.npy $<
+
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
 crrs: $(CRRS) 
 back: $(BACK)
 
-
 $(BIAS): bias0.1.fits bias2.0.fits
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 
-	$(CRRSUB) $(subst crr_,,$@) $@ mask$@ 5.0
+	$(CRRSUB) $(subst crr_,,$@) $@ mask$@
 
 $(BACK): 
 	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@))
     
 
 seg_dome.fits: dome.fits
-	~/spy $(PYC)r/SexLamps.py dome.fits
+	$(PY) $(PYC)r/SexLamps.py dome.fits
 
 seg_Hg.fits: Hg.fits
-	~/spy $(PYC)r/SexSpectra.py Hg.fits
+	$(PY) $(PYC)r/SexSpectra.py Hg.fits
 
 dome.fits_segments.npy: seg_dome.fits
-	~/spy $(PYC)r/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
+	$(PY) $(PYC)r/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
 
 rough.npy: dome.fits_segments.npy seg_Hg.fits
-	~/spy $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
+	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
 
-fine.npy: rough.npy
-	~/spy $(PYC)r/Wavelength.py fine --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
+fine.npy: rough.npy Xe.fits
+	$(PY) $(PYC)r/Wavelength.py fine --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
 
 cube.npy: fine.npy
-	~/spy $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
+	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
 
 bs_twilight.fits.gz: twilight.fits fine.npy
 	$(BGDSUB) fine.npy twilight.fits
@@ -191,8 +199,8 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits
 
 flat-dome-700to900.npy: cube.npy dome.fits
-\t~/spy $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
-\t~/spy $(PYC)r/Flat.py dome.npy
+\t$(PY) $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
+\t$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy
 cube: cube.npy
@@ -241,7 +249,7 @@ def MF_single(objname, obsnum, file, standard=None):
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy
 
 cube_%(outname)s.fits: %(outname)s
-\t~/spy $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+\t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 ''' % tp
     second = '''corr_%(outname)s: %(outname)s
 \t$(ATM) CORR --A %(outname)s.gz --std %(objname)s --outname corr_%(outname)s\n''' %  tp
