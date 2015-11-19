@@ -475,7 +475,7 @@ def handle_extract(data, outname=None, fine='fine.npy',flexure_x_corr_nm=0.0,
     return E
 
 def handle_A(A, fine, outname=None, standard=None, corrfile=None,
-    Aoffset=None, radius=2, flat_corrections=None):
+    Aoffset=None, radius=2, flat_corrections=None, nosky=False):
     '''Loads 2k x 2k IFU frame "A" and extracts spectra from the locations
     in "fine". 
 
@@ -488,6 +488,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         radius (float): Extraction radius in arcsecond
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
+	nosky (Boolean): if True don't subtract sky, merely sum in aperture
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -512,6 +513,8 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         ff = np.load(Aoffset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
+
+        print "Dx %2.1f | Dy %2.1f" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
@@ -577,7 +580,8 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     res[0]['skynm'] = sky[0]['nm']
     res[0]['skyph'] = sky[0]['ph_10m_nm']
 
-    res[0]['ph_10m_nm'] -= skybgd 
+    if not nosky:
+    	res[0]['ph_10m_nm'] -= skybgd 
     res[0]['ph_10m_nm'] *= extCorr * len(six)
 
     res[0]['radius_as'] = radius
@@ -594,7 +598,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
 def handle_AB(A, B, fine, outname=None, corrfile=None,
     Aoffset=None, Boffset=None, radius=2, flat_corrections=None,
-    lmin=650, lmax=700):
+    nosky=False, lmin=650, lmax=700):
     '''Loads 2k x 2k IFU frame "A" and "B" and extracts A-B and A+B spectra
     from the "fine" location. 
 
@@ -609,6 +613,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         radius (float): Extraction radius in arcsecond
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
+	nosky (Boolean): if True don't subtract sky, merely sum in aperture
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -631,12 +636,10 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
 
     if Aoffset is not None:
         ff = np.load(Aoffset)
-        f2 = np.load(Aoffset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = -ff[0]['dYpix']
 
-        print "Dx %2.1f, %2.1f | Dy %2.1f %2.1f" % (ff[0]['dXnm'], f2[0]['dXnm'],
-            ff[0]['dYpix'], f2[0]['dYpix']) 
+        print "Dx %2.1f | Dy %2.1f" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
@@ -763,11 +766,19 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     extCorrA = 10**(Atm.ext(ll*10)*airmassA/2.5)
     extCorrB = 10**(Atm.ext(ll*10)*airmassB/2.5)
     print "Median airmass corr: ", np.median(extCorrA), np.median(extCorrB)
-    res[0]['ph_10m_nm'] = \
-        np.nansum([
-            (f1(ll)-sky_A(ll)) * extCorrA, 
-            (f2(ll)-sky_B(ll)) * extCorrB], axis=0) * \
-            (len(sixA) + len(sixB))
+    # If requested merely sum in aperture, otherwise subtract sky
+    if nosky:
+    	res[0]['ph_10m_nm'] = \
+        	np.nansum([
+            	f1(ll) * extCorrA, 
+            	f2(ll) * extCorrB], axis=0) * \
+            	(len(sixA) + len(sixB))
+    else:
+    	res[0]['ph_10m_nm'] = \
+        	np.nansum([
+            	(f1(ll)-sky_A(ll)) * extCorrA, 
+            	(f2(ll)-sky_B(ll)) * extCorrB], axis=0) * \
+            	(len(sixA) + len(sixB))
 
     res[0]['exptime'] = meta['exptime']
     res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
@@ -836,6 +847,7 @@ if __name__ == '__main__':
     parser.add_argument('--Doffset', type=str, help='Name of "D" file that holds flexure offset correction information')
     parser.add_argument('--radius_as', type=float, help='Extraction radius in arcsecond', default=3)
     parser.add_argument('--flat_correction', type=str, help='Name of flat field .npy file', default=None)
+    parser.add_argument('--nosky', action="store_true", default=False, help='No sky subtraction: only sum in aperture')
 
     args = parser.parse_args()
 
@@ -853,14 +865,15 @@ if __name__ == '__main__':
         handle_AB(args.A, args.B, args.fine, outname=args.outname,
             corrfile=args.correction,
             Aoffset=args.Aoffset, Boffset=args.Boffset, 
-            radius=args.radius_as, flat_corrections=flat)
+            radius=args.radius_as, flat_corrections=flat,
+	    nosky=args.nosky)
 
     elif args.A is not None:
         if args.std is None:
             handle_A(args.A, args.fine, outname=args.outname,
                 corrfile=args.correction,
                 Aoffset=args.Aoffset, radius=args.radius_as,
-                flat_corrections=flat)
+                flat_corrections=flat,nosky=args.nosky)
         else:
             star = Stds.Standards[args.std]
             handle_A(args.A, args.fine, outname=args.outname,

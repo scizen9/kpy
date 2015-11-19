@@ -1664,7 +1664,7 @@ def read_spec_loc(spec_loc_fname):
     return np.load(spec_loc_fname)
 
 def xe_830nm(p, lam):
-    '''Xe comoplex near 830 nm.
+    '''Xe complex near 830 nm.
 
     See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html'''
 
@@ -1723,7 +1723,7 @@ def save_fitted_ds9(fitted, outname='fine'):
 
 
 def xe_890nm(p, lam):
-    '''Xe comoplex near 890 nm.
+    '''Xe complex near 890 nm.
 
     See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html'''
 

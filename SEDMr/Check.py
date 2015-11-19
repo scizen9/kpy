@@ -16,6 +16,8 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
     if not os.path.isfile(corrname) and corrname is not None:
         print "Loading old standard correction"
         corrname = '/scr2/npk/sedm/OUTPUT/2015mar25/std-correction.npy'
+    else:
+	print "Using current standard correction"
 
     if corrname is not None:
         corr = np.load(corrname)[0]
@@ -66,33 +68,50 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
     pl.legend(legend)
     pl.xlim(360,1000)
 
-    roi = (lam > 400) & (lam < 950)
+    roi = (lam > 400) & (lam < 999)
     mx = np.max(spec[roi]*corf(lam[roi]))
     pl.ylim(-mx/10,mx)
     pl.grid(True)
     pl.ioff()
     pl.show()
 
-    np.savetxt('out.txt', np.array([lam, spec*corf(lam)]).T)
-    print "saved to out.txt"
+    wl = lam[roi]*10.
+    fl = spec[roi]*corf(lam[roi])
+    srt = wl.argsort().argsort()
+    outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
+    np.savetxt(outf, np.array([wl[srt], fl[srt]]).T)
+    print "saved to "+outf
 
 
-def checkCube(cubename):
+def checkCube(cubename, showlamrms=False):
     ''' Plot a datacube for checking'''
     
     cc = np.load(cubename)
 
     Xs = [c.X_as for c in cc]
     Ys = [c.Y_as for c in cc]
-    Ss = [c.trace_sigma for c in cc]
+    if showlamrms:
+	Ss = [0.] * len(cc)
+	for i in range(len(cc)):
+	    if cc[i].lamrms is not None:
+		Ss[i] = cc[i].lamrms * 100.
+
+    	smx = 0.1
+    	smn = 0.0
+	cbtitle = "Wavelength RMS [%]"
+    else:
+    	Ss = [c.trace_sigma for c in cc]
+	smx = 2
+	smn = 0.8
+	cbtitle = "RMS trace width [pix]"
 
     pl.figure(1)
-    pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=0.8, vmax= 2)
-    pl.title("This should show a regular hexagonal grid of cube positions")
+    pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
+    pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(-25,25)
     pl.ylim(-25,25)
 
-    pl.colorbar(label='RMS trace width in pixel')
+    pl.colorbar(label=cbtitle)
     pl.xlabel("X position [as]")
     pl.ylabel("Y position [as]")
     pl.grid(True)
@@ -107,6 +126,7 @@ if __name__ == '__main__':
 
 
     parser.add_argument('--cube', type=str, help='Fine correction path')
+    parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
@@ -116,7 +136,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.cube is not None:
-        checkCube(args.cube)
+        checkCube(args.cube, showlamrms=args.lambdarms)
     if args.spec is not None:
         checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
             smoothing=args.smoothing)

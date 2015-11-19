@@ -35,7 +35,7 @@ class Extraction():
         profile_sd (float): Profile standard deviation of extraction along ridgeline
         spec ([float]): The extracted 1d spectrum.
         specw ([float]): The extracted 1d spectrum extracted using the profile trace.
-        specf ([float]): The extracted 1d spectrum extracted using fraciton pixels. (SHOULD BE DEFAULT).
+        specf ([float]): The extracted 1d spectrum extracted using fractional pixels. (SHOULD BE DEFAULT).
         specwf ([float]): The extracted 1d spectrum extracted using fracitonal pixels with weighting 
         hg_lines ({wavelength: pixel}): An association of mercury lamp wavelength
             and pixel position. These values come from sextractor

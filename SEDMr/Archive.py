@@ -6,7 +6,7 @@ import pyfits as pf
 from scipy.interpolate import interp1d
 import sys
 
-outdir = "/scr2/npk/sedm/reduced/"
+outdir = "/scr2/neill/sedm/redux/"
 VER = "2015A"
 
  

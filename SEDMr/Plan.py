@@ -79,7 +79,7 @@ def identify_observations(headers):
                         Str = "%s%1.1f" % (Str, adcspeed)
                         prefix = ""
                         suffix = ""
-		    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str:
+		    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str or "dome" in Str:
 			prefix = "b_"
 			suffix = ""
                     else:
@@ -145,7 +145,7 @@ IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
 
 BSUB = $(PY) $(PYC)/Bias.py
 BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
-CRRSUB =  $(UR_DIR)/variants/common/bin/CosmicX --gain 1.0 --readnoise 5.0 --psffwhm=2 --niter 4 --objlim 1.8 --sigclip 8.0 --fsmode convolve --psfmodel gaussy --sepmed --verbose
+CRRSUB =  $(PY) $(PYC)r/CosmicX.py
 
 SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
@@ -154,10 +154,15 @@ BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
 
 crr_b_% : b_%
-	$(CRRSUB) $< $@ mask$@
+	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
+		--sigclip 8.0 --fsmode convolve --psfmodel gaussy --psffwhm=2 \\
+		$< $@ mask$@
 
 bs_crr_b_%.gz : crr_b_%
 	$(BGDSUB) fine.npy $<
+
+flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
+	$(FLEXCMD) cube.npy $< --outfile $@
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -168,7 +173,9 @@ $(BIAS): bias0.1.fits bias2.0.fits
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 
-	$(CRRSUB) $(subst crr_,,$@) $@ mask$@
+	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
+		--sigclip 8.0 --fsmode convolve --psfmodel gaussy --psffwhm=2 \\
+		$(subst crr_,,$@) $@ mask$@
 
 $(BACK): 
 	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@))
