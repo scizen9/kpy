@@ -180,10 +180,6 @@ class Extraction():
 
         return dlam
 
-        
-
-        
-
 
 
     def __init__(self, seg_id=None, ok=None, xrange=None, 

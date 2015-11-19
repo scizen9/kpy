@@ -275,7 +275,7 @@ def MF_AB(objname, obsnum, A, B):
     else: tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
-    tp['flexname'] = "flex_%s.npy" % A.rstrip('.fits')
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % A.rstrip('.fits')
 
     tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
     tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
