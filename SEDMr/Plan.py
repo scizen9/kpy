@@ -249,11 +249,10 @@ def MF_single(objname, obsnum, file, standard=None):
     if standard is None: tp['STD'] = ''
     else: tp['STD'] = "--std %s" % (standard)
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % (file.rstrip(".fits"))
-    # DROP Flexure for now
-    tp['flexname'] = ""
+
     first = '''# %(outname)s
 %(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -275,15 +274,14 @@ def MF_AB(objname, obsnum, A, B):
     if obsnum == 1: tp['num'] = ''
     else: tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
-    tp['flexname'] = "flex_%s.npy flex_%s.npy" % (A.rstrip('.fits'), 
-        B.rstrip('.fits')) 
+    # we only use the flexure from the A image
+    tp['flexname'] = "flex_%s.npy" % A.rstrip('.fits')
 
-    tp['flexname'] = ""
     tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
     tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
 
     return '''# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
-\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy\n\n''' %  tp, "%(outname)s " % tp
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n''' %  tp, "%(outname)s " % tp
 
 
 def MF_ABCD(objname, obsnum, files): 
@@ -294,13 +292,10 @@ def MF_ABCD(objname, obsnum, files):
     if obsnum == 1: tp['num'] = ''
     else: tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
-    tp['flexname'] = "flex_%s.npy flex_%s.npy flex_%s.npy flex_%s.npy" % (
-        A.rstrip('.fits'), 
-        B.rstrip('.fits'),
-        C.rstrip('.fits'),
-        D.rstrip('.fits'))
+    # we only use the flexure from the A image
+    tp['flexname'] = "flex_%s.npy" % A.rstrip('.fits')
     return '''%(outname)s: fine.npy %(A)s %(B)s %(C)s %(D)s %(flexname)s
-\t$(EXTPAIR) fine.npy --A %(A)s --B %(B)s --C %(C)s --D %(D)s --outname %(outname)s \n''' %  tp, "%(outname)s" % tp
+\t$(EXTPAIR) fine.npy --A %(A)s --B %(B)s --C %(C)s --D %(D)s --Aoffset %(flexname)s --outname %(outname)s \n''' %  tp, "%(outname)s" % tp
 
 
 
