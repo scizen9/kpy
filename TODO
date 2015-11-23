@@ -1,3 +1,6 @@
-Change directory structure so that dates are all numeric
+Change directory structure so that dates are all numeric (DONE, rsw 15-NOV-2015)
 Add the following keywords: INSTRUME, TELESCOP, OBSERVER, FILTER
+label plots in Wavelength.py (DONE, jdn 22-NOV-2015)
+sort segments on y-value (apparently no way to do this in SExtractor)
+remove error messages
 
