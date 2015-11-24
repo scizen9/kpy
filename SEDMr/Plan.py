@@ -99,7 +99,7 @@ def identify_observations(headers):
 
         if "Focus:" in obj: continue
         if "dark" in obj: continue
-        if "GXN:STOW" in name: continue
+        if "STOW" in name: continue
         if obj.rstrip() == "": continue
         name= name.replace(" ", "_")
         name= name.replace(")", "_")
@@ -132,8 +132,6 @@ def identify_observations(headers):
 
 
 make_preamble = '''
-
-
 PY = ~/spy
 PYC = ~/kpy/SEDM
 EXTSINGLE =  $(PY) $(PYC)r/Extracter.py 
@@ -193,8 +191,8 @@ dome.fits_segments.npy: seg_dome.fits
 rough.npy: dome.fits_segments.npy seg_Hg.fits
 	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
 
-fine.npy: rough.npy Xe.fits
-	$(PY) $(PYC)r/Wavelength.py fine --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
+fine.npy: rough.npy Cd.fits Xe.fits
+	$(PY) $(PYC)r/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
 
 cube.npy: fine.npy
 	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
@@ -212,9 +210,6 @@ flat-dome-700to900.npy: cube.npy dome.fits
 wave: fine.npy
 cube: cube.npy
 
-# TODO: Change the dependencies to be more sophisticated.
-# It is possible to add rules to both flex and flat so that only
-# the necessary files are created
 flex: back $(FLEX)
 
 $(FLEX): cube.npy
@@ -233,6 +228,9 @@ def MF_imcombine(objname, files, dependencies=""):
     else:
         reject = "none"
     second = "\t$(IMCOMBINE) --outname %s.fits --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (objname, reject, filelist)
+
+    if "bias" not in objname and "dome" not in objname:
+	second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
 
     return  first+second+"\n"
 
@@ -305,6 +303,8 @@ def to_makefile(objs, calibs):
 
     all = ""
     stds = ""
+    stds_dep = ""
+    sci = ""
     
     flexures = ""
 
@@ -338,7 +338,9 @@ def to_makefile(objs, calibs):
                             obsfile, 
                             standard=standard)
                         MF += m
-                        all += a + " "
+			# don't need these in all: dependants of target "stds"
+                        # all += a + " "
+			stds_dep += a + " "
 
                 else: standard = None
                 continue
@@ -350,6 +352,9 @@ def to_makefile(objs, calibs):
 
                 MF += m
                 all += a + " "
+
+		if not objname.startswith("STD-"):
+			sci += a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -362,6 +367,9 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
+
+		    if not objname.startswith("STD-") and not objname.startswith("STOW"):
+			    sci += a + " "
             '''
             elif len(obsfiles) == 2:
                 m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
@@ -379,12 +387,13 @@ def to_makefile(objs, calibs):
     preamble = make_preamble
 
     f = open("Makefile", "w")
-    clean = "\nclean:\n\trm %s %s\n\n" % (all, stds)
-    corr = "\nstd-correction.npy:\n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n\n" 
+    clean = "\n\nclean:\n\trm %s %s" % (all, stds)
+    science = "\n\nscience: %s" % sci
+    corr = "\nstd-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n\n" % stds_dep
 
-    f.write(preamble + "stds: std-correction.npy\n\n" +
-        "\nall: stds %s %s" % (all, clean) + "\n\n" +
-        corr + MF + "\n\n" + flexures)
+    f.write(preamble + "stds: flat-dome-700to900.npy std-correction.npy\n" +
+        "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
+        corr + MF + "\n" + flexures)
     f.close()
 
 def make_plan(headers):

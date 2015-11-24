@@ -237,6 +237,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     hg405 = []
     hg365 = []
 
+    print "Finding Hg lines in each spectrum"
     update_rate = len(lines) / Bar.setup()
     for CNT, line in enumerate(lines):
         if CNT % update_rate == 0: Bar.update()
