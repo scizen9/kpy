@@ -163,8 +163,10 @@ bs_crr_b_%.gz : crr_b_%
 flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
 
-%_SEDM.pdf : sp_%.fits.npy
+%_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
+
+.PHONY: cleanstds newstds
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -221,6 +223,13 @@ flex: back $(FLEX)
 $(FLEX): cube.npy
 	$(eval OUTNAME = $(subst .gz,,$@))
 	$(FLEXCMD) cube.npy $(subst flex_,,$(subst npy,fits,$@)) --outfile $(OUTNAME)
+
+stds: flat-dome-700to900.npy std-correction.npy
+
+cleanstds:
+	rm -f std-correction.npy Standard_Correction.pdf
+
+newstds: cleanstds stds
 
 '''
 
@@ -394,12 +403,11 @@ def to_makefile(objs, calibs):
 
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
-    science = "\n\nscience: %s" % sci
-    corr = "\nstd-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n\n" % stds_dep
+    science = "\n\nscience: %s\n" % sci
+    corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n" % stds_dep
 
-    f.write(preamble + "stds: flat-dome-700to900.npy std-correction.npy\n" +
-        "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
-        corr + MF + "\n" + flexures)
+    f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
+        MF + "\n" + flexures)
     f.close()
 
 def make_plan(headers):

@@ -645,22 +645,22 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         flexure_y_corr_pix = 0
 
     read_var = 5*5
-    if os.path.isfile(outname + ".fits.npy"):
+    if os.path.isfile(outname + ".npy"):
         print "USING extractions in %s!" % outname
-        E, meta = np.load(outname + ".fits.npy")
-        E_var, meta_var = np.load("var_" + outname + ".fits.npy")
+        print "rm %s.npy # if you want to recreate extractions" % outname
+        E, meta = np.load(outname + ".npy")
+        E_var, meta_var = np.load("var_" + outname + ".npy")
     else:
-        if not outname.endswith(".fits"): 
-            outname = outname + ".fits"
-            diff = subtract(A,B, outname)
-            add(A,B, "tmpvar_" + outname)
+        print "CREATING extractions ..."
+        diff = subtract(A,B, outname + ".fits")
+        add(A,B, "tmpvar_" + outname + ".fits")
 
-            adcspeed = diff[0].header["ADCSPEED"]
-            if adcspeed == 2: read_var = 22*22
-            else: read_var = 5*5
+        adcspeed = diff[0].header["ADCSPEED"]
+        if adcspeed == 2: read_var = 22*22
+        else: read_var = 5*5
 
-        var = add("tmpvar_" + outname, str(read_var), "var_" + outname)
-        os.remove("tmpvar_" + outname + ".gz")
+        var = add("tmpvar_" + outname + ".fits", str(read_var), "var_" + outname + ".fits")
+        os.remove("tmpvar_" + outname + ".fits.gz")
 
 
         E, meta = Wavelength.wavelength_extract(diff, fine, 

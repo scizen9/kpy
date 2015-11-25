@@ -7,6 +7,7 @@ import pyfits as pf
 from scipy.interpolate import interp1d
 import scipy.signal
 import sys
+import datetime
 
 import IO
 
@@ -42,6 +43,9 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
 
     try: et = ss['exptime']
     except: et = 0
+
+    try: utc = meta['utc']
+    except: utc = ''
 
     pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % (specname, ec, et))
     pl.xlabel("Wavelength [Ang]")
@@ -83,12 +87,12 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     else:
 	pl.show()
 
-    #wl = lam[roi]*10.
     wl = lam[roi]
     fl = spec[roi]*corf(lam[roi])
     srt = wl.argsort().argsort()
     outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
-    np.savetxt(outf, np.array([wl[srt], fl[srt]]).T)
+    header = 'OUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (outf, utc, et, ec)
+    np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
     print "saved to "+outf
 
 
