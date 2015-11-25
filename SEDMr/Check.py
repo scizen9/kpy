@@ -30,7 +30,6 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
 
 
     lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname)
-    lam = np.roll(lam, 3)
 
     print "Plotting spectrum in %s" % specname
     try: print "Extraction radius: %1.2f" % ss['radius_as']
