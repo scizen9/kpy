@@ -11,7 +11,7 @@ import sys
 import IO
 
  
-def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
+def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False):
 
     if not os.path.isfile(corrname) and corrname is not None:
         print "Loading old standard correction"
@@ -30,6 +30,8 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
 
 
     lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname)
+    
+    lam = lam * 10.
 
     print "Plotting spectrum in %s" % specname
     try: print "Extraction radius: %1.2f" % ss['radius_as']
@@ -42,10 +44,12 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
     except: et = 0
 
     pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % (specname, ec, et))
-    pl.xlabel("Wavelength [nm]")
+    pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
+    plm = pl.get_current_fig_manager()
+    plm.window.wm_geometry("900x500+10+10")
 
-    OK = (lam > 380) & (lam < 1000)
+    OK = (lam > 3800) & (lam < 10000)
     legend = ["obj",]
     lamz = lam/(1+redshift)
     if smoothing == 0:
@@ -65,16 +69,22 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
         legend.append("err")
 
     pl.legend(legend)
-    pl.xlim(360,1000)
+    pl.xlim(3600,10000)
 
-    roi = (lam > 400) & (lam < 999)
+    roi = (lam > 4000) & (lam < 9999)
     mx = np.max(spec[roi]*corf(lam[roi]))
     pl.ylim(-mx/10,mx)
     pl.grid(True)
     pl.ioff()
-    pl.show()
+    outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
+    if savefig:
+    	pl.savefig(outf)
+	print "figure saved to "+outf
+    else:
+	pl.show()
 
-    wl = lam[roi]*10.
+    #wl = lam[roi]*10.
+    wl = lam[roi]
     fl = spec[roi]*corf(lam[roi])
     srt = wl.argsort().argsort()
     outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
@@ -82,7 +92,7 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0):
     print "saved to "+outf
 
 
-def checkCube(cubename, showlamrms=False):
+def checkCube(cubename, showlamrms=False, savefig=False):
     ''' Plot a datacube for checking'''
     
     cc = np.load(cubename)
@@ -98,11 +108,13 @@ def checkCube(cubename, showlamrms=False):
     	smx = 0.1
     	smn = 0.0
 	cbtitle = "Wavelength RMS [%]"
+	outf = "cube_lambdarms.pdf"
     else:
     	Ss = [c.trace_sigma for c in cc]
 	smx = 2
 	smn = 0.8
 	cbtitle = "RMS trace width [pix]"
+	outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
     pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
@@ -115,7 +127,11 @@ def checkCube(cubename, showlamrms=False):
     pl.ylabel("Y position [as]")
     pl.grid(True)
     pl.ioff()
-    pl.show()
+    if savefig:
+	pl.savefig(outf)
+	print "figure saved to "+outf
+    else:
+	pl.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
@@ -126,6 +142,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--cube', type=str, help='Fine correction path')
     parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
+    parser.add_argument('--savefig', action="store_true", default=False, help='Save pdf figure')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
@@ -135,9 +152,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.cube is not None:
-        checkCube(args.cube, showlamrms=args.lambdarms)
+        checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
         checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
-            smoothing=args.smoothing)
+            smoothing=args.smoothing, savefig=args.savefig)
 
 

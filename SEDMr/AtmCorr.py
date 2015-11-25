@@ -8,6 +8,7 @@ import pyfits as pf
 import datetime
 import os
 import sets
+import warnings
 
 from numpy.polynomial.chebyshev import chebfit, chebval
 from scipy.interpolate import interp1d
@@ -24,6 +25,7 @@ def handle_create(outname=None, filelist=[]):
     spectra = []
     corrs = []
     corr_vals =[]
+    legend=["corr",]
     for file in filelist: 
         ''' Filename is STD-nnnnn_obs* '''
 
@@ -36,6 +38,7 @@ def handle_create(outname=None, filelist=[]):
         pred = file.lstrip("spectrum_STD-")
         pred = pred.lstrip("sp_STD-")
         pred = pred.split("_")[0]
+	legend.append(pred)
         pred = pred.lower().replace("+","").replace("-","_")
         print file, pred, pred in SS.Standards
 
@@ -99,25 +102,32 @@ def handle_create(outname=None, filelist=[]):
     pl.ylim(1e-20,1e-15)
     pl.semilogy(ll, the_corr, linewidth=4)
     for ix,e in enumerate(erg_s_cm2_ang):
-        pl.semilogy(ll, e*corr_vals[ix]/np.mean(corr_vals))
+	pl.semilogy(ll, e*corr_vals[ix]/np.mean(corr_vals))
 
     pl.xlabel("Wavelength [nm]")
     pl.ylabel("Correction [erg/s/cm cm/Ang]")
     pl.title("Correct ph/10 m/nm to erg/s/cm2/Ang")
-    pl.savefig("Standard_Correction.pdf")
+    pl.legend(legend)
+
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", category=RuntimeWarning)
+    	pl.savefig("Standard_Correction.pdf")
+
     print np.mean(corr_vals) * 1e-16, np.std(corr_vals)*1e-16
 
     # Construct result
-    res = {"nm": ll,
-        "correction": the_corr,
-        "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
-        "Nspec": len(corrs),
-        "correction_std": np.nanstd(erg_s_cm2_ang,0),
-        "outname": outname,
-        "files": filelist,
-        "when": '%s' % datetime.datetime.now(),
-        "user": os.getlogin()
-        }
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", category=RuntimeWarning)
+	res = {"nm": ll,
+            "correction": the_corr,
+            "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
+            "Nspec": len(corrs),
+            "correction_std": np.nanstd(erg_s_cm2_ang,0),
+            "outname": outname,
+            "files": filelist,
+            "when": '%s' % datetime.datetime.now(),
+            "user": os.getlogin()
+            }
 
     np.save(outname, [res])
     return res

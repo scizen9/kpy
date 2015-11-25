@@ -140,6 +140,7 @@ EXTPAIR =  $(PY) $(PYC)r/Extracter.py
 FLEXCMD = $(PY) $(PYC)r/Flexure.py
 DEBIAS = $(PY) $(PYC)r/Debias.py
 IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
+PLOT = $(PY) $(PYC)r/Check.py
 
 BSUB = $(PY) $(PYC)/Bias.py
 BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
@@ -161,6 +162,9 @@ bs_crr_b_%.gz : crr_b_%
 
 flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
+
+%_SEDM.pdf : sp_%.fits.npy
+	$(PLOT) --spec $< --savefig
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -196,6 +200,8 @@ fine.npy: rough.npy Cd.fits Xe.fits
 
 cube.npy: fine.npy
 	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
+	$(PLOT) --cube cube.npy --savefig
+	$(PLOT) --cube cube.npy --lambdarms --savefig
 
 bs_twilight.fits.gz: twilight.fits fine.npy
 	$(BGDSUB) fine.npy twilight.fits

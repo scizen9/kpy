@@ -7,6 +7,7 @@ import pylab as pl
 import pyfits as pf
 import scipy
 import sys
+import warnings
 
 import datetime
 
@@ -622,15 +623,19 @@ def median_fine_grid(fine):
             pdb.set_trace()
 
         diff = (lls - new_lls) / new_lls
-        stds = scipy.stats.nanstd(diff, 0)
-        bad = np.abs(diff/stds) > 4
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=RuntimeWarning)
+            stds = scipy.stats.nanstd(diff, 0)
+            bad = np.abs(diff/stds) > 4
         if bad.any():
             lls[bad] = np.nan
             new_lls = scipy.stats.nanmedian(lls, 0)
 
         diff = (lls - new_lls) / new_lls
         stds = scipy.stats.nanstd(diff, 0)
-        bad = np.abs(diff/stds) > 2
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=RuntimeWarning)
+            bad = np.abs(diff/stds) > 2
         if bad.any():
             lls[bad] = np.nan
             new_lls = scipy.stats.nanmedian(lls, 0)
@@ -641,20 +646,20 @@ def median_fine_grid(fine):
             new_lls, 3)
 
     pl.figure(3)
+    plm = pl.get_current_fig_manager()
+    plm.window.wm_geometry("+670+0")
+    pl.clf()
+    pl.xlim(360, 550)
     pl.xlabel("Wave(nm)")
     pl.ylabel("Spec")
     pl.title("mdn_coeff")
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("+650+0")
-    pl.clf()
-    pl.xlim(360, 550)
     pl.ioff()
     pl.figure(4)
+    pl.clf()
+    pl.xlim(360, 550)
     pl.xlabel("Wave(nm)")
     pl.ylabel("Spec")
     pl.title("lamcoeff")
-    pl.clf()
-    pl.xlim(360, 550)
     pl.ioff()
     for g in fine:
         if g.mdn_coeff is None: continue
