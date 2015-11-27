@@ -34,6 +34,8 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     
     lam = lam * 10.
 
+    hdr = meta['header']
+
     print "Plotting spectrum in %s" % specname
     try: print "Extraction radius: %1.2f" % ss['radius_as']
     except: pass
@@ -44,8 +46,23 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     try: et = ss['exptime']
     except: et = 0
 
-    try: utc = meta['utc']
+    try:
+	ec2 = meta['airmass2']
+	et *= 2
+    except: ec2 = 0
+
+    try: user = meta['user']
+    except: user = ''
+
+    try: 
+	utc = meta['utc']
+	parts = utc.split(":")
+	date = datetime.datetime(int(parts[0]), 1, 1) + datetime.timedelta(int(parts[1])-1)
+	utc = date.strftime("%Y %m %d") + " %s:%s:%s" % (parts[2],parts[3],parts[4])
     except: utc = ''
+
+    try: obj = hdr['OBJECT'].split()[0]
+    except: obj = ''
 
     pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % (specname, ec, et))
     pl.xlabel("Wavelength [Ang]")
@@ -91,7 +108,7 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     fl = spec[roi]*corf(lam[roi])
     srt = wl.argsort().argsort()
     outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
-    header = 'OUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (outf, utc, et, ec)
+    header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
     np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
     print "saved to "+outf
 

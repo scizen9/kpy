@@ -11,6 +11,7 @@ from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_bases import PickEvent
 import scipy, scipy.spatial
 from numpy.polynomial.chebyshev import chebfit, chebval
+import warnings
 
 def find_ha(cc):
     ix = np.arange(30, 100, .1)
@@ -95,7 +96,9 @@ class Spectra(object):
 
             Xs.append(XY[0])
             Ys.append(XY[1])
-            Vs.append(np.median(el.spec[ok]))
+	    with warnings.catch_warnings():
+		warnings.simplefilter("ignore", category=RuntimeWarning)
+            	Vs.append(np.median(el.spec[ok]))
         
 
         return (np.array(Xs),

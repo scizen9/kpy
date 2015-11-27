@@ -6,6 +6,7 @@ import pyfits as pf
 import scipy.signal as SG
 import sets
 import itertools
+import warnings
 
 from astropy.coordinates import Angle
 from numpy.polynomial.chebyshev import chebfit, chebval
@@ -34,7 +35,7 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
         Note: if airmass=1, then the list is equivalent of [ pos ]
     
     '''
-    print PRLLTC, pos, leff, airmass
+    print "ParAng %s, (RA, Dec) %s, LamEff %.1f nm, Airmass %.3f" % (PRLLTC, str(pos), leff, airmass)
 
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad  = NPK.Util.atm_disper(leff, 0.95, airmass)
@@ -514,7 +515,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
 
-        print "Dx %2.1f | Dy %2.1f" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
@@ -569,7 +570,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
     airmass = meta['airmass']
     extCorr = 10**(Atm.ext(res[0]['nm']*10) * airmass/2.5)
-    print "Median airmass corr: ", np.median(extCorr)
+    print "Median airmass corr: %.4f" % np.median(extCorr)
 
     ff = interp1d(sky[0]['nm'], sky[0]['ph_10m_nm'], bounds_error=False)
     skybgd = ff(res[0]['nm'])
@@ -593,6 +594,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     res[0]['sky_spectra'] = sky[0]['spectra']
 
     np.save("sp_" + outname, res)
+    print "Wrote sp_"+outname+".npy"
 
 
 
@@ -639,7 +641,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = -ff[0]['dYpix']
 
-        print "Dx %2.1f | Dy %2.1f" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
@@ -747,11 +749,15 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     ll = Wavelength.fiducial_spectrum()
     sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)
     sky_B = interp1d(skyB[0]['nm'], skyB[0]['ph_10m_nm'], bounds_error=False)
-    sky = np.nanmean([sky_A(ll), sky_B(ll)], axis=0)
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", category=RuntimeWarning)
+	sky = np.nanmean([sky_A(ll), sky_B(ll)], axis=0)
 
     var_A = interp1d(varA[0]['nm'], varA[0]['ph_10m_nm'], bounds_error=False)
     var_B = interp1d(varB[0]['nm'], varB[0]['ph_10m_nm'], bounds_error=False)
-    varspec = np.nanmean([var_A(ll), var_B(ll)], axis=0) * (len(sixA) + len(sixB))
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", category=RuntimeWarning)
+	varspec = np.nanmean([var_A(ll), var_B(ll)], axis=0) * (len(sixA) + len(sixB))
 
     res = np.copy(resA)
     res = [{"doc": resA[0]["doc"], "ph_10m_nm": np.copy(resA[0]["ph_10m_nm"]),
@@ -765,16 +771,20 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
 
     extCorrA = 10**(Atm.ext(ll*10)*airmassA/2.5)
     extCorrB = 10**(Atm.ext(ll*10)*airmassB/2.5)
-    print "Median airmass corr: ", np.median(extCorrA), np.median(extCorrB)
+    print "Median airmass corrs A: %.4f, B: %.4f" % (np.median(extCorrA), np.median(extCorrB))
     # If requested merely sum in aperture, otherwise subtract sky
     if nosky:
-    	res[0]['ph_10m_nm'] = \
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=FutureWarning)
+    	    res[0]['ph_10m_nm'] = \
         	np.nansum([
             	f1(ll) * extCorrA, 
             	f2(ll) * extCorrB], axis=0) * \
             	(len(sixA) + len(sixB))
     else:
-    	res[0]['ph_10m_nm'] = \
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=FutureWarning)
+    	    res[0]['ph_10m_nm'] = \
         	np.nansum([
             	(f1(ll)-sky_A(ll)) * extCorrA, 
             	(f2(ll)-sky_B(ll)) * extCorrB], axis=0) * \
@@ -804,6 +814,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     res[0]['dlam'] = np.diff(newll)
 
     np.save("sp_" + outname, res)
+    print "Wrote sp_"+outname+".npy"
 
 def measure_flexure(sky):
     ''' Measure expected (589.3 nm) - measured emission line in nm'''
