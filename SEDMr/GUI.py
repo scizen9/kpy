@@ -100,7 +100,7 @@ class PositionPicker(object):
         '''Event call handler for Picker gui.'''
         
         if event.name == 'button_press_event':
-            print event.xdata, event.ydata
+            print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
             self.picked = (event.xdata, event.ydata)
             pl.close(self.figure)
             

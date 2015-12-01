@@ -351,7 +351,7 @@ def make_profile(slice, sigma2=4):
 
 
 def wavelength_extract_helper(SS):
-    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs, printit
+    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs
 
     ix, flexure_x_corr_nm, flexure_y_corr_pix = SS
 
@@ -434,19 +434,19 @@ def wavelength_extract_helper(SS):
         ex.mdn_coeff[0] -= flexure_x_corr_nm
         ex.lamrms = ss.lamrms
 
-    if ex.lamrms is not None and printit:
-        print "%4.4i %1.4f (%s)" % (ex.seg_id, ex.lamrms, fc)
+    if ex.lamrms is not None:
+	outstr = "\r%4.4i %1.4f (%s)            " % (ex.seg_id, ex.lamrms, fc)
+        print outstr,
+	sys.stdout.flush()
 
     return ex
 
 
 def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.npy',
     flexure_x_corr_nm = 0.0, flexure_y_corr_pix = 0.0, extract_width_par=3,
-    inname='unknown', airmass=None, flat_corrections=None, verbose=False):
+    inname='unknown', airmass=None, flat_corrections=None):
 
-    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs, printit
-
-    printit = verbose
+    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs
 
     extract_width = extract_width_par
 
@@ -464,9 +464,11 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
     SSs = [ (ix, flexure_x_corr_nm, flexure_y_corr_pix)
                 for ix in range(len(wavecalib))]
 
+    print "SgID LamRMS  Flat Corr"
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()
+    print ""
 
 
     meta = {"inname": inname, "extract_width": extract_width_par,

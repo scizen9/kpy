@@ -35,7 +35,8 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
         Note: if airmass=1, then the list is equivalent of [ pos ]
     
     '''
-    print "ParAng %s, (RA, Dec) %s, LamEff %.1f nm, Airmass %.3f" % (PRLLTC, str(pos), leff, airmass)
+    pos_str = "%+10.5f, %+10.5f" % pos
+    print "ParAng %s, (X, Y) %s, LamEff %.1f nm, Airmass %.3f" % (PRLLTC, pos_str, leff, airmass)
 
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad  = NPK.Util.atm_disper(leff, 0.95, airmass)
@@ -67,7 +68,7 @@ def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PR
 
     NOTE: Index is counted against the array, not seg_id'''
     
-    print "Looking in a %s as radius" % radius
+    print "\nLooking in a %s arcsec radius" % radius
     pl.ioff()
     KT = SS.Spectra(spectra)
     g = GUI.PositionPicker(KT, bgd_sub=True, radius_as=radius, lmin=lmin, lmax=lmax,        PRLLTC=None)
@@ -373,6 +374,13 @@ def add(A,B, outname):
 
     return pf.open(outname)
 
+def addcon(A,B, outname):
+    A,B = gunzip(A,B)
+    imarith(A, "+", B, outname)
+    gzip(A,"junk.gz")
+
+    return pf.open(outname)
+
 def subtract(A,B, outname):
     if os.path.exists(outname):
         return pf.open(outname)
@@ -525,7 +533,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         print "rm %s.npy # if you want to recreate extractions" % outname
         E, meta = np.load(outname+".npy")
     else:
-        print "CREATING extractions ..."
+        print "\nCREATING extractions ..."
         E, meta = Wavelength.wavelength_extract(spec, fine, filename=outname,
             flexure_x_corr_nm=flexure_x_corr_nm, 
             flexure_y_corr_pix=flexure_y_corr_pix,
@@ -653,7 +661,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         E, meta = np.load(outname + ".npy")
         E_var, meta_var = np.load("var_" + outname + ".npy")
     else:
-        print "CREATING extractions ..."
+        print "\nCREATING extractions ..."
         diff = subtract(A,B, outname + ".fits")
         add(A,B, "tmpvar_" + outname + ".fits")
 
@@ -661,10 +669,11 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         if adcspeed == 2: read_var = 22*22
         else: read_var = 5*5
 
-        var = add("tmpvar_" + outname + ".fits", str(read_var), "var_" + outname + ".fits")
+        var = addcon("tmpvar_" + outname + ".fits", str(read_var), "var_" + outname + ".fits")
         os.remove("tmpvar_" + outname + ".fits.gz")
 
 
+	print "\nExtracting object spectra"
         E, meta = Wavelength.wavelength_extract(diff, fine, 
             filename=outname,
             flexure_x_corr_nm = flexure_x_corr_nm, 
@@ -690,6 +699,8 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         np.save(outname, [E, meta])
 
         exfile = "extracted_var_%s.npy" % outname
+
+	print "\nExtracting variance spectra"
         E_var, meta_var = Wavelength.wavelength_extract(var, fine, 
             filename=outname,
             flexure_x_corr_nm = flexure_x_corr_nm, 
@@ -862,6 +873,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+
+    print ""
 
     if args.outname is not None:
         args.outname = args.outname.rstrip('.npy')
