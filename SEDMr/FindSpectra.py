@@ -14,7 +14,8 @@ import pyfits as pf
 from astropy.modeling import models, fitting
 from multiprocessing import Pool
 import pdb, sys
-import NPK.Bar as Bar
+import warnings
+import sys
 
 from stsci.tools.gfit import gfit1d 
 
@@ -100,15 +101,17 @@ def find_segments_helper(seg_cnt):
     trace_profile = np.zeros(mxsr-mnsr)
 
     for i in xrange(n_el):
-        XX = i+span[0].x
-        profile = np.median(objdat[y_slc, XX-3:XX+3], 1)
-        profile -= np.min(profile)
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=RuntimeWarning)
+            XX = i+span[0].x
+            profile = np.median(objdat[y_slc, XX-3:XX+3], 1)
+            profile -= np.min(profile)
 
-        trace_profile += profile
+            trace_profile += profile
 
-        xs = np.arange(len(profile)) + span[0].y
+            xs = np.arange(len(profile)) + span[0].y
 
-        means[i] = np.sum(xs*profile)/np.sum(profile)-PAD
+            means[i] = np.sum(xs*profile)/np.sum(profile)-PAD
     
     xs = np.arange(n_el) + span[0].x
     poly = np.polyfit(xs, means, polyorder)
@@ -117,7 +120,9 @@ def find_segments_helper(seg_cnt):
     tr = {"seg_cnt": seg_cnt, "xs": np.array(xs), "mean_ys": np.array(means),
         "coeff_ys": np.array(poly), "ok": True, "trace_sigma": np.abs(tracefit.params[2])}
 
-    print '%4.4i: fwhm=%3.2f pix' % (seg_cnt, np.abs(tracefit.params[2])*2.355)
+    outstr = '\r%4.4i: fwhm=%3.2f pix' % (seg_cnt, np.abs(tracefit.params[2])*2.355)
+    print outstr,
+    sys.stdout.flush()
     return tr
 
     if plot:
@@ -166,6 +171,7 @@ def find_segments(segmap=None, obj=None, plot=False, order=2):
     p = Pool(8)
     traces = p.map(find_segments_helper, segrange)
     p.close()
+    print ""
 
     return traces
 

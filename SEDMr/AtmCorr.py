@@ -113,7 +113,7 @@ def handle_create(outname=None, filelist=[]):
 	warnings.simplefilter("ignore", category=RuntimeWarning)
     	pl.savefig("Standard_Correction.pdf")
 
-    print np.mean(corr_vals) * 1e-16, np.std(corr_vals)*1e-16
+    print "Mean cor: %10.3g, Sigma cor: %10.3g" % (np.mean(corr_vals) * 1e-16, np.std(corr_vals)*1e-16)
 
     # Construct result
     with warnings.catch_warnings():

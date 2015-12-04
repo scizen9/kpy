@@ -151,20 +151,25 @@ def assoc_hg_with_flats_helper(idx):
 
     to_return = {}
 
-    for wavelen,v in wavetrees.iteritems():
-        offset = guess_offset[wavelen]
-        pt = (minx + offset, tracefun(minx+offset))
-        results = v.query_ball_point(pt, 15)
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", category=RuntimeWarning)
+        for wavelen,v in wavetrees.iteritems():
+            offset = guess_offset[wavelen]
+            pt = (minx + offset, tracefun(minx+offset))
+            results = v.query_ball_point(pt, 15)
 
-        for res in results:
-            x_hg,y_hg = v.data[res]
-            y_trace = tracefun(x_hg)
+            for res in results:
+                x_hg,y_hg = v.data[res]
+                y_trace = tracefun(x_hg)
 
-            if np.abs(y_hg - y_trace) < 3:
-                to_return[wavelen] = x_hg
+                if np.abs(y_hg - y_trace) < 3:
+                    to_return[wavelen] = x_hg
 
 
-    print "%4.4i : %s" % (idx, to_return)
+    outstr = "\r%4.4i : %d" % (idx, len(to_return))
+    print outstr,
+    sys.stdout.flush()
+
     return to_return
 
 
@@ -190,9 +195,11 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par= {365.0: 231,
     for k,v in hgcat.iteritems():
         wavetrees[k] = KDTree(v)
 
+    print "SgID   Nlines"
     p = Pool(8)
     results = p.map(assoc_hg_with_flats_helper, range(len(domedat)))
     p.close()
+    print ""
 
     for idx, spec_pos in enumerate(domedat):
         if results[idx] is None: 
@@ -239,7 +246,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     hg365 = []
 
     print "Finding Hg lines in each spectrum"
-    update_rate = len(lines) / Bar.setup()
+    update_rate = len(lines) / (Bar.setup()-1)
     for CNT, line in enumerate(lines):
         if CNT % update_rate == 0: Bar.update()
 
@@ -435,7 +442,7 @@ def wavelength_extract_helper(SS):
         ex.lamrms = ss.lamrms
 
     if ex.lamrms is not None:
-	outstr = "\r%4.4i %1.4f (%s)            " % (ex.seg_id, ex.lamrms, fc)
+	outstr = "\r%4i  %6.4f  %s     " % (ex.seg_id, ex.lamrms, fc)
         print outstr,
 	sys.stdout.flush()
 
@@ -458,13 +465,13 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
     exptime = HDUlist[0].header['EXPTIME']
 
 
-    print "Applying %f/%f offset" % (flexure_x_corr_nm, flexure_y_corr_pix)
+    print "Applying %f nm / %f px offset" % (flexure_x_corr_nm, flexure_y_corr_pix)
     flexure_y_corr_pix = np.round(flexure_y_corr_pix)
 
     SSs = [ (ix, flexure_x_corr_nm, flexure_y_corr_pix)
                 for ix in range(len(wavecalib))]
 
-    print "SgID LamRMS  Flat Corr"
+    print "SgID  LamRMS  Flat Corr"
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()
@@ -829,7 +836,9 @@ def stretch_fit_helper(specno):
     fc = chebfit(fid_ix, tofit, 2)
     xc = (xcs1[slope1, square1] + xcs2[slope2, square2] ) / np.nansum(fs1)
 
-    print "%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e" % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])
+    outstr = "\r%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e" % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])
+    print outstr,
+    sys.stdout.flush()
 
     if False:
         pl.figure(4)
@@ -955,6 +964,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     p = Pool(8)
     results = p.map(stretch_fit_helper, range(len(specs)))
     p.close()
+    print ""
     
     pix_coeffs = []
     xcs = []
@@ -1415,18 +1425,22 @@ def rough_grid_helper(ix):
     ys = np.array(ys)
 
     if len(xs) == 0: 
-        print ex.xrange, ex.yrange, ex.hg_lines
+        #print ex.xrange, ex.yrange, ex.hg_lines
         return
     
-    coef = chebfit(xs,ys,2)
-    vals = chebval(xs, coef)
+    with warnings.catch_warnings():
+	warnings.simplefilter("ignore", np.polynomial.polyutils.RankWarning)
+	coef = chebfit(xs,ys,2)
+	vals = chebval(xs, coef)
 
     ex.hgcoef = coef
     err = (vals - ys)
     
     ix = np.arange(len(ex.specw))
 
-    print "%4.4i: rough RMS: %f nm" % (ex.seg_id, np.mean(err))
+    outstr = "\r%4.4i: rough RMS: %6.3f nm" % (ex.seg_id, np.std(err))
+    print outstr,
+    sys.stdout.flush()
 
 
 
@@ -1441,7 +1455,9 @@ def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578],
     lines = the_lines
 
 
+    print ""
     map(rough_grid_helper, range(len(extractions)))
+    print ""
 
     try:np.save(outname, extractions)
     except: pass

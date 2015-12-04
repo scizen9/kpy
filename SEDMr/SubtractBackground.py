@@ -10,7 +10,6 @@ import sys
 import shutil
 
 import NPK.Fit as FF
-import NPK.Bar as Bar
 import NPK.Util as Util
 import SEDMr.IO as IO
 from astropy.table import Table 

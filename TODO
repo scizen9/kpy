@@ -1,3 +1,4 @@
+Add object name title to ap placing GUI
 Add the following keywords: INSTRUME, TELESCOP, OBSERVER, FILTER
 sort segments on y-value (apparently no way to do this in SExtractor)
 add variance to single exposure extractions

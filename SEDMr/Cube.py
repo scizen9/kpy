@@ -102,7 +102,9 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
                     img[x+dx,y+dy,:] = fi
         except: pass
 
-        print x,y
+	outstr = "\rX = %+10.5f, Y = %+10.5f" % (x,y)
+        print outstr,
+	sys.stdout.flush()
 
     back = np.median(allspec, 0)
 
@@ -188,7 +190,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         elif ext.lamcoeff is not None: 
             coeff = ext.lamcoeff
         else:
-            print ext.seg_id, ": ", ext.xrange[0], ext.yrange[0]
+            #print "\r", ext.seg_id, ": ", ext.xrange[0], ext.yrange[0],
             continue
 
         ixs = np.arange(*ext.xrange)
@@ -260,11 +262,14 @@ def extraction_to_cube(exts, outname="G.npy"):
             else:
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                     (exts[nix].R_ix != r_this + rnd[1]):
-                    print "collision: "
-                    print exts[nix].Q_ix, q_this + rnd[0]
-                    print exts[nix].R_ix, r_this + rnd[1]
+                    print "\rcollision: ",
+                    print exts[nix].Q_ix, q_this + rnd[0], " ",
+                    print exts[nix].R_ix, r_this + rnd[1],
                     exts[nix].Q_ix = q_this + rnd[0]
                     exts[nix].R_ix = r_this + rnd[1]
+
+    print ""
+    print ""
 
     populate_hex(Center)
 

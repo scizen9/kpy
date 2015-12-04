@@ -35,8 +35,7 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
         Note: if airmass=1, then the list is equivalent of [ pos ]
     
     '''
-    pos_str = "%+10.5f, %+10.5f" % pos
-    print "ParAng %s, (X, Y) %s, LamEff %.1f nm, Airmass %.3f" % (PRLLTC, pos_str, leff, airmass)
+    print "LamEff %.1f nm, Airmass %.3f" % (leff, airmass)
 
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad  = NPK.Util.atm_disper(leff, 0.95, airmass)
@@ -63,17 +62,17 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     return positions
 
 
-def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PRLLTC=None, airmass=1.0):
+def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PRLLTC=None, object=object, airmass=1.0):
     ''' Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id'''
     
-    print "\nLooking in a %s arcsec radius" % radius
-    pl.ioff()
+    print "\nStarting with a %s arcsec radius" % radius
     KT = SS.Spectra(spectra)
-    g = GUI.PositionPicker(KT, bgd_sub=True, radius_as=radius, lmin=lmin, lmax=lmax,        PRLLTC=None)
+    g = GUI.PositionPicker(KT, bgd_sub=True, radius_as=radius, lmin=lmin, lmax=lmax, objname=object)
     pos  = g.picked
-    pl.close()
+    radius = g.radius_as
+    print "Final radius (arcsec) = %4.1f" % radius
 
     leff = (lmax+lmin)/2.0
     if PRLLTC is not None:
@@ -88,7 +87,7 @@ def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PR
     all_kix = list(itertools.chain(*all_kix))
     kix = list(sets.Set(all_kix))
 
-    return KT.good_positions[kix], pos, positions
+    return KT.good_positions[kix], pos, positions, radius
 
 def identify_bgd_spectra(spectra, pos, inner=3, outer=6):
     KT = SS.Spectra(spectra)
@@ -552,15 +551,16 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         meta['utc'] = spec[0].header['utc']
 
         meta['header'] = header
+	object = header['OBJECT'].split()[0]
 
         np.save(outname, [E, meta])
 
-    six, pos, adcpos = identify_spectra_gui(E, radius=radius, 
+    six, pos, adcpos, radius_used = identify_spectra_gui(E, radius=radius, 
         PRLLTC=Angle(meta['PRLLTC'], unit='deg'), 
-        lmin=650, lmax=700, airmass=meta['airmass'])
+        lmin=650, lmax=700, object=object, airmass=meta['airmass'])
 
  
-    skyix = identify_bgd_spectra(E, pos, inner=radius*1.1)
+    skyix = identify_bgd_spectra(E, pos, inner=radius_used*1.1)
     res = interp_spectra(E, six, outname=outname+".pdf", corrfile=corrfile)
     sky = interp_spectra(E, skyix, onto=res[0]['nm'], outname=outname+"_sky.pdf", corrfile=corrfile)
     
@@ -593,7 +593,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     	res[0]['ph_10m_nm'] -= skybgd 
     res[0]['ph_10m_nm'] *= extCorr * len(six)
 
-    res[0]['radius_as'] = radius
+    res[0]['radius_as'] = radius_used
     res[0]['position'] = pos
     res[0]['N_spax'] = len(six)
     res[0]['meta'] = meta
@@ -694,6 +694,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         meta['utc'] = diff[0].header['utc']
 
         meta['header'] = header
+	object = header['OBJECT'].split()[0]
 
         meta['exptime'] = diff[0].header['exptime']
         np.save(outname, [E, meta])
@@ -709,17 +710,17 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
 
         np.save("var_" + outname, [E_var, meta_var])
 
-    sixA, posA, all_A = identify_spectra_gui(E, radius=radius, 
+    sixA, posA, all_A, radius_used_A = identify_spectra_gui(E, radius=radius, 
         PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-        lmin=lmin, lmax=lmax, airmass=meta['airmass'])
-    sixB, posB, all_B = identify_spectra_gui(E, radius=radius,
+        lmin=lmin, lmax=lmax, object=object, airmass=meta['airmass'])
+    sixB, posB, all_B, radius_used_B = identify_spectra_gui(E, radius=radius_used_A,
         PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-        lmin=lmin, lmax=lmax, airmass=meta['airmass'])
+        lmin=lmin, lmax=lmax, object=object, airmass=meta['airmass'])
 
     to_image(E, meta, outname, posA=posA, posB=posB, adcpos=all_A)
 
-    skyA = identify_bgd_spectra(E, posA)
-    skyB = identify_bgd_spectra(E, posB)
+    skyA = identify_bgd_spectra(E, posA, inner=radius_used_A*1.1)
+    skyB = identify_bgd_spectra(E, posB, inner=radius_used_B*1.1)
 
     allix = np.concatenate([sixA, sixB])
     resA = interp_spectra(E, sixA, sign=1, outname=outname+"_A.pdf", corrfile=corrfile)
@@ -807,7 +808,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     res[0]['extinction_corr_B'] = extCorrB
     res[0]['skyph'] = sky
     res[0]['var'] = varspec
-    res[0]['radius_as'] = radius
+    res[0]['radius_as'] = radius_used_A
     res[0]['positionA'] = posA
     res[0]['positionB'] = posA
     res[0]['N_spaxA'] = len(sixA)

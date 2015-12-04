@@ -5,10 +5,10 @@ import numpy as np
 import pylab as pl
 import pyfits as pf
 import sys
+import warnings
 
 
 import NPK.Fit as FF
-import NPK.Bar as Bar
 from astropy.table import Table 
 
 
@@ -51,7 +51,9 @@ def measure_flat(extraction, meta,
         Ys.append(np.mean(e.yrange))
 
         ROI = (l>lamstart) & (l <= lamend)
-        fc.correction = np.nanmean(f[ROI])
+	with warnings.catch_warnings():
+	    warnings.simplefilter("ignore", category=RuntimeWarning)
+            fc.correction = np.nanmean(f[ROI])
 
     vals = [f.get_correction(0) for f in corrections]
     medval = np.median(vals)

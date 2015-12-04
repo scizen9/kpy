@@ -28,7 +28,7 @@ def extract_info(infiles):
 
     headers = []
 
-    update_rate = 1. * len(infiles) / Bar.setup()
+    update_rate = len(infiles) / (Bar.setup() - 1)
     for ix, file in enumerate(infiles):
         if ix % update_rate == 0: Bar.update()
         FF = pf.open(file )
@@ -138,7 +138,6 @@ EXTSINGLE =  $(PY) $(PYC)r/Extracter.py
 ATM =  $(PY) $(PYC)r/AtmCorr.py 
 EXTPAIR =  $(PY) $(PYC)r/Extracter.py 
 FLEXCMD = $(PY) $(PYC)r/Flexure.py
-DEBIAS = $(PY) $(PYC)r/Debias.py
 IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
 PLOT = $(PY) $(PYC)r/Check.py
 

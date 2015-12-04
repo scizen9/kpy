@@ -8,7 +8,6 @@ import sys
 
 
 import NPK.Fit as FF
-import NPK.Bar as Bar
 import SEDMr.IO as IO
 from astropy.table import Table 
 
