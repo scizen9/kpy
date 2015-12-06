@@ -16,7 +16,7 @@ def setup(toolbar_width=40):
     Returns:
         toolbar_width [int]'''
 
-    toolbar_width = 40
+    #toolbar_width = 40
     sys.stdout.write("[%s]" % (" " * toolbar_width))
     sys.stdout.flush()
     sys.stdout.write("\b" * (toolbar_width+1))

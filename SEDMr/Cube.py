@@ -176,6 +176,10 @@ def extraction_to_cube(exts, outname="G.npy"):
         ext.Q_ix = None
         ext.R_ix = None
     
+    n_mdn = 0
+    n_lam = 0
+    n_tot = 0
+
     for ix, ext in enumerate(exts):
         # The X/Y location of a lenslet is based on its
         # trace Y position and where the Halpha wavelength
@@ -185,13 +189,16 @@ def extraction_to_cube(exts, outname="G.npy"):
         Xs[ix] = -999
         Ys[ix] = -999
 
-        if ext.mdn_coeff is not None:
-            coeff = ext.mdn_coeff
-        elif ext.lamcoeff is not None: 
+        if ext.lamcoeff is not None:
             coeff = ext.lamcoeff
+	    n_lam += 1
+        elif ext.mdn_coeff is not None: 
+            coeff = ext.mdn_coeff
+	    n_mdn += 1
         else:
-            #print "\r", ext.seg_id, ": ", ext.xrange[0], ext.yrange[0],
             continue
+
+    	n_tot += 1
 
         ixs = np.arange(*ext.xrange)
         LL = chebval(ixs, coeff)
@@ -215,6 +222,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     ignore, Center = tree.query([1024,1024], 1)
     exts[Center].Q_ix = 0
     exts[Center].R_ix = 0
+
+    print "IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot, n_lam, n_mdn)
 
 
     def populate_hex(to_populate):
@@ -262,14 +271,12 @@ def extraction_to_cube(exts, outname="G.npy"):
             else:
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                     (exts[nix].R_ix != r_this + rnd[1]):
-                    print "\rcollision: ",
+                    print "collision: ",
                     print exts[nix].Q_ix, q_this + rnd[0], " ",
-                    print exts[nix].R_ix, r_this + rnd[1],
+                    print exts[nix].R_ix, r_this + rnd[1]
                     exts[nix].Q_ix = q_this + rnd[0]
                     exts[nix].R_ix = r_this + rnd[1]
 
-    print ""
-    print ""
 
     populate_hex(Center)
 
@@ -324,14 +331,15 @@ if __name__ == '__main__':
     infile = args.extracted
 
     if step == 'make':
-        print "MAKING"
+        print "\nMAKING cube from %s " % infile
         ext = np.load(infile)
         cube = extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
-        print "EXTRACTING"
+        print "\nEXTRACTING from %s " % infile
         ext,meta = np.load(infile)
         QR_to_img(ext, Size=2, outname=args.outname)
     elif step == 'dump':
+	print "\nDUMPING from %s to dump.txt" % infile
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])

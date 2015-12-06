@@ -246,7 +246,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     hg365 = []
 
     print "Finding Hg lines in each spectrum"
-    update_rate = len(lines) / (Bar.setup()-1)
+    update_rate = len(lines) / (Bar.setup(toolbar_width=74)) + 1
     for CNT, line in enumerate(lines):
         if CNT % update_rate == 0: Bar.update()
 
@@ -492,7 +492,10 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
 def extract_helper(ss):
     ''' TODO: MERGE WITH wavelength_extract_helper.
     Functionallity is repeated.'''
-    global dat
+    global dat, n_ext, n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0: Bar.update()
 
     if not ss['ok']: 
         return Extraction.Extraction(seg_id=ss['seg_cnt'], 
@@ -532,6 +535,7 @@ def extract_helper(ss):
         # BUG: calling resw what should be resf, this is a cheap workaround
         # for now.
         resw[i]= fractional_sum(Y, extract_width, dat[Yx,X], Yx.start)
+
     hg_lines = {}
     for wave, pix in ss.iteritems():
         if type(wave) is float:
@@ -545,22 +549,20 @@ def extract_helper(ss):
                                 ok=True, trace_sigma=ss['trace_sigma'])
 
     
-
-
-
-
 def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
-    global dat
-
+    global dat, n_ext, n_done, update_rate
 
     dat = HDUlist[0].data
-
     
     extractions = []
 
+    n_ext = len(assoc_hg_spec)
+    n_done = 0
+    update_rate = n_ext / Bar.setup() + 1
     p = Pool(8)
     extractions = p.map(extract_helper, assoc_hg_spec)
     p.close()
+    Bar.done()
 
     np.save(filename, extractions)
     return extractions
@@ -597,7 +599,9 @@ def median_fine_grid(fine):
 
     assert(len(ids) == len(fine))
     ixs = np.arange(0, 265, 1)
+    update_rate = len(fine) / (Bar.setup(toolbar_width=74)) + 1
     for idx, spec in enumerate(fine):
+	if idx % update_rate == 0: Bar.update()
         seg_id = spec.seg_id
         loc = dat[seg_id-1]
 
@@ -655,46 +659,51 @@ def median_fine_grid(fine):
         spec.mdn_coeff = chebfit(np.arange(len(new_lls))+spec.xrange[0], 
             new_lls, 3)
 
-    pl.figure(3)
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("+670+0")
-    pl.clf()
-    pl.xlim(360, 550)
-    pl.xlabel("Wave(nm)")
-    pl.ylabel("Spec Irr(ph/10 m/nm)")
-    pl.title("mdn_coeff")
-    pl.ioff()
-    pl.figure(4)
-    pl.clf()
-    pl.xlim(360, 550)
-    pl.xlabel("Wave(nm)")
-    pl.ylabel("Spec Irr(ph/10 m/nm)")
-    pl.title("lamcoeff")
-    pl.ioff()
-    for g in fine:
-        if g.mdn_coeff is None: continue
-        if g.specw is None: continue
-        if g.hgcoef is None: continue
-        if len(g.specw) < 30: continue
+    Bar.done()
+
+    doPlot = False
+    if doPlot:
+	pl.figure(3)
+	plm = pl.get_current_fig_manager()
+	plm.window.wm_geometry("+670+0")
+	pl.clf()
+	pl.xlim(360, 550)
+	pl.xlabel("Wave(nm)")
+	pl.ylabel("Spec Irr(ph/10 m/nm)")
+	pl.title("mdn_coeff")
+	pl.ioff()
+	pl.figure(4)
+	pl.clf()
+	pl.xlim(360, 550)
+	pl.xlabel("Wave(nm)")
+	pl.ylabel("Spec Irr(ph/10 m/nm)")
+	pl.title("lamcoeff")
+	pl.ioff()
+	for g in fine:
+            if g.mdn_coeff is None: continue
+            if g.specw is None: continue
+            if g.hgcoef is None: continue
+            if len(g.specw) < 30: continue
 
 
-        if g.xrange[0] < 100: continue
-        if g.xrange[0] > 1900: continue
-        if g.yrange[0] < 100: continue
-        if g.yrange[0] > 1900: continue
+            if g.xrange[0] < 100: continue
+            if g.xrange[0] > 1900: continue
+            if g.yrange[0] < 100: continue
+            if g.yrange[0] > 1900: continue
 
-        ix = np.arange(len(g.specw))
-        pl.figure(3)
-        ll = chebval(ix+g.xrange[0], g.mdn_coeff)
-        pl.plot(ll, g.specw, '.')
-        pl.figure(4)
-        try: 
-            ll = chebval(ix+g.xrange[0], g.lamcoeff)
+            ix = np.arange(len(g.specw))
+            pl.figure(3)
+            ll = chebval(ix+g.xrange[0], g.mdn_coeff)
             pl.plot(ll, g.specw, '.')
-        except: pass
-        
-    pl.ion()
-    pl.show()
+
+            pl.figure(4)
+            try: 
+                ll = chebval(ix+g.xrange[0], g.lamcoeff)
+                pl.plot(ll, g.specw, '.')
+	        pl.draw()
+            except: pass
+	pl.ion()
+	pl.show()
 
     return fine
 
@@ -927,7 +936,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
         fiducial = gridded_set[len(gridded_set)/2 + 4]
 
 
-    print len(gridded_set)
+    print "Number of extractions: %d" % len(gridded_set)
 
     # Step 2
     pl.figure(3)
@@ -951,8 +960,6 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     
     funs = interp_functions()
 
-
-
     pix_coeffs = []
     fid_ix, fs1, fs2 = fiducial
     # Note 0.001 over 250 pixels is about a quarter pixel
@@ -964,6 +971,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     p = Pool(8)
     results = p.map(stretch_fit_helper, range(len(specs)))
     p.close()
+    print ""
     print ""
     
     pix_coeffs = []
@@ -1000,9 +1008,8 @@ def snap_solution_into_place(PARS):
     resfun = NPK.Fit.mpfit_residuals(fitfun)
 
 
-    def fitlinelist(cc):
+    def fitlinelist(cc, printout=False):
         lams = chebval(ixs, cc)
-        
 
         #pl.figure(1)
         #pl.clf()
@@ -1033,7 +1040,11 @@ def snap_solution_into_place(PARS):
                 if pars.status != 1: continue
 
                 results.append((line, pars.params[1], pars.perror[1]))
-            
+
+		if printout:
+		    out_str = "\rLine: %7.2f nm, Error: %8.5f nm" % (line, pars.perror[1])
+		    print out_str,
+		    sys.stdout.flush()
 
         results = np.array(results)
 
@@ -1064,15 +1075,12 @@ def snap_solution_into_place(PARS):
 
     newcoef,res = fitlinelist(coef)
     newcoef,newres = fitlinelist(newcoef)
-    newcoef,newres = fitlinelist(newcoef)
-    #pl.figure(2)
-    #pl.clf()
+    newcoef,newres = fitlinelist(newcoef, printout=True)
 
-    #pl.figure(2)
-    #pl.plot(chebval(ixs, newcoef), lamp_spec['Hg'])
-    #for line in linelist["Hg"]: pl.axvline(line, color='red')
+    #print "Final RMS = %10.5f                         " % newres
+    #sys.stdout.flush()
 
-    return newcoef, np.sqrt(np.mean(res*res))
+    return newcoef, np.sqrt(np.mean(newres*newres))
 
 def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
     
@@ -1097,15 +1105,28 @@ def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
     p = Pool(8)
     results = p.map(snap_solution_into_place, PARS)
     p.close()
+    print ""
 
+    min_rms = 1.e9
+    max_rms = 0.
+    good_rms = []
     for i, res in enumerate(results):
         fine[i].lamcoeff = res[0]
         fine[i].lamrms = res[1]
+	if fine[i].lamrms is not None:
+	    good_rms.append(fine[i].lamrms)
+	    if (fine[i].lamrms > max_rms):
+	        max_rms = fine[i].lamrms
+	    if (fine[i].lamrms < min_rms and fine[i].lamrms > 0.):
+	        min_rms = fine[i].lamrms
         
+    avg_rms = np.nanmean(good_rms) * 100.
+    min_rms *= 100.
+    max_rms *= 100.
+    print "<RMS>: %10.5f%%, RMS(min): %10.5f%%, RMS(max): %10.5f%%" % (avg_rms, min_rms, max_rms)
 
     return fine
         
-
 
 def fit_he_lines(SS, guesses = {587.5: -18, 667.8: -48, 706.5: -60}, plot=False,
     Ncutout=7):
@@ -1404,7 +1425,7 @@ def plot_grid(grid, Xes=None):
 
 
 def rough_grid_helper(ix):
-    global extractions, lines
+    global extractions, lines, n_ext, tot_std, min_std, max_std
 
     ex = extractions[ix]
 
@@ -1438,9 +1459,18 @@ def rough_grid_helper(ix):
     
     ix = np.arange(len(ex.specw))
 
-    outstr = "\r%4.4i: rough RMS: %6.3f nm" % (ex.seg_id, np.std(err))
-    print outstr,
-    sys.stdout.flush()
+    rough_std = np.std(err)
+    tot_std += rough_std
+    n_ext += 1
+    if (rough_std > max_std):
+	max_std = rough_std
+    
+    if (rough_std < min_std):
+	min_std = rough_std
+
+    #outstr = "\r%4.4i: rough RMS: %6.3f nm" % (ex.seg_id, np.std(err))
+    #print outstr,
+    #sys.stdout.flush()
 
 
 
@@ -1449,21 +1479,25 @@ def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578],
     outname='rough_wavelength.npy'):
     '''Shift the extractions onto a coarse common pixel grid'''
 
-    global extractions, lines
+    global extractions, lines, n_ext, tot_std, min_std, max_std
 
     extractions = data
     lines = the_lines
+    tot_std = 0.
+    min_std = 1.e9
+    max_std = 0.
+    n_ext = 0
 
-
-    print ""
     map(rough_grid_helper, range(len(extractions)))
+
+    avg_std = tot_std / (1. * n_ext )
+    print "<STD>: %6.3f nm, STD(min): %6.3f nm, STD(max): %6.3f nm" % (avg_std, min_std, max_std)
     print ""
 
     try:np.save(outname, extractions)
     except: pass
     return extractions
 
-    
 
 def RMS(vec):
     return np.sqrt(np.sum((vec-np.mean(vec))**2))
@@ -1847,6 +1881,7 @@ if __name__ == '__main__':
     outname = args.outname
 
     if args.step == 'rough':
+	print "\nROUGH WAVELENGTH SOLN"
         hgfits = args.hgfits
         catname = args.hgcat
         catalog = read_catalog(catname)
@@ -1855,6 +1890,7 @@ if __name__ == '__main__':
         hg_spec = find_hg_spectra(catalog, outname=outname)
         assoc_hg_with_flats(spec_loc, hg_spec)
     elif args.step == 'fine':
+	print "\nFINE WAVELENGTH SOLN"
         XeDat = pf.open(args.xefits)
         HgDat = pf.open(args.hgfits)
         if args.cdfits is not None: CdDat = pf.open(args.cdfits)
@@ -1863,20 +1899,30 @@ if __name__ == '__main__':
         else: HeDat = None
         assoc_hg_spec = np.load(args.hgassoc)[0]
 
-        Xe_E = extract(XeDat, assoc_hg_spec, filename="Xe_ext_"+args.outname)
+	print ""
+
+	print "Extracting Hg"
         Hg_E = extract(HgDat, assoc_hg_spec, filename="Hg_ext_"+args.outname)
+
+	print "Extracting Xe"
+        Xe_E = extract(XeDat, assoc_hg_spec, filename="Xe_ext_"+args.outname)
 
         Cd_E = None
         if CdDat is not None:
+	    print "Extracting Cd"
             Cd_E = extract(CdDat, assoc_hg_spec, filename="Cd_ext_"+args.outname)
         He_E = None
         if HeDat is not None:
+	    print "Extracting He"
             He_E = extract(HeDat, assoc_hg_spec, filename="He_ext_"+args.outname)
 
+	print "Getting rough grid"
         gridded = rough_grid(Hg_E)
 
+	print "Getting stretched set for Xe"
         stretchset, fiducial, xcors = stretch_set(gridded, Xe_E)
         fix, f1, f2 = fiducial
+	print "Fitting all lines"
         fits, residuals, rss, locs = fit_all_lines(fix,
                                                     gridded,
                                                     Xe_E,
@@ -1884,10 +1930,13 @@ if __name__ == '__main__':
                                                     cd_spec = Cd_E,
                                                     he_spec = He_E)
 
+	print "Assigning fit to spectra"
         result = assign_fit_to_spectra(Hg_E, gridded, rss, 
                                         fix, stretchset, fits)
 
+	print "Getting median fine grid"
         result = median_fine_grid(result)
+
         print "Snapping solution into place"
         snap_solution_into_place_all(result, Hg_E, Xe_E, Cds=Cd_E, Hes=He_E)
         np.save(args.outname, result)
@@ -1917,6 +1966,7 @@ if __name__ == '__main__':
 
     elif args.step == 'extract':
         
+	print "\nEXTRACTION"
         fitted = np.load(args.fine)
         hdu = pf.open(args.toextract)
         outname = args.outname
