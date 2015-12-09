@@ -59,8 +59,11 @@ def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
     for i,ix in enumerate(spec_ixs):
         f = fine[ix]
 
+	# bad fit
         if not f.ok: continue
-        if f.lamrms > 1: continue
+	# noisy fit
+        if f.lamnrms > 1: continue
+	# short spectrum
         if f.xrange[1] - f.xrange[0] < 200: continue
 
         spec = np.zeros(f.xrange[1] - f.xrange[0])
@@ -115,8 +118,11 @@ def measure_flexure_y(fine, HDUlist, profwidth=5, plot=False, outname=None):
         f = fine[ix]
         profile = np.zeros(profwidth*2)
 
+	# bad fit
         if not f.ok: continue
-        if f.lamrms > 1: continue
+	# noisy fit
+        if f.lamnrms > 1: continue
+	# short spectrum
         if f.xrange[1] - f.xrange[0] < 200: continue
 
         yfun = np.poly1d(f.poly)

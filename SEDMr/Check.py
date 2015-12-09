@@ -124,11 +124,11 @@ def checkCube(cubename, showlamrms=False, savefig=False):
 	Ss = [0.] * len(cc)
 	for i in range(len(cc)):
 	    if cc[i].lamrms is not None:
-		Ss[i] = cc[i].lamrms * 100.
+		Ss[i] = cc[i].lamrms
 
-    	smx = 0.1
+    	smx = 0.4
     	smn = 0.0
-	cbtitle = "Wavelength RMS [%]"
+	cbtitle = "Wavelength RMS [nm]"
 	outf = "cube_lambdarms.pdf"
     else:
     	Ss = [c.trace_sigma for c in cc]

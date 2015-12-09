@@ -17,6 +17,12 @@ def setup(toolbar_width=40):
         toolbar_width [int]'''
 
     #toolbar_width = 40
+    global n_bar, n_done, upchar
+
+    n_bar = toolbar_width
+    n_done = 0
+    upchar = '-'
+
     sys.stdout.write("[%s]" % (" " * toolbar_width))
     sys.stdout.flush()
     sys.stdout.write("\b" * (toolbar_width+1))
@@ -29,12 +35,35 @@ def update(char='-'):
 
     Args:
         char: The character to print'''
-    sys.stdout.write(char)
-    sys.stdout.flush()
 
-def done():
+    global n_bar, n_done, upchar
+
+    upchar = char
+
+    if (n_done < n_bar):
+    	sys.stdout.write(char)
+    	sys.stdout.flush()
+	n_done += 1
+
+
+def done(mapped=False):
     '''Carriage return and flush the console'''
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+
+    global n_bar, n_done, upchar
+
+    if mapped:
+	sys.stdout.write("\r")
+	sys.stdout.write("[%s]" % (upchar * n_bar))
+    	sys.stdout.write("\n")
+	sys.stdout.flush()
+    else:
+    	while (n_done < n_bar):
+	    sys.stdout.write(upchar)
+	    sys.stdout.flush()
+	    n_done += 1
+
+	sys.stdout.write("]")
+	sys.stdout.write("\n")
+	sys.stdout.flush()
 
  

@@ -48,7 +48,8 @@ class Extraction():
         lamcoeff([float]): Chebyshev polynomial coefficients to the best-fit
             mercury and xe lamp spectrum. lamcoeff should be used as the 
             wavelength solution. Defaults to None.
-        lamrms(float): The RMS residual for the best wavelength solution.
+        lamrms(float): The RMS residual (nm) for the best wavelength solution.
+        lamnrms(float): The RMS residual (normalized) for the best wavelength solution.
         X_as(float): The relative position of the spaxel in arcsec
         Y_as(float): The relative position of the spaxel in arcsec
         Q_ix(int): Q coordinate of the pixel in axial units
@@ -87,6 +88,7 @@ class Extraction():
 
     lamcoeff = None
     lamrms = None
+    lamnrms = None
     exptime = None
 
     Q_ix = None

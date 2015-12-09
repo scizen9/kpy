@@ -52,7 +52,7 @@ class MouseCross(object):
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
             self.ax.transData.transform((0,0)))[0])
         print "%s arcsec is %s pix" % (self.radius_as, radius_pix)
-        self.line, = self.ax.plot([0], [0], visible=False, 
+        self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False, 
             marker=r'$\bigodot$', markersize=radius_pix*2, color='red')
 	self.line.set_visible(True)
 
