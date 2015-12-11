@@ -31,19 +31,19 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
     try: et = ss['exptime']
     except: et = 0
 
-    try:
-	ec2 = meta['airmass2']
-	et *= 2
+    try: 
+        ec2 = meta['airmass2']
+        et *= 2
     except: ec2 = 0
 
     try: user = meta['user']
     except: user = ''
 
-    try: 
-	utc = meta['utc']
-	parts = utc.split(":")
-	date = datetime.datetime(int(parts[0]), 1, 1) + datetime.timedelta(int(parts[1])-1)
-	utc = date.strftime("%Y %m %d") + " %s:%s:%s" % (parts[2],parts[3],parts[4])
+    try:
+        utc = meta['utc']
+        parts = utc.split(":")
+        date = datetime.datetime(int(parts[0]), 1, 1) + datetime.timedelta(int(parts[1])-1)
+        utc = date.strftime("%Y %m %d") + " %s:%s:%s" % (parts[2],parts[3],parts[4])
     except: utc = ''
 
     try: obj = hdr['OBJECT'].split()[0]
@@ -84,10 +84,10 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
     pl.ioff()
     if savefig:
         outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
-    	pl.savefig(outf)
-	print "figure saved to "+outf
+        pl.savefig(outf)
+        print "figure saved to "+outf
     else:
-	pl.show()
+        pl.show()
 
     wl = lam[roi]
     fl = spec[roi]
@@ -106,21 +106,21 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     Xs = [c.X_as for c in cc]
     Ys = [c.Y_as for c in cc]
     if showlamrms:
-	Ss = [0.] * len(cc)
-	for i in range(len(cc)):
-	    if cc[i].lamrms is not None:
-		Ss[i] = cc[i].lamrms
+        Ss = [0.] * len(cc)
+        for i in range(len(cc)):
+            if cc[i].lamrms is not None:
+                Ss[i] = cc[i].lamrms
 
-    	smx = 0.4
-    	smn = 0.0
-	cbtitle = "Wavelength RMS [nm]"
-	outf = "cube_lambdarms.pdf"
+        smx = 0.4
+        smn = 0.0
+        cbtitle = "Wavelength RMS [nm]"
+        outf = "cube_lambdarms.pdf"
     else:
-    	Ss = [c.trace_sigma for c in cc]
-	smx = 2
-	smn = 0.8
-	cbtitle = "RMS trace width [pix]"
-	outf = "cube_trace_sigma.pdf"
+        Ss = [c.trace_sigma for c in cc]
+        smx = 2
+        smn = 0.8
+        cbtitle = "RMS trace width [pix]"
+        outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
     pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
@@ -134,10 +134,10 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     pl.grid(True)
     pl.ioff()
     if savefig:
-	pl.savefig(outf)
-	print "figure saved to "+outf
+        pl.savefig(outf)
+        print "figure saved to "+outf
     else:
-	pl.show()
+        pl.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\

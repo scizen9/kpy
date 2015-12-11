@@ -79,9 +79,9 @@ def identify_observations(headers):
                         Str = "%s%1.1f" % (Str, adcspeed)
                         prefix = ""
                         suffix = ""
-		    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str or "dome" in Str:
-			prefix = "b_"
-			suffix = ""
+                    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str or "dome" in Str:
+                        prefix = "b_"
+                        suffix = ""
                     else:
                         prefix = "crr_b_"
                         suffix = ""
@@ -211,8 +211,8 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits
 
 flat-dome-700to900.npy: cube.npy dome.fits
-\t$(PY) $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
-\t$(PY) $(PYC)r/Flat.py dome.npy
+	$(PY) $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
+	$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy
 cube: cube.npy
@@ -244,7 +244,7 @@ def MF_imcombine(objname, files, dependencies=""):
     second = "\t$(IMCOMBINE) --outname %s.fits --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (objname, reject, filelist)
 
     if "bias" not in objname and "dome" not in objname:
-	second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
+        second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
 
     return  first+second+"\n"
 
@@ -352,9 +352,9 @@ def to_makefile(objs, calibs):
                             obsfile, 
                             standard=standard)
                         MF += m
-			# don't need these in all: dependants of target "stds"
+                        # don't need these in all: dependants of target "stds"
                         # all += a + " "
-			stds_dep += a + " "
+                        stds_dep += a + " "
 
                 else: standard = None
                 continue
@@ -366,9 +366,9 @@ def to_makefile(objs, calibs):
 
                 MF += m
                 all += a + " "
-
-		if not objname.startswith("STD-"):
-			sci += a + " "
+                
+                if not objname.startswith("STD-"):
+                    sci += a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -381,9 +381,9 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
-
-		    if not objname.startswith("STD-") and not objname.startswith("STOW"):
-			    sci += a + " "
+                    
+                    if not objname.startswith("STD-") and not objname.startswith("STOW"):
+                        sci += a + " "
             '''
             elif len(obsfiles) == 2:
                 m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])

@@ -127,7 +127,7 @@ def estimateBackground(fine, infile, flex=None, outname=None):
     for i in xrange(5):
         flt = convolve(flt, k)
         flt[OKs] = data[OKs]
-	print "\tIteration %d of 5" %  (i+1)
+        print "\tIteration %d of 5" %  (i+1)
         #IO.writefits(pf.PrimaryHDU(flt), "test_%i.fits.gz" % i, clobber=True)
 
     data[NaNs] = flt[NaNs]

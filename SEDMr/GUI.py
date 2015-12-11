@@ -26,7 +26,7 @@ class MouseCross(object):
 
     def __init__(self, ax, radius_as=3, **kwargs):
         self.ax = ax
-	self.radius_as = radius_as
+        self.radius_as = radius_as
 
         radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
             ax.transData.transform((0,0)))[0])
@@ -44,17 +44,17 @@ class MouseCross(object):
         pl.draw()
 
     def size_cross(self, event):
-	self.line.set_visible(False)
-	if (event.key == "x"):
-	    self.radius_as -=0.2
-	else:
-	    self.radius_as +=0.2
+        self.line.set_visible(False)
+        if (event.key == "x"):
+            self.radius_as -=0.2
+        else:
+            self.radius_as +=0.2
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
             self.ax.transData.transform((0,0)))[0])
         print "%s arcsec is %s pix" % (self.radius_as, radius_pix)
         self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False, 
             marker=r'$\bigodot$', markersize=radius_pix*2, color='red')
-	self.line.set_visible(True)
+        self.line.set_visible(True)
 
         pl.draw()
 
@@ -81,7 +81,7 @@ class PositionPicker(object):
         self.pointsize = pointsize
         self.lmin = lmin
         self.lmax = lmax
-	self.objname = objname
+        self.objname = objname
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -112,8 +112,8 @@ class PositionPicker(object):
         cross = MouseCross(self.figure.gca(), radius_as=self.radius_as)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
-	pl.show()
-	self.radius_as = cross.radius_as
+        pl.show()
+        self.radius_as = cross.radius_as
 
 
     def __call__(self, event):

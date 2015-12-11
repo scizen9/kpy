@@ -102,9 +102,9 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
                     img[x+dx,y+dy,:] = fi
         except: pass
 
-	outstr = "\rX = %+10.5f, Y = %+10.5f" % (x,y)
+        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x,y)
         print outstr,
-	sys.stdout.flush()
+        sys.stdout.flush()
 
     back = np.median(allspec, 0)
 
@@ -191,14 +191,14 @@ def extraction_to_cube(exts, outname="G.npy"):
 
         if ext.lamcoeff is not None:
             coeff = ext.lamcoeff
-	    n_lam += 1
+            n_lam += 1
         elif ext.mdn_coeff is not None: 
             coeff = ext.mdn_coeff
-	    n_mdn += 1
+            n_mdn += 1
         else:
             continue
 
-    	n_tot += 1
+        n_tot += 1
 
         ixs = np.arange(*ext.xrange)
         LL = chebval(ixs, coeff)
@@ -339,7 +339,7 @@ if __name__ == '__main__':
         ext,meta = np.load(infile)
         QR_to_img(ext, Size=2, outname=args.outname)
     elif step == 'dump':
-	print "\nDUMPING from %s to dump.txt" % infile
+        print "\nDUMPING from %s to dump.txt" % infile
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])

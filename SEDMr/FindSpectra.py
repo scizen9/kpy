@@ -101,8 +101,8 @@ def find_segments_helper(seg_cnt):
     trace_profile = np.zeros(mxsr-mnsr)
 
     for i in xrange(n_el):
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=RuntimeWarning)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             XX = i+span[0].x
             profile = np.median(objdat[y_slc, XX-3:XX+3], 1)
             profile -= np.min(profile)

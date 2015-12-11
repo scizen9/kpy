@@ -496,7 +496,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         radius (float): Extraction radius in arcsecond
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
-	nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        nosky (Boolean): if True don't subtract sky, merely sum in aperture
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -551,7 +551,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         meta['utc'] = spec[0].header['utc']
 
         meta['header'] = header
-	object = header['OBJECT'].split()[0]
+        object = header['OBJECT'].split()[0]
 
         np.save(outname, [E, meta])
 
@@ -590,7 +590,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     res[0]['skyph'] = sky[0]['ph_10m_nm']
 
     if not nosky:
-    	res[0]['ph_10m_nm'] -= skybgd 
+        res[0]['ph_10m_nm'] -= skybgd 
     res[0]['ph_10m_nm'] *= extCorr * len(six)
 
     res[0]['radius_as'] = radius_used
@@ -623,7 +623,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         radius (float): Extraction radius in arcsecond
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
-	nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        nosky (Boolean): if True don't subtract sky, merely sum in aperture
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -673,7 +673,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         os.remove("tmpvar_" + outname + ".fits.gz")
 
 
-	print "\nExtracting object spectra"
+        print "\nExtracting object spectra"
         E, meta = Wavelength.wavelength_extract(diff, fine, 
             filename=outname,
             flexure_x_corr_nm = flexure_x_corr_nm, 
@@ -694,14 +694,14 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         meta['utc'] = diff[0].header['utc']
 
         meta['header'] = header
-	object = header['OBJECT'].split()[0]
+        object = header['OBJECT'].split()[0]
 
         meta['exptime'] = diff[0].header['exptime']
         np.save(outname, [E, meta])
 
         exfile = "extracted_var_%s.npy" % outname
 
-	print "\nExtracting variance spectra"
+        print "\nExtracting variance spectra"
         E_var, meta_var = Wavelength.wavelength_extract(var, fine, 
             filename=outname,
             flexure_x_corr_nm = flexure_x_corr_nm, 
@@ -762,14 +762,14 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)
     sky_B = interp1d(skyB[0]['nm'], skyB[0]['ph_10m_nm'], bounds_error=False)
     with warnings.catch_warnings():
-	warnings.simplefilter("ignore", category=RuntimeWarning)
-	sky = np.nanmean([sky_A(ll), sky_B(ll)], axis=0)
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        sky = np.nanmean([sky_A(ll), sky_B(ll)], axis=0)
 
     var_A = interp1d(varA[0]['nm'], varA[0]['ph_10m_nm'], bounds_error=False)
     var_B = interp1d(varB[0]['nm'], varB[0]['ph_10m_nm'], bounds_error=False)
     with warnings.catch_warnings():
-	warnings.simplefilter("ignore", category=RuntimeWarning)
-	varspec = np.nanmean([var_A(ll), var_B(ll)], axis=0) * (len(sixA) + len(sixB))
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        varspec = np.nanmean([var_A(ll), var_B(ll)], axis=0) * (len(sixA) + len(sixB))
 
     res = np.copy(resA)
     res = [{"doc": resA[0]["doc"], "ph_10m_nm": np.copy(resA[0]["ph_10m_nm"]),
@@ -786,21 +786,21 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     print "Median airmass corrs A: %.4f, B: %.4f" % (np.median(extCorrA), np.median(extCorrB))
     # If requested merely sum in aperture, otherwise subtract sky
     if nosky:
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=FutureWarning)
-    	    res[0]['ph_10m_nm'] = \
-        	np.nansum([
-            	f1(ll) * extCorrA, 
-            	f2(ll) * extCorrB], axis=0) * \
-            	(len(sixA) + len(sixB))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=FutureWarning)
+            res[0]['ph_10m_nm'] = \
+                np.nansum([
+                f1(ll) * extCorrA,
+                f2(ll) * extCorrB], axis=0) * \
+                (len(sixA) + len(sixB))
     else:
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=FutureWarning)
-    	    res[0]['ph_10m_nm'] = \
-        	np.nansum([
-            	(f1(ll)-sky_A(ll)) * extCorrA, 
-            	(f2(ll)-sky_B(ll)) * extCorrB], axis=0) * \
-            	(len(sixA) + len(sixB))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=FutureWarning)
+            res[0]['ph_10m_nm'] = \
+                np.nansum([
+                (f1(ll)-sky_A(ll)) * extCorrA,
+                (f2(ll)-sky_B(ll)) * extCorrB], axis=0) * \
+                (len(sixA) + len(sixB))
 
     res[0]['exptime'] = meta['exptime']
     res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
@@ -891,7 +891,7 @@ if __name__ == '__main__':
             corrfile=args.correction,
             Aoffset=args.Aoffset, Boffset=args.Boffset, 
             radius=args.radius_as, flat_corrections=flat,
-	    nosky=args.nosky)
+            nosky=args.nosky)
 
     elif args.A is not None:
         if args.std is None:

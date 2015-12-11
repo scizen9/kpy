@@ -8,10 +8,10 @@ import argparse
 import numpy as np
 import pyfits
 try:
-	import _lacosmicx
+    import _lacosmicx
 except ImportError:
-	print "Please install lacosmicx from github.com/cmccully/lacosmicx."
-	quit()
+    print "Please install lacosmicx from github.com/cmccully/lacosmicx."
+    quit()
 
 
 parser = argparse.ArgumentParser(description="""
@@ -55,16 +55,16 @@ array = np.array(f[0].data, dtype=np.float32)
 f.close()
 
 if header['EXPTIME'] >= args.minexptime:
-	mask, clean = _lacosmicx.lacosmicx(array, gain=args.gain, readnoise=args.readnoise, psffwhm=args.psffwhm, sigclip=args.sigclip, sigfrac=args.sigfrac, objlim=args.objlim, fsmode=args.fsmode, psfmodel=args.psfmodel, verbose=args.verbose, sepmed=args.sepmed)
+    mask, clean = _lacosmicx.lacosmicx(array, gain=args.gain, readnoise=args.readnoise, psffwhm=args.psffwhm, sigclip=args.sigclip, sigfrac=args.sigfrac, objlim=args.objlim, fsmode=args.fsmode, psfmodel=args.psfmodel, verbose=args.verbose, sepmed=args.sepmed)
 
-	header['history'] = "LA CosmicX: cleaned cosmic rays"
-	header['history'] = "LA CosmicX params: sigclip=%5.2f sigfrac=%5.2f objlim=%5.2f" % (args.sigclip, args.sigfrac, args.objlim)
-	header['history'] = "LA CosmicX params: fsmode=%s psfmodel=%s psffwhm=%5.2f" % (args.fsmode, args.psfmodel, args.psffwhm)
-	header['history'] = "LA CosmicX params: sepmed=%s minexptime=%f" % (args.sepmed, args.minexptime)
+    header['history'] = "LA CosmicX: cleaned cosmic rays"
+    header['history'] = "LA CosmicX params: sigclip=%5.2f sigfrac=%5.2f objlim=%5.2f" % (args.sigclip, args.sigfrac, args.objlim)
+    header['history'] = "LA CosmicX params: fsmode=%s psfmodel=%s psffwhm=%5.2f" % (args.fsmode, args.psfmodel, args.psffwhm)
+    header['history'] = "LA CosmicX params: sepmed=%s minexptime=%f" % (args.sepmed, args.minexptime)
 
-	pyfits.writeto(args.clean, clean, header)
-	mask = np.cast["uint8"](mask)
-	pyfits.writeto(args.mask, mask, header)
+    pyfits.writeto(args.clean, clean, header)
+    mask = np.cast["uint8"](mask)
+    pyfits.writeto(args.mask, mask, header)
 else:
-	header['history'] = "LA CosmicX: exptime < minexptime=%.1f" % args.minexptime
-	pyfits.writeto(args.clean, array, header)
+    header['history'] = "LA CosmicX: exptime < minexptime=%.1f" % args.minexptime
+    pyfits.writeto(args.clean, array, header)

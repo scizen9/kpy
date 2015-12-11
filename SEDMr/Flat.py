@@ -51,8 +51,8 @@ def measure_flat(extraction, meta,
         Ys.append(np.mean(e.yrange))
 
         ROI = (l>lamstart) & (l <= lamend)
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=RuntimeWarning)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             fc.correction = np.nanmean(f[ROI])
 
     vals = [f.get_correction(0) for f in corrections]
