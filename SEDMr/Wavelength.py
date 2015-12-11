@@ -473,7 +473,7 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
     SSs = [ (ix, flexure_x_corr_nm, flexure_y_corr_pix)
                 for ix in range(len(wavecalib))]
 
-    print "SgID  LamRMS  Flat Corr"
+    print "SgID  LamRMS     Flat Corr"
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()

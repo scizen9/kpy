@@ -101,3 +101,4 @@ if __name__ == '__main__':
         lamend=args.lamend)
 
     np.save(args.outfile, flat)
+    print "Wrote %s" % args.outfile

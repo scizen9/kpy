@@ -12,24 +12,9 @@ import datetime
 import IO
 
  
-def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False):
+def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
 
-    if not os.path.isfile(corrname) and corrname is not None:
-        print "Loading old standard correction"
-        corrname = '/scr2/npk/sedm/OUTPUT/2015mar25/std-correction.npy'
-    else:
-	print "Using current standard correction"
-
-    if corrname is not None:
-        corr = np.load(corrname)[0]
-        corf = interp1d(corr['nm'], corr['correction'], bounds_error=False,
-            fill_value=0.0)
-    else:
-        corf = lambda x: 1.0
-        
-    corf = lambda x: 1.0
-
-
+    # IO.readspec applies calibration in std-correction.npy
     lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname)
     
     lam = lam * 10.
@@ -74,38 +59,38 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     legend = ["obj",]
     lamz = lam/(1+redshift)
     if smoothing == 0:
-        pl.step(lamz[OK], spec[OK]*corf(lam[OK]), linewidth=3)
+        pl.step(lamz[OK], spec[OK], linewidth=3)
     else:
         if smoothing > 5: order = 2
         else: order = 1
         smoothed = scipy.signal.savgol_filter(spec[OK], smoothing, order)
-        pl.step(lamz[OK], smoothed*corf(lamz[OK]), linewidth=3)
+        pl.step(lamz[OK], smoothed, linewidth=3)
 
     if skyspec is not None:
-        pl.step(lamz[OK], skyspec[OK]*corf(lam[OK]))
+        pl.step(lamz[OK], skyspec[OK])
         legend.append("sky")
 
     if stdspec is not None:
-        pl.step(lamz[OK], stdspec[OK]*corf(lam[OK]))
+        pl.step(lamz[OK], stdspec[OK])
         legend.append("err")
 
     pl.legend(legend)
     pl.xlim(3600,10000)
 
     roi = (lam > 4000) & (lam < 9999)
-    mx = np.max(spec[roi]*corf(lam[roi]))
+    mx = np.max(spec[roi])
     pl.ylim(-mx/10,mx)
     pl.grid(True)
     pl.ioff()
-    outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
     if savefig:
+        outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
     	pl.savefig(outf)
 	print "figure saved to "+outf
     else:
 	pl.show()
 
     wl = lam[roi]
-    fl = spec[roi]*corf(lam[roi])
+    fl = spec[roi]
     srt = wl.argsort().argsort()
     outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
     header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
@@ -165,7 +150,6 @@ if __name__ == '__main__':
     parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
     parser.add_argument('--savefig', action="store_true", default=False, help='Save pdf figure')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
-    parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
     parser.add_argument('--smoothing', type=float, default=0, help='Smoothing in pixels')
 
@@ -175,7 +159,7 @@ if __name__ == '__main__':
     if args.cube is not None:
         checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
-        checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
+        checkSpec(args.spec, redshift=args.redshift,
             smoothing=args.smoothing, savefig=args.savefig)
 
 
