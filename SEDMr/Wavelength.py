@@ -444,7 +444,7 @@ def wavelength_extract_helper(SS):
         ex.lamnrms = ss.lamnrms
 
     if ex.lamrms is not None:
-        outstr = "\r%4i  %6.4f nm  %s     " % (ex.seg_id, ex.lamrms, fc)
+        outstr = "\r%4i  %6.4f nm  %6.4f" % (ex.seg_id, ex.lamrms, fc)
         print outstr,
         sys.stdout.flush()
 
@@ -473,7 +473,7 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
     SSs = [ (ix, flexure_x_corr_nm, flexure_y_corr_pix)
                 for ix in range(len(wavecalib))]
 
-    print "SgID  LamRMS     Flat Corr"
+    print "SgID  LamRMS     Flat"
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()

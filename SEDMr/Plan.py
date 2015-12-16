@@ -134,9 +134,9 @@ def identify_observations(headers):
 make_preamble = '''
 PY = ~/spy
 PYC = ~/kpy/SEDM
-EXTSINGLE =  $(PY) $(PYC)r/Extracter.py 
+EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
 ATM =  $(PY) $(PYC)r/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)r/Extracter.py 
+EXTPAIR =  $(PY) $(PYC)r/Extractor.py 
 FLEXCMD = $(PY) $(PYC)r/Flexure.py
 IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
 PLOT = $(PY) $(PYC)r/Check.py
@@ -211,7 +211,7 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits
 
 flat-dome-700to900.npy: cube.npy dome.fits
-	$(PY) $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
+	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome
 	$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy

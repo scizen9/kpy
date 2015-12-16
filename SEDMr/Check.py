@@ -79,6 +79,7 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
 
     roi = (lam > 4000) & (lam < 9999)
     mx = np.max(spec[roi])
+    #mx = np.max(skyspec[roi])
     pl.ylim(-mx/10,mx)
     pl.grid(True)
     pl.ioff()

@@ -5,6 +5,7 @@ import NPK.Util as UU
 import numpy as np
 import Wavelength as WW
 import gzip
+import warnings
 
 from scipy.interpolate import interp1d
 from numpy.polynomial.chebyshev import chebfit, chebval
@@ -56,7 +57,9 @@ def readspec(path, corrname='std-correction.npy'):
         print "Spectrum in %s has no sky spectrum" % path 
     
     if ss.has_key('var'):
-        std = np.sqrt(np.abs(ss['var']) * corf(lam))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            std = np.sqrt(np.abs(ss['var']) * corf(lam)*corf(lam))
     else:
         std = None
         print "Spectrum in %s has no var" % path
