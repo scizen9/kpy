@@ -681,7 +681,8 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         fun = interp1d(wav, flux, bounds_error=False, fill_value = np.nan)
         correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
 
-        res[0]['std-correction'] = correction * len(sixA)
+        res[0]['std-correction'] = correction
+        res[0]['std-maxnm'] = np.max(wav)
 
 
     res[0]['exptime'] = meta['exptime']
@@ -915,7 +916,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
     res[0]['extinction_corr_A'] = extCorrA
     res[0]['extinction_corr_B'] = extCorrB
-    res[0]['skyph'] = sky * (len(sixA + len(sixB))
+    res[0]['skyph'] = sky * (len(sixA) + len(sixB))
     res[0]['var'] = varspec
     res[0]['radius_as'] = radius_used_A
     res[0]['positionA'] = posA

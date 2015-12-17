@@ -403,7 +403,7 @@ def to_makefile(objs, calibs):
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
     science = "\n\nscience: %s\n" % sci
-    corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n" % stds_dep
+    corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
     f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
         MF + "\n" + flexures)

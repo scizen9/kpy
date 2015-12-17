@@ -47,6 +47,9 @@ def readspec(path, corrname='std-correction.npy'):
 
     try: et = ss['exptime']
     except: et = 0
+
+    try: maxnm = corr['maxnm']
+    except: maxnm = 920.0
     
     lam, spec = ss['nm'], ss['ph_10m_nm']*corf(ss['nm'])
 
@@ -66,6 +69,7 @@ def readspec(path, corrname='std-correction.npy'):
 
     try: meta = ss['meta']
     except: meta = {}
+    meta['maxnm'] = maxnm
     return lam, spec, skyspec, std, ss, meta
 
 

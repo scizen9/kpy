@@ -10,19 +10,21 @@ import sys
 import datetime
 
 import IO
+import NPK.Standards as SS
 
  
 def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
 
-    # IO.readspec applies calibration in std-correction.npy
+    # IO.readspec applies the calibration in std-correction.npy
     lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname)
     
-    lam = lam * 10.
+    lam = lam * 10.     # convert to Angstroms
 
+    # Get header values
     hdr = meta['header']
 
     print "Plotting spectrum in %s" % specname
-    try: print "Extraction radius: %1.2f" % ss['radius_as']
+    try: print "Extraction radius: %1.2f asec" % ss['radius_as']
     except: pass
 
     try: ec = meta['airmass']
@@ -30,6 +32,12 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
 
     try: et = ss['exptime']
     except: et = 0
+
+    try: maxwl = meta['maxnm'] * 10.
+    except: maxwl = 9200.0
+    maxwl = 9200.0  # for now
+
+    print "Max Angstroms: %7.1f" % maxwl
 
     try: 
         ec2 = meta['airmass2']
@@ -49,44 +57,66 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
     try: obj = hdr['OBJECT'].split()[0]
     except: obj = ''
 
+    # Annotate plots
     pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % (specname, ec, et))
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
+
+    # Handle plot geometry
     plm = pl.get_current_fig_manager()
     plm.window.wm_geometry("900x500+10+10")
 
-    OK = (lam > 3800) & (lam < 10000)
+    # Set plot limits
+    OK = (lam > 3800) & (lam < maxwl)
     legend = ["obj",]
     lamz = lam/(1+redshift)
+
+    # Smoothing option
     if smoothing == 0:
-        pl.step(lamz[OK], spec[OK], linewidth=3)
+        pl.step(lamz[OK], spec[OK], linewidth=3)    # Plot data
     else:
         if smoothing > 5: order = 2
         else: order = 1
         smoothed = scipy.signal.savgol_filter(spec[OK], smoothing, order)
-        pl.step(lamz[OK], smoothed, linewidth=3)
+        pl.step(lamz[OK], smoothed, linewidth=3)    # Plot smoothed data
 
+    # Overplot sky spectrum
     if skyspec is not None:
         pl.step(lamz[OK], skyspec[OK])
         legend.append("sky")
 
+    # Overplot standard deviation spectrum
     if stdspec is not None:
         pl.step(lamz[OK], stdspec[OK])
         legend.append("err")
 
-    pl.legend(legend)
-    pl.xlim(3600,10000)
+    # See if this is a standard star
+    pred = specname.lstrip("sp_STD-")
+    pred = pred.split("_")[0]
+    pred = pred.lower().replace("+","").replace("-","_")
+    if pred in SS.Standards:
+        print "Overplotting %s reference spectrum" % pred
+        legend.append("ref")
+        standard = SS.Standards[pred]
+        pl.plot(standard[:,0],standard[:,1]*1.e-16)
 
-    roi = (lam > 4000) & (lam < 9999)
-    mx = np.max(spec[roi])
-    #mx = np.max(skyspec[roi])
+    pl.legend(legend)
+
+    # Plot limits
+    pl.xlim(3600,maxwl)
+
+    roi = (lam > 3800.0) & (lam < maxwl)
+    mx = np.nanmax(spec[roi])
     pl.ylim(-mx/10,mx)
+
     pl.grid(True)
     pl.ioff()
+
+    # Save fig to file
     if savefig:
         outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
         pl.savefig(outf)
-        print "figure saved to "+outf
+        print "Figure saved to "+outf
     else:
         pl.show()
 
@@ -96,7 +126,7 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
     outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
     header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
     np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
-    print "saved to "+outf
+    print "Saved to "+outf
 
 
 def checkCube(cubename, showlamrms=False, savefig=False):
@@ -136,7 +166,7 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     pl.ioff()
     if savefig:
         pl.savefig(outf)
-        print "figure saved to "+outf
+        print "Figure saved to "+outf
     else:
         pl.show()
 
