@@ -996,7 +996,7 @@ if __name__ == '__main__':
     else: flat = None
 
     if args.A is not None and args.B is not None:
-        print "Handle AB"
+        print "A B Extraction"
         handle_AB(args.A, args.B, args.fine, outname=args.outname,
             corrfile=args.correction,
             Aoffset=args.Aoffset, Boffset=args.Boffset,
@@ -1005,11 +1005,13 @@ if __name__ == '__main__':
 
     elif args.A is not None:
         if args.std is None:
+            print "Single Extraction"
             handle_A(args.A, args.fine, outname=args.outname,
                 corrfile=args.correction,
                 Aoffset=args.Aoffset, radius=args.radius_as,
                 flat_corrections=flat,nosky=args.nosky)
         else:
+            print "Standard Star Extraction"
             star = Stds.Standards[args.std]
             handle_A(args.A, args.fine, outname=args.outname,
                 standard=star,

@@ -25,6 +25,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     corrs = []
     corr_vals =[]
     legend=["corr",]
+    filt_legend=["orig"]
     maxnm = 915.
     for file in filelist:
         ''' Filename is sp_STD-nnnnn_obs*.npy '''
@@ -76,37 +77,51 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         redend = (ll>maxnm)
         the_corr[redend] = ss(ll[redend])
 
-    # Now clean over the Balmer series
-    #balmers = [656.3, 486.1, 434.0, 410.2, 397.0]
-    balmers = [656.3, 486.1]
-    for balmer in balmers:
-        eps = balmer * 0.02
-        line_ROI = sets.Set(np.where(np.abs((ll-balmer)/balmer) < 0.03)[0])
-        broad_ROI = sets.Set(np.where(np.abs((ll-balmer)/balmer) < 0.06)[0])
-        around_line_ROI = list(broad_ROI - line_ROI)
-        fit = np.poly1d(np.polyfit(ll[around_line_ROI],
-            the_corr[around_line_ROI], 1))
-        to_fix = list(line_ROI)
-        the_corr[to_fix] = fit(ll[to_fix])
-
     # Plot data, if requested
     if plot_filt:
         pl.figure(2)
         pl.clf()
         pl.grid(True)
         pl.ylim(1e-20,1e-15)
-        pl.semilogy(ll, the_corr, linewidth=4)
+        pl.semilogy(ll, the_corr, linewidth=1)
 
         pl.xlabel("Wavelength [nm]")
         pl.ylabel("Correction [erg/s/cm cm/Ang]")
         pl.title("Correct ph/10 m/nm to erg/s/cm2/Ang")
 
+    # Now clean over the Balmer series
+    balmers = [656.3, 486.1, 434.0, 410.2, 397.0]
+    #balmers = [656.3, 486.1, 434.0]
+    eps = 0.02
+    for balmer in balmers:
+        #pl.figure(3)
+        line_ROI = sets.Set(np.where(np.abs((ll-balmer)/balmer) < 0.01)[0])
+        broad_ROI = sets.Set(np.where(np.abs((ll-balmer)/balmer) < 0.04)[0])
+        broad_ll = list(broad_ROI)
+        broad_ll.sort()
+        #pl.plot(ll[broad_ll], the_corr[broad_ll])
+        around_line_ROI = list(broad_ROI - line_ROI)
+        #pl.plot(ll[around_line_ROI], the_corr[around_line_ROI],'^')
+        fit = np.poly1d(np.polyfit(ll[around_line_ROI],
+            the_corr[around_line_ROI], 5))
+        to_fix = list(line_ROI)
+        the_corr[to_fix] = fit(ll[to_fix])
+        #pl.plot(ll[to_fix], the_corr[to_fix])
+        #pl.show()
+
+    if plot_filt:
+        pl.semilogy(ll, the_corr*4., linewidth=2)
+        filt_legend.append("Balmer*4")
+
     # Filter correction to remove spectral features and leave response alone
     the_corr = scipy.signal.savgol_filter(the_corr, 9, 5)
 
     if plot_filt:
-        pl.semilogy(ll, the_corr*3., linewidth=2)
+        pl.semilogy(ll, the_corr*2., linewidth=2)
+        filt_legend.append("Filtered*2")
         pl.semilogy(ll, the_corr, linewidth=2)
+        filt_legend.append("Filtered")
+        pl.legend(filt_legend)
         pl.show()
 
     # Plot data
