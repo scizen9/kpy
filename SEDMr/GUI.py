@@ -31,6 +31,7 @@ class MouseCross(object):
         radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
             ax.transData.transform((0,0)))[0])
         print "%s arcsec is %s pix" % (radius_as, radius_pix)
+        print "x - expand ap, z - shrink ap"
         self.line, = self.ax.plot([0], [0], visible=False, 
             marker=r'$\bigodot$', markersize=radius_pix*2, color='red', **kwargs)
 
@@ -45,10 +46,11 @@ class MouseCross(object):
 
     def size_cross(self, event):
         self.line.set_visible(False)
-        if (event.key == "x"):
+        if (event.key == "z"):
             self.radius_as -=0.2
-        else:
+        elif (event.key =="x"):
             self.radius_as +=0.2
+
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
             self.ax.transData.transform((0,0)))[0])
         print "%s arcsec is %s pix" % (self.radius_as, radius_pix)

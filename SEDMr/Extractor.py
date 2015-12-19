@@ -89,8 +89,61 @@ def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PR
 
     return KT.good_positions[kix], pos, positions, radius
 
+def identify_sky_spectra(spectra, pos, inner=3, lmin=650, lmax=700):
+    KT = SS.Spectra(spectra)
+
+    outer = inner + 3
+
+    skys = KT.good_positions.tolist()
+    objs = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)]
+
+    for o in objs:
+        if o in skys: skys.remove(o)
+
+    newspec = [ spectra[i] for i in skys ]
+    KT = SS.Spectra(newspec)
+
+    Xs, Ys, Vs = KT.to_xyv(lmin=lmin, lmax=lmax)
+    Vmdn = np.median(Vs)
+
+    Vstd = np.nanstd(Vs)
+
+    hi_thresh = Vmdn + 1.25 * Vstd
+    lo_thresh = Vmdn - 2.0 * Vstd
+    print "Median: %6.2f, STD: %6.2f, Hi Thresh: %6.2f, Lo Thresh: %6.2f" % (Vmdn, Vstd, hi_thresh, lo_thresh)
+
+    KT = SS.Spectra(spectra)
+
+    n_hi_rem = 0
+    n_lo_rem = 0
+    n_tot = 0
+
+    for s in skys:
+        el = spectra[s]
+        l,fl = el.get_flambda()
+
+        ok = (l > lmin) & (l <= lmax)
+
+        if np.median(el.spec[ok]) > hi_thresh:
+            skys.remove(s)
+            n_hi_rem += 1
+
+        if np.median(el.spec[ok]) < lo_thresh:
+            skys.remove(s)
+            n_lo_rem += 1
+
+        n_tot += 1
+
+    n_tot = n_tot - (n_hi_rem + n_lo_rem)
+    print "Removed %d high sky spaxels and %d low sky spaxels leaving %d remaining spaxels" % (n_hi_rem, n_lo_rem, n_tot)
+
+    return skys
+
+
 def identify_bgd_spectra(spectra, pos, inner=3, outer=6):
     KT = SS.Spectra(spectra)
+
+    outer = inner + 3
 
     objs = KT.good_positions[KT.KT.query_ball_point(pos, r=inner)]
     skys = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)].tolist()
@@ -99,8 +152,6 @@ def identify_bgd_spectra(spectra, pos, inner=3, outer=6):
         if o in skys: skys.remove(o)
 
     return skys
-
-
 
 
 def identify_spectra(spectra, outname=None, low=-np.inf, hi=np.inf, plot=False):
@@ -238,8 +289,10 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
         # This is wrong: should give preference to lamcoeff according to Nick
         # Will do a comparison at some point and leave for now
-        if spectrum.mdn_coeff is not None: cs = spectrum.mdn_coeff
-        else: cs = spectrum.lamcoeff
+        #if spectrum.mdn_coeff is not None: cs = spectrum.mdn_coeff
+        #else: cs = spectrum.lamcoeff
+        if spectrum.lamcoeff is not None: cs = spectrum.lamcoeff
+        else: cs = spectrum.mdn_coeff
 
         # get wavelengths for spectrum
         l = c_to_nm(cs, pix, offset=dnm)
@@ -599,7 +652,10 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
     to_image(E, meta, outname, posA=posA, adcpos=adcpos)
 
-    kixA = identify_bgd_spectra(E, posA, inner=radius_used*1.1)
+    if standard is None:
+        kixA = identify_bgd_spectra(E, posA, inner=radius_used*1.1)
+    else:
+        kixA = identify_sky_spectra(E, posA, inner=radius_used*1.1)
 
     # get the mean spectrum over the selected spaxels
     resA = interp_spectra(E, sixA, outname=outname+".pdf", corrfile=corrfile)
@@ -654,24 +710,17 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     extCorr = 10**(Atm.ext(ll*10) * airmass/2.5)
     print "Median airmass corr: %.4f" % np.median(extCorr)
 
-    # Process non-standard star objects
-    if standard is None:
-        print "SCIENCE"
-        # Calculate output corrected spectrum
-        if nosky:
-            # Account for airmass and aperture
-            res[0]['ph_10m_nm'] = f1(ll) * extCorr * len(sixA)
-        else:
-            # Account for sky, airmass and aperture
-            res[0]['ph_10m_nm'] = (f1(ll)-sky_A(ll)) * extCorr * len(sixA)
-
-    # Process standard star observations
-    else:
-        print "STANDARD"
-
+    # Calculate output corrected spectrum
+    if nosky:
         # Account for airmass and aperture
-        # Sky subtraction not done for standard stars (as of now)
         res[0]['ph_10m_nm'] = f1(ll) * extCorr * len(sixA)
+    else:
+        # Account for sky, airmass and aperture
+        res[0]['ph_10m_nm'] = (f1(ll)-sky_A(ll)) * extCorr * len(sixA)
+
+    # Process non-standard star objects
+    if standard is not None:
+        print "STANDARD"
 
         # Extract reference data
         wav = standard[:,0]/10.0

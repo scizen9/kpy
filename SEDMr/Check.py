@@ -6,6 +6,7 @@ import pylab as pl
 import pyfits as pf
 from scipy.interpolate import interp1d
 import scipy.signal
+from scipy.stats import sigmaclip
 import sys
 import datetime
 
@@ -35,7 +36,6 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
 
     try: maxwl = meta['maxnm'] * 10.
     except: maxwl = 9200.0
-    maxwl = 9200.0  # for now
 
     print "Max Angstroms: %7.1f" % maxwl
 
@@ -97,8 +97,24 @@ def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
     if pred in SS.Standards:
         print "Overplotting %s reference spectrum" % pred
         legend.append("ref")
+
         standard = SS.Standards[pred]
-        pl.plot(standard[:,0],standard[:,1]*1.e-16)
+        slam = standard[:,0]
+        sflx = standard[:,1] * 1.e-16
+
+        lroi = (lam > 4500) & (lam < 6500)
+        lmed = np.median(spec[lroi])
+
+        sroi = (slam > 4500) & (slam < 6500)
+        smed = np.median(sflx[sroi])
+
+        rat = (lmed/smed)
+        ratmag = 2.5*np.log10(rat)
+        print "Ref offset: %6.2f mag" % ratmag
+
+        sflx = sflx * rat
+
+        pl.plot(slam, sflx)
 
     pl.legend(legend)
 
@@ -140,10 +156,16 @@ def checkCube(cubename, showlamrms=False, savefig=False):
         Ss = [0.] * len(cc)
         for i in range(len(cc)):
             if cc[i].lamrms is not None:
-                Ss[i] = cc[i].lamrms
+                if np.isfinite(cc[i].lamrms):
+                    Ss[i] = cc[i].lamrms
 
-        smx = 0.4
-        smn = 0.0
+        c, low, upp = sigmaclip(Ss)
+        Smdn = np.median(c)
+        Sstd = np.nanstd(c)
+        print "Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" % (len(cc), (len(cc)-len(c)), Smdn, Sstd)
+        smx = Smdn + 3.* Sstd
+        smn = Smdn - 3.* Sstd
+        if smn < 0.: smn = 0.
         cbtitle = "Wavelength RMS [nm]"
         outf = "cube_lambdarms.pdf"
     else:
