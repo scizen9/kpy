@@ -194,24 +194,43 @@ def handle_summary(outname=None, filelist=[]):
 def handle_corr(filename, outname='std-correction.npy', objname=None) :
 
     if outname is None: outname = "corr_" + filename
-    dat = np.load("spectrum_" + filename)[0]
+    dat = np.load("sp_" + filename)[0]
+    erg_s_cm2_ang = dat['std-correction'] * 1e-16
+    maxnm = dat['std-maxnm']
+
+    object = filename.split('-')[1].split('.')[0]
 
     pl.figure(1)
     pl.clf()
-    pl.xlim(365, 1000)
-    pl.semilogy(dat['nm'], dat['std-correction'])
-    pl.ylim(1,1e4)
-    pl.grid(True)
-    pl.savefig("corr_" + filename.rstrip(".npy") + ".pdf")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        pl.xlim(np.nanmin(dat['nm'])-10., maxnm + 10.)
+        pl.semilogy(dat['nm'], erg_s_cm2_ang)
+        pl.ylim(1e-20,1e-15)
+        pl.grid(True)
 
-    if os.path.exists(outname):
-        res = np.load(outname)
-    else:
-        res = []
+        pl.xlabel("Wavelength [nm]")
+        pl.ylabel("Correction [erg/s/cm cm/Ang]")
+        pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % object)
 
-    res.append({objname: {'nm': dat['nm'], 'cor': dat['std-correction']}})
+        pl.savefig("corr_" + filename.rstrip(".npy") + ".pdf")
 
-    np.save(outname, res)
+    # Construct result
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        res = {"nm": dat['nm'],
+            "maxnm": maxnm,
+            "correction": erg_s_cm2_ang,
+            "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
+            "Nspec": 1,
+            "correction_std": np.nanstd(erg_s_cm2_ang),
+            "outname": outname,
+            "files": filename,
+            "when": '%s' % datetime.datetime.now(),
+            "user": os.getlogin()
+            }
+
+    np.save(outname, [res])
 
 
 if __name__ == '__main__':

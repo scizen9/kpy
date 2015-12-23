@@ -270,7 +270,7 @@ cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 ''' % tp
     second = '''corr_%(outname)s: %(outname)s
-\t$(ATM) CORR --A %(outname)s.gz --std %(objname)s --outname corr_%(outname)s\n''' %  tp
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n''' %  tp
     fn = "%(outname)s" % tp
 
     if standard is None: return first+"\n", fn

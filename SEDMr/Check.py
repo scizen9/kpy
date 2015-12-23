@@ -14,10 +14,11 @@ import IO
 import NPK.Standards as SS
 
  
-def checkSpec(specname, redshift=0, smoothing=0, savefig=False):
+def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False):
 
-    # IO.readspec applies the calibration in std-correction.npy
-    lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname)
+    # IO.readspec applies the calibration in the file specified
+    print "Calibrating with %s" % corrname
+    lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname,corrname=corrname)
     
     lam = lam * 10.     # convert to Angstroms
 
@@ -203,6 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
     parser.add_argument('--savefig', action="store_true", default=False, help='Save pdf figure')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
+    parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
     parser.add_argument('--smoothing', type=float, default=0, help='Smoothing in pixels')
 
@@ -212,7 +214,7 @@ if __name__ == '__main__':
     if args.cube is not None:
         checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
-        checkSpec(args.spec, redshift=args.redshift,
+        checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
             smoothing=args.smoothing, savefig=args.savefig)
 
 

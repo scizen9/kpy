@@ -444,7 +444,7 @@ def wavelength_extract_helper(SS):
         ex.lamnrms = ss.lamnrms
 
     if ex.lamrms is not None:
-        outstr = "\r%4i  %6.4f nm  %6.4f" % (ex.seg_id, ex.lamrms, fc)
+        outstr = "\r%4i  %6.4f nm  %6.4f    " % (ex.seg_id, ex.lamrms, fc)
         print outstr,
         sys.stdout.flush()
 

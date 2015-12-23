@@ -600,7 +600,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         flexure_y_corr_pix = 0
 
     if os.path.isfile(outname+".npy"):
-        print "USING extractions in %s!" % outname
+        print "USING extractions in %s.npy!" % outname
         print "rm %s.npy # if you want to recreate extractions" % outname
         E, meta = np.load(outname+".npy")
         E_var, meta_var = np.load("var_" + outname + ".npy")
@@ -632,7 +632,6 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         meta['utc'] = spec[0].header['utc']
 
         meta['header'] = header
-        object = header['OBJECT'].split()[0]
 
         meta['exptime'] = spec[0].header['exptime']
         np.save(outname, [E, meta])
@@ -645,6 +644,8 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
             flat_corrections=flat_corrections)
 
         np.save("var_" + outname, [E_var, meta_var])
+
+    object = meta['header']['OBJECT'].split()[0]
 
     sixA, posA, adcpos, radius_used = identify_spectra_gui(E, radius=radius,
         PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
