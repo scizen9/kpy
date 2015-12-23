@@ -45,11 +45,12 @@ def specDiv(A, B, out):
     # Calculate division
     result['ph_10m_nm'] = (s_A['ph_10m_nm'] / f2(s_A['nm']))
 
-    # Calculate sky
+    # Average sky
     if s_A.has_key('skyph') and s_B.has_key('skyph'):
         s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
         result['skyph'] = (s_A['skyph'] + s2(s_A['nm']))/2.0
 
+    # Average variance
     if s_A.has_key('var') and s_B.has_key('var'):
         v2 = interp1d(s_B['nm'], s_B['var'], bounds_error=0, fill_value=np.nan)
         result['var'] = (s_A['var'] + v2(s_A['nm']))/2.0

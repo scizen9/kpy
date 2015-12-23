@@ -57,17 +57,24 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             print "File named '%s' is reduced to '%s' and no such standard seems to exist."  % (file, pred)
             continue
 
+        # Record median correction in ROI
         ROI = (ll > 600) & (ll < 850)
         corr_vals.append(np.median(correction[ROI]))
+        
+        # Normalize each correction by the median value
         correction /= corr_vals[-1]
-
         corrs.append(correction)
+        
     # END: for file in filelist:
 
+    # Rescale each correction and scale to erg/s/cm2/Ang
     corrs = np.array(corrs)
     erg_s_cm2_ang = corrs * np.median(corr_vals) * 1e-16
 
+    # Take the median of the correction vectors
     the_corr = scipy.stats.nanmedian(erg_s_cm2_ang,0)
+    
+    # Fit red end unless we are calibrated out there
     if not np.isfinite(the_corr).all() and maxnm < 1000.0:
         print "Fitting red end"
         # Fit polynomial to extrapolate correction
