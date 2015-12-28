@@ -11,6 +11,7 @@ import warnings
 from astropy.coordinates import Angle
 from numpy.polynomial.chebyshev import chebfit, chebval
 from scipy.interpolate import interp1d
+from scipy.ndimage import filters
 import SEDMr.Extraction as Extraction
 import SEDMr.Wavelength as Wavelength
 import SEDMr.Spectra as SS
@@ -767,7 +768,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         # Account for sky, airmass and aperture
         res[0]['ph_10m_nm'] = (f1(ll)-sky_A(ll)) * extCorr * len(sixA)
 
-    # Process non-standard star objects
+    # Process standard star objects
     if standard is not None:
         print "STANDARD"
 
@@ -777,7 +778,18 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
         # Calculate/Interpolate correction onto object wavelengths
         fun = interp1d(wav, flux, bounds_error=False, fill_value = np.nan)
+        correction0 = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+
+        # Filter for resolution
+        flxf = filters.gaussian_filter(flux,19.)
+
+        # Calculate/Interpolate filtered correction
+        fun = interp1d(wav, flxf, bounds_error=False, fill_value = np.nan)
         correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+
+        # Use unfiltered for H-beta region
+        ROI = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
+        correction[ROI] = correction0[ROI]
 
         res[0]['std-correction'] = correction
         res[0]['std-maxnm'] = np.max(wav)

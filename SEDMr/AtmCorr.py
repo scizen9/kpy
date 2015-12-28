@@ -96,10 +96,10 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         pl.ylabel("Correction [erg/s/cm cm/Ang]")
         pl.title("Correct ph/10 m/nm to erg/s/cm2/Ang")
 
-    # Now clean over the Balmer series
+    '''
+    # Now clean over the Balmer series (skip this for now)
     balmers = [656.3, 486.1, 434.0, 410.2, 397.0]
     #balmers = [656.3, 486.1, 434.0]
-    eps = 0.02
     for balmer in balmers:
         #pl.figure(3)
         line_ROI = sets.Set(np.where(np.abs((ll-balmer)/balmer) < 0.01)[0])
@@ -112,9 +112,10 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         fit = np.poly1d(np.polyfit(ll[around_line_ROI],
             the_corr[around_line_ROI], 5))
         to_fix = list(line_ROI)
-        the_corr[to_fix] = fit(ll[to_fix])
+        #the_corr[to_fix] = fit(ll[to_fix])
         #pl.plot(ll[to_fix], the_corr[to_fix])
         #pl.show()
+        '''
 
     if plot_filt:
         pl.semilogy(ll, the_corr*4., linewidth=2)
