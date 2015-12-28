@@ -555,6 +555,54 @@ def handle_extract(data, outname=None, fine='fine.npy',flexure_x_corr_nm=0.0,
 
     return E
 
+def handle_Flat(A, fine, outname=None):
+    '''Loads 2k x 2k IFU Flat frame "A" and extracts spectra from the locations
+    in "fine".
+
+    Args:
+        A (string): filename of ifu FITS file to extract from.
+        fine (string): filename of NumPy file with locations + wavelength
+            soln
+        outname (string): filename to write results to
+
+    Returns:
+
+    Raises:
+        None
+    '''
+
+    fine = np.load(fine)
+    if outname is None:
+        outname = "%s" % (A)
+
+    if os.path.isfile(outname+".npy"):
+        print "Extractions already exist in %s.npy!" % outname
+        print "rm %s.npy # if you want to recreate extractions" % outname
+    else:
+        print "\nCREATING extractions ..."
+        spec = pf.open(A)
+
+        print "\nExtracting object spectra"
+        E, meta = Wavelength.wavelength_extract(spec, fine, filename=outname,
+            flexure_x_corr_nm=0., flexure_y_corr_pix=0.)
+        meta['airmass'] = spec[0].header['airmass']
+        header = {}
+        for k,v in spec[0].header.iteritems():
+            try: header[k] = v
+            except: pass
+        meta['HA'] = spec[0].header['HA']
+        meta['Dec'] = spec[0].header['Dec']
+        meta['RA'] = spec[0].header['RA']
+        meta['PRLLTC'] = spec[0].header['PRLLTC']
+        meta['equinox'] = spec[0].header['Equinox']
+        meta['utc'] = spec[0].header['utc']
+
+        meta['header'] = header
+
+        meta['exptime'] = spec[0].header['exptime']
+        np.save(outname, [E, meta])
+
+
 def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     Aoffset=None, radius=2, flat_corrections=None, nosky=False,
     lmin=650, lmax=700):
@@ -1031,6 +1079,7 @@ if __name__ == '__main__':
     parser.add_argument('--radius_as', type=float, help='Extraction radius in arcsecond', default=3)
     parser.add_argument('--flat_correction', type=str, help='Name of flat field .npy file', default=None)
     parser.add_argument('--nosky', action="store_true", default=False, help='No sky subtraction: only sum in aperture')
+    parser.add_argument('--flat', action="store_true", default=False, help='Perform flat extraction')
 
     args = parser.parse_args()
 
@@ -1055,11 +1104,15 @@ if __name__ == '__main__':
 
     elif args.A is not None:
         if args.std is None:
-            print "Single Extraction"
-            handle_A(args.A, args.fine, outname=args.outname,
-                corrfile=args.correction,
-                Aoffset=args.Aoffset, radius=args.radius_as,
-                flat_corrections=flat,nosky=args.nosky)
+            if args.flat:
+                print "Flat Extraction"
+                handle_Flat(args.A, args.fine, outname=args.outname)
+            else:
+                print "Single Extraction"
+                handle_A(args.A, args.fine, outname=args.outname,
+                    corrfile=args.correction,
+                    Aoffset=args.Aoffset, radius=args.radius_as,
+                    flat_corrections=flat,nosky=args.nosky)
         else:
             print "Standard Star Extraction"
             star = Stds.Standards[args.std]

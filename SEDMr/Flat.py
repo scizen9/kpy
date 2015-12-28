@@ -30,7 +30,7 @@ reload(Wavelength)
 
 def measure_flat(extraction, meta, 
         lamstart=700,
-        lamend=850,
+        lamend=900,
         outfile='flat.npy'):
 
 

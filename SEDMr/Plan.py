@@ -210,8 +210,10 @@ bs_twilight.fits.gz: twilight.fits fine.npy
 bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits
 
-flat-dome-700to900.npy: cube.npy dome.fits
-	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome
+dome.npy:
+	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
+
+flat-dome-700to900.npy: cube.npy dome.npy
 	$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy
