@@ -27,6 +27,8 @@ reload(FF)
 reload(Extraction)
 reload(Wavelength)
 
+fid_wave = Wavelength.fiducial_wavelength()
+
 
 def measure_flat(extraction, meta, 
         lamstart=700,
@@ -46,7 +48,7 @@ def measure_flat(extraction, meta,
         try: l,f = e.get_flambda()
         except: continue
 
-        X = np.argmin(np.abs(l-656))
+        X = np.argmin(np.abs(l-fid_wave))
         Xs.append(e.xrange[0] + X)
         Ys.append(np.mean(e.yrange))
 

@@ -125,6 +125,9 @@ def hg_to_kdtree(assoc_hg_spec):
     data = np.array([xs,ys])
     return KDTree(data.T), np.array(ids)
 
+def fiducial_wavelength():
+    return 565.3
+
 def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
     '''Return a typical SED Machine spectrum, use for interpolating on grid
 

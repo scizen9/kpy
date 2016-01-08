@@ -40,7 +40,7 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
 
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad  = NPK.Util.atm_disper(leff, 0.95, airmass)
-    print 'Blue AD is %1.1f", Red Ad is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
+    print 'Blue AD is %1.1f", Red AD is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
         PRLLTC.degree)
 
     dx = -np.sin(PRLLTC.radian)
@@ -289,9 +289,10 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pix = np.arange(*spectrum.xrange)
 
         # This is wrong: should give preference to lamcoeff according to Nick
-        # Will do a comparison at some point and leave for now
         #if spectrum.mdn_coeff is not None: cs = spectrum.mdn_coeff
         #else: cs = spectrum.lamcoeff
+
+        # This is correct: preference to lamcoeff over mdn_coeff
         if spectrum.lamcoeff is not None: cs = spectrum.lamcoeff
         else: cs = spectrum.mdn_coeff
 

@@ -16,6 +16,9 @@ import sys
 sys.setrecursionlimit(10000)
 
 
+# reference wavelength for X positions
+fid_wave = Wavelength.fiducial_wavelength()
+
 scale = 1.0
 H2P = np.array([[np.sqrt(3), np.sqrt(3)/2], [0, 3/2.]]) * scale
 P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]]) / scale
@@ -170,7 +173,6 @@ def extraction_to_cube(exts, outname="G.npy"):
     
     Xs = [None] * len(exts)
     Ys = [None] * len(exts)
-    segids = [el.seg_id for el in exts]
 
     for ext in exts:
         ext.Q_ix = None
@@ -203,7 +205,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         ixs = np.arange(*ext.xrange)
         LL = chebval(ixs, coeff)
         
-        ix_ha = np.nanargmin(np.abs(LL-656.3))
+        ix_ha = np.nanargmin(np.abs(LL-fid_wave))
 
         Xs[ix] = ixs[ix_ha]
         Ys[ix] = np.nanmean(ext.yrange)
@@ -229,7 +231,7 @@ def extraction_to_cube(exts, outname="G.npy"):
     def populate_hex(to_populate):
         ''' Breadth-first search 
 
-            For each spaxel in the datacube this piece of code identified
+            For each spaxel in the datacube this piece of code identifies
             the relative offset based on the rotation matrix defined
             earlier in the file
         '''
@@ -238,10 +240,12 @@ def extraction_to_cube(exts, outname="G.npy"):
         Dists, Ixs = tree.query(v, 7)
         Tfm = P2H * ROT / np.median(Dists) * 2
 
+        # Trim self reference
         if Dists[0] < 2: 
             Dists = Dists[1:]
             Ixs = Ixs[1:]
 
+        # Trim to within 70 pixels
         ok = Dists < 70
         Dists = Dists[ok]
         Ixs = Ixs[ok]
@@ -249,6 +253,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         q_this = exts[to_populate].Q_ix
         r_this = exts[to_populate].R_ix
 
+        # Loop over the current nearest spaxels
         for nix in Ixs:
             # Search around the current hex via a recrusive call
             # to populate_hex

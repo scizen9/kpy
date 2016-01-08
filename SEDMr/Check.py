@@ -14,7 +14,7 @@ import IO
 import NPK.Standards as SS
 
  
-def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False):
+def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False, savespec=False):
 
     # IO.readspec applies the calibration in the file specified
     print "Calibrating with %s" % corrname
@@ -137,13 +137,14 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     else:
         pl.show()
 
-    wl = lam[roi]
-    fl = spec[roi]
-    srt = wl.argsort().argsort()
-    outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
-    header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
-    np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
-    print "Saved to "+outf
+    if savespec:
+        wl = lam[roi]
+        fl = spec[roi]
+        srt = wl.argsort().argsort()
+        outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
+        header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
+        np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
+        print "Saved to "+outf
 
 
 def checkCube(cubename, showlamrms=False, savefig=False):
@@ -203,6 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--cube', type=str, help='Fine correction path')
     parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
     parser.add_argument('--savefig', action="store_true", default=False, help='Save pdf figure')
+    parser.add_argument('--savespec', action="store_true", default=False, help='Save spec ASCII file')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
@@ -215,6 +217,7 @@ if __name__ == '__main__':
         checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
         checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
-            smoothing=args.smoothing, savefig=args.savefig)
+            smoothing=args.smoothing, 
+            savefig=args.savefig, savespec=args.savespec)
 
 
