@@ -10,7 +10,6 @@ import sys
 import shutil
 
 import NPK.Fit as FF
-import NPK.Bar as Bar
 import NPK.Util as Util
 import SEDMr.IO as IO
 from astropy.table import Table 
@@ -128,6 +127,7 @@ def estimateBackground(fine, infile, flex=None, outname=None):
     for i in xrange(5):
         flt = convolve(flt, k)
         flt[OKs] = data[OKs]
+        print "\tIteration %d of 5" %  (i+1)
         #IO.writefits(pf.PrimaryHDU(flt), "test_%i.fits.gz" % i, clobber=True)
 
     data[NaNs] = flt[NaNs]
@@ -136,7 +136,8 @@ def estimateBackground(fine, infile, flex=None, outname=None):
     #IO.writefits(data, fname, clobber=True)
     
 
-    print "FFT convolve (pass 2)"
+    #print "FFT convolve (pass 2)"
+    print "Gaussian filter (pass 2)"
     #k = Box2DKernel(70)
     #flt = convolve_fft(data, k)
     flt = gaussian_filter(data, 100)
@@ -146,14 +147,16 @@ def estimateBackground(fine, infile, flex=None, outname=None):
         "bgd_" + os.path.basename(outname))
     HDU = pf.PrimaryHDU(flt)
     IO.writefits(HDU, fname, clobber=True)
+    print "Background image in %s" % fname + ".gz"
     
 
+    infile[0].header["BGDSUB"] = "Background subtracted using %s" % fname
     fname = os.path.join(os.path.dirname(outname), 
         "bs_" + os.path.basename(outname))
-    infile[0].header["BGDSUB"] = "Background subtracted with %s" % fname
     infile[0].data -= flt
 
     IO.writefits(infile, fname, clobber=True)
+    print "Subtracted image in %s" % fname + ".gz"
 
     return flt
 

@@ -7,7 +7,6 @@ import sys
 
 
 import NPK.Fit 
-import NPK.Bar as Bar
 from astropy.table import Table 
 
 from scipy.spatial import KDTree 

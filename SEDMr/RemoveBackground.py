@@ -92,8 +92,8 @@ def handle_path(path):
     name= os.path.basename(path)
     user= getpass.getuser()
 
-    c = sex_params.format(**{"catalog_name": "cat_%s.txt" % name, 
-	    "user": user, "output_name": name})
+    c = sex_params.format(**{"catalog_name": "cat_%s.txt" % name,
+        "user": user, "output_name": name})
 
     conf_file = open("/tmp/sedm_sex_%s_conf.sex" % user,"w")
     conf_file.write(c)

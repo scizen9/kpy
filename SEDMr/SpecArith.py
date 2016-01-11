@@ -18,41 +18,56 @@ def specDiv(A, B, out):
     if t_A != t_B:
         print "Exposure times do not match (%s v %s). This may be a problem." % (t_A, t_B)
 
+    # Combine keys in rational way
     result = {}
     for k,v in s_A.iteritems():
+        # Skip these
         if k in ['meta', 'Extinction Correction', 'doc']: continue
+        # Are there discrepant dictionaries?
         if k not in s_B:
-            print "A has key %s but B does not. Skipping." % k
-            continue
+            raise Exception("A has key %s but B does not. Quitting" % k)
 
+        # Take average of these
         if "dlam" in k or "extinction_corr" in k:
             result[k] = (s_A[k] + s_B[k])/2.0
+        # Combine these lists
         elif "spectra" in k or "object_spaxel_ids" in k:
             result[k] = np.concatenate((s_A[k], s_B[k]))
+        # Otherwise just add them together
         else:
             result[k] = s_A[k] + s_B[k]
 
+    # Get interpolated flux
     f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, fill_value=np.nan)
 
-    result['ph_10m_nm'] = (s_A['ph_10m_nm'] / f2(s_A['nm']))
+    # Use first for reference wavelengths
     result['nm'] = s_A['nm']
+    # Calculate division
+    result['ph_10m_nm'] = (s_A['ph_10m_nm'] / f2(s_A['nm']))
 
-    if s_A.has_key('skyph') and s_B.has_key('skyph') and s_A.has_key('skynm') and s_B.has_key('skynm'):
-        s2 = interp1d(s_B['skynm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
-        result['skyph'] = (s_A['skyph'] + s2(s_A['skynm']))/2.0
-        result['skynm'] = s_A['skynm']
+    # Average sky
+    if s_A.has_key('skyph') and s_B.has_key('skyph'):
+        s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
+        result['skyph'] = (s_A['skyph'] + s2(s_A['nm']))/2.0
 
+    # Average variance
     if s_A.has_key('var') and s_B.has_key('var'):
         v2 = interp1d(s_B['nm'], s_B['var'], bounds_error=0, fill_value=np.nan)
         result['var'] = (s_A['var'] + v2(s_A['nm']))/2.0
 
+    # Use one of the docs
+    result['doc'] = s_A['doc']
+    result['operation'] = "specDiv"
+
+    # Record individual meta data
     result['meta_1'] = s_A['meta']
     result['meta_2'] = s_B['meta']
-    result['meta'] = "Result of SpecArith."
+    # Need this for compatability with other programs
+    result['meta'] = s_A['meta']
 
     np.save(out, [result])
 
- 
+
 
 def specAdd(A, B, out):
     ''' Add spectra in A, B and store to out '''
@@ -64,42 +79,56 @@ def specAdd(A, B, out):
     if t_A != t_B:
         print "Exposure times do not match (%s v %s). This may be a problem." % (t_A, t_B)
 
+    # Combine keys in a rational way
     result = {}
     for k,v in s_A.iteritems():
+        # Skip these
         if k in ['meta', 'Extinction Correction', 'doc']: continue
+        # Are there discrepant dictionaries?
         if k not in s_B:
             raise Exception("A has key %s but B does not. Quitting" % k)
 
+        # Take average of these
         if "dlam" in k or "extinction_corr" in k:
             result[k] = (s_A[k] + s_B[k])/2.0
+        # Combine these lists
         elif "spectra" in k or "object_spaxel_ids" in k:
             result[k] = np.concatenate((s_A[k], s_B[k]))
+        # Otherwise just add them together
         else:
             result[k] = s_A[k] + s_B[k]
 
 
-    print "other"
-
+    # Get interpolated flux and sky
     f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, fill_value=np.nan)
     s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
 
-    result['ph_10m_nm'] = (s_A['ph_10m_nm'] + f2(s_A['nm']))/2.0
+    # Use first for reference wavelengths
     result['nm'] = s_A['nm']
+    # Get average flux
+    result['ph_10m_nm'] = (s_A['ph_10m_nm'] + f2(s_A['nm']))/2.0
+    # Get average sky
     result['skyph'] = (s_A['skyph'] + s2(s_A['nm']))/2.0
 
+    # Get average variance
     if s_A.has_key('var'):
         v2 = interp1d(s_B['nm'], s_B['var'], bounds_error=0, fill_value=np.nan)
         result['var'] = (s_A['var'] + v2(s_A['nm']))/2.0
 
+    # Use one of the docs
+    result['doc'] = s_A['doc']
+    result['operation'] = "specAdd"
+
+    # Record individual meta data
     result['meta_1'] = s_A['meta']
     result['meta_2'] = s_B['meta']
-    result['meta'] = "Result of SpecArith."
+    # Need this for compatability with other programs
+    result['meta'] = s_A['meta']
 
     np.save(out, [result])
 
-            
 
- 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
         '''SpecArith.py
@@ -129,7 +158,7 @@ if __name__ == '__main__':
     print "%s %s %s > %s" % (args.A, args.operation, args.B, args.outname)
     if args.operation == '+':
         specAdd(args.A, args.B, args.outname)
-    if args.operation == '/':
+    elif args.operation == '/':
         specDiv(args.A, args.B, args.outname)
     else:
         print "%s not recognized as an op." % args.operation

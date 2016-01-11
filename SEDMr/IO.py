@@ -5,6 +5,7 @@ import NPK.Util as UU
 import numpy as np
 import Wavelength as WW
 import gzip
+import warnings
 
 from scipy.interpolate import interp1d
 from numpy.polynomial.chebyshev import chebfit, chebval
@@ -29,7 +30,7 @@ def readspec(path, corrname='std-correction.npy'):
 
     if not os.path.isfile(corrname):
         print "Loading old standard correction"
-        corrname = '/scr2/npk/sedm/OUTPUT/2015mar25/std-correction.npy'
+        corrname = '../../ref/std-correction.npy'
         
     ss = np.load(path)[0]
 
@@ -46,6 +47,9 @@ def readspec(path, corrname='std-correction.npy'):
 
     try: et = ss['exptime']
     except: et = 0
+
+    try: maxnm = corr['maxnm']
+    except: maxnm = 920.0
     
     lam, spec = ss['nm'], ss['ph_10m_nm']*corf(ss['nm'])
 
@@ -56,13 +60,16 @@ def readspec(path, corrname='std-correction.npy'):
         print "Spectrum in %s has no sky spectrum" % path 
     
     if ss.has_key('var'):
-        std = np.sqrt(np.abs(ss['var']) * corf(lam))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            std = np.sqrt(np.abs(ss['var']) * corf(lam)*corf(lam))
     else:
         std = None
         print "Spectrum in %s has no var" % path
 
     try: meta = ss['meta']
     except: meta = {}
+    meta['maxnm'] = maxnm
     return lam, spec, skyspec, std, ss, meta
 
 

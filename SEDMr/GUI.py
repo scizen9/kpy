@@ -26,10 +26,12 @@ class MouseCross(object):
 
     def __init__(self, ax, radius_as=3, **kwargs):
         self.ax = ax
+        self.radius_as = radius_as
 
         radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
             ax.transData.transform((0,0)))[0])
         print "%s arcsec is %s pix" % (radius_as, radius_pix)
+        print "x - expand ap, z - shrink ap"
         self.line, = self.ax.plot([0], [0], visible=False, 
             marker=r'$\bigodot$', markersize=radius_pix*2, color='red', **kwargs)
 
@@ -40,6 +42,21 @@ class MouseCross(object):
         else:
             self.line.set_visible(False)
 
+        pl.draw()
+
+    def size_cross(self, event):
+        self.line.set_visible(False)
+        if (event.key == "z"):
+            self.radius_as -=0.2
+        elif (event.key =="x"):
+            self.radius_as +=0.2
+
+        radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
+            self.ax.transData.transform((0,0)))[0])
+        print "%s arcsec is %s pix" % (self.radius_as, radius_pix)
+        self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False, 
+            marker=r'$\bigodot$', markersize=radius_pix*2, color='red')
+        self.line.set_visible(True)
 
         pl.draw()
 
@@ -54,7 +71,7 @@ class PositionPicker(object):
     picked = None
     radius_as = None
 
-    def __init__(self, spectra=None, figure=None, pointsize=55, bgd_sub=False, radius_as=3, PRLLTC=None, lmin=600, lmax=650):
+    def __init__(self, spectra=None, figure=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600, lmax=650):
         ''' Create spectum picking gui.
 
         Args:
@@ -66,20 +83,23 @@ class PositionPicker(object):
         self.pointsize = pointsize
         self.lmin = lmin
         self.lmax = lmax
+        self.objname = objname
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
             self.Vs -= np.median(self.Vs)
 
-        pl.ioff()
-        pl.title("Image from %s to %s nm" % (self.lmin, self.lmax))
-        self.figure = pl.figure(1)
-
         self.radius_as = radius_as
 
+        pl.ioff()
+        pl.title("%s Image from %s to %s nm" % (self.objname, self.lmin, self.lmax))
+        self.figure = pl.figure(1)
+
         self.figure.canvas.mpl_connect("button_press_event", self)
+
         self.draw_cube()
+
 
     def draw_cube(self):
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0, 
@@ -92,19 +112,20 @@ class PositionPicker(object):
         c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), radius_as=self.radius_as)
-        self.figure.canvas.mpl_connect('motion_notify_event', 
-            cross.show_cross)
+        self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
+        self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
+        self.radius_as = cross.radius_as
+
 
     def __call__(self, event):
         '''Event call handler for Picker gui.'''
         
         if event.name == 'button_press_event':
-            print event.xdata, event.ydata
+            print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
             self.picked = (event.xdata, event.ydata)
             pl.close(self.figure)
             
-
 
 class WaveFixer(object):
     ''' This class is used to fix bad wavelength solutions '''

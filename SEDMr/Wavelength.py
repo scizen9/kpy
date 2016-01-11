@@ -125,6 +125,9 @@ def hg_to_kdtree(assoc_hg_spec):
     data = np.array([xs,ys])
     return KDTree(data.T), np.array(ids)
 
+def fiducial_wavelength():
+    return 565.3
+
 def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
     '''Return a typical SED Machine spectrum, use for interpolating on grid
 
@@ -151,20 +154,25 @@ def assoc_hg_with_flats_helper(idx):
 
     to_return = {}
 
-    for wavelen,v in wavetrees.iteritems():
-        offset = guess_offset[wavelen]
-        pt = (minx + offset, tracefun(minx+offset))
-        results = v.query_ball_point(pt, 15)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        for wavelen,v in wavetrees.iteritems():
+            offset = guess_offset[wavelen]
+            pt = (minx + offset, tracefun(minx+offset))
+            results = v.query_ball_point(pt, 15)
 
-        for res in results:
-            x_hg,y_hg = v.data[res]
-            y_trace = tracefun(x_hg)
+            for res in results:
+                x_hg,y_hg = v.data[res]
+                y_trace = tracefun(x_hg)
 
-            if np.abs(y_hg - y_trace) < 3:
-                to_return[wavelen] = x_hg
+                if np.abs(y_hg - y_trace) < 3:
+                    to_return[wavelen] = x_hg
 
 
-    print "%4.4i : %s" % (idx, to_return)
+    outstr = "\r%4.4i : %d" % (idx, len(to_return))
+    print outstr,
+    sys.stdout.flush()
+
     return to_return
 
 
@@ -190,9 +198,11 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par= {365.0: 231,
     for k,v in hgcat.iteritems():
         wavetrees[k] = KDTree(v)
 
+    print "SgID   Nlines"
     p = Pool(8)
     results = p.map(assoc_hg_with_flats_helper, range(len(domedat)))
     p.close()
+    print ""
 
     for idx, spec_pos in enumerate(domedat):
         if results[idx] is None: 
@@ -239,7 +249,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     hg365 = []
 
     print "Finding Hg lines in each spectrum"
-    update_rate = len(lines) / Bar.setup()
+    update_rate = len(lines) / (Bar.setup(toolbar_width=74)) + 1
     for CNT, line in enumerate(lines):
         if CNT % update_rate == 0: Bar.update()
 
@@ -428,16 +438,19 @@ def wavelength_extract_helper(SS):
         ex.lamcoeff = ss.lamcoeff.copy()
         ex.lamcoeff[0] -= flexure_x_corr_nm
         ex.lamrms = ss.lamrms
+        ex.lamnrms = ss.lamnrms
 
     if ss.__dict__.has_key('mdn_coeff') and ss.mdn_coeff is not None:
         ex.mdn_coeff = ss.mdn_coeff.copy()
         ex.mdn_coeff[0] -= flexure_x_corr_nm
         ex.lamrms = ss.lamrms
+        ex.lamnrms = ss.lamnrms
 
     if ex.lamrms is not None:
-        print "%4.4i %1.4f (%s)" % (ex.seg_id, ex.lamrms, fc)
+        outstr = "\r%4i  %6.4f nm  %6.4f    " % (ex.seg_id, ex.lamrms, fc)
+        print outstr,
+        sys.stdout.flush()
 
-    
     return ex
 
 
@@ -457,15 +470,17 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
     exptime = HDUlist[0].header['EXPTIME']
 
 
-    print "Applying %f/%f offset" % (flexure_x_corr_nm, flexure_y_corr_pix)
+    print "Applying %f nm / %f px offset" % (flexure_x_corr_nm, flexure_y_corr_pix)
     flexure_y_corr_pix = np.round(flexure_y_corr_pix)
 
     SSs = [ (ix, flexure_x_corr_nm, flexure_y_corr_pix)
                 for ix in range(len(wavecalib))]
 
+    print "SgID  LamRMS     Flat"
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()
+    print ""
 
 
     meta = {"inname": inname, "extract_width": extract_width_par,
@@ -482,7 +497,10 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
 def extract_helper(ss):
     ''' TODO: MERGE WITH wavelength_extract_helper.
     Functionallity is repeated.'''
-    global dat
+    global dat, n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0: Bar.update()
 
     if not ss['ok']: 
         return Extraction.Extraction(seg_id=ss['seg_cnt'], 
@@ -522,6 +540,7 @@ def extract_helper(ss):
         # BUG: calling resw what should be resf, this is a cheap workaround
         # for now.
         resw[i]= fractional_sum(Y, extract_width, dat[Yx,X], Yx.start)
+
     hg_lines = {}
     for wave, pix in ss.iteritems():
         if type(wave) is float:
@@ -535,28 +554,25 @@ def extract_helper(ss):
                                 ok=True, trace_sigma=ss['trace_sigma'])
 
     
-
-
-
-
 def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
-    global dat
-
+    global dat, n_done, update_rate
 
     dat = HDUlist[0].data
-
     
     extractions = []
 
+    n_done = 0
+    update_rate = len(assoc_hg_spec) / Bar.setup() + 1
     p = Pool(8)
     extractions = p.map(extract_helper, assoc_hg_spec)
     p.close()
+    Bar.done(mapped=True)
 
     np.save(filename, extractions)
     return extractions
 
 
-def median_fine_grid(fine):
+def median_fine_grid(fine, doPlot=False):
     ''' Using the 7 nearest neighbors, median the wavelength solution. Refit the wavelength solution to this median wavelength.
 
     Input:
@@ -587,7 +603,9 @@ def median_fine_grid(fine):
 
     assert(len(ids) == len(fine))
     ixs = np.arange(0, 265, 1)
+    update_rate = len(fine) / (Bar.setup(toolbar_width=74)) + 1
     for idx, spec in enumerate(fine):
+        if idx % update_rate == 0: Bar.update()
         seg_id = spec.seg_id
         loc = dat[seg_id-1]
 
@@ -601,7 +619,7 @@ def median_fine_grid(fine):
             if nearest is None: continue
             if fine[nearest].hgcoef is None: continue
             if fine[nearest].lamcoeff is None: continue
-            if fine[nearest].lamrms > 0.4: continue
+            if fine[nearest].lamnrms > 0.4: continue
             if np.abs(fine[nearest].xrange[1] - fine[nearest].xrange[0]) < 50: continue
 
             xx = np.arange(265)
@@ -623,8 +641,8 @@ def median_fine_grid(fine):
             pdb.set_trace()
 
         diff = (lls - new_lls) / new_lls
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=RuntimeWarning)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             stds = scipy.stats.nanstd(diff, 0)
             bad = np.abs(diff/stds) > 4
         if bad.any():
@@ -633,8 +651,8 @@ def median_fine_grid(fine):
 
         diff = (lls - new_lls) / new_lls
         stds = scipy.stats.nanstd(diff, 0)
-	with warnings.catch_warnings():
-	    warnings.simplefilter("ignore", category=RuntimeWarning)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             bad = np.abs(diff/stds) > 2
         if bad.any():
             lls[bad] = np.nan
@@ -645,46 +663,51 @@ def median_fine_grid(fine):
         spec.mdn_coeff = chebfit(np.arange(len(new_lls))+spec.xrange[0], 
             new_lls, 3)
 
-    pl.figure(3)
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("+670+0")
-    pl.clf()
-    pl.xlim(360, 550)
-    pl.xlabel("Wave(nm)")
-    pl.ylabel("Spec")
-    pl.title("mdn_coeff")
-    pl.ioff()
-    pl.figure(4)
-    pl.clf()
-    pl.xlim(360, 550)
-    pl.xlabel("Wave(nm)")
-    pl.ylabel("Spec")
-    pl.title("lamcoeff")
-    pl.ioff()
-    for g in fine:
-        if g.mdn_coeff is None: continue
-        if g.specw is None: continue
-        if g.hgcoef is None: continue
-        if len(g.specw) < 30: continue
+    Bar.done()
 
-
-        if g.xrange[0] < 100: continue
-        if g.xrange[0] > 1900: continue
-        if g.yrange[0] < 100: continue
-        if g.yrange[0] > 1900: continue
-
-        ix = np.arange(len(g.specw))
+    if doPlot:
         pl.figure(3)
-        ll = chebval(ix+g.xrange[0], g.mdn_coeff)
-        pl.plot(ll, g.specw, '.')
+        plm = pl.get_current_fig_manager()
+        plm.window.wm_geometry("+670+0")
+        pl.clf()
+        pl.xlim(360, 550)
+        pl.xlabel("Wave(nm)")
+        pl.ylabel("Spec Irr(ph/10 m/nm)")
+        pl.title("mdn_coeff")
+        pl.ioff()
         pl.figure(4)
-        try: 
-            ll = chebval(ix+g.xrange[0], g.lamcoeff)
+        pl.clf()
+        pl.xlim(360, 550)
+        pl.xlabel("Wave(nm)")
+        pl.ylabel("Spec Irr(ph/10 m/nm)")
+        pl.title("lamcoeff")
+        pl.ioff()
+        for g in fine:
+            if g.mdn_coeff is None: continue
+            if g.specw is None: continue
+            if g.hgcoef is None: continue
+            if len(g.specw) < 30: continue
+
+
+            if g.xrange[0] < 100: continue
+            if g.xrange[0] > 1900: continue
+            if g.yrange[0] < 100: continue
+            if g.yrange[0] > 1900: continue
+
+            ix = np.arange(len(g.specw))
+            pl.figure(3)
+            ll = chebval(ix+g.xrange[0], g.mdn_coeff)
             pl.plot(ll, g.specw, '.')
-        except: pass
-        
-    pl.ion()
-    pl.show()
+
+            pl.figure(4)
+            try: 
+                ll = chebval(ix+g.xrange[0], g.lamcoeff)
+                pl.plot(ll, g.specw, '.')
+                pl.draw()
+            except: pass
+            
+        pl.ion()
+        pl.show()
 
     return fine
 
@@ -795,7 +818,10 @@ def scale_on_547(spec):
 
 def stretch_fit_helper(specno):
     ''' Helper for Multiprocessing Pool'''
-    global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs
+    global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs, n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0: Bar.update()
 
     spec = specs[specno]
     if spec is None: return None
@@ -826,7 +852,9 @@ def stretch_fit_helper(specno):
     fc = chebfit(fid_ix, tofit, 2)
     xc = (xcs1[slope1, square1] + xcs2[slope2, square2] ) / np.nansum(fs1)
 
-    print "%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e" % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])
+    #outstr = "\r%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e" % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])
+    #print outstr,
+    #sys.stdout.flush()
 
     if False:
         pl.figure(4)
@@ -878,11 +906,10 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     '''
 
     # Global is for interprocess comms
-    global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs
+    global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs, n_done, update_rate
 
     assert(len(Hg_set) == len(Xe_set))
 
-    
     # Step 1
     gridded_set = []
     for index, hg in enumerate(Hg_set):
@@ -915,7 +942,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
         fiducial = gridded_set[len(gridded_set)/2 + 4]
 
 
-    print len(gridded_set)
+    print "Number of extractions: %d" % len(gridded_set)
 
     # Step 2
     pl.figure(3)
@@ -939,8 +966,6 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     
     funs = interp_functions()
 
-
-
     pix_coeffs = []
     fid_ix, fs1, fs2 = fiducial
     # Note 0.001 over 250 pixels is about a quarter pixel
@@ -949,9 +974,11 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     squares = np.linspace(-1e-3, 1e-3, 15)
 
     specs = gridded_set
+    update_rate = len(specs) / Bar.setup(toolbar_width=74) + 1
     p = Pool(8)
     results = p.map(stretch_fit_helper, range(len(specs)))
     p.close()
+    Bar.done(mapped=True)
     
     pix_coeffs = []
     xcs = []
@@ -969,6 +996,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
 
 # TODO -- REFIT Wavelengths given a good guess
 
+# Linelist for calib lamps (currently not using He)
 linelist = {
     "He": [587.5, 667.8, 706.5],
     "Cd": [467.8, 479.9, 508.5],
@@ -980,119 +1008,192 @@ def snap_solution_into_place(PARS):
     ''' Return new Chebyshev coefficients for best fit wavelength solution '''
 
     if PARS is None:
-        return (None, None)
+        return (None, None, None)
     ixs, coef, lamp_spec = PARS
 
+    # Use 5-parameter Gaussian to fit line peaks
     fitfun = NPK.Fit.gaussian5
     resfun = NPK.Fit.mpfit_residuals(fitfun)
 
 
-    def fitlinelist(cc):
+    def fitlinelist(cc, printout=False):
+        ''' Fit a line list using input coefficients as a first guess at
+        dispersion function. 
+        
+        INPUTS:
+        
+        cc - Chebyshev coeffs to use
+        
+        KEYWORDS:
+        
+        printout - set to True to get running status on line-fitting
+        '''
+        
+        # Initial solution
         lams = chebval(ixs, cc)
         
-
-        #pl.figure(1)
-        #pl.clf()
+        # array for results
         results = []
-        wresults = []
+        
+        # Loop over lamps: Hg, Xe, Cd, He?
         for lampname, lampspec in lamp_spec.iteritems():
-            #pl.step(ixs, lampspec, where='mid')
-
+            
+            # Loop over lines for the given lamp
             for line in linelist[lampname]:
                 
+                # Find the appropriate line
                 lix = np.argmin(np.abs(line-lams))
-
+                
+                # Avoid ends
                 if lix < 5 or lix > (len(ixs)-5): continue
-
+                
+                # Get sub-array of spectrum
                 cutout = slice(lix-4, lix+4)
-                xct = ixs[cutout]
-                sct = lampspec[cutout]
-
+                xct = ixs[cutout]               # Position (x)
+                sct = lampspec[cutout]          # Flux (y)
+                
+                # Initial guess for fit
                 parguess = [
                     {'value': sct.max()-sct.min()},  # Scale
                     {'value': xct[sct.argmax()]}, # Centroid!!
                     {'value': 1.2}, # Sigma
                     {'value': sct.min()},# offset
                     {'value': 0}]  # slope
-
+                
+                # Do the fitting
                 pars = NPK.Fit.mpfit_do(resfun, xct, sct, parguess,
                     error=np.sqrt(np.abs(sct)))
+                # Skip bad fits
                 if pars.status != 1: continue
-
+                
+                # Gather results for each line in the spectrum
                 results.append((line, pars.params[1], pars.perror[1]))
-            
+                
+                # Print results
+                if printout:
+                    out_str = "\rLine: %7.2f nm, Xpos: %8.3f px, Error: %6.3f px" % (line, pars.params[1], pars.perror[1])
+                    print out_str,
+                    sys.stdout.flush()
+            # END: for line in linelist[lampname]:
+        # END: for lampname, lampspec in lamp_spec.iteritems():
 
+        # Convert results into an numpy array
         results = np.array(results)
 
+        # Skip if we only solved for fewer than 3 lines
         if len(results) < 3:
-            return cc, np.nan
+            return cc, np.nan, np.nan
 
-        LS = results[:,0]
-        IXS = results[:,1]
-        WS = results[:,2]
+        # Break out the parameters
+        LS = results[:,0]       # Reference wavelength
+        IXS = results[:,1]      # Pixel position of line centroid
+        WS = results[:,2]       # Error in position in pixels
 
-        #for IX in IXS: pl.axvline(IX,color='red')
-
+        # Calculate number of coefficients to use in fit
         nc = len(LS)-1
         if nc > 5: nc = 4
+
+        # Fit dispersion function
         newcoef = chebfit(IXS, LS, nc, w=WS)
-        res = np.abs(chebval(IXS, newcoef) - LS)/LS
 
-        if res[LS==365] < 200: 
-            sl = np.where(LS==365)[0]
-            np.delete(IXS, sl)
-            np.delete(LS, sl)
+        # Residuals
+        res = np.abs(chebval(IXS, newcoef) - LS)
+        nres = res/LS
 
-            newcoef = chebfit(IXS, LS, nc, w=WS)
-            res = np.abs(chebval(IXS, newcoef) - LS)/LS
+        # Error checking on 365 nm line (not currently used)
+        #if nres[LS==365] < 200: 
+        #    sl = np.where(LS==365)[0]
+        #    np.delete(IXS, sl)
+        #    np.delete(LS, sl)
+        #    np.delete(WS, sl)
 
-        return newcoef,res
+        #    newcoef = chebfit(IXS, LS, nc, w=WS)
+        #    res = np.abs(chebval(IXS, newcoef) - LS)
+        #    nres = res/LS
+
+        return newcoef,nres,res
+    # END: def fitlinelist(cc, printout=False):
 
 
-    newcoef,res = fitlinelist(coef)
-    newcoef,newres = fitlinelist(newcoef)
-    newcoef,newres = fitlinelist(newcoef)
-    #pl.figure(2)
-    #pl.clf()
+    # Iterate three times on fitting dispersion function
+    newcoef,nres,res = fitlinelist(coef)
+    newcoef,newnres,newres = fitlinelist(newcoef)
+    newcoef,newnres,newres = fitlinelist(newcoef, printout=True)
 
-    #pl.figure(2)
-    #pl.plot(chebval(ixs, newcoef), lamp_spec['Hg'])
-    #for line in linelist["Hg"]: pl.axvline(line, color='red')
-
-    return newcoef, np.sqrt(np.mean(res*res))
+    # return the coefs and the RMS (normalized and unnormalized)
+    return newcoef, np.sqrt(np.mean(newnres*newnres)), np.sqrt(np.mean(newres*newres))
 
 def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
+    ''' Get a global solution for dispersion function using Hg, Xe, possibly Cd data
+    '''
     
+    # Data structure for passing to fitting function
     PARS = []
+
+    # Loop over extractions in fine
     for i in xrange(len(fine)):
+
+        # Add an empty record
         PARS.append(None)
         
+        # Skip bad extractions
         if fine[i].xrange is None: continue
         if fine[i].mdn_coeff is None: continue
 
+        # Get X values
         ixs = np.arange(*fine[i].xrange)
+        # Get starting coeffs
         coef = fine[i].mdn_coeff
+        # Start with Hg and Xe spectra
         lamp_spec = {"Hg": fine[i].specw, 
             "Xe": Xes[i].specw}
 
+        # Add Cd and/or He if we have them
         if Cds is not None: lamp_spec["Cd"] = Cds[i].specw
         if Hes is not None: lamp_spec["He"] = Hes[i].specw
 
+        # Populate with X-values, coefficients, and spectra
         PARS[-1] = (ixs, coef, lamp_spec) 
+    # END: for i in xrange(len(fine)):
 
 
+    # Map onto thread pool
     p = Pool(8)
     results = p.map(snap_solution_into_place, PARS)
     p.close()
+    print ""
 
+    # Calculate diagnostics of fits
+    min_rms = 1.e9
+    max_rms = 0.
+    good_rms = []
+
+    # loop over fits
     for i, res in enumerate(results):
-        fine[i].lamcoeff = res[0]
-        fine[i].lamrms = res[1]
+
+        # Re-populate fine cube
+        fine[i].lamcoeff = res[0]       # Fit coefficients
+        fine[i].lamnrms = res[1]        # Normalized RMS
+        fine[i].lamrms = res[2]         # Un-normalized RMS (nm)
+
+        # If we have a good fit
+        if fine[i].lamrms is not None:
+
+            # Compile residuals
+            good_rms.append(res[2])
+            if (res[2] > max_rms):
+                max_rms = res[2]
+            if (res[2] < min_rms and res[2] > 0.):
+                min_rms = res[2]
+    # END: for i, res in enumerate(results):
         
+    # Calculated and report RMS statistics
+    avg_rms = np.nanmean(good_rms)
+    print "<RMS>: %8.3f nm, RMS(min): %8.3f nm, RMS(max): %8.3f nm" % (avg_rms, min_rms, max_rms)
+    print ""
 
     return fine
         
-
 
 def fit_he_lines(SS, guesses = {587.5: -18, 667.8: -48, 706.5: -60}, plot=False,
     Ncutout=7):
@@ -1110,7 +1211,7 @@ def fit_xe_lines(SS, guesses = {764: -77, 828: -93}, plot=False, Ncutout=5):
     return fit_known_lines(SS, guesses, plot, Ncutout)
 
 def fit_known_lines(SS, guesses, plot, Ncutout):
-    ''' Fit lines based on guess pixel positions against a fiducial spectrum 
+    ''' Fit line positions based on guess pixel positions against a fiducial spectrum 
 
     This function is mapable
     
@@ -1129,19 +1230,27 @@ def fit_known_lines(SS, guesses, plot, Ncutout):
     '''
 
     if SS is None: return None
+
+    # Break out parameters
     spix, spec = SS
 
+    # Array for results
     res = []
+
+    # Use 5-parameter Gaussian to fit line peaks
     fitfun = NPK.Fit.gaussian5
     resfun = NPK.Fit.mpfit_residuals(fitfun)
 
 
+    # Loop over lines to fit
     for lam, guesspos in guesses.iteritems():
         
+        # Get sub-array of line to fit
         cutout = np.where(np.abs(spix - guesspos) < Ncutout)[0]
-        xct = spix[cutout]
-        sct = spec[cutout]
+        xct = spix[cutout]      # Line position (X)
+        sct = spec[cutout]      # Line flux (Y)
 
+        # Initial guess at fit parameters
         parguess = [
             {'value': sct.max()-sct.min()},  # Scale
             {'value': xct[sct.argmax()]}, # Centroid!!
@@ -1149,19 +1258,19 @@ def fit_known_lines(SS, guesses, plot, Ncutout):
             {'value': sct.min()},# offset
             {'value': 0}]  # slope
 
+        # Do the peak fitting
         pars = NPK.Fit.mpfit_do(resfun, xct, sct, parguess)
+
+        # Skip bad fits
         if pars.status != 1: continue
+
+        # Store results: ref wavelength, and centroid
         res.append([lam, pars.params[1]])
+    # END: for lam, guesspos in guesses.iteritems():
 
-        if plot:
-            pl.plot(xct, sct, 'o')
-            pl.plot(xct, fitfun(pars.params, xct))
-
-    if plot:
-        import pdb
-        pdb.set_trace()
-        pl.clf()
+    # Convert results into numpy array
     res = np.array(res)
+
     return res
 
 
@@ -1177,6 +1286,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
 
     '''
 
+    # Verify that all extractions share the same dimensionality
     assert(len(hg_spec) > 500)
     assert(len(hg_spec) == len(xe_spec))
     if cd_spec is not None:
@@ -1187,12 +1297,18 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     assert(len(xxs) == len(hg_spec))
 
 
+    # Arrays in which to accumulate extracted spectra
     Hgs = []
     Xes = []
     Cds = []
     Hes = []
+
     print "Stretching spectra"
+
+    # Loop over extracted spectra
     for i in xrange(len(hg_spec)):
+
+        # Placeholders for bad extractions
         if hg_spec[i] is None or xxs[i] is None:
             Hgs.append(None)
             Xes.append(None)
@@ -1200,68 +1316,99 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
             Hes.append(None)
             continue
 
+        # Stretch using Hg and Xe
         s1, s2 = get_stretched(fiducial, xxs[i], hg_spec[i],
                                 spec2=xe_spec[i])
 
+        # Stretch using Hg and Cd
         if cd_spec is not None:
             s1, s3 = get_stretched(fiducial, xxs[i], hg_spec[i],
                                 spec2=cd_spec[i])
+            # Store stretched Cd spectra
             Cds.append( (fiducial, s3) )
         
+        # Stretch using Hg and He
         if he_spec is not None:
             s1, s4 = get_stretched(fiducial, xxs[i], hg_spec[i],
                                 spec2=he_spec[i])
+            # Store stretched He spectra
             Hes.append( (fiducial, s4) )
 
+        # Store stretched Hg, Xe spectra
         Hgs.append( (fiducial, s1) )
         Xes.append( (fiducial, s2) )
 
 
+    # Now find all the line centroids in stretched spectra
+
+    # Start with Hg
     p = Pool(8)
-    print "Fitting Hg lines"
+    print "Getting Hg line positions"
     hg_locs = p.map(fit_hg_lines, Hgs)
     p.close()
+
+    # Now get Xe lines
     p = Pool(8)
-    print "Fitting Xe lines"
+    print "Getting Xe line positions"
     xe_locs = p.map(fit_xe_lines, Xes)
     p.close()
     
+    # Cd next, if present
     if cd_spec is not None:
         p = Pool(8)
-        print "Fitting Cd lines"
+        print "Getting Cd line positions"
         cd_locs = p.map(fit_cd_lines, Cds)
         p.close()
 
+    # Finally He, if present
     if he_spec is not None:
         p = Pool(8)
-        print "Fitting He lines"
+        print "Getting He line positions"
         he_locs = p.map(fit_he_lines, Hes)
         p.close()
 
+    # Now fit all lines for dispersion function
     print "Determining best fit to all lines"
+
+    # Store results
     fits = []
     residuals = []
     rss = []
-    pl.figure(3)
-    pl.clf()
+
+    # Accumulate fit statistics
+    mean_rms = 0.
+    max_rms = 0.
+    min_rms = 1.e9
+
+    # Loop over spectra
     for i in xrange(len(hg_spec)):
+
+        # Placeholders for results
         fits.append(None)
         rss.append(None)
+
+        # Get Hg, Xe positions
         hg = hg_locs[i]
         xe = xe_locs[i]
 
+        # Ancillary positions, if supplied
         if cd_spec is not None: cd = cd_locs[i]
         if he_spec is not None: he = he_locs[i]
 
+        # Check to be sure our data are good
         if hg is None: continue
         if xe is None: continue
         if cd_spec is not None and cd is None: continue
         if he_spec is not None and he is None: continue
 
+        # Create fitting input vectors
         try:
-            ll = np.concatenate([hg[:,0], xe[:,0]])
-            ix = np.concatenate([hg[:,1], xe[:,1]])
+            
+            # Start with Hg, Xe
+            ll = np.concatenate([hg[:,0], xe[:,0]])     # Wavelengths
+            ix = np.concatenate([hg[:,1], xe[:,1]])     # Positions
 
+            # Add Cd and He if supplied
             if cd_spec is not None:
                 ll = np.concatenate([ll, cd[:,0]])
                 ix = np.concatenate([ix, cd[:,1]])
@@ -1269,28 +1416,34 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
                 ll = np.concatenate([ll, he[:,0]])
                 ix = np.concatenate([ix, he[:,1]])
 
+        # Skip if we can't concatenate
         except:
             continue
+
+        # Get fitting weights
         weights = np.ones(len(ll))
-        weights[ll<400] = 0.03
-        weights[ll>860] = 0.1
+        weights[ll<400] = 0.03          # Lower weight for extreme blue
+        weights[ll>860] = 0.1           # Lower weight for extreme red
         
-
-        if i == 50: 
-            print ix
-            print ll
-
+        # Calculate number of coefficients for fit
         nc=3
         if len(ll) < 5: nc=2
+
+        # Fit dispersion
         ff = chebfit(ix, ll, nc, w=weights)
 
+        # Store fit coefficients
         fits[-1] = ff
 
+        # Calculate residuals
         res = {}
         for jx, l in enumerate(ll): res[l] = chebval(ix[jx], ff) - l
         residuals.append(res)
 
         rss[-1] = np.sqrt(np.sum((chebval(ix, ff) - ll)**2))
+        mean_rms += rss[-1]
+        if rss[-1] < min_rms: min_rms = rss[-1]
+        if rss[-1] > max_rms: max_rms = rss[-1]
 
         if False:
             pl.figure(3)
@@ -1317,6 +1470,10 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
         YS.append(y)
         CS.append(c)
 
+
+    mean_rms = mean_rms / (1. * len(hg_spec))
+    print "<RMS>: %8.3f nm, RMS(min): %8.3f nm, RMS(max): %8.3f nm" % (mean_rms, min_rms, max_rms)
+    print ""
 
     return np.array(fits), residuals, np.array(rss), (XS, YS)
 
@@ -1391,7 +1548,7 @@ def plot_grid(grid, Xes=None):
 
 
 def rough_grid_helper(ix):
-    global extractions, lines
+    global extractions, lines, n_ext, tot_std, min_std, max_std
 
     ex = extractions[ix]
 
@@ -1412,18 +1569,31 @@ def rough_grid_helper(ix):
     ys = np.array(ys)
 
     if len(xs) == 0: 
-        print ex.xrange, ex.yrange, ex.hg_lines
+        #print ex.xrange, ex.yrange, ex.hg_lines
         return
     
-    coef = chebfit(xs,ys,2)
-    vals = chebval(xs, coef)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", np.polynomial.polyutils.RankWarning)
+        coef = chebfit(xs,ys,2)
+        vals = chebval(xs, coef)
 
     ex.hgcoef = coef
     err = (vals - ys)
     
     ix = np.arange(len(ex.specw))
 
-    print "%4.4i: rough RMS: %f nm" % (ex.seg_id, np.mean(err))
+    rough_std = np.std(err)
+    tot_std += rough_std
+    n_ext += 1
+    if (rough_std > max_std):
+        max_std = rough_std
+    
+    if (rough_std < min_std):
+        min_std = rough_std
+
+    #outstr = "\r%4.4i: rough RMS: %6.3f nm" % (ex.seg_id, np.std(err))
+    #print outstr,
+    #sys.stdout.flush()
 
 
 
@@ -1432,19 +1602,25 @@ def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578],
     outname='rough_wavelength.npy'):
     '''Shift the extractions onto a coarse common pixel grid'''
 
-    global extractions, lines
+    global extractions, lines, n_ext, tot_std, min_std, max_std
 
     extractions = data
     lines = the_lines
-
+    tot_std = 0.
+    min_std = 1.e9
+    max_std = 0.
+    n_ext = 0
 
     map(rough_grid_helper, range(len(extractions)))
+
+    avg_std = tot_std / (1. * n_ext )
+    print "<STD>: %6.3f nm, STD(min): %6.3f nm, STD(max): %6.3f nm" % (avg_std, min_std, max_std)
+    print ""
 
     try:np.save(outname, extractions)
     except: pass
     return extractions
 
-    
 
 def RMS(vec):
     return np.sqrt(np.sum((vec-np.mean(vec))**2))
@@ -1730,11 +1906,6 @@ def save_fitted_ds9(fitted, outname='fine'):
     f.write(ds9)
     f.close()
             
-    
-
-
-
-
 
 def xe_890nm(p, lam):
     '''Xe complex near 890 nm.
@@ -1828,6 +1999,7 @@ if __name__ == '__main__':
     outname = args.outname
 
     if args.step == 'rough':
+        print "\nROUGH WAVELENGTH SOLN"
         hgfits = args.hgfits
         catname = args.hgcat
         catalog = read_catalog(catname)
@@ -1836,6 +2008,7 @@ if __name__ == '__main__':
         hg_spec = find_hg_spectra(catalog, outname=outname)
         assoc_hg_with_flats(spec_loc, hg_spec)
     elif args.step == 'fine':
+        print "\nFINE WAVELENGTH SOLN"
         XeDat = pf.open(args.xefits)
         HgDat = pf.open(args.hgfits)
         if args.cdfits is not None: CdDat = pf.open(args.cdfits)
@@ -1844,20 +2017,30 @@ if __name__ == '__main__':
         else: HeDat = None
         assoc_hg_spec = np.load(args.hgassoc)[0]
 
-        Xe_E = extract(XeDat, assoc_hg_spec, filename="Xe_ext_"+args.outname)
+        print ""
+
+        print "Extracting Hg"
         Hg_E = extract(HgDat, assoc_hg_spec, filename="Hg_ext_"+args.outname)
+
+        print "Extracting Xe"
+        Xe_E = extract(XeDat, assoc_hg_spec, filename="Xe_ext_"+args.outname)
 
         Cd_E = None
         if CdDat is not None:
+            print "Extracting Cd"
             Cd_E = extract(CdDat, assoc_hg_spec, filename="Cd_ext_"+args.outname)
         He_E = None
         if HeDat is not None:
+            print "Extracting He"
             He_E = extract(HeDat, assoc_hg_spec, filename="He_ext_"+args.outname)
 
+        print "Getting rough grid"
         gridded = rough_grid(Hg_E)
 
+        print "Getting stretched set for Xe"
         stretchset, fiducial, xcors = stretch_set(gridded, Xe_E)
         fix, f1, f2 = fiducial
+        print "Fitting all lines"
         fits, residuals, rss, locs = fit_all_lines(fix,
                                                     gridded,
                                                     Xe_E,
@@ -1865,10 +2048,13 @@ if __name__ == '__main__':
                                                     cd_spec = Cd_E,
                                                     he_spec = He_E)
 
+        print "Assigning fit to spectra"
         result = assign_fit_to_spectra(Hg_E, gridded, rss, 
                                         fix, stretchset, fits)
 
+        print "Getting median fine grid"
         result = median_fine_grid(result)
+
         print "Snapping solution into place"
         snap_solution_into_place_all(result, Hg_E, Xe_E, Cds=Cd_E, Hes=He_E)
         np.save(args.outname, result)
@@ -1898,6 +2084,7 @@ if __name__ == '__main__':
 
     elif args.step == 'extract':
         
+        print "\nEXTRACTION"
         fitted = np.load(args.fine)
         hdu = pf.open(args.toextract)
         outname = args.outname
@@ -1908,24 +2095,4 @@ if __name__ == '__main__':
         np.save(outname, ww)
         
     sys.exit()
-    
-    
-    #hg_spec = np.load('Hg.txt.npy')[0]
-    ##hg_spec = find_hg_spectra(catalog, outname=outname)
-    ##assoc_hg_spec = assoc_hg_with_flats(spec_loc, hg_spec)
-    #assoc_hg_spec = np.load('assoc_Hg.npy')[0]
-
-    #XeDat = pf.open("Xe.fits")
-    ##S2 = extract(XeDat, assoc_hg_spec, filename="raw_xe_extractions.npy")
-    #S2 = np.load("raw_xe_extractions.npy")
-    ##S = extract(dat, assoc_hg_spec)
-    #extractions = np.load('raw_hg_extractions.npy')
-
-    ##gridded = rough_grid(extractions)
-    #gridded = np.load('gridded.npy')
-    ##fitted = fit_spectra_Hg_Xe(gridded, S2, plot=False)
-    #fitted = np.load('fitted.npy')
-
-    #save_fitted_ds9(fitted)
-
 

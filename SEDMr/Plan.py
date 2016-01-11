@@ -28,7 +28,7 @@ def extract_info(infiles):
 
     headers = []
 
-    update_rate = 1. * len(infiles) / Bar.setup()
+    update_rate = len(infiles) / (Bar.setup() - 1)
     for ix, file in enumerate(infiles):
         if ix % update_rate == 0: Bar.update()
         FF = pf.open(file )
@@ -79,9 +79,9 @@ def identify_observations(headers):
                         Str = "%s%1.1f" % (Str, adcspeed)
                         prefix = ""
                         suffix = ""
-		    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str or "dome" in Str:
-			prefix = "b_"
-			suffix = ""
+                    elif "Xe" in Str or "Hg" in Str or "Cd" in Str or "Ne" in Str or "dome" in Str:
+                        prefix = "b_"
+                        suffix = ""
                     else:
                         prefix = "crr_b_"
                         suffix = ""
@@ -134,11 +134,10 @@ def identify_observations(headers):
 make_preamble = '''
 PY = ~/spy
 PYC = ~/kpy/SEDM
-EXTSINGLE =  $(PY) $(PYC)r/Extracter.py 
+EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
 ATM =  $(PY) $(PYC)r/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)r/Extracter.py 
+EXTPAIR =  $(PY) $(PYC)r/Extractor.py 
 FLEXCMD = $(PY) $(PYC)r/Flexure.py
-DEBIAS = $(PY) $(PYC)r/Debias.py
 IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
 PLOT = $(PY) $(PYC)r/Check.py
 
@@ -163,8 +162,10 @@ bs_crr_b_%.gz : crr_b_%
 flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
 
-%_SEDM.pdf : sp_%.fits.npy
+%_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
+
+.PHONY: cleanstds newstds
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -209,9 +210,11 @@ bs_twilight.fits.gz: twilight.fits fine.npy
 bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits
 
-flat-dome-700to900.npy: cube.npy dome.fits
-\t$(PY) $(PYC)r/Extracter.py cube.npy --A dome.fits --outname dome
-\t$(PY) $(PYC)r/Flat.py dome.npy
+dome.npy:
+	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
+
+flat-dome-700to900.npy: cube.npy dome.npy
+	$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy
 cube: cube.npy
@@ -221,6 +224,13 @@ flex: back $(FLEX)
 $(FLEX): cube.npy
 	$(eval OUTNAME = $(subst .gz,,$@))
 	$(FLEXCMD) cube.npy $(subst flex_,,$(subst npy,fits,$@)) --outfile $(OUTNAME)
+
+stds: flat-dome-700to900.npy std-correction.npy
+
+cleanstds:
+	rm -f std-correction.npy Standard_Correction.pdf
+
+newstds: cleanstds stds
 
 '''
 
@@ -236,7 +246,7 @@ def MF_imcombine(objname, files, dependencies=""):
     second = "\t$(IMCOMBINE) --outname %s.fits --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (objname, reject, filelist)
 
     if "bias" not in objname and "dome" not in objname:
-	second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
+        second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
 
     return  first+second+"\n"
 
@@ -262,7 +272,7 @@ cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 ''' % tp
     second = '''corr_%(outname)s: %(outname)s
-\t$(ATM) CORR --A %(outname)s.gz --std %(objname)s --outname corr_%(outname)s\n''' %  tp
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n''' %  tp
     fn = "%(outname)s" % tp
 
     if standard is None: return first+"\n", fn
@@ -344,9 +354,9 @@ def to_makefile(objs, calibs):
                             obsfile, 
                             standard=standard)
                         MF += m
-			# don't need these in all: dependants of target "stds"
+                        # don't need these in all: dependants of target "stds"
                         # all += a + " "
-			stds_dep += a + " "
+                        stds_dep += a + " "
 
                 else: standard = None
                 continue
@@ -358,9 +368,9 @@ def to_makefile(objs, calibs):
 
                 MF += m
                 all += a + " "
-
-		if not objname.startswith("STD-"):
-			sci += a + " "
+                
+                if not objname.startswith("STD-"):
+                    sci += a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -373,9 +383,9 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
-
-		    if not objname.startswith("STD-") and not objname.startswith("STOW"):
-			    sci += a + " "
+                    
+                    if not objname.startswith("STD-") and not objname.startswith("STOW"):
+                        sci += a + " "
             '''
             elif len(obsfiles) == 2:
                 m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
@@ -394,12 +404,11 @@ def to_makefile(objs, calibs):
 
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
-    science = "\n\nscience: %s" % sci
-    corr = "\nstd-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files s*_STD*npy \n\n" % stds_dep
+    science = "\n\nscience: %s\n" % sci
+    corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
-    f.write(preamble + "stds: flat-dome-700to900.npy std-correction.npy\n" +
-        "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
-        corr + MF + "\n" + flexures)
+    f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) + "\n" +
+        MF + "\n" + flexures)
     f.close()
 
 def make_plan(headers):

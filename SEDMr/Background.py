@@ -58,7 +58,7 @@ def background_subtract(KT, objpos=None, radius=100,
 
         if ix in exclude: continue
         if not e.ok: continue
-        if e.lamrms > 1: continue
+        if e.lamnrms > 1: continue
         if e.xrange[1] - e.xrange[0] < 200: continue
         if e.yrange[1] < 0 : continue
         if e.yrange[0] < 0 : continue

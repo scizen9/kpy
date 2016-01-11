@@ -5,10 +5,10 @@ import numpy as np
 import pylab as pl
 import pyfits as pf
 import sys
+import warnings
 
 
 import NPK.Fit as FF
-import NPK.Bar as Bar
 from astropy.table import Table 
 
 
@@ -27,10 +27,12 @@ reload(FF)
 reload(Extraction)
 reload(Wavelength)
 
+fid_wave = Wavelength.fiducial_wavelength()
+
 
 def measure_flat(extraction, meta, 
         lamstart=700,
-        lamend=850,
+        lamend=900,
         outfile='flat.npy'):
 
 
@@ -46,12 +48,14 @@ def measure_flat(extraction, meta,
         try: l,f = e.get_flambda()
         except: continue
 
-        X = np.argmin(np.abs(l-656))
+        X = np.argmin(np.abs(l-fid_wave))
         Xs.append(e.xrange[0] + X)
         Ys.append(np.mean(e.yrange))
 
         ROI = (l>lamstart) & (l <= lamend)
-        fc.correction = np.nanmean(f[ROI])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            fc.correction = np.nanmean(f[ROI])
 
     vals = [f.get_correction(0) for f in corrections]
     medval = np.median(vals)
@@ -99,3 +103,4 @@ if __name__ == '__main__':
         lamend=args.lamend)
 
     np.save(args.outfile, flat)
+    print "Wrote %s" % args.outfile

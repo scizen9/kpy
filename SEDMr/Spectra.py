@@ -6,11 +6,12 @@ import numpy as np
 import json
 import pyfits
 import scipy.io
-import matplotlib.pyplot as pl
-from matplotlib.backend_bases import KeyEvent 
-from matplotlib.backend_bases import PickEvent
+#import matplotlib.pyplot as pl
+#from matplotlib.backend_bases import KeyEvent 
+#from matplotlib.backend_bases import PickEvent
 import scipy, scipy.spatial
 from numpy.polynomial.chebyshev import chebfit, chebval
+import warnings
 
 def find_ha(cc):
     ix = np.arange(30, 100, .1)
@@ -57,7 +58,7 @@ class Spectra(object):
         self.good_positions = np.array(good_positions)
 
     def to_xyv(self, lmin=500, lmax=700, coefficients='lamcoeff'):
-        ''' Method convers a spetral set into X, Y, and value positions
+        ''' Method converts a spectral set into X, Y, and value positions
         
         X is the location of Ha based on either lambda coefficients or
             median coefficients
@@ -95,7 +96,9 @@ class Spectra(object):
 
             Xs.append(XY[0])
             Ys.append(XY[1])
-            Vs.append(np.median(el.spec[ok]))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                Vs.append(np.median(el.spec[ok]))
         
 
         return (np.array(Xs),

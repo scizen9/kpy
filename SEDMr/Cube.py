@@ -16,6 +16,9 @@ import sys
 sys.setrecursionlimit(10000)
 
 
+# reference wavelength for X positions
+fid_wave = Wavelength.fiducial_wavelength()
+
 scale = 1.0
 H2P = np.array([[np.sqrt(3), np.sqrt(3)/2], [0, 3/2.]]) * scale
 P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]]) / scale
@@ -102,7 +105,9 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
                     img[x+dx,y+dy,:] = fi
         except: pass
 
-        print x,y
+        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x,y)
+        print outstr,
+        sys.stdout.flush()
 
     back = np.median(allspec, 0)
 
@@ -168,12 +173,15 @@ def extraction_to_cube(exts, outname="G.npy"):
     
     Xs = [None] * len(exts)
     Ys = [None] * len(exts)
-    segids = [el.seg_id for el in exts]
 
     for ext in exts:
         ext.Q_ix = None
         ext.R_ix = None
     
+    n_mdn = 0
+    n_lam = 0
+    n_tot = 0
+
     for ix, ext in enumerate(exts):
         # The X/Y location of a lenslet is based on its
         # trace Y position and where the Halpha wavelength
@@ -183,18 +191,21 @@ def extraction_to_cube(exts, outname="G.npy"):
         Xs[ix] = -999
         Ys[ix] = -999
 
-        if ext.mdn_coeff is not None:
-            coeff = ext.mdn_coeff
-        elif ext.lamcoeff is not None: 
+        if ext.lamcoeff is not None:
             coeff = ext.lamcoeff
+            n_lam += 1
+        elif ext.mdn_coeff is not None: 
+            coeff = ext.mdn_coeff
+            n_mdn += 1
         else:
-            print ext.seg_id, ": ", ext.xrange[0], ext.yrange[0]
             continue
+
+        n_tot += 1
 
         ixs = np.arange(*ext.xrange)
         LL = chebval(ixs, coeff)
         
-        ix_ha = np.nanargmin(np.abs(LL-656.3))
+        ix_ha = np.nanargmin(np.abs(LL-fid_wave))
 
         Xs[ix] = ixs[ix_ha]
         Ys[ix] = np.nanmean(ext.yrange)
@@ -214,11 +225,13 @@ def extraction_to_cube(exts, outname="G.npy"):
     exts[Center].Q_ix = 0
     exts[Center].R_ix = 0
 
+    print "IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot, n_lam, n_mdn)
+
 
     def populate_hex(to_populate):
         ''' Breadth-first search 
 
-            For each spaxel in the datacube this piece of code identified
+            For each spaxel in the datacube this piece of code identifies
             the relative offset based on the rotation matrix defined
             earlier in the file
         '''
@@ -227,10 +240,12 @@ def extraction_to_cube(exts, outname="G.npy"):
         Dists, Ixs = tree.query(v, 7)
         Tfm = P2H * ROT / np.median(Dists) * 2
 
+        # Trim self reference
         if Dists[0] < 2: 
             Dists = Dists[1:]
             Ixs = Ixs[1:]
 
+        # Trim to within 70 pixels
         ok = Dists < 70
         Dists = Dists[ok]
         Ixs = Ixs[ok]
@@ -238,6 +253,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         q_this = exts[to_populate].Q_ix
         r_this = exts[to_populate].R_ix
 
+        # Loop over the current nearest spaxels
         for nix in Ixs:
             # Search around the current hex via a recrusive call
             # to populate_hex
@@ -260,11 +276,12 @@ def extraction_to_cube(exts, outname="G.npy"):
             else:
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                     (exts[nix].R_ix != r_this + rnd[1]):
-                    print "collision: "
-                    print exts[nix].Q_ix, q_this + rnd[0]
+                    print "collision: ",
+                    print exts[nix].Q_ix, q_this + rnd[0], " ",
                     print exts[nix].R_ix, r_this + rnd[1]
                     exts[nix].Q_ix = q_this + rnd[0]
                     exts[nix].R_ix = r_this + rnd[1]
+
 
     populate_hex(Center)
 
@@ -319,14 +336,15 @@ if __name__ == '__main__':
     infile = args.extracted
 
     if step == 'make':
-        print "MAKING"
+        print "\nMAKING cube from %s " % infile
         ext = np.load(infile)
         cube = extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
-        print "EXTRACTING"
+        print "\nEXTRACTING from %s " % infile
         ext,meta = np.load(infile)
         QR_to_img(ext, Size=2, outname=args.outname)
     elif step == 'dump':
+        print "\nDUMPING from %s to dump.txt" % infile
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])
