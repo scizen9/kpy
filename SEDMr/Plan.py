@@ -1,6 +1,5 @@
 
 import argparse
-import pdb
 import numpy as np
 import pylab as pl
 import pyfits as pf
@@ -28,15 +27,18 @@ def extract_info(infiles):
 
     headers = []
 
+    print "-- Ingesting headers --"
     update_rate = len(infiles) / (Bar.setup() - 1)
+    if update_rate <= 0: update_rate = 1
     for ix, file in enumerate(infiles):
         if ix % update_rate == 0: Bar.update()
-        FF = pf.open(file )
+        FF = pf.open(file)
         FF[0].header['filename'] = file
         if 'JD' not in FF[0].header:
             #print "Skipping %s" % file
             continue
         headers.append(FF[0].header)
+        FF.close()
     
     Bar.done()
     
@@ -99,6 +101,7 @@ def identify_observations(headers):
 
         if "Focus:" in obj: continue
         if "dark" in obj: continue
+        if "Calib" in obj: continue
         if "STOW" in name: continue
         if obj.rstrip() == "": continue
         name= name.replace(" ", "_")
@@ -109,7 +112,6 @@ def identify_observations(headers):
         name= name.replace("/", "_")
         name= name.replace(":", "_")
 
-        
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
             cnt = objcnt.get(name, 0) + 1
@@ -118,15 +120,22 @@ def identify_observations(headers):
             vals[cnt] = [fname]
             objs[name] = vals
         else:
-            try: cnt = objcnt[name]
-            except: 
-                import pdb
-                pdb.set_trace()
+            cnt = objcnt[name]
             objs[name][cnt].append(fname)
 
-    print "-- Calibrations --"
+    print "\n-- Calibrations --"
     for k,v in calibs.iteritems():
         print "%15s : %2.0i" % (k, len(v))
+
+    print "\n-- Standard Star Sets --"
+    for k,v in objs.iteritems():
+        if "STD-" in k:
+            print "%20s : %2.0i" % (k, len(v))
+
+    print "\n-- Science Object Sets --"
+    for k,v in objs.iteritems():
+        if "STD-" not in k:
+            print "%20s : %2.0i" % (k, len(v))
 
     return objs, calibs
 
@@ -358,7 +367,15 @@ def to_makefile(objs, calibs):
                         # all += a + " "
                         stds_dep += a + " "
 
-                else: standard = None
+                else:
+                    standard = None
+
+                    for ix, obsfile in enumerate(obsfiles):
+                        m,a = MF_single(objname, "%i_%i" % (obsnum, ix), 
+                            obsfile, 
+                            standard=standard)
+                        MF += m
+                        sci += a + " "
                 continue
 
             # Handle science targets

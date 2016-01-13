@@ -318,8 +318,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
     # average of all spectra selected
     # I wonder if this should be a weighted mean?
-    medspec = np.mean(s_grid, 0)
-
+    #medspec = np.mean(s_grid, 0)
+    medspec = np.nanmean(s_grid, axis=0)
 
     # Output figures if requested
 
