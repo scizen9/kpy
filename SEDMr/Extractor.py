@@ -20,6 +20,10 @@ import NPK.Util
 import NPK.Standards as Stds
 import NPK.Atmosphere as Atm
 
+#Nadia imports
+import SEDMrph.zeropoint as zeropoint
+from scipy.interpolate import griddata
+import scipy.optimize as opt
 
 def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     ''' Return list of (X,Y) positions indicating trace of atmospheric dispersion
@@ -62,6 +66,84 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     print "DX %2.1f, DY %2.1f, D %2.1f" % (DX, DY, np.sqrt(DX*DX + DY*DY))
     return positions
 
+def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None, lmin=400, lmax=900, airmass=1.0):
+    ''' 
+     Returns index of spectra picked by Guassian fit.
+    
+    NOTE: Index is counted against the array, not seg_id
+    '''
+    pl.ioff()
+    
+    KT = SS.Spectra(spectra)   
+    
+    Xs, Ys, Vs = KT.to_xyv(lmin=lmin, lmax=lmax)
+    
+    xi = np.linspace(np.nanmin(Xs),np.nanmax(Xs),100)
+    yi = np.linspace(np.nanmin(Ys),np.nanmax(Ys),200)
+    
+    X, Y = np.mgrid[np.nanmin(Xs):np.nanmax(Xs):100j, np.nanmin(Ys):np.nanmax(Ys):200j]
+
+    points = zip(Xs, Ys)
+    values = Vs
+    
+    grid_Vs = griddata(points, values, (X, Y), method='nearest')
+    grid_Vs[np.isnan(grid_Vs)] = np.nanmean(grid_Vs)
+    print "grid_Vs min, max, mean: %f, %f, %f" % (np.nanmin(grid_Vs), np.nanmax(grid_Vs), np.nanmean(grid_Vs))
+    
+    #Initialize the first guess for the Gaussian
+    xo = xi[np.argmax(np.nansum(grid_Vs, axis=1))]
+    yo = yi[np.argmax(np.nansum(grid_Vs, axis=0))]
+    sigma_x = 1.
+    sigma_y = 1.3
+    amplitude = np.nanmax(Vs)
+    
+    #create data
+    initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, np.nanmean(grid_Vs))
+
+    popt, pcov = opt.curve_fit(zeropoint.twoD_Gaussian, (X, Y), grid_Vs.flatten(), p0=initial_guess)
+    xc = popt[1]
+    yc = popt[2]
+    
+    pos  = (xc, yc)
+    a = popt[3]*3.
+    b = popt[4]*3.
+    theta = popt[5]
+    
+    print "PSF FIT on IFU:  X,Y,a,b,theta = ",xc,yc,a,b,theta
+    
+    leff = (lmax+lmin)/2.0
+    
+    if PRLLTC is not None:
+        positions = atm_dispersion_positions(PRLLTC, pos, leff, airmass)
+    else:
+        positions = [pos]
+    
+    all_kix = []
+    for the_pos in positions:
+        all_kix.append( list(find_positions_ellipse( KT.KT.data,  xc, yc, a, b, -theta)))
+
+    all_kix = list(itertools.chain(*all_kix))
+    kix = list(sets.Set(all_kix))
+    print "found this many spaxels: %d" % len(kix)
+    
+    return KT.good_positions[kix], pos, positions, a
+
+def find_positions_ellipse(xy, h, k, a, b, A):
+    '''
+    xy: Vector with pairs [[x0, y0], [x1, y1]] of coordinates.
+    a: semi-major axis of ellipse in X axis.
+    b: semi-minor axis of ellipse in Y axis.
+    h: central point ellipse in X axis.
+    k: central point ellipse in Y axis.
+    A: angle of rotation of ellipse in radians. The angle should rotate clockwise.
+    '''
+    positions = np.arange(len(xy))
+    x = xy[:,0]
+    y = xy[:,1]
+    dist = ((x-h)*np.cos(A)+(y-k)*np.sin(A))**2/(a**2) + \
+        ((x-h)*np.sin(A)-(y-k)*np.cos(A))**2/(b**2)
+    
+    return positions[dist<1]
 
 def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PRLLTC=None, object=object, airmass=1.0):
     ''' Returns index of spectra picked in GUI.
@@ -697,16 +779,19 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
     object = meta['header']['OBJECT'].split()[0]
 
-    sixA, posA, adcpos, radius_used = identify_spectra_gui(E, radius=radius,
-        PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-        lmin=lmin, lmax=lmax, object=object, airmass=meta['airmass'])
-
-    to_image(E, meta, outname, posA=posA, adcpos=adcpos)
-
     if standard is None:
+        sixA, posA, adcpos, radius_used = identify_spectra_gui(E, radius=radius,
+            PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
+            lmin=lmin, lmax=lmax, object=object, airmass=meta['airmass'])
+
         kixA = identify_bgd_spectra(E, posA, inner=radius_used*1.1)
     else:
+        sixA, posA, adcpos, radius_used = identify_spectra_Gauss_fit(E,
+                outname=outname, PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
+                lmin=lmin, lmax=lmax, airmass=meta['airmass'])
         kixA = identify_sky_spectra(E, posA, inner=radius_used*1.1)
+
+    to_image(E, meta, outname, posA=posA, adcpos=adcpos)
 
     # get the mean spectrum over the selected spaxels
     resA = interp_spectra(E, sixA, outname=outname+".pdf", corrfile=corrfile)
@@ -731,6 +816,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     pl.xlim(-30,30)
     pl.scatter(XSA,YSA, color='red', marker='H', linewidth=.1)
     pl.scatter(XSK,YSK, color='green', marker='H', linewidth=.1)
+    pl.title("%d selected spaxels for %s" % (len(XSA), object))
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
     # / End Plot

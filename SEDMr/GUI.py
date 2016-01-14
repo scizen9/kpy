@@ -103,7 +103,7 @@ class PositionPicker(object):
 
     def draw_cube(self):
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0, 
-            cmap=pl.cm.Spectral, vmin=-100, vmax=100)
+            cmap=pl.cm.Spectral, vmin=-300, vmax=300)
             
         pl.ylim(-20,20)
         pl.xlim(-20,20)

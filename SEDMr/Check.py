@@ -13,8 +13,14 @@ import datetime
 import IO
 import NPK.Standards as SS
 
+import os
+import sys
+
  
 def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False, savespec=False):
+
+    if not os.path.isfile(specname):
+        sys.exit("No such file: %s" % specname)
 
     # IO.readspec applies the calibration in the file specified
     print "Calibrating with %s" % corrname
@@ -150,6 +156,9 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
 def checkCube(cubename, showlamrms=False, savefig=False):
     ''' Plot a datacube for checking'''
     
+    if not os.path.isfile(cubename):
+        sys.exit("No such file: %s" % cubename)
+
     cc = np.load(cubename)
 
     Xs = [c.X_as for c in cc]
