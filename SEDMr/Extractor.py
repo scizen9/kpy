@@ -959,6 +959,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         print "rm %s.npy # if you want to recreate extractions" % outname
         E, meta = np.load(outname + ".npy")
         E_var, meta_var = np.load("var_" + outname + ".npy")
+        header = meta['header']
     else:
         print "\nCREATING extractions ..."
         diff = subtract(A,B, outname + ".fits")
@@ -992,7 +993,6 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         meta['utc'] = diff[0].header['utc']
 
         meta['header'] = header
-        object = header['OBJECT'].split()[0]
 
         meta['exptime'] = diff[0].header['exptime']
         np.save(outname, [E, meta])
@@ -1005,6 +1005,8 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
             flat_corrections=flat_corrections)
 
         np.save("var_" + outname, [E_var, meta_var])
+
+    object = header['OBJECT'].split()[0]
 
     sixA, posA, adc_A, radius_used_A = identify_spectra_gui(E, radius=radius,
         PRLLTC=Angle(meta['PRLLTC'], unit='deg'),

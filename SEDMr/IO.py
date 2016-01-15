@@ -30,7 +30,7 @@ def readspec(path, corrname='std-correction.npy'):
 
     if not os.path.isfile(corrname):
         print "Loading old standard correction"
-        corrname = '../../ref/std-correction.npy'
+        corrname = '/scr2/sedm/ref/std-correction.npy'
         
     ss = np.load(path)[0]
 

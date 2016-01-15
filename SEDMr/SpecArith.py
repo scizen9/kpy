@@ -83,7 +83,8 @@ def specAdd(A, B, out):
     result = {}
     for k,v in s_A.iteritems():
         # Skip these
-        if k in ['meta', 'Extinction Correction', 'doc']: continue
+        if k in ['operation', 'meta_1', 'meta_2', 'meta', 'Extinction Correction', 'doc']:
+            continue
         # Are there discrepant dictionaries?
         if k not in s_B:
             raise Exception("A has key %s but B does not. Quitting" % k)
