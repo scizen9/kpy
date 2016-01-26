@@ -26,7 +26,11 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     print "Calibrating with %s" % corrname
     lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname,corrname=corrname)
     
-    lam = lam * 10.     # convert to Angstroms
+    # Convert to Angstrom sized bins
+    lam *= 10.
+    spec /= 10.
+    skyspec /= 10.
+    stdspec /= 10.
 
     # Get header values
     hdr = meta['header']
@@ -78,6 +82,38 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     legend = ["obj",]
     lamz = lam/(1+redshift)
 
+    # See if this is a standard star
+    pred = specname.lstrip("sp_STD-")
+    pred = pred.split("_")[0]
+    pred = pred.lower().replace("+","").replace("-","_")
+    if pred in SS.Standards:
+
+        # Remove nm to Ang conversion (?)
+        spec *= 10.
+        skyspec *= 10.
+        stdspec *= 10.
+
+        # Get reference spectrum
+        standard = SS.Standards[pred]
+        slam = standard[:,0]
+        sflx = standard[:,1] * 1.e-16
+
+        # Calculate ration in select region of spectrum
+        lroi = (lam > 4500) & (lam < 6500)
+        lmed = np.median(spec[lroi])
+
+        sroi = (slam > 4500) & (slam < 6500)
+        smed = np.median(sflx[sroi])
+
+        rat = (lmed/smed)
+
+        # Report offset
+        ratmag = 2.5*np.log10(rat)
+        print "Ref offset (Ref - Obs): %6.2f mag" % ratmag
+
+        # Apply offset for plotting
+        spec = spec / rat
+
     # Smoothing option
     if smoothing == 0:
         pl.step(lamz[OK], spec[OK], linewidth=3)    # Plot data
@@ -97,31 +133,14 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
         pl.step(lamz[OK], stdspec[OK])
         legend.append("err")
 
-    # See if this is a standard star
-    pred = specname.lstrip("sp_STD-")
-    pred = pred.split("_")[0]
-    pred = pred.lower().replace("+","").replace("-","_")
+    # Overplot reference spectrum
     if pred in SS.Standards:
         print "Overplotting %s reference spectrum" % pred
         legend.append("ref")
-
-        standard = SS.Standards[pred]
-        slam = standard[:,0]
-        sflx = standard[:,1] * 1.e-16
-
-        lroi = (lam > 4500) & (lam < 6500)
-        lmed = np.median(spec[lroi])
-
-        sroi = (slam > 4500) & (slam < 6500)
-        smed = np.median(sflx[sroi])
-
-        rat = (lmed/smed)
-        ratmag = 2.5*np.log10(rat)
-        print "Ref offset: %6.2f mag" % ratmag
-
-        sflx = sflx * rat
-
         pl.plot(slam, sflx)
+
+        # Remove plotting offset
+        spec = spec * rat
 
     pl.legend(legend)
 
