@@ -6,21 +6,31 @@ import sys
 import os
 import pyfits as pf
 
+
 def docp(src, dest):
 
+    # Read FITS header
     f = pf.open(src)
     hdr = f[0].header
     f.close()
 
+    # Record copies and standard star observations
     ncp = 0
     nstd = 0
 
+    # Skip test and Focus images
     if 'test' not in hdr['OBJECT'] and 'Focus:' not in hdr['OBJECT']:
+
+        # Copy with preserving metadata (date, etc.)
         shutil.copy2(src, dest)
         print 'copied %s to %s' % (src, dest)
         ncp = 1
+
+        # Check for standard star observations
         if 'STD-' in hdr['OBJECT']:
             nstd = 1
+
+    # Report skipping and type
     else:
         if 'test' in hdr['OBJECT']:
             print 'test file %s not copied' % src
@@ -43,7 +53,7 @@ def proc_bias_crrs(reddir,ncp):
         retcode2 = os.system("~/spy plan ifu*.fits")
         if retcode2 == 0:
 
-            # Make bias subtraction
+            # Make bias + bias subtraction
             if ncp < 4:
                 retcode3 = os.system("make bias")
             else:
@@ -80,10 +90,12 @@ def proc_stds(reddir,ncp):
     ret = False
 
     # Make new stds
+    startTime = time.time()
     retcode = os.system("make newstds")
+    procTime = int(time.time - startTime)
 
     if retcode == 0:
-        print "%d new standard observations processed" % ncp
+        print "%d new standard star observations processed in %d s" % (ncp, procTime)
         ret = True
 
     return ret
@@ -96,7 +108,7 @@ def cpnew(srcdir, destdir='./'):
     # Get list of source files
     srcfiles = glob.glob(srcdir+'/ifu*.fits')
 
-    # Track copies
+    # Record copies and standard star observations
     ncp = 0
     nstd = 0
 
@@ -110,7 +122,7 @@ def cpnew(srcdir, destdir='./'):
             fn = f.split('/')[-1]
             # Call copy
             nc,ns = docp(f,destdir+'/'+fn)
-            # Record copies
+            # Record copies, stds
             ncp += nc
             nstd += ns
 
@@ -154,11 +166,17 @@ def cpcal(dirlist, destdir='./'):
     # Default return value
     ret = False
 
+    # Get current and previous dates
+    sdate = dirlist[-1].split('/')[-1]
+    pdate = dirlist[-2].split('/')[-1]
+
     # Most recent source directory
     srcdir = dirlist[-1]
 
     # Get list of current raw calibration files
-    flist = glob.glob(srcdir+'/ifu*.fits')
+    # (within 10 hours of day changeover)
+    fspec = srcdir+"/ifu%s_0*.fits" % sdate
+    flist = glob.glob(fspec)
 
     # Count calibration types
     bias = 0
@@ -199,10 +217,6 @@ def cpcal(dirlist, destdir='./'):
     # Are we missing anything?
     if bias < 5 or bias2 < 5 or dome < 5 or Xe < 5 or Hg < 3 or Cd < 3:
 
-        # Check previous night's directory
-        sdate = dirlist[-1].split('/')[-1]
-        pdate = dirlist[-2].split('/')[-1]
-
         # If there is a previous night, get those files
         if (int(sdate)-int(pdate)) == 1:
 
@@ -211,8 +225,8 @@ def cpcal(dirlist, destdir='./'):
 
             # Get list of previous night's raw calibration files
             # (within four hours of day changeover)
-            fspec = "/ifu%s_2*.fits" % pdate
-            flist = glob.glob(srcdir+fspec)
+            fspec = srcdir+"/ifu%s_2*.fits" % pdate
+            flist = glob.glob(fspec)
 
             # Loop over file list
             for src in flist:
@@ -272,11 +286,11 @@ def go():
     # Get all raw directories
     rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') if os.path.isdir(d)])
 
-    # Get source directory
+    # Source directory is most recent raw dir
     srcdir = rawlist[-1]
 
-    # Get most recent
-    outdir = '/scr2/sedm/redux/' + srcdir.split('/')[4]
+    # Outpur directory is based on source dir
+    outdir = '/scr2/sedm/redux/' + srcdir.split('/')[-1]
 
     # Make sure reduced directory exists
     if os.path.exists(outdir) == False:
@@ -292,13 +306,22 @@ def go():
 
     # Process calibrations
     if ncp > 0:
+        startTime = time.time()
         if not proc_bias_crrs(outdir,20):
-            sys.exit("Could not do basic processing, stopping")
+            sys.exit("Could not do bias,crrs processing, stopping")
+
+        procbTime = int(time.time() - startTime)
 
         # Process cube
+        startTime = time.time()
         retcode = os.system("make cube.npy")
         if retcode != 0:
-            sys.exit("Could not process cube.npy, stopping")
+            sys.exit("Could not generate cube.npy, stopping")
+
+        proccTime = int(time.time() - startTime)
+
+        # Report times
+        print "Calibration processing took %d s (bias,crrs) and %d s (cube)" % (procbTime, proccTime)
 
     # loop and copy new files
     doit = True
@@ -307,9 +330,14 @@ def go():
             print "waiting...",
             sys.stdout.flush()
             time.sleep(60)
-            print "checking for new files..."
+            print "checking for new ifu images..."
             sys.stdout.flush()
+            startTime = time.time()
             ncp = cpnew(srcdir,outdir)
+            if ncp > 0:
+                procTime = int(time.time() - startTime)
+                print "%d new ifu images process in %d s" % (ncp,procTime)
+                sys.stdout.flush()
 
     except KeyboardInterrupt:
         sys.exit("Exiting")
