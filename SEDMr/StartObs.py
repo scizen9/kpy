@@ -30,6 +30,18 @@ def cal_reset():
     CalProcReady = False
     CalReady = False
 
+def cal_ready(reddir='./'):
+
+    # Global variables
+    global CalReady
+
+    # Do we have all the calibration files?
+    if os.path.exists(reddir+'/cube.npy') and os.path.exists(reddir+'/flat-dome-700to900.npy'):
+        CalReady = True
+    else:
+        CalReady = False
+
+
 def cal_proc_ready():
 
     # Global variables
@@ -142,7 +154,7 @@ def proc_stds(reddir,ncp):
     # Make new stds
     startTime = time.time()
     retcode = os.system("make newstds")
-    procTime = int(time.time - startTime)
+    procTime = int(time.time() - startTime)
 
     if retcode == 0:
         print "%d new standard star observations processed in %d s" % (ncp, procTime)
@@ -180,7 +192,7 @@ def cpnew(srcdir, destdir='./'):
             nstd += ns
 
     # If we copied any files
-    if CalReady:
+    if CalReady and ncp > 0:
         if not proc_bias_crrs(destdir,ncp):
             print "Error processing bias/crrs"
         elif nstd > 0:
@@ -321,8 +333,14 @@ def ObsLoop():
         # Make it
         os.mkdir(outdir)
 
-        # Go there
-        os.chdir(outdir)
+    # Go there
+    os.chdir(outdir)
+
+    # Are there good calibrations there?
+    cal_ready(outdir)
+
+    # If not, process them
+    if not CalReady:
 
         # Copy calibration files from previous date directory
         npre = cpprecal(rawlist, outdir)
@@ -343,10 +361,12 @@ def ObsLoop():
                 time.sleep(60)
 
                 # Check to see if we are definitely after sunset
-                gt = time.gmtime()
-                if gt.tm_hour >= 3:
+                gm = time.gmtime()
+                if gm.tm_hour >= 3:
 
                     # Get earlier calibrations so we can proceed
+                    print "It's getting late! UT(hr) >= 3: %d" % gm.tm_hour
+                    print "Let's get our calibrations from a previous night"
                     ncc = find_recent(outdir,'cube.npy')
                     ncf = find_recent(outdir,'flat-dome-700to900.npy')
 
@@ -359,8 +379,11 @@ def ObsLoop():
                     CalReady = True
                     break
 
+                else:
+                    print "UT(hr) still less than 3: %d" % gm.tm_hour
+
         # Process calibrations if we are using them
-        if CalProcReady:
+        if CalProcReady and not CalReady:
             startTime = time.time()
             if not proc_bias_crrs(outdir,20):
                 sys.exit("Could not do bias,crrs processing, stopping")
@@ -375,48 +398,62 @@ def ObsLoop():
 
             proccTime = int(time.time() - startTime)
 
+            # Process flat
+            startTime = time.time()
+            retcode = os.system("make flat-dome-700to900.npy")
+            if retcode != 0:
+                sys.exit("Could not generate flat-dome-700to900.npy, stopping")
+
+            procfTime = int(time.time() - startTime)
+
             # We are done!
             CalReady = True
 
             # Report times
-            print "Calibration processing took %d s (bias,crrs) and %d s (cube)" % (procbTime, proccTime)
+            print "Calibration processing took %d s (bias,crrs), %d s (cube), and %d s (flat)" % (procbTime, proccTime, procfTime)
         else:
             print "Using previous calibration files cube.npy, flat-dome-700to900.npy"
 
-        # Keep track of no copy
-        nnc = 0
+    else:
+        print "Calibrations already present in %s" % outdir
 
-        # loop and copy new files
-        doit = True
-        try:
-            while doit:
+    # Keep track of no copy
+    nnc = 0
 
-                # Wait a minute
-                print "waiting...",
+    # loop and copy new files
+    doit = True
+    try:
+        while doit:
+
+            # Wait a minute
+            print "waiting...",
+            sys.stdout.flush()
+            time.sleep(60)
+
+            # Check for new ifu images
+            print "checking for new ifu images..."
+            sys.stdout.flush()
+
+            # Record starting time for new file processing
+            startTime = time.time()
+            ncp = cpnew(srcdir,outdir)
+
+            # We copied some new ones so report processing time
+            if ncp > 0:
+                procTime = int(time.time() - startTime)
+                print "%d new ifu images process in %d s" % (ncp,procTime)
                 sys.stdout.flush()
-                time.sleep(60)
+                nnc = 0
+            else:
+                nnc += 1
 
-                # Check for new ifu images
-                print "checking for new ifu images..."
-                sys.stdout.flush()
-
-                # Record starting time for new file processing
-                startTime = time.time()
-                ncp = cpnew(srcdir,outdir)
-
-                # We copied some new ones so report processing time
-                if ncp > 0:
-                    procTime = int(time.time() - startTime)
-                    print "%d new ifu images process in %d s" % (ncp,procTime)
-                    sys.stdout.flush()
-                    nnc = 0
-                else:
-                    nnc += 1
-
+            # Have we been waiting for a while?
+            if nnc > 5:
+                
                 # Check number of no copies and time
                 gm = time.gmtime()
 
-                if nnc > 5 and gm.tm_hour > 15:
+                if gm.tm_hour > 15:
 
                     # No new observations and sun probably up!
                     print "No new images for %d minutes and UT(hr) = %d > 15 so sun probably up!" % (nnc, gm.tm_hour)
@@ -426,12 +463,12 @@ def ObsLoop():
                     # Normal termination
                     ret = True
 
-        # Handle a ctrl-C
-        except KeyboardInterrupt:
-            sys.exit("Exiting")
+                else:
+                    print "No new image for %d minutes but UT(hr) = %d <= 15, so keep waiting" % (nnc, gm.tm_hour)
 
-    else:
-        print "No new directory!"
+    # Handle a ctrl-C
+    except KeyboardInterrupt:
+       sys.exit("Exiting")
 
     return ret
 
