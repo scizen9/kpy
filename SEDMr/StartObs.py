@@ -167,24 +167,44 @@ def cpnew(srcdir, destdir='./'):
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, CalReady
 
-    # Get most recent local ifu image
-    lf = sorted(glob.glob(destdir+'/ifu*.fits'))[-1]
+    # Get files in destination directory
+    dflist = sorted(glob.glob(destdir+'/ifu*.fits'))
 
-    # Get list of source files
-    srcfiles = glob.glob(srcdir+'/ifu*.fits')
+    # Are there any files yet?
+    if len(dflist) > 0:
+
+        # Get most recent local ifu image
+        lf = dflist[-1]
+
+    else:
+        lf = None
 
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
 
+    # Get list of source files
+    srcfiles = glob.glob(srcdir+'/ifu*.fits')
+
     # Loop over source files
     for f in srcfiles:
 
-        # Do we have a newer file in the source dir?
-        if os.stat(f).st_mtime > os.stat(lf).st_mtime:
+        # Do we copy?
+        doCopy = False
 
-            # Get ifu image name
-            fn = f.split('/')[-1]
+        # Get ifu image name
+        fn = f.split('/')[-1]
+
+        if lf is not None:
+            # Do we have a newer file in the source dir?
+            if os.stat(f).st_mtime > os.stat(lf).st_mtime:
+                doCopy = True
+
+        # No files yet in dest, so all in source are needed
+        else:
+            doCopy = True
+
+        if doCopy:
             # Call copy
             nc,ns = docp(f,destdir+'/'+fn)
             # Record copies, stds
@@ -215,7 +235,7 @@ def find_recent(destdir,fname):
     for d in reversed(redlist):
         src = glob.glob(d+'/'+fname)
         if len(src) == 1:
-            shutil.copy2(src, destdir)
+            shutil.copy2(src[0], destdir)
             ret = True
             print "Found %s in directory %s" % (fname, d)
             break
@@ -310,16 +330,13 @@ def cpcal(srcdir, destdir='./'):
     return ncp
 
 
-def ObsLoop():
+def ObsLoop(rawlist=None):
 
     # Global variables
     global CalProcReady, CalReady
 
     # Default return value
     ret = False
-
-    # Get all raw directories
-    rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') if os.path.isdir(d)])
 
     # Source directory is most recent raw dir
     srcdir = rawlist[-1]
@@ -356,7 +373,7 @@ def ObsLoop():
             if not CalProcReady:
 
                 # Wait a minute
-                print "waiting...",
+                print "waiting for new calibration files...",
                 sys.stdout.flush()
                 time.sleep(60)
 
@@ -365,7 +382,7 @@ def ObsLoop():
                 if gm.tm_hour >= 3:
 
                     # Get earlier calibrations so we can proceed
-                    print "It's getting late! UT(hr) >= 3: %d" % gm.tm_hour
+                    print "It's getting late! UT = %02d:%02d >= 03:00" % (gm.tm_hour, gm.tm_min)
                     print "Let's get our calibrations from a previous night"
                     ncc = find_recent(outdir,'cube.npy')
                     ncf = find_recent(outdir,'flat-dome-700to900.npy')
@@ -380,7 +397,7 @@ def ObsLoop():
                     break
 
                 else:
-                    print "UT(hr) still less than 3: %d" % gm.tm_hour
+                    print "UT = %02d:%02d, still less than 03:00, so keep waiting" % (gm.tm_hour, gm.tm_min)
 
         # Process calibrations if we are using them
         if CalProcReady and not CalReady:
@@ -426,7 +443,7 @@ def ObsLoop():
         while doit:
 
             # Wait a minute
-            print "waiting...",
+            print "waiting for new ifu images...",
             sys.stdout.flush()
             time.sleep(60)
 
@@ -448,15 +465,15 @@ def ObsLoop():
                 nnc += 1
 
             # Have we been waiting for a while?
-            if nnc > 5:
+            if nnc > 3:
                 
                 # Check number of no copies and time
                 gm = time.gmtime()
 
                 if gm.tm_hour > 15:
 
-                    # No new observations and sun probably up!
-                    print "No new images for %d minutes and UT(hr) = %d > 15 so sun probably up!" % (nnc, gm.tm_hour)
+                    # No new observations and sun is probably up!
+                    print "No new images for %d minutes and UT = %02d:%02d > 15:00 so sun is probably up!" % (nnc, gm.tm_hour, gm.tm_min)
                     print "Time to hibernate until we have a new raw directory"
                     doit = False
 
@@ -464,7 +481,7 @@ def ObsLoop():
                     ret = True
 
                 else:
-                    print "No new image for %d minutes but UT(hr) = %d <= 15, so keep waiting" % (nnc, gm.tm_hour)
+                    print "No new image for %d minutes but UT = %02d:%02d < 16:00, so keep waiting" % (nnc, gm.tm_hour)
 
     # Handle a ctrl-C
     except KeyboardInterrupt:
@@ -480,26 +497,41 @@ def go():
     # Keep track of iterations
     its = 0
 
-    while dobs:
-        stat = ObsLoop()
-        if stat:
-            its += 1
-            print "Finished SEDM observing iteration %d" % its
-            print "Now we wait until next sunset"
+    # Get all raw directories
+    rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') if os.path.isdir(d)])
+    nraw = len(rawlist)
 
-            waiting = True
-            print "waiting..."
-            while waiting:
-                time.sleep(600)
-                gm = time.gmtime()
-                if gm.tm_hour == 0:
-                    waiting = False
+    try:
+        while dobs:
+            stat = ObsLoop(rawlist)
+            if stat:
+                its += 1
+                print "Finished SEDM observing iteration %d in raw dir %s" % (its, rawlist[-1])
+                print "Now we wait until we get a new raw directory"
 
-        else:
-            print "Try again in 10 minutes"
-            time.sleep(600)
+                waiting = True
+                while waiting:
+                    print "waiting for new raw directory..."
+                    sys.stdout.flush()
+                    time.sleep(600)
 
-    print "SEDM Observing Terminated (for some reason)"
+                    # Get all raw directories
+                    new_rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') if os.path.isdir(d)])
+                    new_nraw = len(new_rawlist)
+                    if new_nraw > nraw:
+                        waiting = False
+                        sys.stdout.flush()
+                        rawlist = new_rawlist
+                        nraw = new_nraw
+                        print "Starting next SEDM observing iteration with raw dir %s" % rawlist[-1]
+                    else:
+                        gm = time.gmtime()
+                        print "UT = %02d:%02d No new directories yet, so keep waiting" % (gm.tm_hour, gm.tm_min)
+                        sys.stdout.flush()
+
+    # Handle a ctrl-C
+    except KeyboardInterrupt:
+       sys.exit("Exiting")
 
 
 if __name__ == '__main__':
