@@ -6,20 +6,60 @@ import sys
 import os
 import pyfits as pf
 
+nbias2 = 0
+nbias = 0
+nXe = 0
+ndome = 0
+nHg = 0
+nCd = 0
+CalProcReady = False
+CalReady = False
+
+def cal_reset():
+
+    # Global variables
+    global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady, CalReady
+
+    # Reset calibration file counters
+    nbias2 = 0
+    nbias = 0
+    nXe = 0
+    ndome = 0
+    nHg = 0
+    nCd = 0
+    CalProcReady = False
+    CalReady = False
+
+def cal_proc_ready():
+
+    # Global variables
+    global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady
+
+    # Do we have all the calibration files?
+    if nbias2 > 5 and nbias > 5 and nXe >= 5 and ndome >= 5 and nHg >= 3 and nCd >= 3:
+        CalProcReady = True
+
 
 def docp(src, dest):
+
+    # Global variables
+    global nbias, nbias2, ndome, nXe, nHg, nCd
 
     # Read FITS header
     f = pf.open(src)
     hdr = f[0].header
     f.close()
 
+    # Get OBJECT and ADCSPEED keywords
+    obj = hdr['OBJECT']
+    speed = hdr['ADCSPEED']
+
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
 
     # Skip test and Focus images
-    if 'test' not in hdr['OBJECT'] and 'Focus:' not in hdr['OBJECT']:
+    if 'test' not in obj and 'Focus:' not in obj:
 
         # Copy with preserving metadata (date, etc.)
         shutil.copy2(src, dest)
@@ -27,8 +67,18 @@ def docp(src, dest):
         ncp = 1
 
         # Check for standard star observations
-        if 'STD-' in hdr['OBJECT']:
+        if 'STD-' in obj:
             nstd = 1
+
+        # Check for calibration files
+        elif 'Calib' in obj:
+            if 'bias' in obj:
+                if speed == 2.0: nbias2 += 1
+                if speed == 0.1: nbias += 1
+            if 'Xe' in obj: nXe += 1
+            if 'dome' in obj: ndome += 1
+            if 'Hg' in obj: nHg += 1
+            if 'Cd' in obj: nCd += 1
 
     # Report skipping and type
     else:
@@ -102,6 +152,9 @@ def proc_stds(reddir,ncp):
 
 def cpnew(srcdir, destdir='./'):
 
+    # Global variables
+    global nbias, nbias2, ndome, nXe, nHg, nCd, CalReady
+
     # Get most recent local ifu image
     lf = sorted(glob.glob(destdir+'/ifu*.fits'))[-1]
 
@@ -127,7 +180,7 @@ def cpnew(srcdir, destdir='./'):
             nstd += ns
 
     # If we copied any files
-    if ncp > 0:
+    if CalReady:
         if not proc_bias_crrs(destdir,ncp):
             print "Error processing bias/crrs"
         elif nstd > 0:
@@ -146,45 +199,78 @@ def find_recent(destdir,fname):
     # Get all but the most recent reduced data directories
     redlist = sorted([d for d in glob.glob('/scr2/sedm/redux/20??????') if os.path.isdir(d)])[0:-1]
 
-    # Go back until we find our file
+    # Go back in reduced dir list until we find our file
     for d in reversed(redlist):
         src = glob.glob(d+'/'+fname)
         if len(src) == 1:
-            ncp = docp(src,distdir+'/'+fname)
-            if ncp == 1:
-                ret = True
-                break
+            shutil.copy2(src, destdir)
+            ret = True
+            print "Found %s in directory %s" % (fname, d)
+            break
 
     return ret
 
-def cpcal(dirlist, destdir='./'):
+def cpprecal(dirlist, destdir='./'):
 
-    # Have we got a calibration already?
-    if os.path.isfile(destdir+'/cube.npy'):
-        return (True, 0)
-
-    # Default return value
-    ret = False
+    # Reset calibration file counters
+    cal_reset()
 
     # Get current and previous dates
     sdate = dirlist[-1].split('/')[-1]
     pdate = dirlist[-2].split('/')[-1]
 
-    # Most recent source directory
-    srcdir = dirlist[-1]
+    # Record how many images copied
+    ncp = 0
+
+    # If there is a previous night, get those files
+    if (int(sdate)-int(pdate)) == 1:
+
+        # Set the previous night as the source directory
+        srcdir = dirlist[-2]
+
+        # Get list of previous night's raw calibration files
+        # (within four hours of day changeover)
+        fspec = srcdir+"/ifu%s_2*.fits" % pdate
+        flist = glob.glob(fspec)
+
+        # Loop over file list
+        for src in flist:
+
+            # Read FITS header
+            f = pf.open(src)
+            hdr = f[0].header
+            f.close()
+
+            # Get OBJECT and ADCSPEED keywords
+            obj = hdr['OBJECT']
+
+            # Filter Calibs and avoid test images
+            if 'Calib' in obj and not 'test' in obj:
+
+                # Copy cal images
+                imf = src.split('/')[-1]
+                nc, ns = docp(src,destdir+'/'+imf)
+                ncp += nc
+
+
+    # Check if we got all the calibration files
+    cal_proc_ready()
+
+    return ncp
+
+
+def cpcal(srcdir, destdir='./'):
+
+    # Get current date
+    sdate = srcdir.split('/')[-1]
 
     # Get list of current raw calibration files
     # (within 10 hours of day changeover)
     fspec = srcdir+"/ifu%s_0*.fits" % sdate
     flist = glob.glob(fspec)
 
-    # Count calibration types
-    bias = 0
-    bias2 = 0
-    dome = 0
-    Xe = 0
-    Hg = 0
-    Cd = 0
+    # Record number copied
+    ncp = 0
 
     # Loop over file list
     for src in flist:
@@ -200,88 +286,25 @@ def cpcal(dirlist, destdir='./'):
 
         # Filter Calibs and avoid test images
         if 'Calib' in obj and not 'test' in obj:
-            if 'bias' in obj:
-                if speed == 2.:
-                    bias2 += 1
-                elif speed == 0.1:
-                    bias += 1
-            if 'dome' in obj: dome += 1
-            if 'Xe' in obj:     Xe += 1
-            if 'Hg' in obj:     Hg += 1
-            if 'Cd' in obj:     Cd += 1
 
             # Copy cal images
             imf = src.split('/')[-1]
-            docp(src,destdir+'/'+imf)
+            nc, ns = docp(src,destdir+'/'+imf)
+            ncp += nc
 
-    # Are we missing anything?
-    if bias < 5 or bias2 < 5 or dome < 5 or Xe < 5 or Hg < 3 or Cd < 3:
+    # Check if calibrations are read
+    cal_proc_ready()
 
-        # If there is a previous night, get those files
-        if (int(sdate)-int(pdate)) == 1:
-
-            # Set the previous night as the source directory
-            srcdir = dirlist[-2]
-
-            # Get list of previous night's raw calibration files
-            # (within four hours of day changeover)
-            fspec = srcdir+"/ifu%s_2*.fits" % pdate
-            flist = glob.glob(fspec)
-
-            # Loop over file list
-            for src in flist:
-
-                # Read FITS header
-                f = pf.open(src)
-                hdr = f[0].header
-                f.close()
-
-                # Get OBJECT and ADCSPEED keywords
-                obj = hdr['OBJECT']
-                speed = hdr['ADCSPEED']
-
-                # Filter Calibs and avoid test images
-                if 'Calib' in obj and not 'test' in obj:
-                    if 'bias' in obj:
-                        if speed == 2.:
-                            bias2 += 1
-                        elif speed == 0.1:
-                            bias += 1
-                    if 'dome' in obj: dome += 1
-                    if 'Xe' in obj:     Xe += 1
-                    if 'Hg' in obj:     Hg += 1
-                    if 'Cd' in obj:     Cd += 1
-
-                    # Copy cal images
-                    imf = src.split('/')[-1]
-                    docp(src,destdir+'/'+imf)
-
-        # Are we missing anything?
-        if bias < 5:
-            if find_recent(destdir,'bias0.1.fits'): bias = 10
-        if bias2 < 5:
-            if find_recent(destdir,'bias2.0.fits'): bias2 = 10
-        if dome < 5:
-            if find_recent(destdir,'dome.fits'): dome = 5
-        if Xe < 5:
-            if find_recent(destdir,'Xe.fits'): Xe = 5
-        if Hg < 3:
-            if find_recent(destdir,'Hg.fits'): Hg = 3
-        if Cd < 3:
-            if find_recent(destdir,'Xe.fits'): Cd = 3
-
-        # We got them all!
-        if bias >= 5 and bias2 >= 5 and dome >= 5 and Xe >= 5 and Hg >= 3 and Cd >= 3:
-            ret = True
-
-    # We got them all!
-    else:
-        ret = True
-
-    return (ret, sum([bias,bias2,dome,Xe,Hg,Cd]))
+    return ncp
 
 
-def go():
+def ObsLoop():
+
+    # Global variables
+    global CalProcReady, CalReady
+
+    # Default return value
+    ret = False
 
     # Get all raw directories
     rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') if os.path.isdir(d)])
@@ -292,56 +315,156 @@ def go():
     # Outpur directory is based on source dir
     outdir = '/scr2/sedm/redux/' + srcdir.split('/')[-1]
 
-    # Make sure reduced directory exists
+    # Do we have a new directory?  This tells us we are observing tonight
     if os.path.exists(outdir) == False:
+
+        # Make it
         os.mkdir(outdir)
 
-    # Go there
-    os.chdir(outdir)
+        # Go there
+        os.chdir(outdir)
 
-    # Copy calibration files
-    stat, ncp = cpcal(rawlist,outdir)
-    if not stat:
-        sys.exit("Could not copy calibrations, stopping")
+        # Copy calibration files from previous date directory
+        npre = cpprecal(rawlist, outdir)
+        if npre > 0:
+            print "bias2.0:%d, bias0.1:%d, dome:%d, Xe:%d, Hg:%d, Cd:%d" % (nbias2, nbias, ndome, nXe, nHg, nCd)
 
-    # Process calibrations
-    if ncp > 0:
-        startTime = time.time()
-        if not proc_bias_crrs(outdir,20):
-            sys.exit("Could not do bias,crrs processing, stopping")
+        # Now loop until we have calibrations we need
+        while not CalProcReady:
+            ncp = cpcal(srcdir, outdir)
+            print "bias2.0:%d, bias0.1:%d, dome:%d, Xe:%d, Hg:%d, Cd:%d" % (nbias2, nbias, ndome, nXe, nHg, nCd)
 
-        procbTime = int(time.time() - startTime)
+            # Not ready yet
+            if not CalProcReady:
 
-        # Process cube
-        startTime = time.time()
-        retcode = os.system("make cube.npy")
-        if retcode != 0:
-            sys.exit("Could not generate cube.npy, stopping")
+                # Wait a minute
+                print "waiting...",
+                sys.stdout.flush()
+                time.sleep(60)
 
-        proccTime = int(time.time() - startTime)
+                # Check to see if we are definitely after sunset
+                gt = time.gmtime()
+                if gt.tm_hour >= 3:
 
-        # Report times
-        print "Calibration processing took %d s (bias,crrs) and %d s (cube)" % (procbTime, proccTime)
+                    # Get earlier calibrations so we can proceed
+                    ncc = find_recent(outdir,'cube.npy')
+                    ncf = find_recent(outdir,'flat-dome-700to900.npy')
 
-    # loop and copy new files
-    doit = True
-    try:
-        while doit:
-            print "waiting...",
-            sys.stdout.flush()
-            time.sleep(60)
-            print "checking for new ifu images..."
-            sys.stdout.flush()
+                    # Check for failure
+                    if not ncc or not ncf:
+                        msg = "Calibration stage failed: cube = %s, flat = %s, stopping" % (ncc, ncf)
+                        sys.exit(msg)
+
+                    # If we get here, we are done
+                    CalReady = True
+                    break
+
+        # Process calibrations if we are using them
+        if CalProcReady:
             startTime = time.time()
-            ncp = cpnew(srcdir,outdir)
-            if ncp > 0:
-                procTime = int(time.time() - startTime)
-                print "%d new ifu images process in %d s" % (ncp,procTime)
+            if not proc_bias_crrs(outdir,20):
+                sys.exit("Could not do bias,crrs processing, stopping")
+
+            procbTime = int(time.time() - startTime)
+
+            # Process cube
+            startTime = time.time()
+            retcode = os.system("make cube.npy")
+            if retcode != 0:
+                sys.exit("Could not generate cube.npy, stopping")
+
+            proccTime = int(time.time() - startTime)
+
+            # We are done!
+            CalReady = True
+
+            # Report times
+            print "Calibration processing took %d s (bias,crrs) and %d s (cube)" % (procbTime, proccTime)
+        else:
+            print "Using previous calibration files cube.npy, flat-dome-700to900.npy"
+
+        # Keep track of no copy
+        nnc = 0
+
+        # loop and copy new files
+        doit = True
+        try:
+            while doit:
+
+                # Wait a minute
+                print "waiting...",
+                sys.stdout.flush()
+                time.sleep(60)
+
+                # Check for new ifu images
+                print "checking for new ifu images..."
                 sys.stdout.flush()
 
-    except KeyboardInterrupt:
-        sys.exit("Exiting")
+                # Record starting time for new file processing
+                startTime = time.time()
+                ncp = cpnew(srcdir,outdir)
+
+                # We copied some new ones so report processing time
+                if ncp > 0:
+                    procTime = int(time.time() - startTime)
+                    print "%d new ifu images process in %d s" % (ncp,procTime)
+                    sys.stdout.flush()
+                    nnc = 0
+                else:
+                    nnc += 1
+
+                # Check number of no copies and time
+                gm = time.gmtime()
+
+                if nnc > 5 and gm.tm_hour > 15:
+
+                    # No new observations and sun probably up!
+                    print "No new images for %d minutes and UT(hr) = %d > 15 so sun probably up!" % (nnc, gm.tm_hour)
+                    print "Time to hibernate until we have a new raw directory"
+                    doit = False
+
+                    # Normal termination
+                    ret = True
+
+        # Handle a ctrl-C
+        except KeyboardInterrupt:
+            sys.exit("Exiting")
+
+    else:
+        print "No new directory!"
+
+    return ret
+
+def go():
+
+    # Infinite loop
+    dobs = True
+
+    # Keep track of iterations
+    its = 0
+
+    while dobs:
+        stat = ObsLoop()
+        if stat:
+            its += 1
+            print "Finished SEDM observing iteration %d" % its
+            print "Now we wait until next sunset"
+
+            waiting = True
+            print "waiting..."
+            while waiting:
+                time.sleep(600)
+                gm = time.gmtime()
+                if gm.tm_hour == 0:
+                    waiting = False
+
+        else:
+            print "Try again in 10 minutes"
+            time.sleep(600)
+
+    print "SEDM Observing Terminated (for some reason)"
 
 
 if __name__ == '__main__':
     go()
+
