@@ -219,7 +219,8 @@ def find_recent(destdir,fname):
         if len(src) == 1:
             shutil.copy2(src[0], destdir)
             ret = True
-            print "Found %s in directory %s" % (fname, d)
+            print("Found %s in directory %s, copying to %s" % 
+                    (fname, d, destdir))
             break
 
     return ret
@@ -270,7 +271,6 @@ def cpcal(srcdir, destdir='./'):
     # (within 10 hours of day changeover)
     fspec = os.path.join(srcdir,"ifu%s_0*.fits" % sdate)
     flist = glob.glob(fspec)
-    print "n files: %d, filespec: %s" % (len(flist), fspec)
     # Record number copied
     ncp = 0
     # Loop over file list
@@ -339,10 +339,13 @@ def ObsLoop(rawlist=None):
                     print "Let's get our calibrations from a previous night"
                     ncc = find_recent(outdir,'cube.npy')
                     ncf = find_recent(outdir,'flat-dome-700to900.npy')
+                    ncb = find_recent(outdir,'bias0.1.fits')
+                    nc2 = find_recent(outdir,'bias2.0.fits')
                     # Check for failure
-                    if not ncc or not ncf:
+                    if not ncc or not ncf or not ncb or not nc2:
                         msg = "Calibration stage failed: cube = %s, " \
-                                "flat = %s, stopping" % (ncc, ncf)
+                                "flat = %s, bias0.1 = %s, bias2.0 = %s, " \
+                                "stopping" % (ncc, ncf, ncb, nc2)
                         sys.exit(msg)
                     # If we get here, we are done
                     CalReady = True
