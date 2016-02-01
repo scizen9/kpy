@@ -1,4 +1,26 @@
+"""Conduct automatic reduction of SEDM data in sedm@pharos.
 
+Usage:
+    ~/spy ~/kpy/SEDMr/StartObs.py
+    no arguments are required, this will run the 'go' function.
+Functions:
+    go      - outer loop waits for new data directory in /scr2/sedm/raw
+    ObsLoop - one night observing loop: processes calibrations and science data
+    cpcal   - copies calibration images into redux directory
+    cpprecal    - copies calibration images from previous day directory
+    find_recent - finds the most recent processed calibration file
+    cpnew       - copies new images files into redux directory
+    proc_stds   - processes standard star observations
+    proc_bias_crrs  - processes biases and CR rejection
+    docp        - low level copy routine that avoids test and focus images
+    cal_proc_ready  - check if all required raw cal images are present
+    cal_ready   - check if all required processed cal files are present
+    cal_reset   - reset the status of calibration files
+Globals:
+    nbias,nbias2,nXe,ndome,nHg,nCd  - current count of raw cal files
+    CalProcReady    - are all required raw cal images present?
+    CalReady        - are all required processed cal files present?
+"""
 import time
 import shutil
 import glob
@@ -17,6 +39,7 @@ CalReady = False
 
 
 def cal_reset():
+    """Reset counts of raw calibration files, and calibration status."""
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady, CalReady
@@ -32,18 +55,22 @@ def cal_reset():
 
 
 def cal_ready(reddir='./'):
+    """Check for all required calibration files in input reduced directory."""
 
     # Global variables
     global CalReady
     # Do we have all the calibration files?
     if (os.path.exists(os.path.join(reddir,'cube.npy')) and 
-            os.path.exists(os.path.join(reddir,'flat-dome-700to900.npy'))):
+            os.path.exists(os.path.join(reddir,'flat-dome-700to900.npy')) and
+            os.path.exists(os.path.join(reddir,'bias0.1.fits')) and
+            os.path.exists(os.path.join(reddir,'bias2.0.fits'))):
         CalReady = True
     else:
         CalReady = False
 
 
 def cal_proc_ready():
+    """Check counts for all required raw cal file types in current directory."""
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady
@@ -54,6 +81,21 @@ def cal_proc_ready():
 
 
 def docp(src, dest):
+    """Low level copy from raw directory to redux directory
+
+    Call:
+        docp(src, dest)
+    Inputs:
+        src     - source file
+        dest    - destination directory
+    Procedure:
+        Checks for raw cal files, standard star observations and
+        increments their respective counters, while avoiding any
+        test and focus images. Uses shutil.copy2 to do the copying.
+    Returns:
+        (ncp, nstd) - number of images copied, number of standard
+        star images copied
+    """
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd
@@ -96,6 +138,16 @@ def docp(src, dest):
 
 
 def proc_bias_crrs(reddir,ncp):
+    """Process biases and CR rejection
+
+    Call:
+        proc_bias_crrs(reddir, ncp)
+    Inputs:
+        reddir  - redux directory in which to process
+        ncp     - number of files to debias and CR clean
+    Returns:
+        True if processing was successful, otherwise False
+    """
 
     # Default return value
     ret = False
@@ -136,6 +188,16 @@ def proc_bias_crrs(reddir,ncp):
 
 
 def proc_stds(reddir,ncp):
+    """Process standard star observations
+
+    Call:
+        proc_stds(reddir, ncp)
+    Inputs:
+        reddir  - redux directory in which to process
+        ncp     - number of files to debias and CR clean
+    Returns:
+        True if processing was successful, otherwise False
+    """
 
     # Default return value
     ret = False
@@ -153,9 +215,24 @@ def proc_stds(reddir,ncp):
 
 
 def cpnew(srcdir, destdir='./'):
+    """Copies new files from srcdir to destdir.
+
+    Call:
+        cpnew(srcdir, destdir) # destdir defaults to current dir ('./')
+    Inputs:
+        srcdir  - source directory (typically in /scr2/sedm/raw)
+        destdir - destination directory (typically in /scr2/sedm/redux)
+    Procedure:
+        Searches for most recent ifu image in destdir and looks for and
+        copies any ifu images in srcdir that are newer and complete.
+        Then bias subtracts and CR rejects the images.  If any are standard
+        star observations, process them as well.
+    Returns:
+        ncp     - Number of ifu images actually copied
+    """
 
     # Global variables
-    global nbias, nbias2, ndome, nXe, nHg, nCd, CalReady
+    global CalReady
     # Get files in destination directory
     dflist = sorted(glob.glob(os.path.join(destdir,'ifu*.fits')))
     # Are there any files yet?
@@ -207,6 +284,19 @@ def cpnew(srcdir, destdir='./'):
 
 
 def find_recent(destdir,fname):
+    """Find the most recent version of fname and copy it to destdir
+
+    Call:
+        find_recent(destdir,fname)
+    Inputs:
+        destdir - where the file should go
+        fname   - what file to look for
+    Procedure:
+        Look through sorted list of redux directories to find most recent
+        version of the input file.  Copy it to the destination directory
+    Returns:
+        True if file found and copied, False otherwise.
+    """
 
     # Default return value
     ret = False
@@ -227,6 +317,21 @@ def find_recent(destdir,fname):
 
 
 def cpprecal(dirlist, destdir='./'):
+    """Copy raw cal files from previous date's directory
+
+    Call:
+        cpprecal(dirlist, destdir)  # destdir defaults to current dir ('./')
+    Inputs:
+        dirlist - a list of raw directories (typically in /scr2/sedm/raw)
+        destdir - where to put the files
+    Procedure:
+        Make sure we only look in previous day directory for files created
+        within four hours of the day changeover for possible raw calibration
+        files required for the current night's calibration.  Copy any such
+        files into the destination directory.
+    Returns:
+        ncp     - number of images actually copied
+    """
 
     # Reset calibration file counters
     cal_reset()
@@ -264,6 +369,19 @@ def cpprecal(dirlist, destdir='./'):
 
 
 def cpcal(srcdir, destdir='./'):
+    """Copy raw cal files from srcdir into destdir.
+
+    Call:
+        cpcal(srcdir, destdir)  # destdir defaults to current directory ('./')
+    Inputs:
+        srcdir  - source for raw cal images, typically in /scr2/sedm/raw
+        destdir - place to put the cal images typically in /scr2/sedm/redux
+    Procedure:
+        Find calibration files taken within 10 hours of the day changeover
+        and copy them to the destination directory.
+    Returns:
+        ncp     - number of images actually copied
+    """
 
     # Get current date
     sdate = srcdir.split('/')[-1]
@@ -281,7 +399,6 @@ def cpcal(srcdir, destdir='./'):
         f.close()
         # Get OBJECT and ADCSPEED keywords
         obj = hdr['OBJECT']
-        speed = hdr['ADCSPEED']
         # Filter Calibs and avoid test images
         if 'Calib' in obj and not 'test' in obj:
             # Copy cal images
@@ -295,6 +412,27 @@ def cpcal(srcdir, destdir='./'):
 
 
 def ObsLoop(rawlist=None):
+    """One night observing loop: processes calibrations and science data
+
+    Call:
+        ObsLoop(rawlist)
+    Inputs:
+        rawlist - list of raw data directories (usually in /scr2/sedm/raw)
+    Procdure:
+        Copy raw cal files until we are ready to process the night's
+        calibrations.  When ready, process them.  If we get to UT = 3:00,
+        the sun has set and we then retrieve the processed cal files from
+        the most recent night.  Next, enter a loop that waits for new ifu
+        images, copies them and performs the basic bias removal and CR
+        rejection processing.  If there are standard star observations,
+        re-generate the standard star calibration.  If we get no new ifu
+        files and we get to UT = 15:00, then the sun is up and we exit
+        the loop.
+    Returns:
+        True if night completed normall, False otherwise
+    Note:
+        KeyboardInterrupt handler exits gracefully with a ctrl-C.
+    """
 
     # Global variables
     global CalProcReady, CalReady
@@ -409,14 +547,14 @@ def ObsLoop(rawlist=None):
                 nnc += 1
             # Have we been waiting for a while?
             if nnc > 3:
-                # Check number of no copies and time
+                # Check time
                 gm = time.gmtime()
                 if gm.tm_hour > 15:
                     # No new observations and sun is probably up!
                     print("No new images for %d minutes and UT = %02d:%02d > "
-                            "15:00 so sun is probably up!" % 
+                            "15:59 so sun is probably up!" % 
                             (nnc, gm.tm_hour, gm.tm_min))
-                    print "Time to hibernate until we have a new raw directory"
+                    print "Time to wait until we have a new raw directory"
                     doit = False
                     # Normal termination
                     ret = True
@@ -431,6 +569,21 @@ def ObsLoop(rawlist=None):
 
 
 def go():
+    """Outermost infinite loop that watches for a new raw directory.
+
+    Call:
+        go()
+    Inputs:
+        None
+    Procedure:
+        Keep a list of raw directories in /scr2/sedm/raw and fire off
+        the ObsLoop procedure when a new directory appears.  Check for
+        a new raw directory every 10 minutes.
+    Returns:
+        None
+    Note:
+        KeyboardInterrupt handler exits gracefully with a ctrl-C.
+    """
 
     # Infinite loop
     dobs = True
