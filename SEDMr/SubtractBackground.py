@@ -118,7 +118,7 @@ def estimateBackground(fine, infile, flex=None, gausswidth=100, outname=None):
     
 
     #print "FFT convolve (pass 2)"
-    print "Gaussian filter (pass 2)"
+    print "Gaussian filter with width = %d (pass 2)" % gausswidth
     #k = Box2DKernel(70)
     #flt = convolve_fft(data, k)
     flt = gaussian_filter(data, gausswidth)
