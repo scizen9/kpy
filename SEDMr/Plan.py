@@ -1,29 +1,15 @@
+"""Generate Makefile for reducing ifu data"""
 
 import argparse
 import numpy as np
-import pylab as pl
 import pyfits as pf
 import sys
 
-
-import NPK.Fit 
 import NPK.Bar as Bar
-from astropy.table import Table 
-
-from scipy.spatial import KDTree 
 import NPK.Standards as Stds
-import scipy.signal as SG
-
-
-from numpy.polynomial.chebyshev import chebfit, chebval
-
-import Extraction
-reload(NPK.Fit)
-reload(Extraction)
 
 
 def extract_info(infiles):
-    
 
     headers = []
 
@@ -166,7 +152,7 @@ crr_b_% : b_%
 		$< $@ mask$@
 
 bs_crr_b_%.gz : crr_b_%
-	$(BGDSUB) fine.npy $<
+	$(BGDSUB) fine.npy $< --gausswidth=100
 
 flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
@@ -190,7 +176,7 @@ $(CRRS):
 		$(subst crr_,,$@) $@ mask$@
 
 $(BACK): 
-	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@))
+	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@)) --gausswidth=100
     
 
 seg_dome.fits: dome.fits
@@ -214,10 +200,10 @@ cube.npy: fine.npy
 	$(PLOT) --cube cube.npy --lambdarms --savefig
 
 bs_twilight.fits.gz: twilight.fits fine.npy
-	$(BGDSUB) fine.npy twilight.fits
+	$(BGDSUB) fine.npy twilight.fits --gausswidth=100
 
 bs_dome.fits.gz: dome.fits fine.npy
-	$(BGDSUB) fine.npy dome.fits
+	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy:
 	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat

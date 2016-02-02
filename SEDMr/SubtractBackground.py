@@ -1,37 +1,18 @@
+"""Subtract background from ifu images."""
 
 import argparse
 import os
-import pdb
 import numpy as np
-import pylab as pl
 import pyfits as pf
 import sys
-
 import shutil
 
-import NPK.Fit as FF
-import NPK.Util as Util
 import SEDMr.IO as IO
-from astropy.table import Table 
-
-from scipy.spatial import KDTree 
-import scipy.signal as SG
-from scipy.interpolate import interp1d, interp2d, RectBivariateSpline, bisplrep, bisplev
 
 from scipy.ndimage.filters import gaussian_filter
 
-
-import SEDMr.Extraction as Extraction
-import SEDMr.Wavelength as Wavelength
-reload(FF)
-reload(Extraction)
-reload(Wavelength)
-
-
-
 from scipy.weave import converters
 import scipy.weave as weave
-import numpy as np
  
  
 def weaveConvolve(image, kernel):
@@ -91,7 +72,7 @@ def remove(fname):
 
 
 
-def estimateBackground(fine, infile, flex=None, outname=None):
+def estimateBackground(fine, infile, flex=None, gausswidth=100, outname=None):
 
     if outname is None:
         print "Need an output name"
@@ -140,17 +121,20 @@ def estimateBackground(fine, infile, flex=None, outname=None):
     print "Gaussian filter (pass 2)"
     #k = Box2DKernel(70)
     #flt = convolve_fft(data, k)
-    flt = gaussian_filter(data, 100)
+    flt = gaussian_filter(data, gausswidth)
 
 
     fname = os.path.join(os.path.dirname(outname), 
         "bgd_" + os.path.basename(outname))
     HDU = pf.PrimaryHDU(flt)
+    HDU.header["GAUFWID"] = (gausswidth, 'Gaussian filter width in pixels')
     IO.writefits(HDU, fname, clobber=True)
     print "Background image in %s" % fname + ".gz"
     
 
     infile[0].header["BGDSUB"] = "Background subtracted using %s" % fname
+    infile[0].header["GAUFWID"] = (gausswidth, 
+                                   'Gaussian filter width in pixels')
     fname = os.path.join(os.path.dirname(outname), 
         "bs_" + os.path.basename(outname))
     infile[0].data -= flt
@@ -172,6 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('fine', type=str, help='Fine correction path')
     parser.add_argument('infile', type=str, help='Path to FITS file to refit')
     parser.add_argument('--flexfile', type=str, help='Path to flexure npy file')
+    parser.add_argument('--gausswidth', type=int, default=100, help='Gaussian filter width in pixels')
 
 
     args = parser.parse_args()
@@ -189,5 +174,8 @@ if __name__ == '__main__':
         flex = np.load(args.flexfile)
     else: flex=None
 
+    gausswidth = args.gausswidth
 
-    background = estimateBackground(fine, infile, flex=flex, outname=args.infile)
+
+    background = estimateBackground(fine, infile, flex=flex, 
+                                    gausswidth=gausswidth, outname=args.infile)
