@@ -17,14 +17,16 @@ import os
 import sys
 
  
-def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, savefig=False, savespec=False):
+def checkSpec(specname, corrname='std-correction.npy',
+        redshift=0, smoothing=0, savefig=False, savespec=False):
 
     if not os.path.isfile(specname):
         sys.exit("No such file: %s" % specname)
 
     # IO.readspec applies the calibration in the file specified
     print "Calibrating with %s" % corrname
-    lam, spec, skyspec, stdspec, ss, meta = IO.readspec(specname,corrname=corrname)
+    lam, spec, skyspec, stdspec, ss, meta = \
+            IO.readspec(specname,corrname=corrname)
     
     # Convert to Angstrom sized bins
     lam *= 10.
@@ -61,26 +63,24 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
     try:
         utc = meta['utc']
         parts = utc.split(":")
-        date = datetime.datetime(int(parts[0]), 1, 1) + datetime.timedelta(int(parts[1])-1)
-        utc = date.strftime("%Y %m %d") + " %s:%s:%s" % (parts[2],parts[3],parts[4])
+        date = datetime.datetime(int(parts[0]), 1, 1) + \
+                datetime.timedelta(int(parts[1])-1)
+        utc = date.strftime("%Y %m %d") + " %s:%s:%s" % \
+                (parts[2],parts[3],parts[4])
     except: utc = ''
 
     try: obj = hdr['OBJECT'].split()[0]
     except: obj = ''
 
     # Annotate plots
-    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % (specname, ec, et))
+    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % 
+            (specname, ec, et))
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
     # Handle plot geometry
     plm = pl.get_current_fig_manager()
     plm.window.wm_geometry("900x500+10+10")
-
-    # Set plot limits
-    OK = (lam > 3800) & (lam < maxwl)
-    legend = ["obj",]
-    lamz = lam/(1+redshift)
 
     # See if this is a standard star
     pred = specname.lstrip("sp_STD-")
@@ -98,7 +98,7 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
         slam = standard[:,0]
         sflx = standard[:,1] * 1.e-16
 
-        # Calculate ration in select region of spectrum
+        # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
         lmed = np.median(spec[lroi])
 
@@ -114,14 +114,32 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
         # Apply offset for plotting
         spec = spec / rat
 
-    # Smoothing option
+    # Set wavelength range
+    OK = (lam > 3800) & (lam < maxwl)
+
+    # Apply redshift
+    lamz = lam/(1+redshift)
+
+    # Plot object spectrum
+    
+    # Plot limits
+    pl.xlim(3600,maxwl+200)
+
+    mx = np.nanmax(spec[OK])
+    pl.ylim(-mx/10,mx+(mx/20))
+
+    # No smoothing
     if smoothing == 0:
         pl.step(lamz[OK], spec[OK], linewidth=3)    # Plot data
+    # Smoothing
     else:
         if smoothing > 5: order = 2
         else: order = 1
         smoothed = scipy.signal.savgol_filter(spec[OK], smoothing, order)
         pl.step(lamz[OK], smoothed, linewidth=3)    # Plot smoothed data
+
+    # Legend for plot
+    legend = ["obj",]
 
     # Overplot sky spectrum
     if skyspec is not None:
@@ -142,14 +160,8 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
         # Remove plotting offset
         spec = spec * rat
 
+    # Add legend
     pl.legend(legend)
-
-    # Plot limits
-    pl.xlim(3600,maxwl)
-
-    roi = (lam > 3800.0) & (lam < maxwl)
-    mx = np.nanmax(spec[roi])
-    pl.ylim(-mx/10,mx)
 
     pl.grid(True)
     pl.ioff()
@@ -163,12 +175,17 @@ def checkSpec(specname, corrname='std-correction.npy', redshift=0, smoothing=0, 
         pl.show()
 
     if savespec:
+        roi = (lam > 3800.0) & (lam < maxwl)
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
         outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
-        header = 'TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s\nOBJECT: %s\nOUTFILE: %s\nOBSUTC: %s\nEXPTIME %i\nAIRMASS: %1.2f' % (user, obj, outf, utc, et, ec)
-        np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', header=header)
+        header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
+        header = header + "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
+        header = header + "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
+        header = header + "\nAIRMASS: %1.2f" % ec
+        np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', 
+                    header=header)
         print "Saved to "+outf
 
 
