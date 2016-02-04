@@ -6,7 +6,7 @@ import pyfits as pf
 
 
 def roll_file(infile, X, Y):
-    ''' Load fits infile and roll it in X,Y '''
+    """ Load fits infile and roll it in X,Y """
     
     X = np.int(np.round(X))
     Y = np.int(np.round(Y))
@@ -26,10 +26,8 @@ def roll_file(infile, X, Y):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''Roller.py:
-
-            
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """Roll an fits image by amount of pixels specified in --X and --Y.
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('infile', type=str, help='File to roll')
     parser.add_argument('--X', type=float, default=0, help='Roll amount X')
@@ -38,5 +36,4 @@ if __name__ == '__main__':
 
     
     roll_file(args.infile, args.X, args.Y)
-
 

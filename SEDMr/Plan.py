@@ -31,7 +31,7 @@ def extract_info(infiles):
     return sorted(headers, key=lambda x: x['JD'])
 
 def identify_observations(headers):
-    '''Return a list of object name, observation number, and list of files.
+    """Return a list of object name, observation number, and list of files.
 
     e.g. will return:
 
@@ -39,7 +39,8 @@ def identify_observations(headers):
            'PTF14dvo': {1: ['...', '...']}}
     
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
-    14dov was observed once with A-B.'''
+    14dov was observed once with A-B.
+    """
     JD = 0
 
     objcnt = {}
@@ -126,7 +127,7 @@ def identify_observations(headers):
     return objs, calibs
 
 
-make_preamble = '''
+make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDM
 EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
@@ -227,7 +228,7 @@ cleanstds:
 
 newstds: cleanstds stds
 
-'''
+"""
 
 def MF_imcombine(objname, files, dependencies=""):
     
@@ -247,7 +248,7 @@ def MF_imcombine(objname, files, dependencies=""):
 
 
 def MF_single(objname, obsnum, file, standard=None):
-    '''Create the MF entry for a observation with a single file. '''
+    """Create the MF entry for a observation with a single file. """
 
     #print objname, obsnum, file
 
@@ -259,15 +260,15 @@ def MF_single(objname, obsnum, file, standard=None):
     else: tp['STD'] = "--std %s" % (standard)
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % (file.rstrip(".fits"))
 
-    first = '''# %(outname)s
+    first = """# %(outname)s
 %(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
-''' % tp
-    second = '''corr_%(outname)s: %(outname)s
-\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n''' %  tp
+""" % tp
+    second = """corr_%(outname)s: %(outname)s
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" %  tp
     fn = "%(outname)s" % tp
 
     if standard is None: return first+"\n", fn
@@ -276,7 +277,7 @@ cube_%(outname)s.fits: %(outname)s
     
 
 def MF_AB(objname, obsnum, A, B):
-    '''Create the MF entry for an A-B observation'''
+    """Create the MF entry for an A-B observation"""
 
     #print objname, obsnum, A, B
     tp = {'objname': objname, 'A': "bs_crr_b_" + A, 'B': "bs_crr_b_" + B}
@@ -289,12 +290,12 @@ def MF_AB(objname, obsnum, A, B):
     tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
     tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
 
-    return '''# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
-\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n''' %  tp, "%(outname)s " % tp
+    return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n""" %  tp, "%(outname)s " % tp
 
 
 def MF_ABCD(objname, obsnum, files): 
-    '''Create the MF entry for an A-B observation'''
+    """Create the MF entry for an A-B observation"""
 
     A,B,C,D = files
     tp = {'objname': objname, 'A': A, 'B': B, 'C': C, 'D': D}
@@ -303,8 +304,8 @@ def MF_ABCD(objname, obsnum, files):
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
     tp['flexname'] = "flex_%s.npy" % A.rstrip('.fits')
-    return '''%(outname)s: fine.npy %(A)s %(B)s %(C)s %(D)s %(flexname)s
-\t$(EXTPAIR) fine.npy --A %(A)s --B %(B)s --C %(C)s --D %(D)s --Aoffset %(flexname)s --outname %(outname)s \n''' %  tp, "%(outname)s" % tp
+    return """%(outname)s: fine.npy %(A)s %(B)s %(C)s %(D)s %(flexname)s
+\t$(EXTPAIR) fine.npy --A %(A)s --B %(B)s --C %(C)s --D %(D)s --Aoffset %(flexname)s --outname %(outname)s \n""" %  tp, "%(outname)s" % tp
 
 
 
@@ -389,7 +390,7 @@ def to_makefile(objs, calibs):
                     
                     if not objname.startswith("STD-") and not objname.startswith("STOW"):
                         sci += a + " "
-            '''
+            """
             elif len(obsfiles) == 2:
                 m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
                 MF += m
@@ -398,7 +399,7 @@ def to_makefile(objs, calibs):
                 m,a = MF_ABCD(objname, obsnum, obsfiles)
                 MF += m
                 all += a + " "
-            '''
+            """
 
     stds += " "
 
@@ -415,9 +416,7 @@ def to_makefile(objs, calibs):
     f.close()
 
 def make_plan(headers):
-    '''Convert headers to a makefile
-    
-    Assumed headers sorted by JD'''
+    """Convert headers to a makefile, assuming headers sorted by JD."""
 
             
     objs, calibs = identify_observations(headers)

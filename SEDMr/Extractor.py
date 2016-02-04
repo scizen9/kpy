@@ -26,7 +26,7 @@ from scipy.interpolate import griddata
 import scipy.optimize as opt
 
 def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
-    ''' Return list of (X,Y) positions indicating trace of atmospheric dispersion
+    """ Return list of (X,Y) positions indicating trace of atmospheric dispersion
 
     Args:
         PRLLTC: parralactic angle in Angle class
@@ -39,7 +39,7 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
 
         Note: if airmass=1, then the list is equivalent of [ pos ]
 
-    '''
+    """
     print "LamEff %.1f nm, Airmass %.3f" % (leff, airmass)
 
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
@@ -67,11 +67,11 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     return positions
 
 def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None, lmin=400, lmax=900, airmass=1.0):
-    ''' 
+    """ 
      Returns index of spectra picked by Guassian fit.
     
     NOTE: Index is counted against the array, not seg_id
-    '''
+    """
     pl.ioff()
     
     KT = SS.Spectra(spectra)   
@@ -129,14 +129,14 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None, lmin=400, lma
     return KT.good_positions[kix], pos, positions, a
 
 def find_positions_ellipse(xy, h, k, a, b, A):
-    '''
+    """
     xy: Vector with pairs [[x0, y0], [x1, y1]] of coordinates.
     a: semi-major axis of ellipse in X axis.
     b: semi-minor axis of ellipse in Y axis.
     h: central point ellipse in X axis.
     k: central point ellipse in Y axis.
     A: angle of rotation of ellipse in radians. The angle should rotate clockwise.
-    '''
+    """
     positions = np.arange(len(xy))
     x = xy[:,0]
     y = xy[:,1]
@@ -146,9 +146,10 @@ def find_positions_ellipse(xy, h, k, a, b, A):
     return positions[dist<1]
 
 def identify_spectra_gui(spectra, outname=None, radius=2, lmin=650, lmax=700, PRLLTC=None, object=object, airmass=1.0):
-    ''' Returns index of spectra picked in GUI.
+    """ Returns index of spectra picked in GUI.
 
-    NOTE: Index is counted against the array, not seg_id'''
+    NOTE: Index is counted against the array, not seg_id
+    """
 
     print "\nStarting with a %s arcsec radius" % radius
     KT = SS.Spectra(spectra)
@@ -299,28 +300,33 @@ def identify_spectra(spectra, outname=None, low=-np.inf, hi=np.inf, plot=False):
 
     return ixs[ok]
 
-def to_image(spectra, meta, outname, posA=None, posB=None, radius=None, adcpos=None):
-    ''' Convert spectra list into image_[outname].pdf '''
-    def Strength(x):
-        if x.xrange is None: return None
-        if x.lamcoeff is None: return None
-        if x.specw is None: return None
+def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
+    """ Convert spectra list into image_[outname].pdf """
+
+    Xs = []
+    Ys = []
+    Vs = []
+
+    for x in spectra:
+        if x.xrange is None: continue
+        if x.lamcoeff is None: continue
+        if x.specw is None: continue
         ix = np.arange(*x.xrange)
         ll = chebval(ix, x.lamcoeff)
-        OK = (ll > 450) & (ll < 700)
-
+        OK = (ll > 500) & (ll < 700)
         if OK.any():
-            return np.sum(x.specw[OK])
-        else:
-            return None
+            Vs.append(np.nanmean(x.specw[OK]))
+            Xs.append(x.X_as)
+            Ys.append(x.Y_as)
 
-    sig = [Strength(seg) for seg in spectra]
-
-    XS = np.array([seg.X_as for seg in spectra])
-    YS = np.array([seg.Y_as for seg in spectra])
-    sig = np.array(sig, dtype=np.float)
-
-
+    Vstd = np.nanstd(Vs)
+    Vmid = np.median(Vs)
+    if posB is None:
+        Vmin = Vmid - Vstd
+        Vmax = Vmid + 3.*Vstd
+    else:
+        Vmin = Vmid - 3.*Vstd
+        Vmax = Vmid + 3.*Vstd
     pl.clf()
     pl.ylim(-20, 20)
     pl.xlim(-20, 20)
@@ -331,7 +337,7 @@ def to_image(spectra, meta, outname, posA=None, posB=None, radius=None, adcpos=N
     if posB is not None:
         pl.axvline(posB[0], color='black', linewidth=.5)
         pl.axhline(posB[1], color='black', linewidth=.5)
-    pl.scatter(XS, YS, c=sig,s=50,marker='H',linewidth=0)
+    pl.scatter(Xs, Ys, c=Vs, s=50,marker='H',linewidth=0,vmin=Vmin,vmax=Vmax)
 
     if adcpos is not None:
         for p in adcpos:
@@ -353,12 +359,13 @@ def c_to_nm(coefficients, pix, offset=0):
 
 def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     corrfile=None, dnm=0, onto=None):
-    '''Interp spectra onto common grid
+    """Interp spectra onto common grid
 
     Args:
         all_spectra:
         six:
-        dnm: Offset (usually for flexure) in nm'''
+        dnm: Offset (usually for flexure) in nm
+    """
 
     l_grid = onto
     s_grid = []
@@ -429,7 +436,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
 
     # Package results
-    doc = '''Result contains:
+    doc = """Result contains:
         nm [N float]: Wavelength solution
         ph_10m_nm [N float]: Spectral irradiance of source in units of photon / 10 minute / nm
         spectra [? x K float]: List of all the spectra that participated in
@@ -440,7 +447,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         corrected-spec [N float]: ph_10m_nm * Atmospheric correction, if
             available
         doc: This doc string
-        '''
+        """
     result = [{"nm": l_grid, "ph_10m_nm": medspec, "spectra": s_grid,
         "coefficients": lamcoeff,
         "doc": doc}]
@@ -556,7 +563,7 @@ def divide(A,B, outname):
 
 
 def combines(A,B,C,D, outname):
-    ''' Creates outname with A+B+C+D '''
+    """ Creates outname with A+B+C+D """
     if os.path.exists(outname):
         return pf.open(outname)
 
@@ -575,7 +582,7 @@ def combines(A,B,C,D, outname):
 
 
 def combine4(A,B,C,D, outname):
-    '''Creates outname which is == A-(B+C+D)/3'''
+    """Creates outname which is == A-(B+C+D)/3"""
 
     if os.path.exists(outname):
         return pf.open(outname)
@@ -602,7 +609,7 @@ def combine4(A,B,C,D, outname):
     return pf.open(outname)
 
 def bgd_level(extractions):
-    '''Remove background from extractions'''
+    """Remove background from extractions"""
 
     levels = []
     for spectrum in extractions:
@@ -640,7 +647,7 @@ def handle_extract(data, outname=None, fine='fine.npy',flexure_x_corr_nm=0.0,
     return E
 
 def handle_Flat(A, fine, outname=None):
-    '''Loads 2k x 2k IFU Flat frame "A" and extracts spectra from the locations
+    """Loads 2k x 2k IFU Flat frame "A" and extracts spectra from the locations
     in "fine".
 
     Args:
@@ -653,7 +660,7 @@ def handle_Flat(A, fine, outname=None):
 
     Raises:
         None
-    '''
+    """
 
     fine = np.load(fine)
     if outname is None:
@@ -690,7 +697,7 @@ def handle_Flat(A, fine, outname=None):
 def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     Aoffset=None, radius=2, flat_corrections=None, nosky=False,
     lmin=650, lmax=700):
-    '''Loads 2k x 2k IFU frame "A" and extracts spectra from the locations
+    """Loads 2k x 2k IFU frame "A" and extracts spectra from the locations
     in "fine".
 
     Args:
@@ -715,7 +722,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
     Raises:
         None
-    '''
+    """
 
     fine = np.load(fine)
     if outname is None:
@@ -909,7 +916,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 def handle_AB(A, B, fine, outname=None, corrfile=None,
     Aoffset=None, Boffset=None, radius=2, flat_corrections=None,
     nosky=False, lmin=650, lmax=700):
-    '''Loads 2k x 2k IFU frame "A" and "B" and extracts A-B and A+B spectra
+    """Loads 2k x 2k IFU frame "A" and "B" and extracts A-B and A+B spectra
     from the "fine" location.
 
     Args:
@@ -938,7 +945,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
 
     Raises:
         None
-    '''
+    """
 
     fine = np.load(fine)
     if outname is None:
@@ -1138,7 +1145,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     print "Wrote sp_"+outname+".npy"
 
 def measure_flexure(sky):
-    ''' Measure expected (589.3 nm) - measured emission line in nm'''
+    """ Measure expected (589.3 nm) - measured emission line in nm"""
     ll, ss = sky['nm'], sky['ph_10m_nm']
 
     pl.figure()
@@ -1158,26 +1165,19 @@ def measure_flexure(sky):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=\
-        '''Extracter.py:
-
-
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """Extract a spectrum from an image using a geometric cube solution.
+Handles a single A image and A+B pair as well as flat extraction.
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('--A', type=str, help='FITS A file')
     parser.add_argument('--B', type=str, help='FITS B file')
-    parser.add_argument('--C', type=str, help='FITS C file')
-    parser.add_argument('--D', type=str, help='FITS B file')
     parser.add_argument('fine', type=str, help='Numpy fine wavelength solution')
     parser.add_argument('--outname', type=str, help='Prefix output name')
-    parser.add_argument('--nsiglo', type=float, help='Number sigma to extract below', default=-2)
-    parser.add_argument('--nsighi', type=float, help='Number sigma to extract above', default=2)
     parser.add_argument('--std', type=str, help='Name of standard')
     parser.add_argument('--correction', type=str, help='Name of atmospheric correction file')
-    parser.add_argument('--Aoffset', type=str, help='Name of "A" file that holds flexure offset correction information')
-    parser.add_argument('--Boffset', type=str, help='Name of "B" file that holds flexure offset correction information')
-    parser.add_argument('--Coffset', type=str, help='Name of "C" file that holds flexure offset correction information')
-    parser.add_argument('--Doffset', type=str, help='Name of "D" file that holds flexure offset correction information')
-    parser.add_argument('--radius_as', type=float, help='Extraction radius in arcsecond', default=3)
+    parser.add_argument('--Aoffset', type=str, help='Name of "A" flexure offset correction file')
+    parser.add_argument('--Boffset', type=str, help='Name of "B" flexure offset correction file')
+    parser.add_argument('--radius_as', type=float, help='Extraction radius in arcseconds', default=3)
     parser.add_argument('--flat_correction', type=str, help='Name of flat field .npy file', default=None)
     parser.add_argument('--nosky', action="store_true", default=False, help='No sky subtraction: only sum in aperture')
     parser.add_argument('--flat', action="store_true", default=False, help='Perform flat extraction')

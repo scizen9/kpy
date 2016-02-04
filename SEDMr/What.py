@@ -1,7 +1,5 @@
 
-import shutil
 import glob
-import os
 import pyfits as pf
 
 def go(files):

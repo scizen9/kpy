@@ -1,32 +1,20 @@
 
 import argparse
-import pdb
 import numpy as np
 import pylab as pl
 import pyfits as pf
-import sys
-
 
 import NPK.Fit as FF
-from astropy.table import Table 
 
-from scipy.spatial import KDTree 
-import scipy.signal as SG
 from scipy.interpolate import interp1d
 
-
-
-import SEDMr.Extraction as Extraction
 import SEDMr.Wavelength as Wavelength
-reload(FF)
-reload(Extraction)
-reload(Wavelength)
 
 
 def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
     skyline=589.0, lamstart=1000.0, lamratio=239./240., lamlen=250,
     extract_width=3, skywidth=9, outfile='dX'):
-    '''Measures flexure in X direction, returns pixel offset
+    """Measures flexure in X direction, returns pixel offset
 
     Args:
         fine: List of Extraction object, the fine loc + wave solution for
@@ -45,7 +33,7 @@ def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
 
     Returns:
         Offset number of pixels in X direction.
-    '''
+    """
     
     dat = HDUlist[0].data
     exptime = HDUlist[0].header['EXPTIME']
@@ -161,21 +149,30 @@ def measure_flexure_y(fine, HDUlist, profwidth=5, plot=False, outname=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''Flexure.py
+        """Measure the flexure in x [nm] and y [px].
 
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
 
     parser.add_argument('fine', type=str, help='Fine correction path')
     parser.add_argument('infile', type=str, help='Path to FITS file to refit')
-    parser.add_argument('--profwidth', type=float, help='Profile width to extract for Y flexure', default=5)
-    parser.add_argument('--skyline', type=float, help='skyline position in nm to measure X flexure', default=589.0)
-    parser.add_argument('--lamstart', type=float, help='Wavelength to start interpolating grid ', default=1000.0)
-    parser.add_argument('--lamratio', type=float, help='Wavelength resolution for interpolating grid', default=239.0/240.0)
-    parser.add_argument('--lamlen', type=int, help='Wavelength grid length', default=250)
-    parser.add_argument('--extract_width', type=int, help='Extraction width for spectrum in the Y direction (for X flexure)', default=3)
-    parser.add_argument('--skywidth', type=float, help='Wavelength range to search over for X flexure measurement. Range is (skyline-sky_width : skyline+sky_width', default=9)
-    parser.add_argument('--outfile', type=str, help='Output filename', default="flexure.npy")
+    parser.add_argument('--profwidth', type=float, 
+            help='Profile width to extract for Y flexure', default=5)
+    parser.add_argument('--skyline', type=float, 
+            help='skyline position in nm to measure X flexure', default=589.0)
+    parser.add_argument('--lamstart', type=float, 
+            help='Wavelength to start interpolating grid ', default=1000.0)
+    parser.add_argument('--lamratio', type=float, 
+            help='Wavelength resolution for interpolating grid', 
+            default=239.0/240.0)
+    parser.add_argument('--lamlen', type=int, 
+            help='Wavelength grid length', default=250)
+    parser.add_argument('--extract_width', type=int, 
+            help='Extraction width for spectrum in the Y direction (for X flexure)', default=3)
+    parser.add_argument('--skywidth', type=float, 
+            help='Wavelength range to search over for X flexure measurement. Range is (skyline-sky_width : skyline+sky_width', default=9)
+    parser.add_argument('--outfile', type=str, help='Output filename', 
+            default="flexure.npy")
 
     args = parser.parse_args()
 

@@ -13,7 +13,7 @@ import getpass
 
 # catalog_name, output_name
 sex_params = \
-'''
+"""
 CATALOG_NAME     {catalog_name} # name of the output catalog
 CATALOG_TYPE     ASCII_HEAD     # NONE,ASCII,ASCII_HEAD, ASCII_SKYCAT,
                                 # ASCII_VOTABLE, FITS_1.0 or FITS_LDAC
@@ -88,7 +88,7 @@ VERBOSE_TYPE     QUIET # can be QUIET, NORMAL or FULL
 WRITE_XML        N              # Write XML file (Y/N)?
 XML_NAME         sex.xml        # Filename for XML output
 
-'''
+"""
 
 
 

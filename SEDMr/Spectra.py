@@ -58,7 +58,7 @@ class Spectra(object):
         self.good_positions = np.array(good_positions)
 
     def to_xyv(self, lmin=500, lmax=700, coefficients='lamcoeff'):
-        ''' Method converts a spectral set into X, Y, and value positions
+        """ Method converts a spectral set into X, Y, and value positions
         
         X is the location of Ha based on either lambda coefficients or
             median coefficients
@@ -69,7 +69,7 @@ class Spectra(object):
             X,Y,V tuple representing the X location (in arcsec), Y location
                 (in arcsec), and the median value (V) of the spaxel
                 between lmin and lmax.
-        '''
+        """
 
         allowed_coeff = ['lamcoeff', 'mdn_coeff', 'hgcoef']
         if coefficients not in allowed_coeff:

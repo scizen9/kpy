@@ -183,12 +183,16 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser(description=\
-    '''SpecNorm.py measures the continuum of a standard star spectrum''')
+    """Measure the continuum of a standard star spectrum""")
 
-    parser.add_argument('spectrum', type=str, help='Numpy file of spectrum extraction')
-    parser.add_argument('--window', type=float, help='Width (nm) to median the splien points over')
-    parser.add_argument('--spline_points', type=str, help='Path to ascii text file specifying where to put spline knots')
-    parser.add_argument('--std', type=str, help='Name of standard star (see NPK.Standard for acceptable names)')
+    parser.add_argument('spectrum', type=str, 
+            help='Numpy file of spectrum extraction')
+    parser.add_argument('--window', type=float, 
+            help='Width (nm) to median the splien points over')
+    parser.add_argument('--spline_points', type=str, 
+            help='Path to ascii text file specifying where to put spline knots')
+    parser.add_argument('--std', type=str, 
+            help='Name of standard star (see NPK.Standard for acceptable names)')
     parser.add_argument('--outname', type=str, help='Name of output file')
 
     args = parser.parse_args()

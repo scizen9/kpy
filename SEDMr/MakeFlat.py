@@ -1,28 +1,7 @@
 
 import argparse
-import pdb
 import numpy as np
-import pylab as pl
 import pyfits as pf
-import sys
-
-
-import NPK.Fit as FF
-from astropy.table import Table 
-
-from scipy.spatial import KDTree 
-import scipy.signal as SG
-from scipy.interpolate import interp1d
-
-
-
-import SEDMr.Extraction as Extraction
-import SEDMr.Wavelength as Wavelength
-reload(FF)
-reload(Extraction)
-reload(Wavelength)
-
-
 
 
 if __name__ == '__main__':

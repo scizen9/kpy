@@ -1,28 +1,16 @@
 
-import NPK.Atmosphere as Atm
-import NPK.PlotHelp as PH
-import datetime
 import numpy as np
-import os
-import pyfits
-import scipy.io
 import matplotlib.pyplot as pl
 from matplotlib import gridspec
-from matplotlib.backend_bases import KeyEvent 
-from matplotlib.backend_bases import PickEvent
-from scipy.interpolate import interp1d
 from matplotlib.widgets import Cursor
 
 import scipy, scipy.spatial
 
-from numpy.polynomial.chebyshev import chebfit, chebval
-
-
-import SEDMr.Spectra as SS
+from numpy.polynomial.chebyshev import chebval
 
 
 class MouseCross(object):
-    ''' Draw a cursor with the mouse cursor '''
+    """ Draw a cursor with the mouse cursor """
 
     def __init__(self, ax, radius_as=3, **kwargs):
         self.ax = ax
@@ -61,7 +49,7 @@ class MouseCross(object):
         pl.draw()
 
 class PositionPicker(object):
-    ''' This class is used to select an extraction point in a data cube '''
+    """ This class is used to select an extraction point in a data cube """
 
     spectra = None
     Xs = None
@@ -73,12 +61,13 @@ class PositionPicker(object):
     bgd_sub = False
 
     def __init__(self, spectra=None, figure=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600, lmax=650):
-        ''' Create spectum picking gui.
+        """ Create spectum picking gui.
 
         Args:
             spectra: SEDMr.Spectra object
             figure: Figure to draw to [default is None or open a new figure
-                window '''
+                window
+        """
 
         self.spectra = spectra
         self.pointsize = pointsize
@@ -136,7 +125,7 @@ class PositionPicker(object):
 
 
     def __call__(self, event):
-        '''Event call handler for Picker gui.'''
+        """Event call handler for Picker gui."""
         
         if event.name == 'button_press_event':
             print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
@@ -145,7 +134,7 @@ class PositionPicker(object):
             
 
 class WaveFixer(object):
-    ''' This class is used to fix bad wavelength solutions '''
+    """ This class is used to fix bad wavelength solutions """
 
     cube = None # Raw data cube spectra
     KT = None # KDTree object
@@ -164,12 +153,14 @@ class WaveFixer(object):
 
 
     def __init__(self, cube=None, figure=None, pointsize=65, bgd_sub=False, radius_as=3):
-        ''' Create spectum picking gui.
+        """ Create spectum picking gui.
 
         Args:
             cube: Data cube list
             figure: Figure to draw to [default is None or open a new figure
-                window '''
+                window
+                
+        """
 
         self.actions = {"m": self.mode_switch}
 
@@ -225,7 +216,7 @@ class WaveFixer(object):
 
 
     def mode_switch(self):
-        ''' Toggle operating mode between Display and Select '''
+        """ Toggle operating mode between Display and Select """
 
         if self.state == "Display": self.state = "Select"
         else: self.state = "Display"
@@ -234,7 +225,7 @@ class WaveFixer(object):
         self.draw_cube()
 
     def draw_spectra(self):
-        ''' Draw nearest spectra '''
+        """ Draw nearest spectra """
         if self.picked is None: return
 
         print "Drawing spectra"
@@ -271,7 +262,7 @@ class WaveFixer(object):
 
 
     def draw_cube(self):
-        ''' Draw the data cube '''
+        """ Draw the data cube """
         print "drawing cube"
         
         # Draw cube
@@ -306,10 +297,10 @@ class WaveFixer(object):
         
 
         if event.inaxes == self.ax_cube:
-            '''Clicked In Data Cube Display'''
+            """Clicked In Data Cube Display"""
 
             if self.state == 'Display':
-                ''' Display state (not pick state, ignore) '''
+                """ Display state (not pick state, ignore) """
                 return
 
             dists = np.abs(self.X2 - event.xdata) + \
@@ -329,7 +320,7 @@ class WaveFixer(object):
 
 
     def __call__(self, event):
-        '''Event call handler for Picker gui.'''
+        """Event call handler for Picker gui."""
         
         print (event.name)
 
@@ -338,7 +329,7 @@ class WaveFixer(object):
             pdb.set_trace()
 
         elif event.name == 'button_press_event':
-            ''' Note order of if statement to skip button over pick event'''
+            """ Note order of if statement to skip button over pick event"""
 
             self.handle_button_press(event)
             

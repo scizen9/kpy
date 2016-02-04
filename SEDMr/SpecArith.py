@@ -2,21 +2,20 @@
 import argparse
 import numpy as np
 import os
-import pylab as pl
-import pyfits as pf
 from scipy.interpolate import interp1d
 import sys
 
 
 def specDiv(A, B, out):
-    ''' Divide spectra in A, B and store to out '''
+    """ Divide spectra in A, B and store to out """
 
     s_A = np.load(A)[0]
     s_B = np.load(B)[0]
 
     t_A, t_B = s_A['exptime'], s_B['exptime']
     if t_A != t_B:
-        print "Exposure times do not match (%s v %s). This may be a problem." % (t_A, t_B)
+        print("Exposure times do not match (%s v %s). This may be a problem." %
+                (t_A, t_B))
 
     # Combine keys in rational way
     result = {}
@@ -38,7 +37,8 @@ def specDiv(A, B, out):
             result[k] = s_A[k] + s_B[k]
 
     # Get interpolated flux
-    f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, fill_value=np.nan)
+    f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, 
+                    fill_value=np.nan)
 
     # Use first for reference wavelengths
     result['nm'] = s_A['nm']
@@ -47,7 +47,8 @@ def specDiv(A, B, out):
 
     # Average sky
     if s_A.has_key('skyph') and s_B.has_key('skyph'):
-        s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
+        s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, 
+                    fill_value=np.nan)
         result['skyph'] = (s_A['skyph'] + s2(s_A['nm']))/2.0
 
     # Average variance
@@ -70,20 +71,22 @@ def specDiv(A, B, out):
 
 
 def specAdd(A, B, out):
-    ''' Add spectra in A, B and store to out '''
+    """ Add spectra in A, B and store to out """
 
     s_A = np.load(A)[0]
     s_B = np.load(B)[0]
 
     t_A, t_B = s_A['exptime'], s_B['exptime']
     if t_A != t_B:
-        print "Exposure times do not match (%s v %s). This may be a problem." % (t_A, t_B)
+        print("Exposure times do not match (%s v %s). This may be a problem." %
+                (t_A, t_B))
 
     # Combine keys in a rational way
     result = {}
     for k,v in s_A.iteritems():
         # Skip these
-        if k in ['operation', 'meta_1', 'meta_2', 'meta', 'Extinction Correction', 'doc']:
+        if k in ['operation', 'meta_1', 'meta_2', 'meta', 
+                 'Extinction Correction', 'doc']:
             continue
         # Are there discrepant dictionaries?
         if k not in s_B:
@@ -101,7 +104,8 @@ def specAdd(A, B, out):
 
 
     # Get interpolated flux and sky
-    f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, fill_value=np.nan)
+    f2 = interp1d(s_B['nm'], s_B['ph_10m_nm'], bounds_error=0, 
+            fill_value=np.nan)
     s2 = interp1d(s_B['nm'], s_B['skyph'], bounds_error=0, fill_value=np.nan)
 
     # Use first for reference wavelengths
@@ -132,16 +136,16 @@ def specAdd(A, B, out):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''SpecArith.py
-
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """Perform arithmetic operations on extracted spectra sp_*.npy.
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
 
     parser.add_argument('--operation', type=str, help='Operation to perform',
         default='+')
     parser.add_argument('A', type=str, help='First term', default="must set A")
     parser.add_argument('B', type=str, help='Second term', default="must set B")
-    parser.add_argument('outname', type=str, help='Output name', default="Must set outname")
+    parser.add_argument('outname', type=str, help='Output name', 
+            default="Must set outname")
 
     args = parser.parse_args()
     err = ""

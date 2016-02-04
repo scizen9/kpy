@@ -101,7 +101,7 @@ def peakdet(v, delta, x = None):
 
 
 def read_catalog(catname):
-    '''Read a sextractor catalog called catname and return'''
+    """Read a sextractor catalog called catname and return"""
 
 
     cat = Table.read(catname, format='ascii.sextractor')
@@ -109,7 +109,7 @@ def read_catalog(catname):
     return cat
 
 def hg_to_kdtree(assoc_hg_spec):
-    '''Convert mercury association to a KD Tree'''
+    """Convert mercury association to a KD Tree"""
 
     xs = []
     ys = []
@@ -129,7 +129,7 @@ def fiducial_wavelength():
     return 565.3
 
 def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
-    '''Return a typical SED Machine spectrum, use for interpolating on grid
+    """Return a typical SED Machine spectrum, use for interpolating on grid
 
                                         x
     Equation looks like 1000 x (239/240)
@@ -137,7 +137,8 @@ def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
     Args:
         lamstart(float): default is 1050 nm
         lamratio(float): default is 239/240, good for SEDM
-        len(int): default of 265 yields a spectrum that goes to ~ 350 nm'''
+        len(int): default of 265 yields a spectrum that goes to ~ 350 nm
+    """
 
     xx = np.arange(len)
 
@@ -180,14 +181,14 @@ def assoc_hg_with_flats_helper(idx):
 def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par= {365.0: 231,
     404.6:214, 435.8:193, 546.1: 133, 578.00: 110}, outname='assoc_Hg'):
     
-    '''Given a set of functions defining the ridgeline of dome flats
+    """Given a set of functions defining the ridgeline of dome flats
     and a list of positions of mercury lamps, provide a crude wavelength
     solution
 
     Args:
         guess_offset: Dictionary of {wavelength in nm: x position} indicating
             the rough distance from the segment start to the wavelength
-    '''
+    """
     global domedat, hgcat, guess_offset, wavetrees
 
     domedat = domedat_par
@@ -216,7 +217,7 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par= {365.0: 231,
 
 
 def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
-    '''Based on line ratios and positions, determine positions of Hg lines
+    """Based on line ratios and positions, determine positions of Hg lines
     
     Args:
         lines: line list
@@ -229,7 +230,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
         Returns dictionary of {wavelength nm: [(pixel coords) ...], ...}
         Each wavelength has a list of pixel coords of different length.
         The coordinates are diassociated from one and other.
-        '''
+    """
 
 
     data = []
@@ -311,7 +312,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     return res[0]
 
 def fractional_sum(FS_Y, FS_EW, FS_dat, FS_Yx1):
-    ''' Returns sum of FS_dat via a partial-pixel method.
+    """ Returns sum of FS_dat via a partial-pixel method.
 
     Args:
         FS_Y(float): location of trace in vertical direciton
@@ -325,7 +326,7 @@ def fractional_sum(FS_Y, FS_EW, FS_dat, FS_Yx1):
 
     Raises:
         Nothing.
-    '''
+    """
 
     nn = len(FS_dat)
     YB1 = FS_Y - FS_EW
@@ -350,7 +351,7 @@ def fractional_sum(FS_Y, FS_EW, FS_dat, FS_Yx1):
     return FSsum
 
 def make_profile(slice, sigma2=4):
-    ''' Return a gaussian profile with the same dimensions as the slice '''
+    """ Return a gaussian profile with the same dimensions as the slice """
 
     profile = np.arange(np.round(slice.stop)-np.round(slice.start))
     profile -= (len(profile)-1)/2.0
@@ -495,8 +496,8 @@ def wavelength_extract(HDUlist_par, wavecalib_par, filename='extracted_spectra.n
 
 
 def extract_helper(ss):
-    ''' TODO: MERGE WITH wavelength_extract_helper.
-    Functionallity is repeated.'''
+    """ TODO: MERGE WITH wavelength_extract_helper.
+    Functionallity is repeated."""
     global dat, n_done, update_rate
 
     n_done += 1
@@ -573,13 +574,14 @@ def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
 
 
 def median_fine_grid(fine, doPlot=False):
-    ''' Using the 7 nearest neighbors, median the wavelength solution. Refit the wavelength solution to this median wavelength.
+    """ Using the 7 nearest neighbors, median the wavelength solution. Refit the wavelength solution to this median wavelength.
 
     Input:
         fine: Dictionary that contains the fine wavelength solution
 
     Returns:
-        fine.mdn_coeff contains updated chebyshev polynomial coefficients '''
+        fine.mdn_coeff contains updated chebyshev polynomial coefficients
+    """
         
     xs = []
     ys = []
@@ -713,15 +715,15 @@ def median_fine_grid(fine, doPlot=False):
 
 
 def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
-    ''' Using the 7 nearest neighbors, median the wavelength solution coefficients '''
+    """ Using the 7 nearest neighbors, median the wavelength solution coefficients """
 
     this_code_is_of_very_little_use()
 
-    '''
+    """
         median_rough grid was used to test the idea
         as of 20 jan 2015, the algorithm tested by this code does not
         work.
-    '''
+    """
     xs = []
     ys = []
     ids = []
@@ -817,7 +819,7 @@ def scale_on_547(spec):
 
 
 def stretch_fit_helper(specno):
-    ''' Helper for Multiprocessing Pool'''
+    """ Helper for Multiprocessing Pool"""
     global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs, n_done, update_rate
 
     n_done += 1
@@ -868,7 +870,7 @@ def stretch_fit_helper(specno):
 
 
 def get_stretched(fid_ix, coeffs, spec1, spec2=None):
-    ''' Reinterpolate spec1 and spec2 onto the fiducial index set by stretching and scaling the spectra
+    """ Reinterpolate spec1 and spec2 onto the fiducial index set by stretching and scaling the spectra
 
     This is used after a call that looks something like:
         ll = np.load("Hg_ext.npy")
@@ -879,7 +881,9 @@ def get_stretched(fid_ix, coeffs, spec1, spec2=None):
         s1, s2 = get_stretched(fix, coeffs[5], ll[5], lx[5])
     
     Returns:
-        s1, s2 [float(len(fid_ix))]: Spectra'''
+        s1, s2 [float(len(fid_ix))]: Spectra
+    """
+
     newix = chebval(fid_ix, coeffs)
     ix = scale_on_547(spec1)
     sf1 = interp1d(ix, spec1.specw, bounds_error=False, fill_value=0)
@@ -894,16 +898,15 @@ def get_stretched(fid_ix, coeffs, spec1, spec2=None):
 
 
 def stretch_set(Hg_set, Xe_set, mscales=None):
-    ''' Shift and stretch spectra so they have the same pixel index 
-    
-    
+    """ Shift and stretch spectra so they have the same pixel index 
+
     Steps:
     1. Shift spectra without interpolation onto a common pixel grid with index 0 being a prominent Hg line. 
     2. Create a set of interpolating functions for each of the spectra in the set. These functions are called as flux(pixel).
     3. Brute force search for the best stretch and 2nd-order polynomial coefficient for each spectrum in the set, compared to the fiducial spectrum.
     4. Brute force will measure the above for the xenon and mercury spectra indepdentnly.
     5. Then we stitch together a master pixel shift based on a chebyshev fit of the xenon and mercury spectra. The chebyshev fit creates a function such that f(pixel) --> pixel. On this new grid, all spectra are close to the same.
-    '''
+    """
 
     # Global is for interprocess comms
     global pix_coeffs, fid_ix, fs1, fs2, slopes, squares, specs, funs, n_done, update_rate
@@ -1005,7 +1008,7 @@ linelist = {
 }
 
 def snap_solution_into_place(PARS): 
-    ''' Return new Chebyshev coefficients for best fit wavelength solution '''
+    """ Return new Chebyshev coefficients for best fit wavelength solution """
 
     if PARS is None:
         return (None, None, None)
@@ -1017,7 +1020,7 @@ def snap_solution_into_place(PARS):
 
 
     def fitlinelist(cc, printout=False):
-        ''' Fit a line list using input coefficients as a first guess at
+        """ Fit a line list using input coefficients as a first guess at
         dispersion function. 
         
         INPUTS:
@@ -1027,7 +1030,7 @@ def snap_solution_into_place(PARS):
         KEYWORDS:
         
         printout - set to True to get running status on line-fitting
-        '''
+        """
         
         # Initial solution
         lams = chebval(ixs, cc)
@@ -1124,8 +1127,8 @@ def snap_solution_into_place(PARS):
     return newcoef, np.sqrt(np.mean(newnres*newnres)), np.sqrt(np.mean(newres*newres))
 
 def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
-    ''' Get a global solution for dispersion function using Hg, Xe, possibly Cd data
-    '''
+    """ Get a global solution for dispersion function using Hg, Xe, possibly Cd data
+    """
     
     # Data structure for passing to fitting function
     PARS = []
@@ -1211,7 +1214,7 @@ def fit_xe_lines(SS, guesses = {764: -77, 828: -93}, plot=False, Ncutout=5):
     return fit_known_lines(SS, guesses, plot, Ncutout)
 
 def fit_known_lines(SS, guesses, plot, Ncutout):
-    ''' Fit line positions based on guess pixel positions against a fiducial spectrum 
+    """ Fit line positions based on guess pixel positions against a fiducial spectrum 
 
     This function is mapable
     
@@ -1227,7 +1230,7 @@ def fit_known_lines(SS, guesses, plot, Ncutout):
         Intent is for this list to be fit with polynomials to construct the
         wavelength solution.
         
-    '''
+    """
 
     if SS is None: return None
 
@@ -1276,7 +1279,7 @@ def fit_known_lines(SS, guesses, plot, Ncutout):
 
 
 def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
-    '''Fit mercury + xenon lines to a set of spectra that are put on a common fiducial grid.
+    """Fit mercury + xenon lines to a set of spectra that are put on a common fiducial grid.
 
     Args:
         fiducial(int[Nf]): Fiducial index values range from about -130 to + 130
@@ -1284,7 +1287,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
         xe_spec(Extraction[Ne]): Xenon spectra
         xxs(Gridded[Ne]): Results from stretch_set() call
 
-    '''
+    """
 
     # Verify that all extractions share the same dimensionality
     assert(len(hg_spec) > 500)
@@ -1478,7 +1481,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     return np.array(fits), residuals, np.array(rss), (XS, YS)
 
 def coeffs_to_spec(fix, gridded, rgrd_coef, lam_coef):
-    ''' Returns the spectrum given the unadultered spectrum and fits.
+    """ Returns the spectrum given the unadultered spectrum and fits.
 
     Args:
         fix(array) -- Fiducial index positions
@@ -1493,7 +1496,7 @@ def coeffs_to_spec(fix, gridded, rgrd_coef, lam_coef):
         Tuple containing the wavelength and spectrum
         (wavelength, spectrum) this is in the units of the fit coefficients.
         
-    '''
+    """
     
     gix = scale_on_547(gridded)
     gsp = gridded.specw
@@ -1600,7 +1603,7 @@ def rough_grid_helper(ix):
 
 def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578], 
     outname='rough_wavelength.npy'):
-    '''Shift the extractions onto a coarse common pixel grid'''
+    """Shift the extractions onto a coarse common pixel grid"""
 
     global extractions, lines, n_ext, tot_std, min_std, max_std
 
@@ -1710,7 +1713,7 @@ def fit_spectra_Hg_Xe(Hgs, Xes, kdtree, kdseg_ids, plot=False, outname='fit_spec
 
 
 def measure_offsets(spec, coeff, plot=False):
-    '''Measure wavelength offsets of Hg and Xe extractions
+    """Measure wavelength offsets of Hg and Xe extractions
 
     First uses a crude peak finding code to identify the locations of the 
     Xe lines.
@@ -1719,7 +1722,7 @@ def measure_offsets(spec, coeff, plot=False):
         
     Returns:
         A dictionary of {line_wavelength_nm: offset_nm}.
-    '''
+    """
 
     preffun = lambda x: ((x[1])**2 + (x[0]-120)**2)/1e4 + 1.
     resfun830 = NPK.Fit.mpfit_residuals(xe_830nm, preffun=preffun)
@@ -1848,15 +1851,16 @@ def measure_offsets(spec, coeff, plot=False):
 
 
 def read_spec_loc(spec_loc_fname):
-    '''Returns the structure for the location of each spectrum'''
+    """Returns the structure for the location of each spectrum"""
 
 
     return np.load(spec_loc_fname)
 
 def xe_830nm(p, lam):
-    '''Xe complex near 830 nm.
+    """Xe complex near 830 nm.
 
-    See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html'''
+    See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html
+    """
 
     sigma,lamoffset,offset,peak = p
 
@@ -1908,9 +1912,10 @@ def save_fitted_ds9(fitted, outname='fine'):
             
 
 def xe_890nm(p, lam):
-    '''Xe complex near 890 nm.
+    """Xe complex near 890 nm.
 
-    See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html'''
+    See: http://www2.keck.hawaii.edu/inst/lris/arc_calibrations.html
+    """
 
     sigma,lamoffset,offset,peak,p937 = p
 
@@ -1927,7 +1932,7 @@ def xe_890nm(p, lam):
 
 
 def assign_fit_to_spectra(target, gridded, rss, fix, stretch, lamfit):
-    ''' Put wavelength solution into target
+    """ Put wavelength solution into target
     
     Args:
         target(list of Extraciton): Target list of extractions
@@ -1942,7 +1947,7 @@ def assign_fit_to_spectra(target, gridded, rss, fix, stretch, lamfit):
     Returns:
         New grid with coefficients assigned to it
 
-    '''
+    """
     
     for i in xrange(len(gridded)):
 
@@ -1958,7 +1963,7 @@ def assign_fit_to_spectra(target, gridded, rss, fix, stretch, lamfit):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-    '''Wavelength.py performs:
+    """Wavelength.py performs:
 
         1. Rough wavelength calibration based on Mercury lamp lines.
         2. Fine wavelength calbiration based on Xenon and Mercury lamp lines.
@@ -1978,7 +1983,7 @@ if __name__ == '__main__':
 
         for rough set --dome [npy], --hgcat [txt], and --outname 
         for fine set --xefits [fits], --hefits [fits] --cdfits [fits] --hgassoc [npy], and --outname
-    ''', formatter_class=argparse.RawTextHelpFormatter)
+    """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('step', type=str, help='One of [rough|fine|extract]')
     parser.add_argument('--infile', type=str, help='Infile name, purpose depends on step')
@@ -2059,7 +2064,7 @@ if __name__ == '__main__':
         snap_solution_into_place_all(result, Hg_E, Xe_E, Cds=Cd_E, Hes=He_E)
         np.save(args.outname, result)
 
-        '''
+        """
     elif args.step == 'fineold':
         This step kept for historical purposes 
         XeDat = pf.open(args.xefits)
@@ -2080,7 +2085,7 @@ if __name__ == '__main__':
         fitted = median_fine_grid(fitted)
         np.save("%s.npy" % outname, fitted)
         save_fitted_ds9(fitted, outname=outname)
-        '''
+        """
 
     elif args.step == 'extract':
         

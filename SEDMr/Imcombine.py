@@ -1,14 +1,10 @@
 import argparse
 import numpy as np
-import pylab as pl
-import pyfits as pf
-import sys
-
 
 def imcombine(filelist, out, bpmask=None, reject="none", nlow=None,
         nhigh=None):
 
-    '''Convenience wrapper around IRAF task imcombine
+    """Convenience wrapper around IRAF task imcombine
 
     Args:
         filelist: The list of files to imcombine
@@ -22,13 +18,12 @@ def imcombine(filelist, out, bpmask=None, reject="none", nlow=None,
 
     Side effects:
         Creates the imcombined file at location `out'
-    '''
+    """
 
     #TODO: REMOVE Iraf and use python instead. STSCI Python has
     # A builtin routine.
     from pyraf import iraf
     iraf.images()
-
 
     filelist = [("%s[0]" % f) for f in filelist]
     pars = iraf.imcombine.getParList()
@@ -56,17 +51,15 @@ def imcombine(filelist, out, bpmask=None, reject="none", nlow=None,
     iraf.imcombine.setParList(pars)
 
 
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''Imcombine.py performs:
+        """Imcombine.py performs:
 
         1) Median combination
         2) Mean combine
         3) Mean combine w/ sigma clipping
 
-    ''', formatter_class=argparse.RawTextHelpFormatter)
+    """, formatter_class=argparse.RawTextHelpFormatter)
 
 
     parser.add_argument('--files', type=str, nargs='*', default=[])

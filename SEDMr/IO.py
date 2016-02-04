@@ -16,7 +16,7 @@ CRVAL1 = 239.5
 CRPIX1 = 88.98
 
 def readspec(path, corrname='std-correction.npy'):
-    ''' Read numpy spec file 
+    """ Read numpy spec file 
     
     Returns:
         wavelength array [N]: in nm
@@ -26,7 +26,7 @@ def readspec(path, corrname='std-correction.npy'):
         Spectrum object: full spectrum from where above derived
         meta {}: The meta dictionary associated with the spectrum
         
-    '''
+    """
 
     if not os.path.isfile(corrname):
         print "Loading old standard correction"
@@ -75,7 +75,7 @@ def readspec(path, corrname='std-correction.npy'):
 
 
 def readfits(path):
-    ''' Read fits file at path or path.gz '''
+    """ Read fits file at path or path.gz """
 
     if not os.path.exists(path):
         if os.path.exists("%s.gz" % path):
@@ -109,7 +109,7 @@ def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
     
 
 def convert_spectra_to_recarray(spectra):
-    ''' Returns an Numpy recarray version of spectra '''
+    """ Returns an Numpy recarray version of spectra """
 
     keys = spectra[0].__dict__.keys()
 
@@ -151,10 +151,10 @@ def convert_spectra_to_recarray(spectra):
 
 
 def exp_fid_wave(CRVAL1=239.5, CRPIX1=88.98):
-    ''' Return a fiducial wavelength grid appropraite for FITS representation 
+    """ Return a fiducial wavelength grid appropraite for FITS representation 
     
     Computation performed with Mathematica
-    '''
+    """
     
     return CRVAL1 * np.exp((np.arange(265)+CRPIX1)/CRVAL1)
 
@@ -181,12 +181,7 @@ def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
     return img, img2
 
 def write_cube(spectra, headers):
-    '''
-    Create a FITS file with all spectra written
-
-    '''
-    
-
+    """ Create a FITS file with all spectra written.  """
 
     recarr = convert_spectra_to_recarray(spectra)
 
@@ -203,10 +198,6 @@ def write_cube(spectra, headers):
     f4.header['CTYPE1'] = 'WAVE-LOG'
     f4.header['CUNIT1'] = 'NM'
 
-
     towrite = pf.HDUList( [f1, f2, t3, f4, f5])
     towrite.writeto('test.fits', clobber=True)
-
-
-
 
