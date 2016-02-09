@@ -1,3 +1,8 @@
+Fix dependance on older version of numpy
+Create repository for just SEDM reductions
+Make independant of python distribution (Ureka, e.g.)
+Add option to specify location and shape of extraction aperture
+Test possibility for finding peaks in ifu images
 Add the following keywords: INSTRUME, TELESCOP, OBSERVER, FILTER
 sort segments on y-value (apparently no way to do this in SExtractor)
 check variance values
