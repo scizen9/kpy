@@ -3,12 +3,10 @@ import os
 import pyfits as pf
 import NPK.Util as UU
 import numpy as np
-import Wavelength as WW
-import gzip
 import warnings
 
 from scipy.interpolate import interp1d
-from numpy.polynomial.chebyshev import chebfit, chebval
+from numpy.polynomial.chebyshev import chebval
 
 # These two are default values needed by WCS to achieve a constant R~100
 # wavelength grid for SEDM. 
@@ -16,7 +14,7 @@ CRVAL1 = 239.5
 CRPIX1 = 88.98
 
 def readspec(path, corrname='std-correction.npy'):
-    """ Read numpy spec file 
+    """Read numpy spec file 
     
     Returns:
         wavelength array [N]: in nm
@@ -28,9 +26,16 @@ def readspec(path, corrname='std-correction.npy'):
         
     """
 
+    # Check for local version
     if not os.path.isfile(corrname):
-        print "Loading old standard correction"
-        corrname = '/scr2/sedm/ref/std-correction.npy'
+        # Check SEDM_REF env var
+        sref = os.getenv("SEDM_REF")
+        if sref is not None:
+            corrname = os.path.join(sref,'std-correction.npy')
+        else:
+            corrname = '/scr2/sedm/ref/std-correction.npy'
+
+    print "Attempting to load standard correction in: %s" % corrname
         
     ss = np.load(path)[0]
 
@@ -75,13 +80,14 @@ def readspec(path, corrname='std-correction.npy'):
 
 
 def readfits(path):
-    """ Read fits file at path or path.gz """
+    """Read fits file at path or path.gz"""
 
     if not os.path.exists(path):
         if os.path.exists("%s.gz" % path):
             path += ".gz"
         else:
-            raise Exception("The file at path %s or %s.gz does not exist" % (path, path))
+            raise Exception("The file at path %s or %s.gz does not exist" % 
+                                                                (path, path))
 
     hdulist = pf.open(path)
     
@@ -109,7 +115,7 @@ def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
     
 
 def convert_spectra_to_recarray(spectra):
-    """ Returns an Numpy recarray version of spectra """
+    """Returns an Numpy recarray version of spectra"""
 
     keys = spectra[0].__dict__.keys()
 
@@ -151,7 +157,7 @@ def convert_spectra_to_recarray(spectra):
 
 
 def exp_fid_wave(CRVAL1=239.5, CRPIX1=88.98):
-    """ Return a fiducial wavelength grid appropraite for FITS representation 
+    """Return a fiducial wavelength grid appropraite for FITS representation
     
     Computation performed with Mathematica
     """
@@ -181,7 +187,7 @@ def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
     return img, img2
 
 def write_cube(spectra, headers):
-    """ Create a FITS file with all spectra written.  """
+    """Create a FITS file with all spectra written."""
 
     recarr = convert_spectra_to_recarray(spectra)
 

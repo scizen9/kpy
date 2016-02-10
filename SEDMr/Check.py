@@ -24,7 +24,6 @@ def checkSpec(specname, corrname='std-correction.npy',
         sys.exit("No such file: %s" % specname)
 
     # IO.readspec applies the calibration in the file specified
-    print "Calibrating with %s" % corrname
     lam, spec, skyspec, stdspec, ss, meta = \
             IO.readspec(specname,corrname=corrname)
     
@@ -190,7 +189,7 @@ def checkSpec(specname, corrname='std-correction.npy',
 
 
 def checkCube(cubename, showlamrms=False, savefig=False):
-    ''' Plot a datacube for checking'''
+    """Plot a datacube for checking"""
     
     if not os.path.isfile(cubename):
         sys.exit("No such file: %s" % cubename)
@@ -209,7 +208,8 @@ def checkCube(cubename, showlamrms=False, savefig=False):
         c, low, upp = sigmaclip(Ss)
         Smdn = np.median(c)
         Sstd = np.nanstd(c)
-        print "Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" % (len(cc), (len(cc)-len(c)), Smdn, Sstd)
+        print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" % 
+                    (len(cc), (len(cc)-len(c)), Smdn, Sstd))
         smx = Smdn + 3.* Sstd
         smn = Smdn - 3.* Sstd
         if smn < 0.: smn = 0.
@@ -241,20 +241,23 @@ def checkCube(cubename, showlamrms=False, savefig=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''Check.py
+        """Check.py
 
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
 
     parser.add_argument('--cube', type=str, help='Fine correction path')
-    parser.add_argument('--lambdarms', action="store_true", default=False, help='Show lambda soln rms')
-    parser.add_argument('--savefig', action="store_true", default=False, help='Save pdf figure')
-    parser.add_argument('--savespec', action="store_true", default=False, help='Save spec ASCII file')
+    parser.add_argument('--lambdarms', action="store_true", default=False, 
+            help='Show lambda soln rms')
+    parser.add_argument('--savefig', action="store_true", default=False, 
+            help='Save pdf figure')
+    parser.add_argument('--savespec', action="store_true", default=False, 
+            help='Save spec ASCII file')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
-    parser.add_argument('--smoothing', type=float, default=0, help='Smoothing in pixels')
-
+    parser.add_argument('--smoothing', type=float, default=0, 
+            help='Smoothing in pixels')
 
     args = parser.parse_args()
 
