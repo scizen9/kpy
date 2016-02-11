@@ -733,40 +733,45 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         None
     """
 
+    # Load wavelength/spatial solution
     fine = np.load(fine)
+    # Set a default outname if needed
     if outname is None:
         outname = "%s" % (A)
-
+    # Check for flexure offsets
     if Aoffset is not None:
         ff = np.load(Aoffset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
-
         print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
-
+    # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
         print "USING extractions in %s.npy!" % outname
         print "rm %s.npy # if you want to recreate extractions" % outname
         E, meta = np.load(outname+".npy")
         E_var, meta_var = np.load("var_" + outname + ".npy")
+    # No extractions yet, so generate them
     else:
         print "\nCREATING extractions ..."
+        # Load spectrum image
         spec = pf.open(A)
-
+        # Set up variance image by adding read noise to Poisson noise
         adcspeed = spec[0].header["ADCSPEED"]
         if adcspeed == 2: read_var = 22*22
         else: read_var = 5*5
-
+        # Variance image is input image plus read variance
         var = addcon(A, str(read_var), "var_" + outname + ".fits")
-
+        # Extract each object spaxel
         print "\nExtracting object spectra"
-        E, meta = Wavelength.wavelength_extract(spec, fine, filename=outname,
+        E, meta = Wavelength.wavelength_extract(spec, fine, 
+            filename=outname,
             flexure_x_corr_nm=flexure_x_corr_nm,
             flexure_y_corr_pix=flexure_y_corr_pix,
-            flat_corrections = flat_corrections)
+            flat_corrections=flat_corrections)
+        # Extract metadata
         meta['airmass'] = spec[0].header['airmass']
         header = {}
         for k,v in spec[0].header.iteritems():
@@ -778,44 +783,46 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         meta['PRLLTC'] = spec[0].header['PRLLTC']
         meta['equinox'] = spec[0].header['Equinox']
         meta['utc'] = spec[0].header['utc']
-
         meta['header'] = header
-
         meta['exptime'] = spec[0].header['exptime']
+        # Save object extraction
         np.save(outname, [E, meta])
-
+        # Extract each variance spaxel
         print "\nExtracting variance spectra"
         E_var, meta_var = Wavelength.wavelength_extract(var, fine,
             filename=outname,
-            flexure_x_corr_nm = flexure_x_corr_nm,
-            flexure_y_corr_pix = flexure_y_corr_pix,
+            flexure_x_corr_nm=flexure_x_corr_nm,
+            flexure_y_corr_pix=flexure_y_corr_pix,
             flat_corrections=flat_corrections)
-
+        # Save variance extraction
         np.save("var_" + outname, [E_var, meta_var])
 
+    # Get the object name of record
     object = meta['header']['OBJECT'].split()[0]
 
-    if standard is None:
-        sixA, posA, adcpos, radius_used = identify_spectra_gui(E, radius=radius,
-            PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-            lmin=lmin, lmax=lmax, object=object, airmass=meta['airmass'])
-
-        kixA = identify_bgd_spectra(E, posA, inner=radius_used*1.1)
-    else:
+    # Automatic extraction using Gaussian fit for Standard Stars
+    if standard is not None:
         sixA, posA, adcpos, radius_used = identify_spectra_Gauss_fit(E,
                 outname=outname, PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
                 lmin=lmin, lmax=lmax, airmass=meta['airmass'])
+        # Use all sky spaxels in image for Standard Stars
         kixA = identify_sky_spectra(E, posA, inner=radius_used*1.1)
+    # A single-frame Science Object
+    else:
+        sixA, posA, adcpos, radius_used = identify_spectra_gui(E, radius=radius,
+            object=object, PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
+            lmin=lmin, lmax=lmax, airmass=meta['airmass'])
+        # Use an annulus for sky spaxels for Science Objects
+        kixA = identify_bgd_spectra(E, posA, inner=radius_used*1.1)
 
+    # Make an image of the spaxels for the record
     to_image(E, meta, outname, posA=posA, adcpos=adcpos)
-
     # get the mean spectrum over the selected spaxels
     resA = interp_spectra(E, sixA, outname=outname+".pdf", corrfile=corrfile)
     skyA = interp_spectra(E, kixA, outname=outname+"_sky.pdf", 
                             corrfile=corrfile)
     varA = interp_spectra(E_var, sixA, outname=outname+"_var.pdf", 
                             corrfile=corrfile)
-
     ## Plot out the X/Y positions of the selected spaxels
     XSA = []
     YSA = []
@@ -841,15 +848,12 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
 
     # Define our standard wavelength grid
     ll = Wavelength.fiducial_spectrum()
-
     # Resample sky onto standard wavelength grid
     sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)
     sky = sky_A(ll)
-
     # Resample variance onto standard wavelength grid
     var_A = interp1d(varA[0]['nm'], varA[0]['ph_10m_nm'], bounds_error=False)
     varspec = var_A(ll)
-
     # Copy and resample object spectrum onto standard wavelength grid
     res = np.copy(resA)
     res = [{"doc": resA[0]["doc"], "ph_10m_nm": np.copy(resA[0]["ph_10m_nm"]),
@@ -858,13 +862,10 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         "nm": np.copy(resA[0]["ph_10m_nm"])}]
     res[0]['nm'] = np.copy(ll)
     f1 = interp1d(resA[0]['nm'], resA[0]['ph_10m_nm'], bounds_error=False)
-
     # Calculate airmass correction
     airmass = meta['airmass']
-
     extCorr = 10**(Atm.ext(ll*10) * airmass/2.5)
     print "Median airmass corr: %.4f" % np.median(extCorr)
-
     # Calculate output corrected spectrum
     if nosky:
         # Account for airmass and aperture
@@ -876,30 +877,25 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     # Process standard star objects
     if standard is not None:
         print "STANDARD"
-
         # Extract reference data
         wav = standard[:,0]/10.0
         flux = standard[:,1]
-
         # Calculate/Interpolate correction onto object wavelengths
         fun = interp1d(wav, flux, bounds_error=False, fill_value = np.nan)
         correction0 = fun(res[0]['nm'])/res[0]['ph_10m_nm']
-
         # Filter for resolution
         flxf = filters.gaussian_filter(flux,19.)
-
         # Calculate/Interpolate filtered correction
         fun = interp1d(wav, flxf, bounds_error=False, fill_value = np.nan)
         correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
-
         # Use unfiltered for H-beta region
         ROI = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
         correction[ROI] = correction0[ROI]
-
+        # Store correction and max calibrated wavelength
         res[0]['std-correction'] = correction
         res[0]['std-maxnm'] = np.max(wav)
 
-
+    # Store new metadata
     res[0]['exptime'] = meta['exptime']
     res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
     res[0]['extinction_corr'] = extCorr
@@ -913,13 +909,13 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     res[0]['object_spaxel_ids'] = sixA
     res[0]['sky_spaxel_ids'] = kixA
     res[0]['sky_spectra'] = skyA[0]['spectra']
-
+    # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
     newll = chebval(xs, coef)
-
+    # Store offsets
     res[0]['dlam'] = np.diff(newll)
-
+    # Save the final spectrum
     np.save("sp_" + outname, res)
     print "Wrote sp_"+outname+".npy"
 
