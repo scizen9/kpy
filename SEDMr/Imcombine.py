@@ -1,8 +1,8 @@
 import argparse
 import numpy as np
 
-def imcombine(filelist, out, bpmask=None, reject="none", nlow=None,
-        nhigh=None):
+def imcombine(filelist, out, listfile=None, bpmask=None, reject="none", 
+                nlow=None, nhigh=None):
 
     """Convenience wrapper around IRAF task imcombine
 
@@ -29,7 +29,9 @@ def imcombine(filelist, out, bpmask=None, reject="none", nlow=None,
     pars = iraf.imcombine.getParList()
     iraf.imcombine.unlearn()
 
-    path = "flatcombine.lst"
+    if listfile is None:
+        path = "flatcombine.lst"
+    else: path = listfile
     f = open(path, "w")
     for file in filelist:
         f.write(file + "\n")
@@ -63,6 +65,7 @@ if __name__ == '__main__':
 
 
     parser.add_argument('--files', type=str, nargs='*', default=[])
+    parser.add_argument('--listfile', type=str, default=None)
     parser.add_argument('--Nhi', type=float, default=None)
     parser.add_argument('--Nlo', type=float, default=None)
     parser.add_argument('--reject', type=str, default='none')
@@ -74,7 +77,7 @@ if __name__ == '__main__':
     if args.outname is None:
         print "Set --outname"
 
-    imcombine(filelist, out, bpmask=None, reject=args.reject, 
-                nlow=args.Nlo, nhigh=args.Nhi)
+    imcombine(filelist, out, listfile=args.listfile, bpmask=None, 
+                reject=args.reject, nlow=args.Nlo, nhigh=args.Nhi)
 
 
