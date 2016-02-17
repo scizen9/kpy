@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    fine = np.load(args.fine)
+    fine, meta = np.load(args.fine)
     HDU = pf.open(args.infile)
     dy = measure_flexure_y(fine, HDU, profwidth=args.profwidth)
     dx = measure_flexure_x(fine, HDU, dY=dy,

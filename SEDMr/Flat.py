@@ -27,13 +27,17 @@ reload(FF)
 reload(Extraction)
 reload(Wavelength)
 
-fid_wave = Wavelength.fiducial_wavelength()
-
 
 def measure_flat(extraction, meta, 
         lamstart=700,
         lamend=900,
+        fidwave=None,
         outfile='flat.npy'):
+
+    if fidwave is None:
+        fid_wave = Wavelength.fiducial_wavelength()
+    else:
+        fid_wave = fidwave
 
 
     corrections = []
@@ -75,32 +79,38 @@ def measure_flat(extraction, meta,
     pl.xlim(-100,2048+100)
     pl.ylim(-100,2048+100)
     pl.colorbar()
-    pl.xlabel("X pixel")
+    pl.xlabel("X pixel @ %6.1f nm" % fid_wave)
     pl.ylabel("Y pixel")
-    pl.title("Single correction from %s to %s from %s" % (lamstart, lamend,
-        meta['outname']))
+    pl.title("Correction from %s to %s nm from %s" % (lamstart, lamend,
+                meta['outname']))
     pl.savefig("flat-field-values.pdf")
 
     return corrections
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
-        '''
+        """Create dome flat
 
-        ''', formatter_class=argparse.RawTextHelpFormatter)
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
 
     parser.add_argument('infile', type=str, help='Path to dome flat')
-    parser.add_argument('--lamstart', type=float, help='Wavelength resolution for interpolating grid', default=700.0)
-    parser.add_argument('--lamend', type=float, help='Wavelength resolution for interpolating grid', default=900.0)
-    parser.add_argument('--outfile', type=str, help='Output filename', default="flat-dome-700to900.npy")
+    parser.add_argument('--lamstart', type=float,
+            help='Wavelength range start', default=700.0)
+    parser.add_argument('--lamend', type=float, 
+            help='Wavelength range end', default=900.0)
+    parser.add_argument('--outfile', type=str, 
+            help='Output filename', default="flat-dome-700to900.npy")
 
     args = parser.parse_args()
 
     ext, meta = np.load(args.infile)
-    flat = measure_flat(ext, meta,
-        lamstart=args.lamstart,
-        lamend=args.lamend)
+    if 'fiducial_wavelength' in meta:
+        fidwave = meta['fiducial_wavelength']
+    else:
+        fidwave = None
+    flat = measure_flat(ext, meta, lamstart=args.lamstart, lamend=args.lamend,
+                        fidwave=fidwave)
 
     np.save(args.outfile, flat)
     print "Wrote %s" % args.outfile

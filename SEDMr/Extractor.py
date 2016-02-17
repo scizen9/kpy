@@ -355,7 +355,7 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
         for p in adcpos:
             pl.plot(p[0], p[1], 'rx')
 
-    pl.xlabel("X [as]")
+    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
     pl.title(meta['outname'])
     pl.colorbar()
@@ -653,6 +653,7 @@ def handle_extract(data, outname=None, fine='fine.npy',flexure_x_corr_nm=0.0,
             flat_corrections=flat_corrections)
 
         np.save(exfile, [E, meta])
+        print "Wrote %s.npy" % exfile
     else:
         E, meta = np.load(exfile)
 
@@ -672,7 +673,7 @@ def handle_Flat(A, fine, outname=None):
         None
     """
 
-    fine = np.load(fine)
+    fine, fmeta = np.load(fine)
     if outname is None:
         outname = "%s" % (A)
 
@@ -697,11 +698,13 @@ def handle_Flat(A, fine, outname=None):
         meta['PRLLTC'] = spec[0].header['PRLLTC']
         meta['equinox'] = spec[0].header['Equinox']
         meta['utc'] = spec[0].header['utc']
+        meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
 
         meta['header'] = header
 
         meta['exptime'] = spec[0].header['exptime']
         np.save(outname, [E, meta])
+        print "Wrote %s.npy" % outname
 
 
 def handle_A(A, fine, outname=None, standard=None, corrfile=None,
@@ -734,7 +737,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     """
 
     # Load wavelength/spatial solution
-    fine = np.load(fine)
+    fine, fmeta = np.load(fine)
     # Set a default outname if needed
     if outname is None:
         outname = "%s" % (A)
@@ -783,10 +786,12 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
         meta['PRLLTC'] = spec[0].header['PRLLTC']
         meta['equinox'] = spec[0].header['Equinox']
         meta['utc'] = spec[0].header['utc']
+        meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
         meta['header'] = header
         meta['exptime'] = spec[0].header['exptime']
         # Save object extraction
         np.save(outname, [E, meta])
+        print "Wrote %s.npy" % outname
         # Extract each variance spaxel
         print "\nExtracting variance spectra"
         E_var, meta_var = Wavelength.wavelength_extract(var, fine,
@@ -796,6 +801,7 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
             flat_corrections=flat_corrections)
         # Save variance extraction
         np.save("var_" + outname, [E_var, meta_var])
+        print "Wrote var_%s.npy" % outname
 
     # Get the object name of record
     object = meta['header']['OBJECT'].split()[0]
@@ -839,6 +845,8 @@ def handle_A(A, fine, outname=None, standard=None, corrfile=None,
     pl.clf()
     pl.ylim(-30,30)
     pl.xlim(-30,30)
+    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
+    pl.ylabel("Y [as]")
     pl.scatter(XSA,YSA, color='red', marker='H', linewidth=.1)
     pl.scatter(XSK,YSK, color='green', marker='H', linewidth=.1)
     pl.title("%d selected spaxels for %s" % (len(XSA), object))
@@ -952,7 +960,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         None
     """
 
-    fine = np.load(fine)
+    fine, fmeta = np.load(fine)
     if outname is None:
         outname = "%sm%s" % (A,B)
 
@@ -1004,11 +1012,13 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
         meta['PRLLTC'] = diff[0].header['PRLLTC']
         meta['equinox'] = diff[0].header['Equinox']
         meta['utc'] = diff[0].header['utc']
+        meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
 
         meta['header'] = header
 
         meta['exptime'] = diff[0].header['exptime']
         np.save(outname, [E, meta])
+        print "Wrote %s.npy" % outname
 
         print "\nExtracting variance spectra"
         E_var, meta_var = Wavelength.wavelength_extract(var, fine,
@@ -1018,6 +1028,7 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
             flat_corrections=flat_corrections)
 
         np.save("var_" + outname, [E_var, meta_var])
+        print "Wrote var_%s.npy" % outname
 
     object = header['OBJECT'].split()[0]
 
@@ -1077,6 +1088,8 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     pl.clf()
     pl.ylim(-30,30)
     pl.xlim(-30,30)
+    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
+    pl.ylabel("Y [as]")
     pl.scatter(XSA,YSA, color='blue', marker='H', linewidth=.1)
     pl.scatter(XSB,YSB, color='red', marker='H', linewidth=.1)
     pl.scatter(XKA,YKA, color='green', marker='H', linewidth=.1)
@@ -1089,6 +1102,8 @@ def handle_AB(A, B, fine, outname=None, corrfile=None,
     np.save("sp_B_" + outname, resB)
     np.save("var_A_" + outname, varA)
     np.save("var_B_" + outname, varB)
+    print("Wrote sp_A_%s.npy, sp_B_%s.npy, var_A_%s.npy, var_B_%s.npy" %
+            (outname, outname, outname, outname))
 
     ll = Wavelength.fiducial_spectrum()
     sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)

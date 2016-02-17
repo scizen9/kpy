@@ -11,6 +11,7 @@ import sys
 import datetime
 
 import IO
+import SEDMr.Wavelength as Wavelength
 import NPK.Standards as SS
 
 import os
@@ -194,7 +195,8 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     if not os.path.isfile(cubename):
         sys.exit("No such file: %s" % cubename)
 
-    cc = np.load(cubename)
+    cc, meta = np.load(cubename)
+    fid_wave = meta['fiducial_wavelength']
 
     Xs = [c.X_as for c in cc]
     Ys = [c.Y_as for c in cc]
@@ -229,7 +231,7 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     pl.ylim(-25,25)
 
     pl.colorbar(label=cbtitle)
-    pl.xlabel("X position [as]")
+    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
     pl.ylabel("Y position [as]")
     pl.grid(True)
     pl.ioff()

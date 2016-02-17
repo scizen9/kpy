@@ -31,9 +31,6 @@ import SEDMr.Wavelength as Wavelength
 import sys
 sys.setrecursionlimit(10000)
 
-# reference wavelength for X positions
-fid_wave = Wavelength.fiducial_wavelength()
-
 scale = 1.0
 H2P = np.array([[np.sqrt(3), np.sqrt(3)/2], [0, 3/2.]]) * scale
 P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]]) / scale
@@ -130,7 +127,7 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
     ff.writeto("bs_" + outname)
 
 
-def extraction_to_cube(exts, outname="G.npy"):
+def extraction_to_cube(exts, outname="G.npy", fidwave=None):
     """ Convert the extraction to sky coordinates
 
 
@@ -157,7 +154,14 @@ def extraction_to_cube(exts, outname="G.npy"):
             Rot (22 degree)
     """
 
-    
+    # reference wavelength for X positions
+    if fidwave is None:
+        fid_wave = Wavelength.fiducial_wavelength()
+    else:
+        fid_wave = fidwave
+
+    meta = {"fiducial_wavelength": fid_wave}
+
     Xs = [None] * len(exts)
     Ys = [None] * len(exts)
 
@@ -292,7 +296,8 @@ def extraction_to_cube(exts, outname="G.npy"):
         ext.X_as = p[0] * -0.633
         ext.Y_as = p[1] * 0.633
 
-    np.save(outname, exts)
+    np.save(outname, [exts, meta])
+    print "Wrote %s.npy" % outname
 
 
 
@@ -309,10 +314,11 @@ STEP is either:
     parser.add_argument('--step', type=str, default='make',
                         help='[make|extract|dump]')
     parser.add_argument('--outname', type=str, help='Output cube name')
+    parser.add_argument('--fidwave', type=float, default=None, 
+                        help='Fiducial wavelength (nm)')
 
     args = parser.parse_args()
 
-       
     if args.outname is not None:
         args.outname = args.outname.rstrip('.npy')
 
@@ -322,24 +328,21 @@ STEP is either:
     if step == 'make':
         print "\nMAKING cube from %s " % infile
         ext = np.load(infile)
-        cube = extraction_to_cube(ext, outname=args.outname)
+        cube = extraction_to_cube(ext, outname=args.outname,    
+                                    fidwave=args.fidwave)
     elif step == 'extract':
         print "\nEXTRACTING from %s " % infile
         ext,meta = np.load(infile)
         QR_to_img(ext, Size=2, outname=args.outname)
     elif step == 'dump':
-        print "\nDUMPING from %s to dump.txt" % infile
+        print "\nDUMPING from %s to %s_dump.txt" % (infile, infile)
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])
         Sid = np.array([c.seg_id for c in cube])
 
         dat = np.array([Xs,Ys,Sid])
-        np.savetxt("dump.txt", dat.T)
+        np.savetxt("%s_dump.txt" % infile, dat.T)
     else:
         print "NO STEP TO PERFORM"
-
-
-
-
 
