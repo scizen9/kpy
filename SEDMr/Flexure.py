@@ -71,6 +71,8 @@ def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
             
     skyspec = np.median(specgrid, axis=1)
     pl.step(lamgrid, skyspec, where='mid')
+    pl.xlabel("Wavelength [nm]")
+    pl.ylabel("Spec Irr [ph/10 m/nm]")
 
     roi = (lamgrid>skyline-skywidth) & (lamgrid<skyline+skywidth)
     ffun = FF.mpfit_residuals(FF.gaussian4)
@@ -84,9 +86,11 @@ def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
     fit = FF.mpfit_do(ffun, lamgrid[roi], skyspec[roi], parinfo)
     pl.plot(lamgrid, FF.gaussian4(fit.params, lamgrid))
 
-    pl.savefig(outfile + ".pdf")
-
     dXnm = fit.params[1] - skyline
+
+    pl.title("dX = %3.2f nm shift" % dXnm)
+
+    pl.savefig(outfile + ".pdf")
 
     print "dX = %3.2f nm shift" % dXnm
 
