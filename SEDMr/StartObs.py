@@ -27,6 +27,7 @@ import glob
 import sys
 import os
 import pyfits as pf
+import argparse
 
 nbias2 = 0
 nbias = 0
@@ -152,7 +153,7 @@ def proc_bias_crrs(reddir,ncp):
     # Default return value
     ret = False
     # Get new listing
-    retcode = os.system("~/spy what ifu*.fits > what.list")
+    retcode = os.system("~/spy what ifu*.fits >! what.list")
     if retcode == 0:
         # Generate new Makefile
         retcode2 = os.system("~/spy plan ifu*.fits")
@@ -283,14 +284,15 @@ def cpnew(srcdir, destdir='./'):
     return ncp
 
 
-def find_recent(destdir,fname):
+def find_recent(redd,fname,destdir):
     """Find the most recent version of fname and copy it to destdir
 
     Call:
-        find_recent(destdir,fname)
+        find_recent(redd,fname,destdir)
     Inputs:
-        destdir - where the file should go
+        redd    - reduced directory (something like /scr2/sedm/redux)
         fname   - what file to look for
+        destdir - where the file should go
     Procedure:
         Look through sorted list of redux directories to find most recent
         version of the input file.  Copy it to the destination directory
@@ -301,8 +303,8 @@ def find_recent(destdir,fname):
     # Default return value
     ret = False
     # Get all but the most recent reduced data directories
-    redlist = sorted([d for d in glob.glob('/scr2/sedm/redux/20??????') 
-                        if os.path.isdir(d)])[0:-1]
+    fspec = os.path.join(redd,'20??????')
+    redlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[0:-1]
     # Go back in reduced dir list until we find our file
     for d in reversed(redlist):
         src = glob.glob(os.path.join(d,fname))
@@ -411,13 +413,14 @@ def cpcal(srcdir, destdir='./'):
     return ncp
 
 
-def ObsLoop(rawlist=None):
+def ObsLoop(rawlist=None, redd=None):
     """One night observing loop: processes calibrations and science data
 
     Call:
-        ObsLoop(rawlist)
+        ObsLoop(rawlist,redd)
     Inputs:
         rawlist - list of raw data directories (usually in /scr2/sedm/raw)
+        redd    - reduced directory (something like /scr2/sedm/redux)
     Procdure:
         Copy raw cal files until we are ready to process the night's
         calibrations.  When ready, process them.  If we get to UT = 3:00,
@@ -441,7 +444,7 @@ def ObsLoop(rawlist=None):
     # Source directory is most recent raw dir
     srcdir = rawlist[-1]
     # Outpur directory is based on source dir
-    outdir = os.path.join('/scr2/sedm/redux/',srcdir.split('/')[-1])
+    outdir = os.path.join(redd,srcdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
     if os.path.exists(outdir) == False:
         # Make it
@@ -475,10 +478,10 @@ def ObsLoop(rawlist=None):
                     print("It's getting late! UT = %02d:%02d >= 03:00" %
                             (gm.tm_hour, gm.tm_min))
                     print "Let's get our calibrations from a previous night"
-                    ncc = find_recent(outdir,'cube.npy')
-                    ncf = find_recent(outdir,'flat-dome-700to900.npy')
-                    ncb = find_recent(outdir,'bias0.1.fits')
-                    nc2 = find_recent(outdir,'bias2.0.fits')
+                    ncc = find_recent(redd,'cube.npy',outdir)
+                    ncf = find_recent(redd,'flat-dome-700to900.npy',outdir)
+                    ncb = find_recent(redd,'bias0.1.fits',outdir)
+                    nc2 = find_recent(redd,'bias2.0.fits',outdir)
                     # Check for failure
                     if not ncc or not ncf or not ncb or not nc2:
                         msg = "Calibration stage failed: cube = %s, " \
@@ -517,8 +520,8 @@ def ObsLoop(rawlist=None):
                   "%d s (bias,crrs), %d s (cube), and %d s (flat)" % 
                   (procbTime, proccTime, procfTime))
         else:
-            print("Using previous calibration files "
-                  "cube.npy, flat-dome-700to900.npy")
+            print("Using previous calibration files bias0.1.fits, bias2.0.fits,"
+                    " cube.npy, flat-dome-700to900.npy")
     else:
         print "Calibrations already present in %s" % outdir
     # Keep track of no copy
@@ -560,7 +563,8 @@ def ObsLoop(rawlist=None):
                     ret = True
                 else:
                     print("No new image for %d minutes but UT = %02d:%02d < "
-                            "16:00, so keep waiting" % (nnc, gm.tm_hour, gm.tm_min))
+                            "16:00, so keep waiting" % 
+                            (nnc, gm.tm_hour, gm.tm_min))
     # Handle a ctrl-C
     except KeyboardInterrupt:
        sys.exit("Exiting")
@@ -568,15 +572,16 @@ def ObsLoop(rawlist=None):
     return ret
 
 
-def go():
+def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     """Outermost infinite loop that watches for a new raw directory.
 
     Call:
-        go()
+        go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux')
     Inputs:
-        None
+        rawd    - raw directory (string), should be /scr2/sedm/raw
+        redd    - reduced directory (string), should be like /scr2/sedm/redux
     Procedure:
-        Keep a list of raw directories in /scr2/sedm/raw and fire off
+        Keep a list of raw directories in redd and fire off
         the ObsLoop procedure when a new directory appears.  Check for
         a new raw directory every 10 minutes.
     Returns:
@@ -590,12 +595,14 @@ def go():
     # Keep track of iterations
     its = 0
     # Get all raw directories
-    rawlist = sorted([d for d in glob.glob('/scr2/sedm/raw/20??????') 
-                        if os.path.isdir(d)])
+    fspec = os.path.join(rawd,'20??????')
+    rawlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])
     nraw = len(rawlist)
+    print("Found %d raw directories in %s: putting reduced data in %s" %
+            (nraw, rawd, redd))
     try:
         while dobs:
-            stat = ObsLoop(rawlist)
+            stat = ObsLoop(rawlist, redd)
             if stat:
                 its += 1
                 print("Finished SEDM observing iteration %d in raw dir %s" %
@@ -607,9 +614,8 @@ def go():
                     sys.stdout.flush()
                     time.sleep(600)
                     # Get all raw directories
-                    new_rawlist = sorted([d for d in 
-                        glob.glob('/scr2/sedm/raw/20??????') 
-                        if os.path.isdir(d)])
+                    new_rawlist = sorted([d for d in glob.glob(fspec)
+                                            if os.path.isdir(d)])
                     new_nraw = len(new_rawlist)
                     if new_nraw > nraw:
                         waiting = False
@@ -629,5 +635,17 @@ def go():
 
 
 if __name__ == '__main__':
-    go()
+    parser = argparse.ArgumentParser(description=\
+            """StartObs.py
+
+            """, formatter_class=argparse.RawTextHelpFormatter)
+
+    parse.add_argument('--rawdir', type=str, default='/scr2/sedm/raw',
+            help='Input raw directory (/scr2/sedm/raw)')
+    parse.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
+            help='Output reduced directory (/scr2/sedm/redux)')
+
+    args = parse.parse_args()
+
+    go(rawd=args.rawdir, redd=args.reduxdir)
 
