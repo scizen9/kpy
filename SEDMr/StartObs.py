@@ -468,7 +468,7 @@ def ObsLoop(rawlist=None, redd=None):
             # Not ready yet
             if not CalProcReady:
                 # Wait a minute
-                print "waiting for new calibration files...",
+                print "checking %s for new calibration files..." % srcdir,
                 sys.stdout.flush()
                 time.sleep(60)
                 # Check to see if we are definitely after sunset
@@ -535,7 +535,7 @@ def ObsLoop(rawlist=None, redd=None):
             sys.stdout.flush()
             time.sleep(60)
             # Check for new ifu images
-            print "checking for new ifu images..."
+            print "checking %s for new ifu images..." % srcdir
             sys.stdout.flush()
             # Record starting time for new file processing
             startTime = time.time()
@@ -640,12 +640,12 @@ if __name__ == '__main__':
 
             """, formatter_class=argparse.RawTextHelpFormatter)
 
-    parse.add_argument('--rawdir', type=str, default='/scr2/sedm/raw',
+    parser.add_argument('--rawdir', type=str, default='/scr2/sedm/raw',
             help='Input raw directory (/scr2/sedm/raw)')
-    parse.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
+    parser.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
             help='Output reduced directory (/scr2/sedm/redux)')
 
-    args = parse.parse_args()
+    args = parser.parse_args()
 
     go(rawd=args.rawdir, redd=args.reduxdir)
 
