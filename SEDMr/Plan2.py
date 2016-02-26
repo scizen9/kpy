@@ -1,4 +1,12 @@
-"""Generate Makefile for reducing ifu data"""
+"""Generate Makefile for reducing ifu data
+
+This version assumes that cube.npy, fine.npy and flat-dome-700to900.npy 
+have been copied from a previously reduced data directory.
+
+This means that there should be no dependancies for cube.npy, fine.npy, or
+flat-dome-700to900.npy.
+
+"""
 
 import argparse
 import numpy as np
@@ -197,36 +205,22 @@ dome.fits_segments.npy: seg_dome.fits
 rough.npy: dome.fits_segments.npy seg_Hg.fits
 	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
 
-fine.npy: rough.npy Cd.fits Xe.fits
-	$(PY) $(PYC)r/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
-
-cube.npy: fine.npy
-	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
-	$(PLOT) --cube cube.npy --savefig
-	$(PLOT) --cube cube.npy --lambdarms --savefig
-
-bs_twilight.fits.gz: twilight.fits fine.npy
+bs_twilight.fits.gz: twilight.fits
 	$(BGDSUB) fine.npy twilight.fits --gausswidth=100
 
-bs_dome.fits.gz: dome.fits fine.npy
+bs_dome.fits.gz: dome.fits
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
-dome.npy: cube.npy dome.fits
+dome.npy: dome.fits
 	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
-
-flat-dome-700to900.npy: dome.npy
-	$(PY) $(PYC)r/Flat.py dome.npy
-    
-wave: fine.npy
-cube: cube.npy
 
 flex: back $(FLEX)
 
-$(FLEX): cube.npy
+$(FLEX): 
 	$(eval OUTNAME = $(subst .gz,,$@))
 	$(FLEXCMD) cube.npy $(subst flex_,,$(subst npy,fits,$@)) --outfile $(OUTNAME)
 
-stds: flat-dome-700to900.npy std-correction.npy
+stds: std-correction.npy
 
 cleanstds:
 	rm -f std-correction.npy Standard_Correction.pdf
@@ -250,7 +244,7 @@ def MF_imcombine(objname, files, dependencies=""):
         second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (objname, objname, reject, filelist)
 
     if "bias" not in objname and "dome" not in objname:
-        second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
+        second += "\n%s.npy : %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
 
     return  first+second+"\n"
 
@@ -269,7 +263,7 @@ def MF_single(objname, obsnum, file, standard=None):
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % (file.rstrip(".fits"))
 
     first = """# %(outname)s
-%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
+%(outname)s: %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 cube_%(outname)s.fits: %(outname)s
@@ -298,7 +292,7 @@ def MF_AB(objname, obsnum, A, B):
     tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
     tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
 
-    return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
+    return """# %(outname)s\n%(outname)s: %(A)s.gz %(B)s.gz %(flexname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n""" %  tp, "%(outname)s " % tp
 
 

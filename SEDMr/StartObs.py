@@ -37,6 +37,7 @@ nHg = 0
 nCd = 0
 CalProcReady = False
 CalReady = False
+CalPrevious = False
 BiasReady = False
 
 
@@ -45,7 +46,7 @@ def cal_reset():
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, \
-            CalProcReady, CalReady, BiasReady
+            CalProcReady, CalReady, CalPrevious, BiasReady
     # Reset calibration file counters
     nbias2 = 0
     nbias = 0
@@ -56,6 +57,7 @@ def cal_reset():
     CalProcReady = False
     CalReady = False
     BiasReady = False
+    CalPrevious = False
 
 
 def cal_ready(reddir='./'):
@@ -157,13 +159,20 @@ def proc_bias_crrs(reddir='./',ncp=1):
         True if processing was successful, otherwise False
     """
 
+    # Are we using old calib files?
+    global CalPrevious
     # Default return value
     ret = False
     # Get new listing
     retcode = os.system("~/spy what ifu*.fits > what.list")
     if retcode == 0:
         # Generate new Makefile
-        retcode2 = os.system("~/spy plan ifu*.fits")
+        # Are we using a previous calibration set?
+        if CalPrevious:
+            retcode2 = os.system("~/spy plan2 ifu*.fits")
+        # This calibration set has been generated here
+        else:
+            retcode2 = os.system("~/spy plan ifu*.fits")
         if retcode2 == 0:
             # Make bias + bias subtraction
             if ncp < 4:
@@ -287,8 +296,8 @@ def cpnew(srcdir, destdir='./'):
             if not proc_stds(destdir,nstd):
                 print "Error processing standard stars"
         elif not CalReady and nstd > 0:
-            print("Copied %d std star obs, but need cube and flat to process further" %
-                    nstd)
+            print("Copied %d std star obs, but need cube and flat "
+                  "to process further" % nstd)
     # Bias not ready yet
     elif not BiasReady and ncp > 0:
         print "Need biases to process further"
@@ -461,7 +470,7 @@ def ObsLoop(rawlist=None, redd=None):
     """
 
     # Global variables
-    global CalProcReady, CalReady, BiasReady
+    global CalProcReady, CalReady, CalPrevious, BiasReady
     # Default return value
     ret = False
     # Source directory is most recent raw dir
@@ -516,6 +525,7 @@ def ObsLoop(rawlist=None, redd=None):
                     # If we get here, we are done
                     CalReady = True
                     BiasReady = True
+                    CalPrevious = True
                     break
                 else:
                     print("UT = %02d:%02d, still less than 03:00, "
@@ -560,6 +570,7 @@ def ObsLoop(rawlist=None, redd=None):
                 # If we get here, we are done
                 CalReady = True
                 BiasReady = True
+                CalPrevious = True
             else:
                 # Report times
                 print("Calibration processing took "
