@@ -10,6 +10,7 @@ import itertools
 import warnings
 
 from astropy.coordinates import Angle
+from astropy.time import Time
 from numpy.polynomial.chebyshev import chebfit, chebval
 from scipy.interpolate import interp1d
 from scipy.ndimage import filters
@@ -694,12 +695,16 @@ def handle_Flat(A, fine, outname=None):
         for k,v in spec[0].header.iteritems():
             try: header[k] = v
             except: pass
-        meta['HA'] = spec[0].header['HA']
-        meta['Dec'] = spec[0].header['Dec']
-        meta['RA'] = spec[0].header['RA']
-        meta['PRLLTC'] = spec[0].header['PRLLTC']
-        meta['equinox'] = spec[0].header['Equinox']
-        meta['utc'] = spec[0].header['utc']
+        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
+        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
+        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
+        meta['PRLLTC'] = header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
+        meta['EQUINOX'] = header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
+        if 'UTC' in header:
+            meta['utc'] = header['UTC']
+        else:
+            tjd = Time(header['JD'], format='jd', scale='utc')
+            meta['utc'] = tjd.yday
         meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
 
         meta['header'] = header
@@ -781,12 +786,16 @@ def handle_Std(A, fine, outname=None, standard=None, Aoffset=None,
         for k,v in spec[0].header.iteritems():
             try: header[k] = v
             except: pass
-        meta['HA'] = spec[0].header['HA']
-        meta['Dec'] = spec[0].header['Dec']
-        meta['RA'] = spec[0].header['RA']
-        meta['PRLLTC'] = spec[0].header['PRLLTC']
-        meta['equinox'] = spec[0].header['Equinox']
-        meta['utc'] = spec[0].header['utc']
+        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
+        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
+        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
+        meta['PRLLTC'] = header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
+        meta['EQUINOX'] = header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
+        if 'UTC' in header:
+            meta['utc'] = header['UTC']
+        else:
+            tjd = Time(header['JD'], format='jd', scale='utc')
+            meta['utc'] = tjd.yday
         meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
         meta['header'] = header
         meta['exptime'] = spec[0].header['exptime']
@@ -986,12 +995,16 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2,
         for k,v in spec[0].header.iteritems():
             try: header[k] = v
             except: pass
-        meta['HA'] = spec[0].header['HA']
-        meta['Dec'] = spec[0].header['Dec']
-        meta['RA'] = spec[0].header['RA']
-        meta['PRLLTC'] = spec[0].header['PRLLTC']
-        meta['equinox'] = spec[0].header['Equinox']
-        meta['utc'] = spec[0].header['utc']
+        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
+        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
+        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
+        meta['PRLLTC'] = header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
+        meta['EQUINOX'] = header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
+        if 'UTC' in header:
+            meta['utc'] = header['UTC']
+        else:
+            tjd = Time(header['JD'], format='jd', scale='utc')
+            meta['utc'] = tjd.yday
         meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
         meta['header'] = header
         meta['exptime'] = spec[0].header['exptime']
@@ -1188,12 +1201,16 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
         for k,v in diff[0].header.iteritems():
             try: header[k] = v
             except: pass
-        meta['HA'] = diff[0].header['HA']
-        meta['Dec'] = diff[0].header['Dec']
-        meta['RA'] = diff[0].header['RA']
-        meta['PRLLTC'] = diff[0].header['PRLLTC']
-        meta['equinox'] = diff[0].header['Equinox']
-        meta['utc'] = diff[0].header['utc']
+        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
+        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
+        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
+        meta['PRLLTC'] = header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
+        meta['EQUINOX'] = header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
+        if 'UTC' in header:
+            meta['utc'] = header['UTC']
+        else:
+            tjd = Time(header['JD'], format='jd', scale='utc')
+            meta['utc'] = tjd.yday
         meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
 
         meta['header'] = header

@@ -64,7 +64,7 @@ def identify_observations(headers):
             def appendToCalibs(Str):
 
                 if Str in obj:
-                    if "bias" in Str:
+                    if "bias" in Str and exptime == 0.:
                         Str = "%s%1.1f" % (Str, adcspeed)
                         prefix = ""
                         suffix = ""
@@ -75,8 +75,12 @@ def identify_observations(headers):
                         prefix = "crr_b_"
                         suffix = ""
 
-                    calibs[Str] = calibs.get(Str, [])
-                    calibs[Str].append(prefix + fname + suffix)
+                    if "bias" in Str and exptime != 0.:
+                        print("Mis-labeled bias with exptime > 0: %9.1f" % 
+                                    exptime)
+                    else:
+                        calibs[Str] = calibs.get(Str, [])
+                        calibs[Str].append(prefix + fname + suffix)
 
             appendToCalibs("bias")
             appendToCalibs("dome")
@@ -206,10 +210,10 @@ bs_twilight.fits.gz: twilight.fits fine.npy
 bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
-dome.npy:
+dome.npy: cube.npy dome.fits
 	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
 
-flat-dome-700to900.npy: cube.npy dome.npy
+flat-dome-700to900.npy: dome.npy
 	$(PY) $(PYC)r/Flat.py dome.npy
     
 wave: fine.npy

@@ -37,13 +37,15 @@ nHg = 0
 nCd = 0
 CalProcReady = False
 CalReady = False
+BiasReady = False
 
 
 def cal_reset():
     """Reset counts of raw calibration files, and calibration status."""
 
     # Global variables
-    global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady, CalReady
+    global nbias, nbias2, ndome, nXe, nHg, nCd, \
+            CalProcReady, CalReady, BiasReady
     # Reset calibration file counters
     nbias2 = 0
     nbias = 0
@@ -53,21 +55,26 @@ def cal_reset():
     nCd = 0
     CalProcReady = False
     CalReady = False
+    BiasReady = False
 
 
 def cal_ready(reddir='./'):
     """Check for all required calibration files in input reduced directory."""
 
     # Global variables
-    global CalReady
+    global CalReady, BiasReady
     # Do we have all the calibration files?
-    if (os.path.exists(os.path.join(reddir,'cube.npy')) and 
-            os.path.exists(os.path.join(reddir,'flat-dome-700to900.npy')) and
-            os.path.exists(os.path.join(reddir,'bias0.1.fits')) and
-            os.path.exists(os.path.join(reddir,'bias2.0.fits'))):
-        CalReady = True
+    if (os.path.exists(os.path.join(reddir,'bias0.1.fits')) and
+        os.path.exists(os.path.join(reddir,'bias2.0.fits'))):
+        BiasReady = True
+        if (os.path.exists(os.path.join(reddir,'cube.npy')) and 
+            os.path.exists(os.path.join(reddir,'flat-dome-700to900.npy'))):
+            CalReady = True
+        else:
+            CalReady = False
     else:
         CalReady = False
+        BiasReady = False
 
 
 def cal_proc_ready():
@@ -138,7 +145,7 @@ def docp(src, dest):
     return (ncp, nstd)
 
 
-def proc_bias_crrs(reddir,ncp):
+def proc_bias_crrs(reddir='./',ncp=1):
     """Process biases and CR rejection
 
     Call:
@@ -153,7 +160,7 @@ def proc_bias_crrs(reddir,ncp):
     # Default return value
     ret = False
     # Get new listing
-    retcode = os.system("~/spy what ifu*.fits >! what.list")
+    retcode = os.system("~/spy what ifu*.fits > what.list")
     if retcode == 0:
         # Generate new Makefile
         retcode2 = os.system("~/spy plan ifu*.fits")
@@ -233,7 +240,7 @@ def cpnew(srcdir, destdir='./'):
     """
 
     # Global variables
-    global CalReady
+    global CalReady, BiasReady
     # Get files in destination directory
     dflist = sorted(glob.glob(os.path.join(destdir,'ifu*.fits')))
     # Are there any files yet?
@@ -269,17 +276,22 @@ def cpnew(srcdir, destdir='./'):
             ncp += nc
             nstd += ns
     # We copied files
-    if CalReady and ncp > 0:
+    print "Copied %d files" % ncp
+    # Are we ready to process biases?
+    if BiasReady and ncp > 0:
         # Do bias subtraction, CR rejection
         if not proc_bias_crrs(destdir,ncp):
             print "Error processing bias/crrs"
         # Process any standard stars
-        elif nstd > 0:
+        elif CalReady and nstd > 0:
             if not proc_stds(destdir,nstd):
                 print "Error processing standard stars"
-    # We didn't copy files
-    else:
-        print "no files copied"
+        elif not CalReady and nstd > 0:
+            print("Copied %d std star obs, but need cube and flat to process further" %
+                    nstd)
+    # Bias not ready yet
+    elif not BiasReady and ncp > 0:
+        print "Need biases to process further"
 
     return ncp
 
@@ -302,18 +314,26 @@ def find_recent(redd,fname,destdir):
 
     # Default return value
     ret = False
-    # Get all but the most recent reduced data directories
-    fspec = os.path.join(redd,'20??????')
-    redlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[0:-1]
-    # Go back in reduced dir list until we find our file
-    for d in reversed(redlist):
-        src = glob.glob(os.path.join(d,fname))
-        if len(src) == 1:
-            shutil.copy2(src[0], destdir)
-            ret = True
-            print("Found %s in directory %s, copying to %s" % 
-                    (fname, d, destdir))
-            break
+    # Make sure the file doesn't already exist in destdir
+    local_file = glob.glob(os.path.join(destdir,fname))
+    if len(local_file) == 1:
+        print "%s already exists in %s" % (fname, destdir)
+        ret = True
+    # Search in redd for file
+    else:
+        # Get all but the most recent reduced data directories
+        fspec = os.path.join(redd,'20??????')
+        redlist = sorted([d for d in glob.glob(fspec) 
+                            if os.path.isdir(d)])[0:-1]
+        # Go back in reduced dir list until we find our file
+        for d in reversed(redlist):
+            src = glob.glob(os.path.join(d,fname))
+            if len(src) == 1:
+                shutil.copy(src[0], destdir)
+                ret = True
+                print("Found %s in directory %s, copying to %s" % 
+                        (fname, d, destdir))
+                break
 
     return ret
 
@@ -400,7 +420,10 @@ def cpcal(srcdir, destdir='./'):
         hdr = f[0].header
         f.close()
         # Get OBJECT and ADCSPEED keywords
-        obj = hdr['OBJECT']
+        try:
+            obj = hdr['OBJECT']
+        except:
+            obj = ''
         # Filter Calibs and avoid test images
         if 'Calib' in obj and not 'test' in obj:
             # Copy cal images
@@ -438,7 +461,7 @@ def ObsLoop(rawlist=None, redd=None):
     """
 
     # Global variables
-    global CalProcReady, CalReady
+    global CalProcReady, CalReady, BiasReady
     # Default return value
     ret = False
     # Source directory is most recent raw dir
@@ -458,12 +481,12 @@ def ObsLoop(rawlist=None, redd=None):
         # Copy calibration files from previous date directory
         npre = cpprecal(rawlist, outdir)
         if npre > 0:
-            print("bias2.0:%d, bias0.1:%d, dome:%d, Xe:%d, Hg:%d, Cd:%d" %
+            print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
                     (nbias2, nbias, ndome, nXe, nHg, nCd))
         # Now loop until we have calibrations we need
         while not CalProcReady:
             ncp = cpcal(srcdir, outdir)
-            print("bias2.0:%d, bias0.1:%d, dome:%d, Xe:%d, Hg:%d, Cd:%d" %
+            print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
                     (nbias2, nbias, ndome, nXe, nHg, nCd))
             # Not ready yet
             if not CalProcReady:
@@ -478,18 +501,21 @@ def ObsLoop(rawlist=None, redd=None):
                     print("It's getting late! UT = %02d:%02d >= 03:00" %
                             (gm.tm_hour, gm.tm_min))
                     print "Let's get our calibrations from a previous night"
+                    ncf = find_recent(redd,'fine.npy',outdir)
                     ncc = find_recent(redd,'cube.npy',outdir)
-                    ncf = find_recent(redd,'flat-dome-700to900.npy',outdir)
+                    ncd = find_recent(redd,'flat-dome-700to900.npy',outdir)
                     ncb = find_recent(redd,'bias0.1.fits',outdir)
                     nc2 = find_recent(redd,'bias2.0.fits',outdir)
                     # Check for failure
-                    if not ncc or not ncf or not ncb or not nc2:
-                        msg = "Calibration stage failed: cube = %s, " \
-                                "flat = %s, bias0.1 = %s, bias2.0 = %s, " \
-                                "stopping" % (ncc, ncf, ncb, nc2)
+                    if not ncf or not ncc or not ncd or not ncb or not nc2:
+                        msg = "Calibration stage failed: fine = %s, " \
+                                "cube = %s, flat = %s, bias0.1 = %s, " \
+                                "bias2.0 = %s, " \
+                                "stopping" % (ncf, ncc, ncd, ncb, nc2)
                         sys.exit(msg)
                     # If we get here, we are done
                     CalReady = True
+                    BiasReady = True
                     break
                 else:
                     print("UT = %02d:%02d, still less than 03:00, "
@@ -501,6 +527,8 @@ def ObsLoop(rawlist=None, redd=None):
             if not proc_bias_crrs(outdir,20):
                 sys.exit("Could not do bias,crrs processing, stopping")
             procbTime = int(time.time() - startTime)
+            # check status
+            cal_ready(outdir)
             # Process cube
             startTime = time.time()
             retcode = os.system("make cube.npy")
@@ -513,12 +541,30 @@ def ObsLoop(rawlist=None, redd=None):
             if retcode != 0:
                 sys.exit("Could not generate flat-dome-700to900.npy, stopping")
             procfTime = int(time.time() - startTime)
-            # We are done!
-            CalReady = True
-            # Report times
-            print("Calibration processing took "
-                  "%d s (bias,crrs), %d s (cube), and %d s (flat)" % 
-                  (procbTime, proccTime, procfTime))
+            # check status
+            cal_ready(outdir)
+            if not CalReady:
+                print "These calibrations failed!"
+                print "Let's get our calibrations from a previous night"
+                ncf = find_recent(redd,'fine.npy',outdir)
+                ncc = find_recent(redd,'cube.npy',outdir)
+                ncd = find_recent(redd,'flat-dome-700to900.npy',outdir)
+                ncb = find_recent(redd,'bias0.1.fits',outdir)
+                nc2 = find_recent(redd,'bias2.0.fits',outdir)
+                # Check for failure
+                if not ncf or not ncc or not ncd or not ncb or not nc2:
+                    msg = "Calibration stage failed: fine = %s, cube = %s, " \
+                            "flat = %s, bias0.1 = %s, bias2.0 = %s, " \
+                            "stopping" % (ncf, ncc, ncd, ncb, nc2)
+                    sys.exit(msg)
+                # If we get here, we are done
+                CalReady = True
+                BiasReady = True
+            else:
+                # Report times
+                print("Calibration processing took "
+                    "%d s (bias,crrs), %d s (cube), and %d s (flat)" % 
+                    (procbTime, proccTime, procfTime))
         else:
             print("Using previous calibration files bias0.1.fits, bias2.0.fits,"
                     " cube.npy, flat-dome-700to900.npy")
@@ -543,7 +589,7 @@ def ObsLoop(rawlist=None, redd=None):
             # We copied some new ones so report processing time
             if ncp > 0:
                 procTime = int(time.time() - startTime)
-                print "%d new ifu images process in %d s" % (ncp,procTime)
+                print "%d new ifu images processed in %d s" % (ncp,procTime)
                 sys.stdout.flush()
                 nnc = 0
             else:
