@@ -29,6 +29,7 @@ import os
 import pyfits as pf
 import argparse
 
+fileSize = 8400960
 nbias2 = 0
 nbias = 0
 nXe = 0
@@ -249,7 +250,7 @@ def cpnew(srcdir, destdir='./'):
     """
 
     # Global variables
-    global CalReady, BiasReady
+    global CalReady, BiasReady, fileSize
     # Get files in destination directory
     dflist = sorted(glob.glob(os.path.join(destdir,'ifu*.fits')))
     # Are there any files yet?
@@ -262,13 +263,13 @@ def cpnew(srcdir, destdir='./'):
     ncp = 0
     nstd = 0
     # Get list of source files
-    srcfiles = glob.glob(os.path.join(srcdir,'ifu*.fits'))
+    srcfiles = sorted(glob.glob(os.path.join(srcdir,'ifu*.fits')))
     # Loop over source files
     for f in srcfiles:
         # Do we copy?
         doCopy = False
         # Is our source file complete?
-        if os.stat(f).st_size >= 8398080:
+        if os.stat(f).st_size >= fileSize:
             if lf is not None:
                 # Do we have a newer file in the source dir?
                 if os.stat(f).st_mtime > os.stat(lf).st_mtime:
@@ -364,6 +365,8 @@ def cpprecal(dirlist, destdir='./'):
         ncp     - number of images actually copied
     """
 
+    # good image file size
+    global fileSize
     # Reset calibration file counters
     cal_reset()
     # Get current and previous dates
@@ -378,10 +381,10 @@ def cpprecal(dirlist, destdir='./'):
         # Get list of previous night's raw calibration files
         # (within four hours of day changeover)
         fspec = os.path.join(srcdir, "ifu%s_2*.fits" % pdate)
-        flist = glob.glob(fspec)
+        flist = sorted(glob.glob(fspec))
         # Loop over file list
         for src in flist:
-            if os.stat(src).st_size >= 8400000:
+            if os.stat(src).st_size >= fileSize:
                 # Read FITS header
                 f = pf.open(src)
                 hdr = f[0].header
@@ -417,17 +420,19 @@ def cpcal(srcdir, destdir='./'):
         ncp     - number of images actually copied
     """
 
+    # good file size
+    global fileSize
     # Get current date
     sdate = srcdir.split('/')[-1]
     # Get list of current raw calibration files
     # (within 10 hours of day changeover)
     fspec = os.path.join(srcdir,"ifu%s_0*.fits" % sdate)
-    flist = glob.glob(fspec)
+    flist = sorted(glob.glob(fspec))
     # Record number copied
     ncp = 0
     # Loop over file list
     for src in flist:
-        if os.stat(src).st_size >= 8400000:
+        if os.stat(src).st_size >= fileSize:
             # Read FITS header
             f = pf.open(src)
             hdr = f[0].header
@@ -495,20 +500,26 @@ def ObsLoop(rawlist=None, redd=None):
     if not CalReady:
         # Copy calibration files from previous date directory
         npre = cpprecal(rawlist, outdir)
-        if npre > 0:
-            print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
+        # Now check the current source dir for cal files
+        ncp = cpcal(srcdir, outdir)
+        print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
                     (nbias2, nbias, ndome, nXe, nHg, nCd))
+        sys.stdout.flush()
+        cal_ready(outdir)
         # Now loop until we have calibrations we need
         while not CalProcReady:
+            # Wait a minute
+            print "waiting 60s..."
+            sys.stdout.flush()
+            time.sleep(60)
+            print "checking %s for new calibration files..." % srcdir,
             ncp = cpcal(srcdir, outdir)
-            print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
-                    (nbias2, nbias, ndome, nXe, nHg, nCd))
-            # Not ready yet
-            if not CalProcReady:
-                # Wait a minute
-                print "checking %s for new calibration files..." % srcdir,
+            if ncp > 0:
+                print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, "
+                      "Cd: %d" % (nbias2, nbias, ndome, nXe, nHg, nCd))
                 sys.stdout.flush()
-                time.sleep(60)
+                cal_ready(outdir)
+            else:
                 # Check to see if we are definitely after sunset
                 gm = time.gmtime()
                 if gm.tm_hour >= 3:
@@ -537,7 +548,7 @@ def ObsLoop(rawlist=None, redd=None):
                     print("UT = %02d:%02d, still less than 03:00, "
                             "so keep waiting" % (gm.tm_hour, gm.tm_min))
         # Process calibrations if we are using them
-        if CalProcReady and not CalReady:
+        if CalProcReady and not CalPrevious:
             # bias subtract and CR reject
             startTime = time.time()
             if not proc_bias_crrs(outdir,20):
@@ -596,7 +607,7 @@ def ObsLoop(rawlist=None, redd=None):
     try:
         while doit:
             # Wait a minute
-            print "waiting for new ifu images...",
+            print "waiting 60s for new ifu images...",
             sys.stdout.flush()
             time.sleep(60)
             # Check for new ifu images
@@ -675,7 +686,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
                 print "Now we wait until we get a new raw directory"
                 waiting = True
                 while waiting:
-                    print "waiting for new raw directory..."
+                    print "waiting 10min for new raw directory..."
                     sys.stdout.flush()
                     time.sleep(600)
                     # Get all raw directories
