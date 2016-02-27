@@ -381,18 +381,21 @@ def cpprecal(dirlist, destdir='./'):
         flist = glob.glob(fspec)
         # Loop over file list
         for src in flist:
-            # Read FITS header
-            f = pf.open(src)
-            hdr = f[0].header
-            f.close()
-            # Get OBJECT and ADCSPEED keywords
-            obj = hdr['OBJECT']
-            # Filter Calibs and avoid test images
-            if 'Calib' in obj and not 'test' in obj:
-                # Copy cal images
-                imf = src.split('/')[-1]
-                nc, ns = docp(src,os.path.join(destdir,imf))
-                ncp += nc
+            if os.stat(src).st_size >= 8400000:
+                # Read FITS header
+                f = pf.open(src)
+                hdr = f[0].header
+                f.close()
+                # Get OBJECT and ADCSPEED keywords
+                obj = hdr['OBJECT']
+                # Filter Calibs and avoid test images
+                if 'Calib' in obj and not 'test' in obj:
+                    # Copy cal images
+                    imf = src.split('/')[-1]
+                    nc, ns = docp(src,os.path.join(destdir,imf))
+                    ncp += nc
+            else:
+                print "Truncated file: %s" % src
     # Check if we got all the calibration files
     cal_proc_ready()
 
@@ -424,21 +427,24 @@ def cpcal(srcdir, destdir='./'):
     ncp = 0
     # Loop over file list
     for src in flist:
-        # Read FITS header
-        f = pf.open(src)
-        hdr = f[0].header
-        f.close()
-        # Get OBJECT and ADCSPEED keywords
-        try:
-            obj = hdr['OBJECT']
-        except:
-            obj = ''
-        # Filter Calibs and avoid test images
-        if 'Calib' in obj and not 'test' in obj:
-            # Copy cal images
-            imf = src.split('/')[-1]
-            nc, ns = docp(src,os.path.join(destdir,imf))
-            ncp += nc
+        if os.stat(src).st_size >= 8400000:
+            # Read FITS header
+            f = pf.open(src)
+            hdr = f[0].header
+            f.close()
+            # Get OBJECT and ADCSPEED keywords
+            try:
+                obj = hdr['OBJECT']
+            except:
+                obj = ''
+            # Filter Calibs and avoid test images
+            if 'Calib' in obj and not 'test' in obj:
+                # Copy cal images
+                imf = src.split('/')[-1]
+                nc, ns = docp(src,os.path.join(destdir,imf))
+                ncp += nc
+        else:
+            print "Truncated file: %s" % src
     # Check if calibrations are read
     cal_proc_ready()
 
@@ -542,14 +548,16 @@ def ObsLoop(rawlist=None, redd=None):
             # Process cube
             startTime = time.time()
             retcode = os.system("make cube.npy")
-            if retcode != 0:
-                sys.exit("Could not generate cube.npy, stopping")
             proccTime = int(time.time() - startTime)
-            # Process flat
-            startTime = time.time()
-            retcode = os.system("make flat-dome-700to900.npy")
-            if retcode != 0:
-                sys.exit("Could not generate flat-dome-700to900.npy, stopping")
+            if (os.path.exists(os.path.join(outdir,'cube.npy'))):
+                # Process flat
+                startTime = time.time()
+                retcode = os.system("make flat-dome-700to900.npy")
+                if not (os.path.exists(
+                        os.path.join(outdir,'flat-dome-700to900.npy'))):
+                    print "Making of flat-dome-700to900.npy failed!"
+            else:
+                print "Making of fine.npy and cube.npy failed!"
             procfTime = int(time.time() - startTime)
             # check status
             cal_ready(outdir)
