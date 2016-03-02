@@ -512,7 +512,7 @@ def ObsLoop(rawlist=None, redd=None):
             print "waiting 60s..."
             sys.stdout.flush()
             time.sleep(60)
-            print "checking %s for new calibration files..." % srcdir,
+            print "checking %s for new calibration files..." % srcdir
             ncp = cpcal(srcdir, outdir)
             if ncp > 0:
                 print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, "
@@ -522,7 +522,7 @@ def ObsLoop(rawlist=None, redd=None):
             else:
                 # Check to see if we are definitely after sunset
                 gm = time.gmtime()
-                if gm.tm_hour >= 3:
+                if gm.tm_hour < 20 and gm.tm_hour >= 3:
                     # Get earlier calibrations so we can proceed
                     print("It's getting late! UT = %02d:%02d >= 03:00" %
                             (gm.tm_hour, gm.tm_min))
