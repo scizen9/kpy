@@ -395,8 +395,10 @@ def cpprecal(dirlist, destdir='./'):
                 if 'Calib' in obj and not 'test' in obj:
                     # Copy cal images
                     imf = src.split('/')[-1]
-                    nc, ns = docp(src,os.path.join(destdir,imf))
-                    ncp += nc
+                    destfil = os.path.join(destdir,imf)
+                    if os.path.exists(destfil) == False:
+                        nc, ns = docp(src,destfil)
+                        ncp += nc
             else:
                 print "Truncated file: %s" % src
     # Check if we got all the calibration files
@@ -432,12 +434,25 @@ def cpcal(srcdir, destdir='./'):
     ncp = 0
     # Loop over file list
     for src in flist:
-        if os.stat(src).st_size >= fileSize:
+        # Get destination filename
+        imf = src.split('/')[-1]
+        destfil = os.path.join(destdir,imf)
+        # Does our local file already exist?
+        if glob.glob(destfil):
+            # Get the size to compare with source
+            loc_size = os.stat(destfil).st_size
+        else:
+            # Doesn't yet exist locally
+            loc_size = 0
+        # Get source size to compare
+        src_size = os.stat(src).st_size
+        # Copy only if source complete or larger than local file
+        if src_size >= fileSize and src_size > loc_size:
             # Read FITS header
             f = pf.open(src)
             hdr = f[0].header
             f.close()
-            # Get OBJECT and ADCSPEED keywords
+            # Get OBJECT keyword
             try:
                 obj = hdr['OBJECT']
             except:
@@ -445,11 +460,11 @@ def cpcal(srcdir, destdir='./'):
             # Filter Calibs and avoid test images
             if 'Calib' in obj and not 'test' in obj:
                 # Copy cal images
-                imf = src.split('/')[-1]
-                nc, ns = docp(src,os.path.join(destdir,imf))
+                nc, ns = docp(src,destfil)
                 ncp += nc
         else:
-            print "Truncated file: %s" % src
+            if src_size < fileSize:
+                print "Truncated file: %s" % src
     # Check if calibrations are read
     cal_proc_ready()
 
@@ -552,7 +567,7 @@ def ObsLoop(rawlist=None, redd=None):
             # bias subtract and CR reject
             startTime = time.time()
             if not proc_bias_crrs(outdir,20):
-                sys.exit("Could not do bias,crrs processing, stopping")
+                sys.exit("Could not do bias, crrs processing, stopping")
             procbTime = int(time.time() - startTime)
             # check status
             cal_ready(outdir)
