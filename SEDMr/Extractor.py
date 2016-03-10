@@ -78,6 +78,7 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     
     KT = SS.Spectra(spectra)   
     
+    # Get X,Y positions (arcsec) and summed values between lmin and lmax
     Xs, Ys, Vs = KT.to_xyv(lmin=lmin, lmax=lmax)
     
     xi = np.linspace(np.nanmin(Xs),np.nanmax(Xs),100)
@@ -94,29 +95,37 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     print("grid_Vs min, max, mean: %f, %f, %f" % 
             (np.nanmin(grid_Vs), np.nanmax(grid_Vs), np.nanmean(grid_Vs)))
     
-    #Initialize the first guess for the Gaussian
+    # Initialize the first guess for the Gaussian
     xo = xi[np.argmax(np.nansum(grid_Vs, axis=1))]
     yo = yi[np.argmax(np.nansum(grid_Vs, axis=0))]
     sigma_x = 1.
     sigma_y = 1.3
     amplitude = np.nanmax(Vs)
+    print("initial guess: z,x,y,a,b: %f, %f, %f, %f, %f" %
+            (amplitude, xo, yo, sigma_x, sigma_y))
     
-    #create data
+    # create data
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, 
                         np.nanmean(grid_Vs))
 
     popt, pcov = opt.curve_fit(zeropoint.twoD_Gaussian, (X, Y), 
                                 grid_Vs.flatten(), p0=initial_guess)
     xc = popt[1]
+    if xc < -30. or xc > 30.:
+        print "Warning: X out of bounds, using initial guess: %f" % xc
+        xc = xo
     yc = popt[2]
+    if yc < -30. or yc > 30.:
+        print "Warning: Y out of bounds, using initial guess: %f" % yc
+        yc = yo
     pos  = (xc, yc)
     
-    #get 3-sigma extent
+    # get 3-sigma extent
     a = popt[3]*3.
     b = popt[4]*3.
     theta = popt[5]
     
-    #report position and shape
+    # report position and shape
     print "PSF FIT on IFU:  X,Y,a,b,theta = ",xc,yc,a,b,theta
     
     leff = (lmax+lmin)/2.0
