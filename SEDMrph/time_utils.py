@@ -15,3 +15,11 @@ def utc2mjd(times):
 def mjd2utc(mjd):
     t = Time(mjd+2400000.5, format='jd', scale="utc")
     return t.iso
+    
+def jd2utc(jd):
+    t = Time(jd, format='jd', scale="utc")
+    return t.iso
+    
+def utc2jd(times):
+    t = Time(times, format='iso', scale='utc')
+    return t.jd

@@ -13,6 +13,8 @@ def getDegRaString(ra):
         raparams = ra.split(":")
     elif (" " in ra.strip()):
         raparams = ra.strip().split(" ")
+    else:
+	raparams = 0
     
     raparams = [float(r) for r in raparams]
     
@@ -32,28 +34,38 @@ def getDegDecString(dec):
         decparams = dec.split(":")
     elif (" " in dec.strip()):
         decparams = dec.strip().split(" ")
-    
+        
     decparams = [float(r) for r in decparams]
-    
     return  getDegDec(*tuple(decparams))
  
 def getDegRa(hh, mm, ss):
 	return  15*(hh + mm/60. + ss/3600.)
 
 def getDegDec(hh, mm, ss):
-	return  (hh + mm/60. + ss/3600.)
+	if (hh<0):
+		sign = -1.
+	else:
+		sign = 1.
+
+	hh = np.abs(hh)
+	return  sign * (hh + mm/60. + ss/3600.)
 
 def getRaFromDeg(deg):
 	hh = int(deg/15)
 	mm = int((deg/15. - hh)*60)
 	ss = ((deg/15. - hh)*60 - mm )*60
-	return hh,mm,ss
+	return hh,mm,("%.1f"%ss).zfill(4)
 
 def getDecFromDeg(deg):
+	if (deg<0):
+		sign = -1
+	else:
+		sign = 1
+	deg = np.abs(deg)
 	hh = int(deg)
 	mm = int((deg - hh)*60)
 	ss = ((deg - hh)*60 - mm )*60
-	return hh,mm,ss
+	return sign*hh,mm,("%.1f"%ss).zfill(4)
 
 def hour2deg(ra_hour, deg_hour):
     ra = getDegRaString(ra_hour)
@@ -63,7 +75,7 @@ def hour2deg(ra_hour, deg_hour):
 def deg2hour(ra_deg, dec_deg):
     ra_hour = getRaFromDeg(ra_deg)
     dec_hour = getDecFromDeg(dec_deg)
-    return "%.2d:%.2d:%.2f"%(ra_hour), "%.2d:%.2d:%.2f"%(dec_hour)
+    return "%.2d:%.2d:%s"%(ra_hour), "%.2d:%.2d:%s"%(dec_hour)
     
 def get_distance(ra1, dec1, ra2, dec2):
     '''
@@ -81,6 +93,8 @@ def get_distance(ra1, dec1, ra2, dec2):
     return d
 
 def get_offset(ra1, dec1, ra2, dec2):
+
+
     '''
     Returns offset from ra1, dec1 position to ra2, dec2.
     
@@ -93,4 +107,4 @@ def get_offset(ra1, dec1, ra2, dec2):
     dec1=getDegDecString(dec1)
     dec2=getDegDecString(dec2)
 
-    return (ra2 - ra1) * np.cos(np.deg2rad(dec1))*3600, (dec2-dec1)*3600
+    return np.round((ra2 - ra1) * np.cos(np.deg2rad(dec1))*3600,2), np.round((dec2-dec1)*3600, 2)
