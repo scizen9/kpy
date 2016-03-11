@@ -117,7 +117,7 @@ def start_listening_loop():
                     else:
                         connection.sendall("%d,%s,%s\n"%(retcode,offsets[1], offsets[2]))
                 except Exception as e:
-                    logger.error( "Error occurred when processing command " + str(data))
+                    logger.error( "Error occurred when processing command  " + str(data))
                     with open("/tmp/offsets_error", "w") as f:
                         f.write(str(sys.exc_info()[0]))
                         f.write(str(e))
