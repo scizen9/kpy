@@ -86,8 +86,8 @@ def cal_proc_ready():
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady
     # Do we have all the calibration files?
-    if (nbias2 > 5 and nbias > 5 and nXe >= 5 and ndome >= 5 and 
-            nHg >= 3 and nCd >= 3):
+    if (nbias2 > 5 and nbias > 5 and nXe >= 7 and ndome >= 7 and 
+            nHg >= 7 and nCd >= 7):
         CalProcReady = True
 
 
@@ -462,9 +462,6 @@ def cpcal(srcdir, destdir='./'):
                 # Copy cal images
                 nc, ns = docp(src,destfil)
                 ncp += nc
-        else:
-            if src_size < fileSize:
-                print "Truncated file: %s" % src
     # Check if calibrations are read
     cal_proc_ready()
 
@@ -529,10 +526,10 @@ def ObsLoop(rawlist=None, redd=None):
             time.sleep(60)
             print "checking %s for new calibration files..." % srcdir
             ncp = cpcal(srcdir, outdir)
+            print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, "
+                  "Cd: %d" % (nbias2, nbias, ndome, nXe, nHg, nCd))
+            sys.stdout.flush()
             if ncp > 0:
-                print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, "
-                      "Cd: %d" % (nbias2, nbias, ndome, nXe, nHg, nCd))
-                sys.stdout.flush()
                 cal_ready(outdir)
             else:
                 # Check to see if we are definitely after sunset
