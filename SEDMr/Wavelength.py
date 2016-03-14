@@ -2004,7 +2004,7 @@ if __name__ == '__main__':
     outname = args.outname
 
     if args.step == 'rough':
-        print "\nROUGH WAVELENGTH SOLN"
+        print "\nROUGH WAVELENGTH SOLUTION"
         hgfits = args.hgfits
         catname = args.hgcat
         catalog = read_catalog(catname)
@@ -2013,7 +2013,7 @@ if __name__ == '__main__':
         hg_spec = find_hg_spectra(catalog, outname=outname)
         assoc_hg_with_flats(spec_loc, hg_spec)
     elif args.step == 'fine':
-        print "\nFINE WAVELENGTH SOLN"
+        print "\nFINE WAVELENGTH SOLUTION"
         XeDat = pf.open(args.xefits)
         HgDat = pf.open(args.hgfits)
         if args.cdfits is not None: CdDat = pf.open(args.cdfits)
@@ -2063,29 +2063,6 @@ if __name__ == '__main__':
         print "Snapping solution into place"
         snap_solution_into_place_all(result, Hg_E, Xe_E, Cds=Cd_E, Hes=He_E)
         np.save(args.outname, result)
-
-        """
-    elif args.step == 'fineold':
-        This step kept for historical purposes 
-        XeDat = pf.open(args.xefits)
-        HgDat = pf.open(args.hgfits)
-
-        assoc_hg_spec = np.load(args.hgassoc)[0]
-        Xe_E = extract(XeDat, assoc_hg_spec, filename="Xe_ext_"+args.outname)
-        Hg_E = extract(HgDat, assoc_hg_spec, filename="Hg_ext_"+args.outname)
-        #Xe_E = np.load('Xe_ext_tester.npy')
-        #Hg_E = np.load('Hg_ext_tester.npy')
-        gridded = rough_grid(Hg_E, outname=outname)
-        import pdb
-        pdb.set_trace()
-
-        tree, segments = hg_to_kdtree(assoc_hg_spec)
-        fitted = fit_spectra_Hg_Xe(gridded, Xe_E, tree, segments,
-            outname=outname)
-        fitted = median_fine_grid(fitted)
-        np.save("%s.npy" % outname, fitted)
-        save_fitted_ds9(fitted, outname=outname)
-        """
 
     elif args.step == 'extract':
         

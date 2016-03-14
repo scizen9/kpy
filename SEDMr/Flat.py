@@ -31,14 +31,7 @@ reload(Wavelength)
 def measure_flat(extraction, meta, 
         lamstart=700,
         lamend=900,
-        fidwave=None,
         outfile='flat.npy'):
-
-    if fidwave is None:
-        fid_wave = Wavelength.fiducial_wavelength()
-    else:
-        fid_wave = fidwave
-
 
     corrections = []
     Xs = []
@@ -52,9 +45,7 @@ def measure_flat(extraction, meta,
         try: l,f = e.get_flambda()
         except: continue
 
-        X = np.argmin(np.abs(l-fid_wave))
-        #Xs.append(e.xrange[0] + X)
-        Xs.append(np.mean(e.xrange))
+        Xs.append(np.nanmin(e.xrange)+e.xrefpix)
         Ys.append(np.mean(e.yrange))
 
         ROI = (l>lamstart) & (l <= lamend)
@@ -80,8 +71,7 @@ def measure_flat(extraction, meta,
     pl.xlim(-100,2048+100)
     pl.ylim(-100,2048+100)
     pl.colorbar()
-    #pl.xlabel("X pixel @ %6.1f nm" % fid_wave)
-    pl.xlabel("X pixel")
+    pl.xlabel("X pixel @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y pixel")
     pl.title("Correction from %s to %s nm from %s" % (lamstart, lamend,
                 meta['outname']))
@@ -107,12 +97,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ext, meta = np.load(args.infile)
-    if 'fiducial_wavelength' in meta:
-        fidwave = meta['fiducial_wavelength']
-    else:
-        fidwave = None
-    flat = measure_flat(ext, meta, lamstart=args.lamstart, lamend=args.lamend,
-                        fidwave=fidwave)
+    flat = measure_flat(ext, meta, lamstart=args.lamstart, lamend=args.lamend)
 
     np.save(args.outfile, flat)
     print "Wrote %s" % args.outfile

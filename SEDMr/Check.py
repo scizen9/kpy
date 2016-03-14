@@ -231,8 +231,7 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     pl.ylim(-25,25)
 
     pl.colorbar(label=cbtitle)
-    #pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
-    pl.xlabel("X position [as]")
+    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
     pl.ylabel("Y position [as]")
     pl.grid(True)
     pl.ioff()

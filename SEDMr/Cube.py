@@ -41,6 +41,13 @@ theta = np.deg2rad(-37+13.5)
 ROT = np.array([[np.cos(theta), -np.sin(theta)], 
                 [np.sin(theta),  np.cos(theta)]])
 
+def reject_outliers(data, m=2.):
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    d[d != d] = 10000.
+    s = d/mdev if mdev else 0.
+    return data[s<m]
+
 
 def QR_to_img(exts, Size=4, outname="cube.fits"):
     
@@ -128,7 +135,7 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
     ff.writeto("bs_" + outname)
 
 
-def extraction_to_cube(exts, outname="G.npy", fidwave=None):
+def extraction_to_cube(exts, outname="G.npy"):
     """ Convert the extraction to sky coordinates
 
 
@@ -157,13 +164,6 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
 
     global ncol
 
-    # reference wavelength for X positions
-    if fidwave is None:
-        fid_wave = Wavelength.fiducial_wavelength()
-    else:
-        fid_wave = fidwave
-
-    meta = {"fiducial_wavelength": fid_wave}
 
     # start with our x,y pixel positions
     Xs = [None] * len(exts)
@@ -208,18 +208,21 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
         ixs = np.arange(*ext.xrange)
         LL = chebval(ixs, coeff)
         
-        # fiducial wavelength index
-        ix_fid = np.nanargmin(np.abs(LL-fid_wave))
-
         # fill in the x,y pix positions
-        #Xs[ix] = ixs[ix_fid]
         Xs[ix] = np.nanmin(ext.xrange) + ext.xrefpix
         Ys[ix] = np.nanmean(ext.yrange)
         ext.X_pix = Xs[ix]
         ext.Y_pix = Ys[ix]
         if ext.xrefpix is not None:
-            ext.xreflam = LL[ext.refpix]
+            if ext.xrefpix < len(LL):
+                ext.xreflam = LL[ext.xrefpix]
     # End loop over all extractions
+
+    # Record wavelength mean and report stats
+    xreflams = reject_outliers(
+            np.array([ext.xreflam for ext in exts], dtype=np.float))
+    meta = {"fiducial_wavelength": np.mean(xreflams)}
+    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams), np.std(xreflams))
 
     # make arrays
     Xs = np.array(Xs, dtype=np.float)
@@ -367,8 +370,6 @@ STEP is either:
     parser.add_argument('--step', type=str, default='make',
                         help='[make|extract|dump]')
     parser.add_argument('--outname', type=str, help='Output cube name')
-    parser.add_argument('--fidwave', type=float, default=None, 
-                        help='Fiducial wavelength (nm)')
 
     args = parser.parse_args()
 
@@ -381,8 +382,7 @@ STEP is either:
     if step == 'make':
         print "\nMAKING cube from %s " % infile
         ext = np.load(infile)
-        cube = extraction_to_cube(ext, outname=args.outname,    
-                                    fidwave=args.fidwave)
+        cube = extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
         print "\nEXTRACTING from %s " % infile
         ext,meta = np.load(infile)
