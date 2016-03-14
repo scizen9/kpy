@@ -53,7 +53,8 @@ def measure_flat(extraction, meta,
         except: continue
 
         X = np.argmin(np.abs(l-fid_wave))
-        Xs.append(e.xrange[0] + X)
+        #Xs.append(e.xrange[0] + X)
+        Xs.append(np.mean(e.xrange))
         Ys.append(np.mean(e.yrange))
 
         ROI = (l>lamstart) & (l <= lamend)
@@ -79,7 +80,8 @@ def measure_flat(extraction, meta,
     pl.xlim(-100,2048+100)
     pl.ylim(-100,2048+100)
     pl.colorbar()
-    pl.xlabel("X pixel @ %6.1f nm" % fid_wave)
+    #pl.xlabel("X pixel @ %6.1f nm" % fid_wave)
+    pl.xlabel("X pixel")
     pl.ylabel("Y pixel")
     pl.title("Correction from %s to %s nm from %s" % (lamstart, lamend,
                 meta['outname']))
