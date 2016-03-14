@@ -31,6 +31,7 @@ import SEDMr.Wavelength as Wavelength
 import sys
 sys.setrecursionlimit(10000)
 
+ncol = 0
 scale = 1.0
 H2P = np.array([[np.sqrt(3), np.sqrt(3)/2], [0, 3/2.]]) * scale
 P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]]) / scale
@@ -154,6 +155,8 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
             Rot (22 degree)
     """
 
+    global ncol
+
     # reference wavelength for X positions
     if fidwave is None:
         fid_wave = Wavelength.fiducial_wavelength()
@@ -222,7 +225,7 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
     Xs[Xs != Xs] = -999
     Ys[Ys != Ys] = -999
 
-    # Make a K-Tree
+    # Make a KD-Tree
     dat = np.array([Xs,Ys],dtype=np.float).T
     tree = KDTree(dat)
 
@@ -235,7 +238,6 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
 
     print "IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot, n_lam, n_mdn)
 
-
     def populate_hex(to_populate):
         """ Breadth-first search 
 
@@ -243,6 +245,7 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
             the relative offset based on the rotation matrix defined
             earlier in the file
         """
+        global ncol
         # NOTE: self refers to the extraction with index in
         # the called parameter (to_populate).
 
@@ -289,28 +292,31 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
             if np.abs(rnd[0]) > 1 or np.abs(rnd[1]) > 1:
                 continue
 
-            # The first time populating and then drill further
+            # A new hex position
             if exts[nix].Q_ix is None:
                 exts[nix].Q_ix = q_this + rnd[0]
                 exts[nix].R_ix = r_this + rnd[1]
+                # Drill deeper
                 populate_hex(nix)
-            # We've populated this one before
+            # We've been to this position before
             else:
-                # Check if we are referring to the
-                # same hex position.  If not, we have
-                # a collision.
+                # Check if our hex positions agree
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                     (exts[nix].R_ix != r_this + rnd[1]):
                     print "collision: ",
                     print exts[nix].Q_ix, q_this + rnd[0], " ",
                     print exts[nix].R_ix, r_this + rnd[1]
                     # Update with this one, but don't drill more
+                    # otherwise we get in an infinite loop
                     exts[nix].Q_ix = q_this + rnd[0]
                     exts[nix].R_ix = r_this + rnd[1]
+                    ncol += 1
         # end loop over current nearest extractions
     # end def populate_hex
 
     populate_hex(Center)
+
+    print "Number of collisions: %d" % ncol
 
     # Now convert Q/R to even-Q X/Y
     #
@@ -330,7 +336,6 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
     Rot = np.array([[np.cos(t), -np.sin(t)],
                     [np.sin(t),  np.cos(t)]])
 
-    
     # Loop over extractions and project onto X,Y
     for ix, ext in enumerate(exts):
         # Project into X,Y frame
