@@ -213,10 +213,12 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
 
         # fill in the x,y pix positions
         #Xs[ix] = ixs[ix_fid]
-        Xs[ix] = np.nanmean(ext.xrange)
+        Xs[ix] = np.nanmin(ext.xrange) + ext.xrefpix
         Ys[ix] = np.nanmean(ext.yrange)
         ext.X_pix = Xs[ix]
         ext.Y_pix = Ys[ix]
+        if ext.xrefpix is not None:
+            ext.xreflam = LL[ext.refpix]
     # End loop over all extractions
 
     # make arrays

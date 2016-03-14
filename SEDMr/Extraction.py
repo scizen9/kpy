@@ -76,6 +76,8 @@ class Extraction():
     ok = None
     xrange = None
     yrange = None
+    xrefpix = None
+    xreflam = None
     poly = None
     spec = None
     specw = None
@@ -196,6 +198,7 @@ class Extraction():
         self.ok = ok
         self.xrange = xrange
         self.yrange = yrange
+        self.xrefpix = 55
         self.poly = poly
         self.spec = spec
         self.specw = specw
