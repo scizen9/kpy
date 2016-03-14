@@ -212,7 +212,8 @@ def extraction_to_cube(exts, outname="G.npy", fidwave=None):
         ix_fid = np.nanargmin(np.abs(LL-fid_wave))
 
         # fill in the x,y pix positions
-        Xs[ix] = ixs[ix_fid]
+        #Xs[ix] = ixs[ix_fid]
+        Xs[ix] = np.nanmean(ext.xrange)
         Ys[ix] = np.nanmean(ext.yrange)
         ext.X_pix = Xs[ix]
         ext.Y_pix = Ys[ix]
