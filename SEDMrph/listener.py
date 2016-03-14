@@ -105,10 +105,21 @@ def start_listening_loop():
                     isAB = (isABstr =="AB")
                     image = data.split(",")[2].rstrip()
                     logger.info("Get Offsets AB=%s for image %s"%(isAB,image))
-                    #Wait until the image is available.                
-                    while (not os.path.isfile(image)):
-                        time.sleep(0.5)
-                    res = recenter_ifu.main(image, isAB, astro=True, plot=True)
+                    
+                    astrofile = os.path.basename(image)
+                    date = astrofile.split("_")[0].replace("rc","")
+                    #astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
+                    endpath = "/scr2/sedm/phot/%s/%s"%(date, astrofile)
+                    if (not os.path.isdir(os.path.dirname(endpath))):
+                        os.makedirs(os.path.dirname(endpath))
+                    os.system('scp -i /home/sedm/.ssh/guider_rsa developer@p200-guider.palomar.caltech.edu:%s %s'%(image, endpath))
+                    astro = False
+                    #Only run astrometry if image is unavailable.                
+                    if (not os.path.isfile(endpath)):
+                        astro=True
+                        endpath = endpath.replace(".new", ".fits")
+                        logger.error("Astrometry resolved image %s could not be copied into %s. Setting astrometry to True."%(image, astrofile))
+                    res = recenter_ifu.main(endpath, isAB, astro=astro, plot=True)
                     retcode = res[0]
                     offsets = res
                     logger.info( "OFFSETS %s  Return code %d"%(offsets,retcode))
