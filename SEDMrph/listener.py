@@ -108,7 +108,7 @@ def start_listening_loop():
                     
                     astrofile = os.path.basename(image)
                     date = astrofile.split("_")[0].replace("rc","")
-                    #astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
+                    astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
                     endpath = "/scr2/sedm/phot/%s/%s"%(date, astrofile)
                     if (not os.path.isdir(os.path.dirname(endpath))):
                         os.makedirs(os.path.dirname(endpath))
