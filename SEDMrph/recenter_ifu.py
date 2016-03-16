@@ -232,7 +232,7 @@ def get_offsets_A_B(f, plot=True, interactive=False):
         
     linestyles = ['solid' , 'dashed' , 'dashdot' , 'dotted', 'solid']
     
-    offsets = np.array([[+7, -3], [+7, +3], [+8, +5], [+2, +2]])
+    offsets = np.array([[+3, -3], [+3, +3], [+2, +4], [+2, +2]])
 
     Noff = len(offsets)
     pvalues = np.zeros((Noff, 2))
