@@ -1269,11 +1269,13 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
 
     object = header['OBJECT'].split()[0]
 
+    print "\nMark positive (red) target first"
     sixA, posA, adc_A, radius_used_A = \
             identify_spectra_gui(E, radius=radius,
                                  PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax, object=object, 
                                  airmass=meta['airmass'])
+    print "\nMark negative (blue) target next"
     sixB, posB, adc_B, radius_used_B = \
             identify_spectra_gui(E, radius=radius_used_A,
                                  PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
