@@ -138,7 +138,7 @@ def get_offset_center_failed_astro(f, plot=False, interactive=True):
         plt.clf()
         
     
-    return 1, dra, ddec
+    return 1, ddec, dra
             
     
 def get_offset_center(f, plot=True, interactive=False):
