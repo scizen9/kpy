@@ -64,7 +64,11 @@ def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
         os.remove(img.replace(".fits", "-indx.xyls"))
     if (os.path.isfile("none")):
         os.remove("none")
-    os.remove("/tmp/tmp.*")
+        
+    try:
+        os.remove("/tmp/tmp.*")
+    except:
+        pass
         
         
     if(not os.path.isfile(astro) and first_call):
