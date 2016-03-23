@@ -388,18 +388,11 @@ def main(infile, isAB, astro=True, plot=True):
     if (astro):
         try:
             newfile = solve_astrometry(infile)
+            retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
         except:
-            logger.error("Astrometry failed on file %s"%infile)
-    else:
-        newfile = infile
+            logger.error("Astrometry failed on file %s. Computing the \"Failed solution option\""%infile)
+            retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
 
-    if (os.path.basename(newfile)):
-        #Get the offsets to point the telescope to the centre of the IFU.
-        retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
-    else:
-        retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
-        newfile = infile
-    
     
     if (isAB and os.path.isfile(newfile) ):
         retcode, aoff, boff = get_offsets_A_B(newfile, plot=plot, interactive=False)
@@ -415,7 +408,7 @@ def main(infile, isAB, astro=True, plot=True):
         
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
         logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec,0,0))
-        return retcode,dra,ddec,0,0 
+        return retcode,dra,ddec,3,3 
     else:
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
         logger.info( "Offsets computed for A: \n A %.4f %.4f"%(dra, ddec))
