@@ -119,8 +119,8 @@ def start_listening_loop():
                     #Only run astrometry if image is unavailable.                
                     if (not os.path.isfile(endpath)):
                         astro=True
-                        endpath = endpath.replace(".new", ".fits")
-                        logger.error("Astrometry resolved image %s could not be copied into %s. Setting astrometry to True."%(image, astrofile))
+                        logger.error("Astrometry resolved image %s could not be copied into %s. Setting astrometry to True."%(image, endpath))
+                        endpath = os.path.join(os.path.dirname(endpath), os.path.basename(image))
                     res = recenter_ifu.main(endpath, isAB, astro=astro, plot=True)
                     retcode = res[0]
                     offsets = res
