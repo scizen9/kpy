@@ -103,9 +103,11 @@ def start_listening_loop():
                 try:
                     isABstr = data.split(",")[1]
                     isAB = (isABstr =="AB")
+                    #astrometry = int(data.split(",")[2])
+                    astrometry = 0
                     image = data.split(",")[2].rstrip()
-                    logger.info("Get Offsets AB=%s for image %s"%(isAB,image))
-                    
+                    logger.info("Get Offsets AB=%s for image %s. Astrometry active=%s"%(isAB,image,astrometry))
+                    #if(astrometry==0):
                     astrofile = os.path.basename(image)
                     date = astrofile.split("_")[0].replace("rc","")
                     astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
