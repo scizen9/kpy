@@ -6,7 +6,7 @@ Created on Tue Mar  2 22:22:15 2016
 """
 
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg", warn=False)
 import os, time
 import recenter_ifu
 import socket

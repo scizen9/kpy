@@ -53,7 +53,7 @@ def get_sao_rec(hra, hdec, radius):
     subprocess.call(cmd, shell=True)
     
     try:
-        sao = np.genfromtxt("/tmp/sao", dtype="str")
+        sao = np.genfromtxt("/tmp/sao", dtype="str", ndmin=1)
         print sao
     except IOError:
         sao = np.array([])
