@@ -391,8 +391,13 @@ def main(infile, isAB, astro=True, plot=True):
         try:
             newfile = solve_astrometry(infile)
             retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
-        except:
+        except Exception as e:
+            logger.error(str(sys.exc_info()[0]))
+            logger.error(e)
             logger.error("Astrometry failed on file %s. Computing the \"Failed solution option\""%infile)
+            newfile = infile.replace("rc_", "a_rc_")
+            
+        if (not os.path.isfile(newfile)):
             retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
 
     
