@@ -24,7 +24,7 @@ def get_sao(radius=2000):
     utc = d.utcnow()
     
     #Get reasonably high target
-    ra = 15*((utc.hour+3)%24) + 15*(utc.minute/60.)
+    ra = 15*((utc.hour+0.01)%24) + 15*(utc.minute/60.)
     dec = 40
     
     hra, hdec  =  coordinates_conversor.deg2hour(ra, dec)
@@ -34,7 +34,8 @@ def get_sao(radius=2000):
         radius = radius+1000
         sao = get_sao_rec(hra, hdec, radius)
     print "Found %d"%len(sao)
-    np.random.shuffle(sao)
+    if np.ndim(sao) > 1:
+        np.random.shuffle(sao)
     
     print "Returning ", sao[0][1], sao[0][2]
     
