@@ -383,6 +383,8 @@ def main(infile, isAB, astro=True, plot=True):
         
     newfile = ""
     retcode = 0
+    dra = 0
+    ddec = 0
     
     #Comment whenever we have the new astrometry file.
     if (astro):
