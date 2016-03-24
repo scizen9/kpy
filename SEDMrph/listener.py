@@ -66,7 +66,7 @@ def start_listening_loop():
                 #Wait until the image is available.                
                 while (not os.path.isfile(lfiles[-1])):
                         time.sleep(0.5)
-                focus, sigma = sextractor.get_focus(lfiles, plot=False)
+                focus, sigma = sextractor.get_focus(lfiles, plot=True)
                 connection.sendall("%.2f,%.2f\n"%(focus, sigma))
                 logger.info("Selected focus: %.2f,%.2f\n"%(focus, sigma))
             elif "SAO" in command:
