@@ -51,6 +51,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     fwhms = []
     for i, f in enumerate(sexfileslist):
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
+	print fits
         FF = pf.open(fits)
         pos= float(FF[0].header['focpos'])
 
