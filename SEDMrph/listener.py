@@ -66,7 +66,7 @@ def start_listening_loop():
                 #Wait until the image is available.                
                 while (not os.path.isfile(lfiles[-1])):
                         time.sleep(0.5)
-                focus, sigma = sextractor.get_focus(lfiles, plot=False)
+                focus, sigma = sextractor.get_focus(lfiles, plot=True)
                 connection.sendall("%.2f,%.2f\n"%(focus, sigma))
                 logger.info("Selected focus: %.2f,%.2f\n"%(focus, sigma))
             elif "SAO" in command:
@@ -103,9 +103,11 @@ def start_listening_loop():
                 try:
                     isABstr = data.split(",")[1]
                     isAB = (isABstr =="AB")
+                    #astrometry = int(data.split(",")[2])
+                    astrometry = 0
                     image = data.split(",")[2].rstrip()
-                    logger.info("Get Offsets AB=%s for image %s"%(isAB,image))
-                    
+                    logger.info("Get Offsets AB=%s for image %s. Astrometry active=%s"%(isAB,image,astrometry))
+                    #if(astrometry==0):
                     astrofile = os.path.basename(image)
                     date = astrofile.split("_")[0].replace("rc","")
                     astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
@@ -117,8 +119,8 @@ def start_listening_loop():
                     #Only run astrometry if image is unavailable.                
                     if (not os.path.isfile(endpath)):
                         astro=True
-                        endpath = endpath.replace(".new", ".fits")
-                        logger.error("Astrometry resolved image %s could not be copied into %s. Setting astrometry to True."%(image, astrofile))
+                        logger.error("Astrometry resolved image %s could not be copied into %s. Setting astrometry to True."%(image, endpath))
+                        endpath = os.path.join(os.path.dirname(endpath), os.path.basename(image))
                     res = recenter_ifu.main(endpath, isAB, astro=astro, plot=True)
                     retcode = res[0]
                     offsets = res
