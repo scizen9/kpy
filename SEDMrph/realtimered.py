@@ -24,7 +24,7 @@ def reduce_all_dir(photdir, overwrite=False):
     # Copy the content of the reduced directory into a new directory with the date of the observations.
     dayname = os.path.basename(photdir)
     reducedname = os.path.join(photdir, "reduced")
-    if (os.path.isdir(reducedname):
+    if (os.path.isdir(reducedname)):
     	cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
     	subprocess.call(cmd, shell=True)
     else:
