@@ -114,6 +114,8 @@ class PositionPicker(object):
             
         pl.ylim(-20,20)
         pl.xlim(-22,20)
+        pl.xlabel("X [asec]")
+        pl.ylabel("Y [asec]")
         pl.colorbar()
 
         c = Cursor(self.figure.gca(), useblit=True)
