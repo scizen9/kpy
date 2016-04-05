@@ -26,6 +26,14 @@ import SEDMrph.zeropoint as zeropoint
 from scipy.interpolate import griddata
 import scipy.optimize as opt
 
+def reject_outliers(data, m=2.):
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    d[d != d] = 100000.
+    s = d/mdev if mdev else 0.
+    return data[s<m]
+
+
 def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     """ Return list of (X,Y) positions indicating trace of atmospheric dispersion
 
@@ -310,6 +318,7 @@ def identify_spectra(spectra, outname=None, low=-np.inf, hi=np.inf, plot=False):
     pl.grid(True)
     if outname is not None:
         pl.savefig("selected_%s.pdf" % outname)
+        print "Wrote selected_%s.pdf" % outname
     if plot:
         pl.show()
 
@@ -335,25 +344,27 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
         if x.specw is None: continue
         ix = np.arange(*x.xrange)
         ll = chebval(ix, x.lamcoeff)
-        OK = (ll > 500) & (ll < 700)
+        OK = (ll > 650) & (ll < 700)
         if OK.any():
             Xs.append(x.X_as)
             Ys.append(x.Y_as)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                Vs.append(np.nanmean(x.specw[OK]))
+                Vs.append(np.median(x.specw[OK]))
 
-    Vstd = np.nanstd(Vs)
-    Vmid = np.median(Vs)
+    # Clean outliers
+    Vcln = reject_outliers(np.array(Vs, dtype=np.float), m=3.)
+    Vstd = np.nanstd(Vcln)
+    Vmid = np.median(Vcln)
     if posB is None:
         Vmin = Vmid - Vstd
-        Vmax = Vmid + 3.*Vstd
+        Vmax = Vmid + 8.*Vstd
     else:
-        Vmin = Vmid - 3.*Vstd
-        Vmax = Vmid + 3.*Vstd
+        Vmin = Vmid - 8.*Vstd
+        Vmax = Vmid + 8.*Vstd
     pl.clf()
     pl.ylim(-20, 20)
-    pl.xlim(-20, 20)
+    pl.xlim(-22, 20)
     pl.grid(True)
     if posA is not None:
         pl.axvline(posA[0], color='black', linewidth=.5)
@@ -361,7 +372,8 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
     if posB is not None:
         pl.axvline(posB[0], color='black', linewidth=.5)
         pl.axhline(posB[1], color='black', linewidth=.5)
-    pl.scatter(Xs, Ys, c=Vs, s=50,marker='H',linewidth=0,vmin=Vmin,vmax=Vmax)
+    pl.scatter(Xs, Ys, c=Vs, s=50, marker='H', linewidth=0,
+            vmin=Vmin, vmax=Vmax)
 
     if adcpos is not None:
         for p in adcpos:
@@ -373,6 +385,7 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
     pl.colorbar()
     pl.savefig("image_%s.pdf" % outname)
     pl.close()
+    print "Wrote image_%s.pdf" % outname
 
 
 def c_to_nm(coefficients, pix, offset=0):
@@ -444,7 +457,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     pl.xlabel('Wavelength [nm]')
     pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
     pl.grid(True)
-    if outname is not None: pl.savefig("spec_%s" % outname)
+    if outname is not None:
+        pl.savefig("spec_%s" % outname)
+        print "Wrote spec_%s" % outname
     if plot: pl.show()
 
     # Spaxel stack image
@@ -455,7 +470,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     pl.xlabel('Wavelength bin [pixel]')
     pl.colorbar()
     pl.grid(True)
-    if outname is not None: pl.savefig("allspec_%s" % outname)
+    if outname is not None: 
+        pl.savefig("allspec_%s" % outname)
+        print "Wrote allspec_%s" % outname
     if plot:pl.show()
 
 
@@ -500,7 +517,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.xlabel('Wavelength [nm]')
         pl.ylabel(r'Spectral irradiance[photon/10 m/nm] x Atm correction')
         pl.grid(True)
-        if outname is not None: pl.savefig("corr_spec_%s" % outname)
+        if outname is not None:
+            pl.savefig("corr_spec_%s" % outname)
+            print "Wrote corr_spec_%s" % outname
         if plot: pl.show()
 
 
@@ -852,15 +871,20 @@ def handle_Std(A, fine, outname=None, standard=None, Aoffset=None,
 
     pl.figure()
     pl.clf()
-    pl.ylim(-30,30)
-    pl.xlim(-30,30)
+    pl.ylim(-20,20)
+    pl.xlim(-22,20)
+    pl.grid(True)
+    if posA is not None:
+        pl.axvline(posA[0], color='black', linewidth=.5)
+        pl.axhline(posA[1], color='black', linewidth=.5)
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
-    pl.scatter(XSA,YSA, color='red', marker='H', linewidth=.1)
-    pl.scatter(XSK,YSK, color='green', marker='H', linewidth=.1)
+    pl.scatter(XSA,YSA, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(XSK,YSK, color='green', marker='H', s=50, linewidth=0)
     pl.title("%d selected spaxels for %s" % (len(XSA), object))
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
+    print "Wrote XYs_%s.pdf" % outname
     # / End Plot
 
     # Define our standard wavelength grid
@@ -1069,14 +1093,19 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2,
 
     pl.figure()
     pl.clf()
-    pl.ylim(-30,30)
-    pl.xlim(-30,30)
+    pl.ylim(-20,20)
+    pl.xlim(-22,20)
+    pl.grid(True)
+    if posA is not None:
+        pl.axvline(posA[0], color='black', linewidth=.5)
+        pl.axhline(posA[1], color='black', linewidth=.5)
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
-    pl.scatter(XSA,YSA, color='red', marker='H', linewidth=.1)
-    pl.scatter(XSK,YSK, color='green', marker='H', linewidth=.1)
+    pl.scatter(XSA,YSA, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(XSK,YSK, color='green', marker='H', s=50, linewidth=0)
     pl.title("%d selected spaxels for %s" % (len(XSA), object))
     pl.savefig("XYs_%s.pdf" % outname)
+    print "Wrote XYs_%s.pdf" % outname
     pl.close()
     # / End Plot
 
@@ -1240,11 +1269,13 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
 
     object = header['OBJECT'].split()[0]
 
+    print "\nMark positive (red) target first"
     sixA, posA, adc_A, radius_used_A = \
             identify_spectra_gui(E, radius=radius,
                                  PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax, object=object, 
                                  airmass=meta['airmass'])
+    print "\nMark negative (blue) target next"
     sixB, posB, adc_B, radius_used_B = \
             identify_spectra_gui(E, radius=radius_used_A,
                                  PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
@@ -1288,15 +1319,23 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
 
     pl.figure()
     pl.clf()
-    pl.ylim(-30,30)
-    pl.xlim(-30,30)
+    pl.ylim(-20,20)
+    pl.xlim(-22,20)
+    pl.grid(True)
+    if posA is not None:
+        pl.axvline(posA[0], color='black', linewidth=.5)
+        pl.axhline(posA[1], color='black', linewidth=.5)
+    if posB is not None:
+        pl.axvline(posB[0], color='black', linewidth=.5)
+        pl.axhline(posB[1], color='black', linewidth=.5)
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
-    pl.scatter(XSA,YSA, color='blue', marker='H', linewidth=.1)
-    pl.scatter(XSB,YSB, color='red', marker='H', linewidth=.1)
-    pl.scatter(XKA,YKA, color='green', marker='H', linewidth=.1)
-    pl.scatter(XKB,YKB, color='green', marker='H', linewidth=.1)
+    pl.scatter(XSA,YSA, color='blue', marker='H', s=50, linewidth=0)
+    pl.scatter(XSB,YSB, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(XKA,YKA, color='green', marker='H', s=50, linewidth=0)
+    pl.scatter(XKB,YKB, color='green', marker='H', s=50, linewidth=0)
     pl.savefig("XYs_%s.pdf" % outname)
+    print "Wrote XYs_%s.pdf" % outname
     pl.close()
     # / End Plot
 

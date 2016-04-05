@@ -38,7 +38,7 @@ def run_sex(flist):
         
     return newlist
         
-def analyse_sex(sexfileslist, flist, plot=True, interactive=False):
+def analyse_sex(sexfileslist, plot=True, interactive=False):
     '''
     Analyses the sextractor filelist to determine the best focus.
     
@@ -50,7 +50,9 @@ def analyse_sex(sexfileslist, flist, plot=True, interactive=False):
     focpos = []
     fwhms = []
     for i, f in enumerate(sexfileslist):
-        FF = pf.open(flist[i])
+        fits = f.replace("sextractor/", "").replace(".sex", ".fits")
+	print fits
+        FF = pf.open(fits)
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#")
@@ -127,7 +129,7 @@ def get_focus(lfiles, plot=True):
     
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex(sexfiles, lfiles, plot=plot)
+    focus, sigma = analyse_sex(sexfiles, plot=plot)
     return focus, sigma
     
 def get_image_pars(image):

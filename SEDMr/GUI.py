@@ -108,11 +108,14 @@ class PositionPicker(object):
         else:
             dVmin = -300
             dVmax = 300
+        # plot (may want to use cmap=pl.cm.Spectral)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0, 
-            cmap=pl.cm.Spectral, vmin=dVmin, vmax=dVmax)
+            vmin=dVmin, vmax=dVmax)
             
         pl.ylim(-20,20)
-        pl.xlim(-20,20)
+        pl.xlim(-22,20)
+        pl.xlabel("-RA offset [asec]")
+        pl.ylabel("Dec offset [asec]")
         pl.colorbar()
 
         c = Cursor(self.figure.gca(), useblit=True)

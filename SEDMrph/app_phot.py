@@ -7,7 +7,7 @@ Created on Sat May 23 18:23:02 2015
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg", warn=False)
 from matplotlib import pylab as plt
 
 try:

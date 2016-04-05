@@ -46,6 +46,7 @@ def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
         ra = fitsutils.get_par(img, 'RA')
         dec = fitsutils.get_par(img, 'DEC')
     
+    os.chdir(os.path.dirname(img))
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
     print "Solving astrometry on field with (ra,dec)=", ra, dec, "Image",img, "New image", astro
@@ -67,7 +68,11 @@ def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
         os.remove(img.replace(".fits", "-indx.xyls"))
     if (os.path.isfile("none")):
         os.remove("none")
-    os.remove("/tmp/tmp.*")
+        
+    try:
+        os.remove("/tmp/tmp.*")
+    except:
+        pass
         
         
     if(not os.path.isfile(astro) and first_call):
@@ -141,7 +146,7 @@ def get_offset_center_failed_astro(f, plot=False, interactive=True):
         plt.clf()
         
     
-    return 1, dra, ddec
+    return 1, ddec, dra
             
     
 def get_offset_center(f, plot=True, interactive=False):
@@ -386,23 +391,23 @@ def main(infile, isAB, astro=True, plot=True):
         
     newfile = ""
     retcode = 0
+    dra = 0
+    ddec = 0
     
     #Comment whenever we have the new astrometry file.
     if (astro):
         try:
             newfile = solve_astrometry(infile)
-        except:
-            logger.error("Astrometry failed on file %s"%infile)
-    else:
-        newfile = infile
+            retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
+        except Exception as e:
+            logger.error(str(sys.exc_info()[0]))
+            logger.error(e)
+            logger.error("Astrometry failed on file %s. Computing the \"Failed solution option\""%infile)
+            newfile = infile.replace("rc_", "a_rc_")
+            
+        if (not os.path.isfile(newfile)):
+            retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
 
-    if (os.path.basename(newfile)):
-        #Get the offsets to point the telescope to the centre of the IFU.
-        retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
-    else:
-        retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
-        newfile = infile
-    
     
     if (isAB and os.path.isfile(newfile) ):
         retcode, aoff, boff = get_offsets_A_B(newfile, plot=plot, interactive=False)
@@ -418,7 +423,7 @@ def main(infile, isAB, astro=True, plot=True):
         
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
         logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec,0,0))
-        return retcode,dra,ddec,0,0 
+        return retcode,dra,ddec,3,3 
     else:
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
         logger.info( "Offsets computed for A: \n A %.4f %.4f"%(dra, ddec))

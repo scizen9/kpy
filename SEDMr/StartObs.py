@@ -91,7 +91,7 @@ def cal_proc_ready():
         CalProcReady = True
 
 
-def docp(src, dest):
+def docp(src, dest, onsky=True):
     """Low level copy from raw directory to redux directory
 
     Call:
@@ -99,6 +99,7 @@ def docp(src, dest):
     Inputs:
         src     - source file
         dest    - destination directory
+        onsky   - test for dome conditions or not
     Procedure:
         Checks for raw cal files, standard star observations and
         increments their respective counters, while avoiding any
@@ -117,33 +118,39 @@ def docp(src, dest):
     # Get OBJECT and ADCSPEED keywords
     obj = hdr['OBJECT']
     speed = hdr['ADCSPEED']
+    dome = hdr['DOMEST']
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
-    # Skip test and Focus images
-    if 'test' not in obj and 'Focus:' not in obj:
-        # Copy with preserving metadata (date, etc.)
-        shutil.copy2(src, dest)
-        print 'copied %s to %s' % (src, dest)
-        ncp = 1
-        # Check for standard star observations
-        if 'STD-' in obj:
-            nstd = 1
-        # Check for calibration files
-        elif 'Calib' in obj:
-            if 'bias' in obj:
-                if speed == 2.0: nbias2 += 1
-                if speed == 0.1: nbias += 1
-            if 'Xe' in obj: nXe += 1
-            if 'dome' in obj: ndome += 1
-            if 'Hg' in obj: nHg += 1
-            if 'Cd' in obj: nCd += 1
-    # Report skipping and type
+    # check if dome conditions are not right
+    if onsky and 'CLOSED' in dome:
+        print 'On sky and dome is closed, skipping %s' % src
+    # all other conditions are OK
     else:
-        if 'test' in hdr['OBJECT']:
-            print 'test file %s not copied' % src
-        if 'Focus:' in hdr['OBJECT']:
-            print 'Focus file %s not copied' % src
+        # Skip test and Focus images
+        if 'test' not in obj and 'Focus:' not in obj:
+            # Copy with preserving metadata (date, etc.)
+            shutil.copy2(src, dest)
+            print 'copied %s to %s' % (src, dest)
+            ncp = 1
+            # Check for standard star observations
+            if 'STD-' in obj:
+                nstd = 1
+            # Check for calibration files
+            elif 'Calib' in obj:
+                if 'bias' in obj:
+                    if speed == 2.0: nbias2 += 1
+                    if speed == 0.1: nbias += 1
+                if 'Xe' in obj: nXe += 1
+                if 'dome' in obj: ndome += 1
+                if 'Hg' in obj: nHg += 1
+                if 'Cd' in obj: nCd += 1
+        # Report skipping and type
+        else:
+            if 'test' in hdr['OBJECT']:
+                print 'test file %s not copied' % src
+            if 'Focus:' in hdr['OBJECT']:
+                print 'Focus file %s not copied' % src
 
     return (ncp, nstd)
 
@@ -397,7 +404,7 @@ def cpprecal(dirlist, destdir='./'):
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir,imf)
                     if os.path.exists(destfil) == False:
-                        nc, ns = docp(src,destfil)
+                        nc, ns = docp(src,destfil,onsky=False)
                         ncp += nc
             else:
                 print "Truncated file: %s" % src
@@ -460,7 +467,7 @@ def cpcal(srcdir, destdir='./'):
             # Filter Calibs and avoid test images
             if 'Calib' in obj and not 'test' in obj:
                 # Copy cal images
-                nc, ns = docp(src,destfil)
+                nc, ns = docp(src,destfil,onsky=False)
                 ncp += nc
     # Check if calibrations are read
     cal_proc_ready()
