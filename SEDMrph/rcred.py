@@ -55,7 +55,7 @@ def create_masterbias(biasdir=None, channel='rc'):
     #Select all filts that are Bias with same instrument
     for f in glob.glob("rc*fits"):
         try:
-            if ( os.path.basname(f).startswith("rc") and "BIAS" in str.upper(fitsutils.get_par(f, "IMGTYPE")) ):
+            if ( "BIAS" in str.upper(fitsutils.get_par(f, "IMGTYPE")) ):
                 if (fitsutils.get_par(f, "ADCSPEED")==2):
                     lfastbias.append(f)
                 else:
@@ -145,7 +145,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
                 continue
         
             #if ("RAINBOW CAM" in str.upper(fitsutils.get_par(f, "CAM_NAME")) and  ("DOME" in  obj or "FLAT" in obj or "Twilight" in obj or "TWILIGHT" in imtype or "DOME" in imtype)):
-            if ("RAINBOW CAM" in str.upper(fitsutils.get_par(f, "CAM_NAME")) and ("TWILIGHT" in imtype)):
+            if ( "TWILIGHT" in imtype):
 
                 if (fitsutils.get_par(f, "ADCSPEED")==2):
                     lfflat.append(f)
