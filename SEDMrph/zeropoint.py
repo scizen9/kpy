@@ -184,8 +184,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     img[img<0] = 0
     
     ra, dec = wcs.wcs_pix2sky(np.array([img.shape[0]/2, img.shape[1]/2], ndmin=2), 1)[0]
-    sr = 5.5/60
-    print ra,dec
+    ra0, dec0 = wcs.wcs_pix2sky(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
+
+    sr = np.abs(dec-dec0)
+    print ra,dec, sr
     
     if not refstars is None:
         shutil.copy(refstars, "/tmp/tmp_sdss.cat")
@@ -235,8 +237,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         mag = catalog['Sloan_r']
         
     elif (survey=='sdss'):
-        minmag = 0
-        maxmag = 21.0
+        minmag = 17
+        maxmag = 23.0
         catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6\
         &radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%(ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
         print "Downloading SDSS catalog..."

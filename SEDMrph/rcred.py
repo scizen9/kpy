@@ -55,7 +55,7 @@ def create_masterbias(biasdir=None, channel='rc'):
     #Select all filts that are Bias with same instrument
     for f in glob.glob("rc*fits"):
         try:
-            if ( "RAINBOW CAM" in str.upper(fitsutils.get_par(f, "CAM_NAME")) and "BIAS" in str.upper(fitsutils.get_par(f, "OBJECT")) ):
+            if ( os.path.basname(f).startswith("rc") and "BIAS" in str.upper(fitsutils.get_par(f, "IMGTYPE")) ):
                 if (fitsutils.get_par(f, "ADCSPEED")==2):
                     lfastbias.append(f)
                 else:

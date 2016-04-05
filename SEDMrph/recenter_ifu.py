@@ -39,8 +39,12 @@ def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
     radius: radius of uncertainty on astrometric position in image.
     '''
 
-    ra = fitsutils.get_par(img, 'OBJRA')
-    dec = fitsutils.get_par(img, 'OBJDEC')
+    try:
+        ra = fitsutils.get_par(img, 'OBJRA')
+        dec = fitsutils.get_par(img, 'OBJDEC')
+    except:
+        ra = fitsutils.get_par(img, 'RA')
+        dec = fitsutils.get_par(img, 'DEC')
     
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
@@ -192,7 +196,7 @@ def get_offset_center(f, plot=True, interactive=False):
             plt.clf()
 
 
-        return 0, dra, ddec
+        return 0, dra-5, ddec+2
 
 def mad(arr):
     """ Median Absolute Deviation: a "Robust" version of standard deviation.
@@ -232,7 +236,7 @@ def get_offsets_A_B(f, plot=True, interactive=False):
         
     linestyles = ['solid' , 'dashed' , 'dashdot' , 'dotted', 'solid']
     
-    offsets = np.array([[+3, -3], [+3, +3], [+2, +4], [+2, +2]])
+    offsets = np.array([[+3, -4], [+3, +4], [+2, +4], [+2, +2]])
 
     Noff = len(offsets)
     pvalues = np.zeros((Noff, 2))
