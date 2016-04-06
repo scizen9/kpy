@@ -18,6 +18,7 @@ import argparse
 import shutil
 import time_utils
 import time
+import datetime
 
 
 def create_masterbias(biasdir=None, channel='rc'):
@@ -80,6 +81,13 @@ def create_masterbias(biasdir=None, channel='rc'):
                     combine = "median",\
                     scale = "mode")
         os.remove(bfile_fast)
+        
+        #copy into the reference folder with current date
+        newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(biasdir)))
+        if (not os.path.isdir(newdir)):
+            os.makedirs(newdir)
+        shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )       
+
 
     if len(lslowbias) > 0 and doslow:
 
@@ -96,6 +104,12 @@ def create_masterbias(biasdir=None, channel='rc'):
                     combine = "median",\
                     scale = "mode")
         os.remove(bfile_slow)
+        
+        #copy into the reference folder with current date
+        newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(biasdir)))
+        if (not os.path.isdir(newdir)):
+            os.makedirs(newdir)
+        shutil.copy(outs, os.path.join(newdir, os.path.basename(outs)) )     
 
 def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     '''
@@ -201,11 +215,14 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         lfiles = []
         for f in glob.glob('b_*_%s.fits'%b):
             d = pf.open(f)[0].data
-            if np.percentile(d, 90)>3000 and np.percentile(d, 90)<40000:
+            if np.percentile(d, 90)>4000 and np.percentile(d, 90)<40000:
                 lfiles.append(f)
 
         if len(lfiles) == 0:
             print "WARNING!!! Could not find suitable flats for band %s"%b
+            continue
+        if len(lfiles) == 1:
+            print "WARNING!!! Could find only 1 flat for band %s. Skipping, as it is not reliable..."%b
             continue
         ffile ="lflat_"+b
         np.savetxt(ffile, np.array(lfiles), fmt="%s")
@@ -241,6 +258,12 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         if os.path.isfile(fffile):
             os.remove(fffile)
 
+        #copy into the reference folder with current date
+        newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(flatdir)))
+        if (not os.path.isdir(newdir)):
+            os.makedirs(newdir)
+        shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
+
 def solve_edges(flat, band):
     '''
     Finds the edges of the flat, and extends the respons of the average to the edges.
@@ -255,10 +278,32 @@ def copy_ref_calib(curdir, calib="Flat"):
     Reference master Bias and master Flat are stored in the refphot folder.
     The files are copied if they are not found in the folder where the photometry is being reduced.
     '''
-    listcalib = glob.glob(os.path.join(curdir, "../../refphot/", calib+"*"))
+
+    #Check which dates have the calibration files that we need.
+    listcalib = glob.glob(os.path.join(curdir, "../../refphot/*/", calib+"*"))
+    #Obtain the folder name
+    listdirs = [os.path.dirname(l) for l in listcalib]    
+    #Unique name
+    calibdates = np.array(list(set(listdirs)))
     
-    for f in listcalib:
-        shutil.copy(f, os.path.join(curdir, os.path.basename(f)))     
+    #Get the date of the current directory
+    curdir = os.path.abspath(curdir)
+    
+    #compile the dates in datetime format
+    dates = []
+    for f in calibdates:
+        dateobs = os.path.basename(f)
+        dates.append(datetime.datetime.strptime(dateobs, "%Y%m%d"))
+
+    dates = np.array(dates)    
+    curdate = datetime.datetime.strptime(os.path.basename(curdir), "%Y%m%d")
+    
+    #Select the folder that is closes to the date of the current directory
+    lastdir = np.array(calibdates)[np.argmin(curdate-dates)]
+    
+    #Copy all calibration files that match the calib filter.
+    for c in glob.glob(os.path.join(lastdir, calib+"*")):    
+        shutil.copy(c, os.path.join(curdir, os.path.basename(c)))     
         
         
 
@@ -584,7 +629,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
         if (not os.path.isfile(flat)):
             print "Master flat not found in", flat
-            copy_ref_calib(mydir, "Flat")
+            copy_ref_calib(mydir, "Flat_%s_%s_norm"%(channel, b))
             continue
         else:
             print "Using flat",flat
