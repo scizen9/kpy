@@ -299,7 +299,7 @@ def copy_ref_calib(curdir, calib="Flat"):
     curdate = datetime.datetime.strptime(os.path.basename(curdir), "%Y%m%d")
     
     #Select the folder that is closes to the date of the current directory
-    lastdir = np.array(calibdates)[np.argmin(curdate-dates)]
+    lastdir = np.array(calibdates)[np.argmin(np.abs(curdate-dates))]
     
     #Copy all calibration files that match the calib filter.
     for c in glob.glob(os.path.join(lastdir, calib+"*")):    
