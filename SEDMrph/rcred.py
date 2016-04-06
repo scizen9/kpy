@@ -221,8 +221,8 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         if len(lfiles) == 0:
             print "WARNING!!! Could not find suitable flats for band %s"%b
             continue
-        if len(lfiles) == 1:
-            print "WARNING!!! Could find only 1 flat for band %s. Skipping, as it is not reliable..."%b
+        if len(lfiles) < 3:
+            print "WARNING!!! Could find less than 3 flats for band %s. Skipping, as it is not reliable..."%b
             continue
         ffile ="lflat_"+b
         np.savetxt(ffile, np.array(lfiles), fmt="%s")
