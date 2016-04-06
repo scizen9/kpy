@@ -86,7 +86,9 @@ def create_masterbias(biasdir=None, channel='rc'):
         newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(biasdir)))
         if (not os.path.isdir(newdir)):
             os.makedirs(newdir)
-        shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )       
+        shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )
+    else:
+        copy_ref_calib(biasdir, outf)
 
 
     if len(lslowbias) > 0 and doslow:
@@ -109,7 +111,9 @@ def create_masterbias(biasdir=None, channel='rc'):
         newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(biasdir)))
         if (not os.path.isdir(newdir)):
             os.makedirs(newdir)
-        shutil.copy(outs, os.path.join(newdir, os.path.basename(outs)) )     
+        shutil.copy(outs, os.path.join(newdir, os.path.basename(outs)) )  
+    else:
+        copy_ref_calib(biasdir, outs)
 
 def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     '''
