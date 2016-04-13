@@ -194,7 +194,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         catalog = np.genfromtxt("/tmp/tmp_sdss.cat", names=True, dtype=None, delimiter=",")
         cat_ra = catalog["ra"]
         cat_dec = catalog["dec"]
-        mag = catalog["R"]
+        try:
+            mag = catalog["R"]
+        except:
+            mag = catalog["r"]
         
     elif str.lower(survey) =='usnob1':
         #ra, dec = coordinates_conversor.hour2deg(f[0].header['RA'], f[0].header['DEC'])
@@ -238,7 +241,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         
     elif (survey=='sdss'):
         minmag = 17
-        maxmag = 23.0
+        maxmag = 21.0
         catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6\
         &radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%(ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
         print "Downloading SDSS catalog..."
@@ -281,12 +284,17 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     if (band == 'u'):    
         mask = mask * (mag < 19)
     #Select only stars isolated in a radius of ~12 arcsec.
+<<<<<<< HEAD
     mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 30.))
     if (len(mask2)==0):
 	print "No stars left", mask, mask2
 	return    
+=======
+    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
+        
+>>>>>>> 0c7710cf365acf60d1e05b3955b082cfc6afcc15
     #Select only stars that are within the proper magnitude range
-    mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 12) 
+    mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 15) 
     
     mask3 = mask3 * (star_pix[:,0][mask][mask2]>rad) * (star_pix[:,0][mask][mask2]<img.shape[1]-rad)*(star_pix[:,1][mask][mask2]>rad) * (star_pix[:,1][mask][mask2]<img.shape[0]-rad)
 
@@ -389,13 +397,13 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
 
         
         if (len(star_pix[:,0][mask]) >0):        
-            plt.scatter(star_pix[:,0][mask], star_pix[:,1][mask], marker="o", s=np.minimum(150, 10000*(10./mag[mask][mask2])**9), edgecolor="red", facecolor="none")
+            plt.scatter(star_pix[:,0][mask], star_pix[:,1][mask], marker="o", s=np.minimum(150, 10000*(10./mag[mask][mask2])**9), edgecolor="red", facecolor="none", label="catalogue")
         
         if (len(star_pix[:,0][mask][mask2]) >0):        
-            plt.scatter(star_pix[:,0][mask][mask2], star_pix[:,1][mask][mask2], marker="o", s=20, edgecolor="yellow", facecolor="none")
+            plt.scatter(star_pix[:,0][mask][mask2], star_pix[:,1][mask][mask2], marker="o", s=20, edgecolor="yellow", facecolor="none", label="isolated")
 
         if (len(star_pix[:,0][mask][mask2][mask3]) >0):        
-            plt.scatter(star_pix[:,0][mask][mask2][mask3], star_pix[:,1][mask][mask2][mask3], marker="o", s=200, edgecolor="green", facecolor="none")
+            plt.scatter(star_pix[:,0][mask][mask2][mask3], star_pix[:,1][mask][mask2][mask3], marker="o", s=200, edgecolor="green", facecolor="none", label="wihtin farme and mag")
 
 
         selected = star_pix[:,:][mask][mask2][mask3][mask_valid_fwhm]
@@ -405,6 +413,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             for i in np.arange(len(selected)):
                 plt.text(selected[i,0]+10, selected[i,1]+10, i+1)
         
+        plt.legend(loc="best")
         plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png')))
         print "Saved stars to ",imfile.replace('.fits', '.seqstars.png')
         plt.clf()
