@@ -284,15 +284,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     if (band == 'u'):    
         mask = mask * (mag < 19)
     #Select only stars isolated in a radius of ~12 arcsec.
-<<<<<<< HEAD
     mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 30.))
     if (len(mask2)==0):
 	print "No stars left", mask, mask2
 	return    
-=======
-    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
-        
->>>>>>> 0c7710cf365acf60d1e05b3955b082cfc6afcc15
     #Select only stars that are within the proper magnitude range
     mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 15) 
     
