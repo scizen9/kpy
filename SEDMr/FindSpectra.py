@@ -92,70 +92,86 @@ def find_segments_helper(seg_cnt):
     # Get this segment
     the_seg = (segdat == seg_cnt)
 
-    # Get segment's geometry
-    span = spanrange(the_seg)
-    mnsr = np.max((span[0].y - PAD, 0))
-    mxsr = np.min((span[1].y + PAD, segdat.shape[1]-1))
-    y_slc = slice(mnsr, mxsr)
-    y_off = (span[0].y+span[1].y)/2.0
-
-    # How long is it in X?
-    n_el = span[1].x - span[0].x
-
-    # Don't fit short traces, but flag them by setting "ok" to False
-    if n_el < 50: 
-
-        # Flag the sigma with zero
-        sig = 0.
-
-        # Load up the trace with NaNs
+    # Test for tiny segment
+    test = the_seg.nonzero()
+    if len(test[0]) < 10 or len(test[1]) < 10:
         tr = {"seg_cnt": seg_cnt,
                 "xs": np.array(np.nan),
                 "mean_ys": np.array(np.nan),
-                "coeff_ys": np.array(np.nan),
+                "coeff_ys": np.array(np.nan), 
                 "trace_sigma": np.array(np.nan),
                 "ok": False}
-
-    # Trace is long enough, so let's fit it!
+        outstr = '\r%4.4i: %4.4i, TINY SEGMENT, %-5s' % (seg_cnt, len(test[0]), 
+                                                        tr['ok'])
+        print outstr
+        sys.stdout.flush()
+    # We are OK
     else:
+        # Get segment's geometry
+        span = spanrange(the_seg)
+        mnsr = np.max((span[0].y - PAD, 0))
+        mxsr = np.min((span[1].y + PAD, segdat.shape[1]-1))
+        y_slc = slice(mnsr, mxsr)
+        y_off = (span[0].y+span[1].y)/2.0
 
-        means = np.zeros(n_el)
-        amps = np.zeros(n_el)
-        sds = np.zeros(n_el)
-        trace_profile = np.zeros(mxsr-mnsr)
+        # How long is it in X?
+        n_el = span[1].x - span[0].x
 
-        for i in xrange(n_el):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=RuntimeWarning)
-                XX = i+span[0].x
-                profile = np.median(objdat[y_slc, XX-3:XX+3], 1)
-                profile -= np.min(profile)
+        # Don't fit short traces, but flag them by setting "ok" to False
+        if n_el < 50: 
 
-                trace_profile += profile
+            # Flag the sigma with zero
+            sig = 0.
 
-                xs = np.arange(len(profile)) + span[0].y
+            # Load up the trace with NaNs
+            tr = {"seg_cnt": seg_cnt,
+                    "xs": np.array(np.nan),
+                    "mean_ys": np.array(np.nan),
+                    "coeff_ys": np.array(np.nan),
+                    "trace_sigma": np.array(np.nan),
+                    "ok": False}
 
-                means[i] = np.sum(xs*profile)/np.sum(profile)-PAD
+        # Trace is long enough, so let's fit it!
+        else:
+
+            means = np.zeros(n_el)
+            amps = np.zeros(n_el)
+            sds = np.zeros(n_el)
+            trace_profile = np.zeros(mxsr-mnsr)
+
+            for i in xrange(n_el):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=RuntimeWarning)
+                    XX = i+span[0].x
+                    profile = np.median(objdat[y_slc, XX-3:XX+3], 1)
+                    profile -= np.min(profile)
+
+                    trace_profile += profile
+
+                    xs = np.arange(len(profile)) + span[0].y
+
+                    means[i] = np.sum(xs*profile)/np.sum(profile)-PAD
     
-        xs = np.arange(n_el) + span[0].x
+            xs = np.arange(n_el) + span[0].x
 
-        poly = np.array(np.polyfit(xs, means, polyorder))
+            poly = np.array(np.polyfit(xs, means, polyorder))
 
-        tracefit = gfit1d(trace_profile, par=[0, len(trace_profile)/2., 1.7], 
-                            quiet=1)
-        sig = np.abs(tracefit.params[2])
+            tracefit = gfit1d(trace_profile, 
+                              par=[0, len(trace_profile)/2., 1.7], quiet=1)
+            sig = np.abs(tracefit.params[2])
 
-        tr = {"seg_cnt": seg_cnt,
-                "xs": np.array(xs),
-                "mean_ys": np.array(means),
-                "coeff_ys": poly, 
-                "trace_sigma": sig,
-                "ok": True}
+            tr = {"seg_cnt": seg_cnt,
+                    "xs": np.array(xs),
+                    "mean_ys": np.array(means),
+                    "coeff_ys": poly, 
+                    "trace_sigma": sig,
+                    "ok": True}
 
-    outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el, 
-                                                    sig*2.355, tr['ok'])
-    print outstr,
-    sys.stdout.flush()
+        outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el, 
+                                                        sig*2.355, tr['ok'])
+        print outstr,
+        sys.stdout.flush()
+
     return tr
 
 
