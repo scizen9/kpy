@@ -25,7 +25,7 @@ import logging
 
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-root_dir = "/tmp/"
+root_dir = "/scr2/sedm/logs/"
 timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
 timestamp=timestamp.split("T")[0]
 logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
@@ -407,6 +407,8 @@ def main(infile, isAB, astro=True, plot=True):
             
         if (not os.path.isfile(newfile)):
             retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
+    else:
+        retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
 
     
     if (isAB and os.path.isfile(newfile) ):
@@ -443,7 +445,7 @@ if __name__ == '__main__':
            
         -i image
         -b It is AB shot.
-        - Astrometry is needed.
+        -a Astrometry is needed.
         -p plot results.
         ''', formatter_class=argparse.RawTextHelpFormatter)
 

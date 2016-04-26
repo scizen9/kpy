@@ -55,7 +55,7 @@ def get_sao_rec(hra, hdec, radius):
     
     try:
         sao = np.genfromtxt("/tmp/sao", dtype="str")
-        sao = np.array(sao, ndmin=1)
+        sao = np.array(sao, ndmin=2)
         print sao
     except IOError:
         sao = np.array([])
