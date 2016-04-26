@@ -186,7 +186,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     ra, dec = wcs.wcs_pix2sky(np.array([img.shape[0]/2, img.shape[1]/2], ndmin=2), 1)[0]
     ra0, dec0 = wcs.wcs_pix2sky(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
 
-    sr = np.abs(dec-dec0)
+    sr = 2*np.abs(dec-dec0)
     print ra,dec, sr
     
     if not refstars is None:
@@ -234,14 +234,15 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         print "Downloading APASS catalog..."
         urllib.urlretrieve(catalog_url, '/tmp/tmp_apass.cat')
         catalog = np.genfromtxt("/tmp/tmp_apass.cat", delimiter=",", names=True)
-        
+        if (np.ndim(catalog)==0):
+		return False
         cat_ra = catalog['radeg']
         cat_dec = catalog['decdeg']
         mag = catalog['Sloan_r']
         
     elif (survey=='sdss'):
-        minmag = 17
-        maxmag = 21.0
+        minmag = 15
+        maxmag = 22.0
         catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6\
         &radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%(ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
         print "Downloading SDSS catalog..."
@@ -249,12 +250,14 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         urllib.urlretrieve(catalog_url, '/tmp/tmp_sdss.cat')
         catalog = np.genfromtxt("/tmp/tmp_sdss.cat", delimiter=",", names=True)
 
+	if (np.ndim(catalog)==0):
+	    return False
         try:
-            cat_ra = catalog['ra']
-            cat_dec = catalog['dec']
+            cat_ra = np.array(catalog['ra'], ndmin=1)
+            cat_dec = np.array(catalog['dec'], ndmin=1)
             if (band in catalog.dtype.names):
                 print "SDSS filter detected"
-                mag = catalog[band]
+                mag = np.array(catalog[band], ndmin=1)
             elif(band in ["U", "B", "V", "R", "I", "Z"]):
                 print "Johnson filter detected."
                 john = transformations.sdss2johnson("/tmp/tmp_sdss.cat", savefile="/tmp/tmp_sdss.cat")
@@ -284,10 +287,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     if (band == 'u'):    
         mask = mask * (mag < 19)
     #Select only stars isolated in a radius of ~12 arcsec.
-    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 30.))
+    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
     if (len(mask2)==0):
 	print "No stars left", mask, mask2
-	return    
+	return False   
     #Select only stars that are within the proper magnitude range
     mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 15) 
     
@@ -408,7 +411,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             for i in np.arange(len(selected)):
                 plt.text(selected[i,0]+10, selected[i,1]+10, i+1)
         
-        plt.legend(loc="best")
+        plt.legend(loc="best", frameon=False, framealpha=0.9)
         plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png')))
         print "Saved stars to ",imfile.replace('.fits', '.seqstars.png')
         plt.clf()
@@ -498,7 +501,7 @@ def lsq_test():
     
     plt.show()
         
-def lsq_zeropoint(logfile, plot=True):
+def lsq_zeropoint(logfile, plotdir=None, plot=True):
     '''
     Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.
     
@@ -545,7 +548,7 @@ def lsq_zeropoint(logfile, plot=True):
         mask = mask_col_outlier * mask_airmass_outlier * mask_col_jd
         
         ab = ab[~mask]
-        M = np.zeros((len(ab), 7))
+        M = np.zeros((len(ab), 8))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
@@ -554,6 +557,7 @@ def lsq_zeropoint(logfile, plot=True):
         M[:,4] = ab['jd']**2
         M[:,5] = ab['jd']**3
         M[:,6] = ab['jd']**4
+        M[:,7] = ab['jd']**5
         
         #print M
         
@@ -563,43 +567,48 @@ def lsq_zeropoint(logfile, plot=True):
         coef = lsq_result[0]
         res = lsq_result[1]
         
-        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4)
+    	np.savetxt("coefs_%s.txt"%b, coef)
+        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
         pred_col = ab['color']*coef[1]
 
-        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4)
-        pred_airmass = ab['airmass']*coef[1]
+        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
+        pred_airmass = (ab['airmass']-1.3)*coef[1]
         
         emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
-        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4
+        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
                 
         if (plot):
             f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-            ax1.plot(ab['color'], emp_col, "o", color=cols[b])
+            ax1.plot(ab['color'], emp_col, "o", color=cols[b], ms=4, alpha=0.4)
             ax1.plot(ab['color'],  pred_col, color=cols[b])
             ax1.set_xlabel("color")
 
             print np.median(ab['color'])*coef[1]
-            ax2.plot(ab['airmass']-1.3, emp_airmass, "o", color=cols[b])
-            ax2.plot(ab['airmass']-1.3, pred_airmass , color=cols[b])
-            ax2.set_xlabel("airmass")
+            ax2.plot(ab['airmass'], emp_airmass, "o", color=cols[b], ms=4, alpha=0.4)
+            ax2.plot(ab['airmass'], pred_airmass , color=cols[b])
+            ax2.set_xlabel("airmass-1.3")
 
             #arr = np.array([ab['jd'], pred_jd]).T
             #print arr, arr.shape, arr.dtype
             #arr.view(dtype=[('f0', np.float64), ('f1', np.float64)]).sort(order=['f0'], axis=0)
             
-            ax3.plot(ab['jd'], emp_jd, "o", color=cols[b])
+            ax3.plot(ab['jd'], emp_jd, "o", color=cols[b], ms=4, alpha=0.4)
             ax3.plot(ab['jd'], pred_jd, color=cols[b])
             ax3.set_xlabel("jd")   
             
-            est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4
-            ax4.plot(ab['jd'], depend, "*", color=cols[b])
-            ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
+            est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
+            #ax4.plot(ab['jd'], depend, "*", color=cols[b], alpha=0.4)
+            #ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
+            ax4.errorbar(ab['jd'], depend-est_zp, yerr=ab['insterr'], fmt="o", c=cols[b], alpha=0.4, ms=4)
             ax4.set_xlabel("jd")  
             ax4.set_ylabel("night predicted zeropoint")
             ax4.invert_yaxis()
+	    print "RMS", np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
             
-    if (plot):
-        plt.show()
+	    if (not plotdir is None):
+	    	plt.savefig(os.path.join(plotdir, "allstars_%s.png"%b))
+	    else:	
+            	plt.show()
         
 def lsq_zeropoint_partial(logfile, plot=True):
     '''
@@ -790,7 +799,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     with open( logname, "a") as f:
         f.write("%s,%.1f,%s,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%(image,exptime,filt,date,airmass,fwhm,fwhm_as,z,c,err))
         
-def plot_zp(zpfile):
+def plot_zp(zpfile, plotdir=None):
     import datetime
     
     def mkdate(text):
@@ -809,7 +818,12 @@ def plot_zp(zpfile):
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
     plt.ylabel("ZP [mag]")
-    plt.show()
+    plt.ylim(25,18)
+    if (plotdir is None):
+        plt.show()
+    else:
+	plt.savefig(os.path.join(plotdir, "zeropoint_per_exposure.png"))
+	plt.clf()
     
 def plot_zp_airmass(zpfile):
     import datetime
@@ -863,3 +877,8 @@ if __name__ == '__main__':
         print f
         if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
+    	if (os.path.isfile("zeropoint.log"):
+	    plot_zp("zeropoint.log", plotdir)
+	if (os.path.isfile("allstars_zp.log")):
+	    lsq_zeropoint("allstars_zp.log", plotdir)
+
