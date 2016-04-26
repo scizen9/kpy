@@ -408,10 +408,11 @@ def main(infile, isAB, astro=True, plot=True):
         if (not os.path.isfile(newfile)):
             retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
     else:
-        retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
+        retcode, dra, ddec = get_offset_center(infile, plot=True, interactive=False)
+        newfile = infile
 
     
-    if (isAB and os.path.isfile(newfile) ):
+    if ( isAB and os.path.isfile(newfile) ):
         retcode, aoff, boff = get_offsets_A_B(newfile, plot=plot, interactive=False)
     
         aoff[0] += dra
@@ -421,10 +422,11 @@ def main(infile, isAB, astro=True, plot=True):
         logger.info( "Offsets computed for A+B: \n A %.4f %.4f \n B %.4f %.4f"%(aoff[0], aoff[1], boff[0], boff[1]))
 
         return retcode, aoff[0], aoff[1], boff[0], boff[1]
-    elif (isAB and not os.path.isfile(newfile) ):
+    elif (isAB and astro and not os.path.isfile(newfile)):
         
-        np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
-        logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec,0,0))
+        np.savetxt(offset_file, np.array([("A", "%.2f"%(dra), "%.2f"%ddec), ("B", "%.2f"%(3.), "%.2f"%(3.))]), fmt="%s")
+        logger.warn("Astrometry file not found. Using default offsets (3,3).")        
+        logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec, 3, 3 ))
         return retcode,dra,ddec,3,3 
     else:
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
