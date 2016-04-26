@@ -408,7 +408,7 @@ def main(infile, isAB, astro=True, plot=True):
         if (not os.path.isfile(newfile)):
             retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
     else:
-        retcode, dra, ddec = get_offset_center(newfile, plot=True, interactive=False)
+        retcode, dra, ddec = get_offset_center(infile, plot=True, interactive=False)
 
     
     if (isAB and os.path.isfile(newfile) ):
