@@ -877,7 +877,7 @@ if __name__ == '__main__':
         print f
         if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
-    	if (os.path.isfile("zeropoint.log"):
+    	if (os.path.isfile("zeropoint.log")):
 	    plot_zp("zeropoint.log", plotdir)
 	if (os.path.isfile("allstars_zp.log")):
 	    lsq_zeropoint("allstars_zp.log", plotdir)
