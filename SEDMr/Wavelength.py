@@ -131,8 +131,11 @@ def fiducial_wavelength():
 def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
     """Return a typical SED Machine spectrum, use for interpolating on grid
 
-                                        x
-    Equation looks like 1000 x (239/240)
+    Reference:
+        The equation for the fiducsial spectrum look like::
+
+                            x
+            1000 x (239/240)
 
     Args:
         lamstart(float): default is 1050 nm

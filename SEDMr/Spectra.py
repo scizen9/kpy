@@ -67,8 +67,9 @@ class Spectra(object):
 
         Returns:
             X,Y,V tuple representing the X location (in arcsec), Y location
-                (in arcsec), and the median value (V) of the spaxel
-                between lmin and lmax.
+            (in arcsec), and the median value (V) of the spaxel
+            between lmin and lmax.
+
         """
 
         allowed_coeff = ['lamcoeff', 'mdn_coeff', 'hgcoef']

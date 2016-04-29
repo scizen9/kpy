@@ -1,21 +1,21 @@
 """Create a data cube solution.
 
-See figures here:
-https://www.evernote.com/l/AA1s_YNLWMJBQrCCMZUn8-POndzDsbf4SwA
 
-Axial coordinates of a cube
+References:
 
-      (q,r-1)   (q+1,r-1)
+    See figures here: http://www.astro.caltech.edu/sedm/_images/HexCoords.png
 
- (q-1, r)   (q, r)   (q+1, r)
+    Axial coordinates of a cube::
 
-      (q-1,r+1)   (q, r+1)
-                
-Even Q coordinates look like
+            (q,r-1)   (q+1,r-1)
+        (q-1, r)   (q, r)   (q+1, r)
+            (q-1,r+1)   (q, r+1)
+
+    Even Q coordinates look like::
     
-        0,0     1,0     2,0     3,0
-    0,1     1,1     2,1     3,1     4,1
-        0,2     1,2     2,2     3,2
+            0,0     1,0     2,0     3,0
+        0,1     1,1     2,1     3,1     4,1
+            0,2     1,2     2,2     3,2
 
 """
 
@@ -138,7 +138,6 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
 def extraction_to_cube(exts, outname="G.npy"):
     """ Convert the extraction to sky coordinates
 
-
     Args:
         exts: The list of extractions
 
@@ -150,16 +149,17 @@ def extraction_to_cube(exts, outname="G.npy"):
 
         X_as: X position in arcsecond
         Y_as: Y position in arcsecond
-        Z_as: Z position in arcsecond (the Z coordinate is runs 45 degree to X
-            and is not a ~3rd~ dimension).
+        Z_as: Z position in arcsecond (the Z coordinate is runs 45 degree to X and is not a ~3rd~ dimension).
 
         Q_ix: The axial Q coordinate in integral units
         R_ix: The axial R coordinate in integral units
 
         The relationship of Q/R to X/Y is defined through the pixel mapping
         matrix times the rotation matrix
-            P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]]) 
-            Rot (22 degree)
+
+        P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])
+        Rot (22 degree)
+
     """
 
     global ncol
