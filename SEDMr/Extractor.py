@@ -22,7 +22,6 @@ import NPK.Standards as Stds
 import NPK.Atmosphere as Atm
 
 #Nadia imports
-import SEDMrph.zeropoint as zeropoint
 from scipy.interpolate import griddata
 import scipy.optimize as opt
 
@@ -75,7 +74,22 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     print "DX %2.1f, DY %2.1f, D %2.1f" % (DX, DY, np.sqrt(DX*DX + DY*DY))
     return positions
 
-def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None, 
+def Gaussian_2D(xdata_tuple, amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
+    '''
+    Produces a 2D gaussian centered in xo, yo with the parameters specified.
+    xdata_tuple: coordinates of the points where the 2D Gaussian is computed.
+
+    '''
+    (x, y) = xdata_tuple
+    xo = float(xo)
+    yo = float(yo)
+    a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
+    b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
+    c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
+    g = offset + amplitude*np.exp( - (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo) + c*((y-yo)**2)))
+    return g.ravel()
+
+def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
                                lmin=400, lmax=900, airmass=1.0):
     """ 
      Returns index of spectra picked by Guassian fit.
@@ -116,7 +130,7 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, 
                         np.nanmean(grid_Vs))
 
-    popt, pcov = opt.curve_fit(zeropoint.twoD_Gaussian, (X, Y), 
+    popt, pcov = opt.curve_fit(Gaussian_2D, (X, Y),
                                 grid_Vs.flatten(), p0=initial_guess)
     xc = popt[1]
     if xc < -30. or xc > 30.:

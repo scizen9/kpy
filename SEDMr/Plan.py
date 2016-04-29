@@ -140,17 +140,17 @@ def identify_observations(headers):
 
 make_preamble = """
 PY = ~/spy
-PYC = ~/kpy/SEDM
-EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
-ATM =  $(PY) $(PYC)r/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)r/Extractor.py 
-FLEXCMD = $(PY) $(PYC)r/Flexure.py
-IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
-PLOT = $(PY) $(PYC)r/Check.py
+PYC = ~/kpy/SEDMr
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py 
+ATM =  $(PY) $(PYC)/AtmCorr.py 
+EXTPAIR =  $(PY) $(PYC)/Extractor.py 
+FLEXCMD = $(PY) $(PYC)/Flexure.py
+IMCOMBINE = $(PY) $(PYC)/Imcombine.py
+PLOT = $(PY) $(PYC)/Check.py
 
-BSUB = $(PY) $(PYC)/Bias.py
-BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
-CRRSUB =  $(PY) $(PYC)r/CosmicX.py
+BSUB = $(PY) $(PYC)/Debias.py
+BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
+CRRSUB =  $(PY) $(PYC)/CosmicX.py
 
 SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
@@ -192,22 +192,22 @@ $(BACK):
     
 
 seg_dome.fits: dome.fits
-	$(PY) $(PYC)r/SexLamps.py dome.fits
+	$(PY) $(PYC)/SexLamps.py dome.fits
 
 seg_Hg.fits: Hg.fits
-	$(PY) $(PYC)r/SexSpectra.py Hg.fits
+	$(PY) $(PYC)/SexSpectra.py Hg.fits
 
 dome.fits_segments.npy: seg_dome.fits
-	$(PY) $(PYC)r/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
+	$(PY) $(PYC)/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
 
 rough.npy: dome.fits_segments.npy seg_Hg.fits
-	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
+	$(PY) $(PYC)/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
 
 fine.npy: rough.npy Cd.fits Xe.fits
-	$(PY) $(PYC)r/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
+	$(PY) $(PYC)/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
 
 cube.npy: fine.npy
-	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
+	$(PY) $(PYC)/Cube.py fine.npy --step make --outname cube.npy
 	$(PLOT) --cube cube.npy --savefig
 	$(PLOT) --cube cube.npy --lambdarms --savefig
 
@@ -218,10 +218,10 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy: cube.npy dome.fits
-	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
+	$(PY) $(PYC)/Extractor.py cube.npy --A dome.fits --outname dome --flat
 
 flat-dome-700to900.npy: dome.npy
-	$(PY) $(PYC)r/Flat.py dome.npy
+	$(PY) $(PYC)/Flat.py dome.npy
     
 wave: fine.npy
 cube: cube.npy
@@ -284,7 +284,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 cube_%(outname)s.fits: %(outname)s
-\t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+\t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 """ % tp
     second = """corr_%(outname)s: %(outname)s
 \t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" % tp

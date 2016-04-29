@@ -1,0 +1,51 @@
+#!/bin/csh -f
+
+alias ur_setup 'eval `/Users/neill/.ureka/ur_setup -csh \!*`'
+alias ur_forget 'eval `/Users/neill/.ureka/ur_forget -csh \!*`'
+
+
+setenv SEDMPATH /Users/neill/kpy
+
+if ! $?PYTHONPATH then
+    setenv PYTHONPATH ${SEDMPATH}
+else
+    setenv PYTHONPATH ${PYTHONPATH}:${SEDMPATH}
+endif
+
+ur_setup
+
+if ($#argv == 0) then 
+    echo "Starting Python"
+    ipython --pylab --colors LightBG
+else
+    switch ( $argv[1] )
+        case "move":
+            python $SEDMPATH/SEDM/Mover.py $argv[2-]
+            breaksw
+        case "what":
+            python $SEDMPATH/SEDMr/What.py $argv
+            breaksw
+        case "roll":
+            python $SEDMPATH/SEDMr/Roller.py $argv
+            breaksw
+        case "check":
+            python $SEDMPATH/SEDMr/Check.py $argv[2-]
+            breaksw
+        case "specarith":
+            python $SEDMPATH/SEDMr/SpecArith.py $argv[2-]
+            breaksw
+        case "extract":
+            python $SEDMPATH/SEDMr/Extracter.py $argv[2-]
+            breaksw
+        case "plan":
+            python $SEDMPATH/SEDMr/Plan.py ifu*fits
+            breaksw
+        default
+            python $*
+            breaksw
+    endsw
+endif
+
+onintr -
+
+    
