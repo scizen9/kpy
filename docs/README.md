@@ -1,7 +1,7 @@
 Documentation for SEDM Software
 ===============================
 
-To generate the documentation, cd into kpy/docs and execute:
+The documentation is based on sphinx v1.3+.  Be sure you have this installed (if you use Ureka, you will).  To generate the documentation, cd into kpy/docs and execute:
 
     #> make clean
     #> make html
