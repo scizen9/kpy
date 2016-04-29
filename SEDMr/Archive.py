@@ -2,29 +2,30 @@
 import argparse
 import numpy as np
 import pylab as pl
-import pyfits as pf
 from scipy.interpolate import interp1d
-import sys
 
 outdir = "/scr2/neill/sedm/redux/"
 VER = "2015A"
 
  
-def archive(objname):
+def archive(corrname='std-correction.npy'):
 
-    corrname = "std-correction.npy"
+    # Check for local version
     if not os.path.isfile(corrname):
-        corrname= '/scr2/npk/sedm/OUTPUT/2015mar25/std-correction.npy'
+        # Check SEDM_REF env var
+        sref = os.getenv("SEDM_REF")
+        if sref is not None:
+            corrname = os.path.join(sref, 'std-correction.npy')
+        else:
+            corrname = '/scr2/sedm/ref/std-correction.npy'
 
     ss = np.load(specname)[0]
     corr = np.load(corrname)[0]
 
-    corr = np.load('atm-corr.npy')[0]
     corf = interp1d(corr['nm'],corr['correction'], bounds_error=False,
-        fill_value=1.0)
+                    fill_value=1.0)
 
     ec = 0
-    ext = None
     if ss.has_key('extinction_corr'):
         ext = ss['extinction_corr']
         ec = np.median(ext)

@@ -41,14 +41,6 @@ NPK.ETC module
     :undoc-members:
     :show-inheritance:
 
-NPK.FileRename module
----------------------
-
-.. automodule:: NPK.FileRename
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 NPK.Fit module
 --------------
 

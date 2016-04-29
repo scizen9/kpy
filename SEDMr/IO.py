@@ -13,6 +13,7 @@ from numpy.polynomial.chebyshev import chebval
 CRVAL1 = 239.5
 CRPIX1 = 88.98
 
+
 def readspec(path, corrname='std-correction.npy'):
     """Read numpy spec file 
     
@@ -78,7 +79,6 @@ def readspec(path, corrname='std-correction.npy'):
     return lam, spec, skyspec, std, ss, meta
 
 
-
 def readfits(path):
     """Read fits file at path or path.gz"""
 
@@ -93,8 +93,8 @@ def readfits(path):
     
     return hdulist
 
-def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
 
+def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
 
     if type(towrite) == pf.PrimaryHDU:
         list = pf.HDUList(towrite)
@@ -151,7 +151,6 @@ def convert_spectra_to_recarray(spectra):
 
         to_handle.append(res)
 
-
     ra = np.rec.array(to_handle, dtype=types)
     return ra
 
@@ -163,6 +162,7 @@ def exp_fid_wave(CRVAL1=239.5, CRPIX1=88.98):
     """
     
     return CRVAL1 * np.exp((np.arange(265)+CRPIX1)/CRVAL1)
+
 
 def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
     
@@ -185,6 +185,7 @@ def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
         img2[ix, :] = IF(lfid)
 
     return img, img2
+
 
 def write_cube(spectra, headers):
     """Create a FITS file with all spectra written."""

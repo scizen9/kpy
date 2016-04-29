@@ -146,14 +146,6 @@ SEDMr.Imcombine module
     :undoc-members:
     :show-inheritance:
 
-SEDMr.MakeFlat module
----------------------
-
-.. automodule:: SEDMr.MakeFlat
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 SEDMr.Plan module
 -----------------
 

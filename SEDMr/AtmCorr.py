@@ -1,8 +1,10 @@
 """Process standard star corrections.
 
-*Usage:*
-    ~/spy ~/kpy/SEDMr/AtmCorr.py CORR|SUM|CREATE --A <file> --outname <file>
-                --std <stdfile> --files <file_list>
+Note:
+    How to invoke from the command line::
+
+        ~/spy ~/kpy/SEDMr/AtmCorr.py CORR|SUM|CREATE --A <file>
+                --outname <file> --std <stdfile> --files <file_list>
 
 """
 import argparse
@@ -33,10 +35,23 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         plot_filt (bool): set to plot intermediate filtered steps (def: False)
 
     Returns:
-        A dictionary containing the ensemble correction and some details.
+        dict: A dictionary containing the ensemble correction and some
+        details::
+
+            {   "nm": wavelengths in nm,
+                "maxnm": maximum wavelength,
+                "correction": the correction spectrum,
+                "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
+                "Nspec": number of spectra used for correction,
+                "correction_std": STDev of ensemble corrections,
+                "outname": outname from args,
+                "files": filelist from args,
+                "when": timestamp string,
+                "user": user who ran the process    }
 
     Note:
         Writes a \*.npy file with the resulting correction
+
     """
 
     if outname is None:

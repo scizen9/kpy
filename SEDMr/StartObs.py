@@ -1,8 +1,8 @@
-"""Conduct automatic reduction of SEDM data in sedm@pharos.
+"""Conduct automatic reduction of SEDM data in sedmdrp@pharos
 
 *Usage:*
     ~/spy ~/kpy/SEDMr/StartObs.py
-    no arguments are required, this will run the 'go' function.
+    no arguments are required, this will run the 'go' function
 
 Functions
     * :func:`go`           outer loop waits for new data directory in /scr2/sedm/raw
@@ -19,6 +19,7 @@ Functions
     * :func:`cal_reset`       reset the status of calibration files
 
 Globals
+    * fileSize        - size in bytes of a complete fits file, currently 8400960
     * nbias,nbias2,nXe,ndome,nHg,nCd  - current count of raw cal files
     * CalProcReady    - are all required raw cal images present?
     * CalReady        - are all required processed cal files present?
@@ -48,7 +49,15 @@ BiasReady = False
 
 
 def cal_reset():
-    """Reset counts of raw calibration files, and calibration status."""
+    """Reset counts of raw calibration files, and calibration status booleans.
+
+    Returns:
+        None
+
+    Note:
+        Resets global counters and switches to 0 and/or False
+
+    """
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, \
@@ -67,7 +76,18 @@ def cal_reset():
 
 
 def cal_ready(reddir='./'):
-    """Check for all required calibration files in input reduced directory."""
+    """Check for all required calibration files in input reduced directory.
+
+    Args:
+        reddir (str): directory to check
+
+    Returns:
+        None
+
+    Note:
+        Sets BiasReady and/or CalReady global booleans
+
+    """
 
     # Global variables
     global CalReady, BiasReady
@@ -86,7 +106,15 @@ def cal_ready(reddir='./'):
 
 
 def cal_proc_ready():
-    """Check counts for all required raw cal file types in current directory."""
+    """Check counts for all required raw cal file types in current directory.
+
+    Returns:
+        None
+
+    Note:
+        Sets CalProcReady global boolean
+
+    """
 
     # Global variables
     global nbias, nbias2, ndome, nXe, nHg, nCd, CalProcReady
@@ -110,7 +138,11 @@ def docp(src, dest, onsky=True):
 
     Returns:
         (int, int): number of images copied, number of standard
-        star images copied
+            star images copied
+
+    Note:
+        Increments global raw calibration file counters
+
     """
 
     # Global variables
@@ -166,13 +198,14 @@ def docp(src, dest, onsky=True):
 
 
 def proc_bias_crrs(ncp=1):
-    """Process biases and CR rejection
+    """Process biases and CR rejection steps.
 
     Args:
         ncp (int): number of images copied into redux directory
 
     Returns:
         bool: True if processing was successful, otherwise False
+
     """
 
     # Are we using old calib files?
@@ -221,13 +254,14 @@ def proc_bias_crrs(ncp=1):
 
 
 def proc_stds(ncp):
-    """Process standard star observations
+    """Process standard star observations.
 
     Args:
         ncp (int): number of standard star images copied into redux directory
 
     Returns:
         bool: True if processing was successful, otherwise False
+
     """
 
     # Default return value
@@ -250,13 +284,12 @@ def cpnew(srcdir, destdir='./'):
 
     Searches for most recent ifu image in destdir and looks for and
     copies any ifu images in srcdir that are newer and complete.
-    Then bias subtracts and CR rejects the images.  If any are standard
+    Then bias subtracts and CR rejects the copied images.  If any are standard
     star observations, process them as well.
 
     Args:
         srcdir (str): source directory (typically in /scr2/sedm/raw)
         destdir (str): destination directory (typically in /scr2/sedm/redux)
-
 
     Returns:
         int: Number of ifu images actually copied
@@ -330,7 +363,6 @@ def find_recent(redd, fname, destdir):
         redd (str): reduced directory (something like /scr2/sedm/redux)
         fname (str): what file to look for
         destdir (str): where the file should go
-
 
     Returns:
         bool: True if file found and copied, False otherwise.
@@ -430,7 +462,7 @@ def cpcal(srcdir, destdir='./'):
 
     Args:
         srcdir (str): source for raw cal images, typically in /scr2/sedm/raw
-        destdir (str): place to put the cal images typically in /scr2/sedm/redux
+        destdir (str): place to put the cal images, typically in /scr2/sedm/redux
 
     Returns:
         int: number of images actually copied
@@ -679,7 +711,7 @@ def ObsLoop(rawlist=None, redd=None):
 def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     """Outermost infinite loop that watches for a new raw directory.
 
-    Keep a list of raw directories in redd and fire off
+    Keep a list of raw directories in `redd` and fire off
     the ObsLoop procedure when a new directory appears.  Check for
     a new raw directory every 10 minutes.
 

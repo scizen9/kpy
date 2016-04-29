@@ -75,11 +75,10 @@ def find_segments_helper(seg_cnt):
         seg_cnt (int): the segment number
 
     Returns:
-        (dict): Returns a segmentation map Dictionary
+        dict: Returns a segmentation map Dictionary
         containing::
 
-            {
-                "seg_cnt": Segment ID number,
+            {   "seg_cnt": Segment ID number,
                 "xs": List of x positions of trace,
                 "mean_ys": Measured Y position (average) of the trace,
                 "coeff_ys": polyfit coefficients to the mean_ys,
@@ -194,11 +193,10 @@ def find_segments(segmap=None, obj=None, order=2):
         order (int): The order of the polynomial used in coeff_ys
 
     Returns:
-        (list of dict): Returns a list with length equal to
+        list of dict: Returns a list with length equal to
         the max(segmap) segmentation map Dictionaries containing::
 
-            {
-                "seg_cnt": Segment ID number,
+            {   "seg_cnt": Segment ID number,
                 "xs": List of x positions of trace,
                 "mean_ys": Measured Y position (average) of the trace,
                 "coeff_ys": polyfit coefficients to the mean_ys,
