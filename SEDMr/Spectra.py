@@ -48,6 +48,13 @@ class Spectra(object):
 
         for ix, el in enumerate(data):
 
+            try:
+                l,fl = el.get_counts()
+                fl = el.specw
+                haix = find_ha(el.lamcoeff)
+            except:
+                continue
+
             good_positions.append(ix)
 
             x = el.X_as
