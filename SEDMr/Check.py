@@ -6,10 +6,11 @@ Also can produce an ascii spectrum suitable for upload
 or input to transient classification programs.
 
 Functions
-    * :func:`checkSpec`   Plot a spectrum
     * :func:`checkCube`   Plot a cube
+    * :func:`checkSpec`   Plot a spectrum
 
 """
+
 import argparse
 import datetime
 import os
@@ -24,8 +25,75 @@ import IO
 import NPK.Standards as SS
 
 
+def checkCube(cubename, showlamrms=False, savefig=False):
+    """Plot a datacube.
+
+        This function can produce a PDF file of the data cube.
+
+        Args:
+            cubename (str): name of cube numpy file
+            showlamrms (bool): display the rms of the wavelength fit,
+                otherwise display average trace width
+            savefig (bool): save a pdf of the plot
+
+        Returns:
+            None
+
+        """
+
+    if not os.path.isfile(cubename):
+        sys.exit("No such file: %s" % cubename)
+
+    cc, meta = np.load(cubename)
+    fid_wave = meta['fiducial_wavelength']
+
+    Xs = [c.X_as for c in cc]
+    Ys = [c.Y_as for c in cc]
+    if showlamrms:
+        Ss = [0.] * len(cc)
+        for i in range(len(cc)):
+            if cc[i].lamrms is not None:
+                if np.isfinite(cc[i].lamrms):
+                    Ss[i] = cc[i].lamrms
+
+        c, low, upp = sigmaclip(Ss)
+        Smdn = np.median(c)
+        Sstd = np.nanstd(c)
+        print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
+              (len(cc), (len(cc) - len(c)), Smdn, Sstd))
+        smx = Smdn + 3. * Sstd
+        smn = Smdn - 3. * Sstd
+        if smn < 0.:
+            smn = 0.
+        cbtitle = "Wavelength RMS [nm]"
+        outf = "cube_lambdarms.pdf"
+    else:
+        Ss = [c.trace_sigma for c in cc]
+        smx = 2
+        smn = 0.8
+        cbtitle = "RMS trace width [pix]"
+        outf = "cube_trace_sigma.pdf"
+
+    pl.figure(1)
+    pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
+    pl.title("Hexagonal Grid of Cube Positions")
+    pl.xlim(-25, 25)
+    pl.ylim(-25, 25)
+
+    pl.colorbar(label=cbtitle)
+    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
+    pl.ylabel("Y position [as]")
+    pl.grid(True)
+    pl.ioff()
+    if savefig:
+        pl.savefig(outf)
+        print "Figure saved to " + outf
+    else:
+        pl.show()
+
+
 def checkSpec(specname, corrname='std-correction.npy',
-        redshift=0, smoothing=0, savefig=False, savespec=False):
+              redshift=0, smoothing=0, savefig=False, savespec=False):
     """Plot a spectrum.
 
     This function can produce an ascii spectrum suitable for uploading
@@ -50,8 +118,8 @@ def checkSpec(specname, corrname='std-correction.npy',
 
     # IO.readspec applies the calibration in the file specified
     lam, spec, skyspec, stdspec, ss, meta = \
-            IO.readspec(specname,corrname=corrname)
-    
+        IO.readspec(specname, corrname=corrname)
+
     # Convert to Angstrom sized bins
     lam *= 10.
     spec /= 10.
@@ -62,43 +130,57 @@ def checkSpec(specname, corrname='std-correction.npy',
     hdr = meta['header']
 
     print "Plotting spectrum in %s" % specname
-    try: print "Extraction radius: %1.2f asec" % ss['radius_as']
-    except: pass
+    try:
+        print "Extraction radius: %1.2f asec" % ss['radius_as']
+    except:
+        pass
 
-    try: ec = meta['airmass']
-    except: ec = 0
+    try:
+        ec = meta['airmass']
+    except:
+        ec = 0
 
-    try: et = ss['exptime']
-    except: et = 0
+    try:
+        et = ss['exptime']
+    except:
+        et = 0
 
-    try: maxwl = meta['maxnm'] * 10.
-    except: maxwl = 9200.0
+    try:
+        maxwl = meta['maxnm'] * 10.
+    except:
+        maxwl = 9200.0
 
     print "Max Angstroms: %7.1f" % maxwl
 
-    try: 
+    try:
         ec2 = meta['airmass2']
         et *= 2
-    except: ec2 = 0
+    except:
+        ec2 = 0
 
-    try: user = meta['user']
-    except: user = ''
+    try:
+        user = meta['user']
+    except:
+        user = ''
 
     try:
         utc = meta['utc']
         parts = utc.split(":")
         date = datetime.datetime(int(parts[0]), 1, 1) + \
-                datetime.timedelta(int(parts[1])-1)
+               datetime.timedelta(int(parts[1]) - 1)
         utc = date.strftime("%Y %m %d") + " %s:%s:%s" % \
-                (parts[2],parts[3],parts[4])
-    except: utc = ''
+                                          (parts[2], parts[3], parts[4])
+    except:
+        utc = ''
 
-    try: obj = hdr['OBJECT'].split()[0]
-    except: obj = ''
+    try:
+        obj = hdr['OBJECT'].split()[0]
+    except:
+        obj = ''
 
     # Annotate plots
-    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" % 
-            (specname, ec, et))
+    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" %
+             (specname, ec, et))
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
@@ -109,9 +191,8 @@ def checkSpec(specname, corrname='std-correction.npy',
     # See if this is a standard star
     pred = specname.lstrip("sp_STD-")
     pred = pred.split("_")[0]
-    pred = pred.lower().replace("+","").replace("-","_")
+    pred = pred.lower().replace("+", "").replace("-", "_")
     if pred in SS.Standards:
-
         # Remove nm to Ang conversion (?)
         spec *= 10.
         skyspec *= 10.
@@ -119,8 +200,8 @@ def checkSpec(specname, corrname='std-correction.npy',
 
         # Get reference spectrum
         standard = SS.Standards[pred]
-        slam = standard[:,0]
-        sflx = standard[:,1] * 1.e-16
+        slam = standard[:, 0]
+        sflx = standard[:, 1] * 1.e-16
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
@@ -129,10 +210,10 @@ def checkSpec(specname, corrname='std-correction.npy',
         sroi = (slam > 4500) & (slam < 6500)
         smed = np.median(sflx[sroi])
 
-        rat = (lmed/smed)
+        rat = (lmed / smed)
 
         # Report offset
-        ratmag = 2.5*np.log10(rat)
+        ratmag = 2.5 * np.log10(rat)
         print "Ref offset (Ref - Obs): %6.2f mag" % ratmag
 
         # Apply offset for plotting
@@ -142,28 +223,30 @@ def checkSpec(specname, corrname='std-correction.npy',
     OK = (lam > 3800) & (lam < maxwl)
 
     # Apply redshift
-    lamz = lam/(1+redshift)
+    lamz = lam / (1 + redshift)
 
     # Plot object spectrum
-    
+
     # Plot limits
-    pl.xlim(3600,maxwl+200)
+    pl.xlim(3600, maxwl + 200)
 
     mx = np.nanmax(spec[OK])
-    pl.ylim(-mx/10,mx+(mx/20))
+    pl.ylim(-mx / 10, mx + (mx / 20))
 
     # No smoothing
     if smoothing == 0:
-        pl.step(lamz[OK], spec[OK], linewidth=3)    # Plot data
+        pl.step(lamz[OK], spec[OK], linewidth=3)  # Plot data
     # Smoothing
     else:
-        if smoothing > 5: order = 2
-        else: order = 1
+        if smoothing > 5:
+            order = 2
+        else:
+            order = 1
         smoothed = scipy.signal.savgol_filter(spec[OK], smoothing, order)
-        pl.step(lamz[OK], smoothed, linewidth=3)    # Plot smoothed data
+        pl.step(lamz[OK], smoothed, linewidth=3)  # Plot smoothed data
 
     # Legend for plot
-    legend = ["obj",]
+    legend = ["obj", ]
 
     # Overplot sky spectrum
     if skyspec is not None:
@@ -192,9 +275,9 @@ def checkSpec(specname, corrname='std-correction.npy',
 
     # Save fig to file
     if savefig:
-        outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.pdf'
+        outf = specname[(specname.find('_') + 1):specname.find('.')] + '_SEDM.pdf'
         pl.savefig(outf)
-        print "Figure saved to "+outf
+        print "Figure saved to " + outf
     else:
         pl.show()
 
@@ -203,99 +286,34 @@ def checkSpec(specname, corrname='std-correction.npy',
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
-        outf = specname[(specname.find('_')+1):specname.find('.')]+'_SEDM.txt'
+        outf = specname[(specname.find('_') + 1):specname.find('.')] + '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header = header + "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
         header = header + "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
         header = header + "\nAIRMASS: %1.2f" % ec
-        np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e', 
-                    header=header)
-        print "Saved to "+outf
+        np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
+                   header=header)
+        print "Saved to " + outf
 
-
-def checkCube(cubename, showlamrms=False, savefig=False):
-    """Plot a datacube.
-
-        This function can produce a PDF file of the data cube.
-
-        Args:
-            cubename (str): name of cube numpy file
-            showlamrms (bool): display the rms of the wavelength fit,
-                otherwise display average trace width
-            savefig (bool): save a pdf of the plot
-
-        Returns:
-            None
-
-        """
-    if not os.path.isfile(cubename):
-        sys.exit("No such file: %s" % cubename)
-
-    cc, meta = np.load(cubename)
-    fid_wave = meta['fiducial_wavelength']
-
-    Xs = [c.X_as for c in cc]
-    Ys = [c.Y_as for c in cc]
-    if showlamrms:
-        Ss = [0.] * len(cc)
-        for i in range(len(cc)):
-            if cc[i].lamrms is not None:
-                if np.isfinite(cc[i].lamrms):
-                    Ss[i] = cc[i].lamrms
-
-        c, low, upp = sigmaclip(Ss)
-        Smdn = np.median(c)
-        Sstd = np.nanstd(c)
-        print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" % 
-                    (len(cc), (len(cc)-len(c)), Smdn, Sstd))
-        smx = Smdn + 3.* Sstd
-        smn = Smdn - 3.* Sstd
-        if smn < 0.: smn = 0.
-        cbtitle = "Wavelength RMS [nm]"
-        outf = "cube_lambdarms.pdf"
-    else:
-        Ss = [c.trace_sigma for c in cc]
-        smx = 2
-        smn = 0.8
-        cbtitle = "RMS trace width [pix]"
-        outf = "cube_trace_sigma.pdf"
-
-    pl.figure(1)
-    pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
-    pl.title("Hexagonal Grid of Cube Positions")
-    pl.xlim(-25,25)
-    pl.ylim(-25,25)
-
-    pl.colorbar(label=cbtitle)
-    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
-    pl.ylabel("Y position [as]")
-    pl.grid(True)
-    pl.ioff()
-    if savefig:
-        pl.savefig(outf)
-        print "Figure saved to "+outf
-    else:
-        pl.show()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
-        """Check.py
+    parser = argparse.ArgumentParser(description= \
+                                         """Check.py
 
         """, formatter_class=argparse.RawTextHelpFormatter)
 
-
     parser.add_argument('--cube', type=str, help='Fine correction path')
-    parser.add_argument('--lambdarms', action="store_true", default=False, 
-            help='Show lambda soln rms')
-    parser.add_argument('--savefig', action="store_true", default=False, 
-            help='Save pdf figure')
-    parser.add_argument('--savespec', action="store_true", default=False, 
-            help='Save spec ASCII file')
+    parser.add_argument('--lambdarms', action="store_true", default=False,
+                        help='Show lambda soln rms')
+    parser.add_argument('--savefig', action="store_true", default=False,
+                        help='Save pdf figure')
+    parser.add_argument('--savespec', action="store_true", default=False,
+                        help='Save spec ASCII file')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
-    parser.add_argument('--smoothing', type=float, default=0, 
-            help='Smoothing in pixels')
+    parser.add_argument('--smoothing', type=float, default=0,
+                        help='Smoothing in pixels')
 
     args = parser.parse_args()
 
@@ -303,7 +321,5 @@ if __name__ == '__main__':
         checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
         checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
-            smoothing=args.smoothing, 
-            savefig=args.savefig, savespec=args.savespec)
-
-
+                  smoothing=args.smoothing,
+                  savefig=args.savefig, savespec=args.savespec)
