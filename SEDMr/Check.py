@@ -6,8 +6,8 @@ Also can produce an ascii spectrum suitable for upload
 or input to transient classification programs.
 
 Functions
-    :func:`checkSpec`   Plot a spectrum
-    :func:`checkCube`   Plot a cube
+    * :func:`checkSpec`   Plot a spectrum
+    * :func:`checkCube`   Plot a cube
 
 """
 import argparse
@@ -220,7 +220,8 @@ def checkCube(cubename, showlamrms=False, savefig=False):
 
         Args:
             cubename (str): name of cube numpy file
-            showlamrms (bool): display the rms of the wavelength fit
+            showlamrms (bool): display the rms of the wavelength fit,
+                otherwise display average trace width
             savefig (bool): save a pdf of the plot
 
         Returns:
