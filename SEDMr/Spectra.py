@@ -40,7 +40,7 @@ class Spectra(object):
                             # some ix in the KT.data is the same
                             # as data[KT.good_positions[ix]]
 
-    def __init__(self, data=None, minl=500, maxl=700):
+    def __init__(self, data=None):
 
         positions = []
         good_positions = []

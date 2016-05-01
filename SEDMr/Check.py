@@ -1,25 +1,49 @@
+"""Graphical check of either a spectrum or a cube.
 
+Generate matplotlib plots for visual confirmation of
+extractions, or generate PDF files of the extractions.
+Also can produce an ascii spectrum suitable for upload
+or input to transient classification programs.
+
+Functions
+    :func:`checkSpec`   Plot a spectrum
+    :func:`checkCube`   Plot a cube
+
+"""
 import argparse
-import numpy as np
+import datetime
 import os
+import sys
+
+import numpy as np
 import pylab as pl
-import pyfits as pf
-from scipy.interpolate import interp1d
 import scipy.signal
 from scipy.stats import sigmaclip
-import sys
-import datetime
 
 import IO
-import SEDMr.Wavelength as Wavelength
 import NPK.Standards as SS
 
-import os
-import sys
 
- 
 def checkSpec(specname, corrname='std-correction.npy',
         redshift=0, smoothing=0, savefig=False, savespec=False):
+    """Plot a spectrum.
+
+    This function can produce an ascii spectrum suitable for uploading
+    to the iPTF marshal and including header lines that describe the
+    spectrum.
+
+    Args:
+        specname (str): name of spectrum numpy file, typically prefixed with "sp_"
+        corrname (str): name of the calibration correction numpy file
+        redshift (float): readshift for wavelength scale
+        smoothing (int): number of pixels to smooth over
+        savefig (bool): save a pdf of the plot
+        savespec (bool): save an ascii spectrum
+
+    Returns:
+        None
+
+    """
 
     if not os.path.isfile(specname):
         sys.exit("No such file: %s" % specname)
@@ -190,8 +214,19 @@ def checkSpec(specname, corrname='std-correction.npy',
 
 
 def checkCube(cubename, showlamrms=False, savefig=False):
-    """Plot a datacube for checking"""
-    
+    """Plot a datacube.
+
+        This function can produce a PDF file of the data cube.
+
+        Args:
+            cubename (str): name of cube numpy file
+            showlamrms (bool): display the rms of the wavelength fit
+            savefig (bool): save a pdf of the plot
+
+        Returns:
+            None
+
+        """
     if not os.path.isfile(cubename):
         sys.exit("No such file: %s" % cubename)
 
