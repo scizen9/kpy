@@ -9,6 +9,24 @@ Functions
     * :func:`checkCube`   Plot a cube
     * :func:`checkSpec`   Plot a spectrum
 
+Note:
+    This is used as a python script as follows::
+
+        usage: Check.py [-h] [--cube CUBE] [--lambdarms] [--savefig] [--savespec]
+                [--spec SPEC] [--corrname CORRNAME] [--redshift REDSHIFT]
+                [--smoothing SMOOTHING]
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          --cube CUBE           Fine correction path
+          --lambdarms           Show lambda soln rms
+          --savefig             Save pdf figure
+          --savespec            Save spec ASCII file
+          --spec SPEC           Extracted spectrum file
+          --corrname CORRNAME
+          --redshift REDSHIFT   Redshift
+          --smoothing SMOOTHING
+                                Smoothing in pixels
 """
 
 import argparse
@@ -123,44 +141,49 @@ def checkSpec(specname, corrname='std-correction.npy',
     # Convert to Angstrom sized bins
     lam *= 10.
     spec /= 10.
-    skyspec /= 10.
-    stdspec /= 10.
+    if skyspec is not None:
+        skyspec /= 10.
+    if stdspec is not None:
+        stdspec /= 10.
 
-    # Get header values
-    hdr = meta['header']
+    # Get object name
+    if 'header' in meta:
+        hdr = meta['header']
+        if 'OBJECT' in hdr:
+            obj = hdr['OBJECT'].split()[0]
+        else:
+            obj = ''
+    else:
+        hdr = ''
+        obj = ''
 
     print "Plotting spectrum in %s" % specname
-    try:
+    if 'radius_as' in ss:
         print "Extraction radius: %1.2f asec" % ss['radius_as']
-    except:
-        pass
 
-    try:
+    if 'airmass' in meta:
         ec = meta['airmass']
-    except:
+    else:
         ec = 0
 
-    try:
+    if 'exptime' in ss:
         et = ss['exptime']
-    except:
+    else:
         et = 0
 
-    try:
+    if 'maxnm' in meta:
         maxwl = meta['maxnm'] * 10.
-    except:
+    else:
         maxwl = 9200.0
 
     print "Max Angstroms: %7.1f" % maxwl
 
-    try:
-        ec2 = meta['airmass2']
+    if 'airmass2' in meta:
         et *= 2
-    except:
-        ec2 = 0
 
-    try:
+    if 'user' in meta:
         user = meta['user']
-    except:
+    else:
         user = ''
 
     try:
@@ -172,11 +195,6 @@ def checkSpec(specname, corrname='std-correction.npy',
                                           (parts[2], parts[3], parts[4])
     except:
         utc = ''
-
-    try:
-        obj = hdr['OBJECT'].split()[0]
-    except:
-        obj = ''
 
     # Annotate plots
     pl.title("%s\n(airmass: %1.2f | Exptime: %i)" %
@@ -288,17 +306,17 @@ def checkSpec(specname, corrname='std-correction.npy',
         srt = wl.argsort().argsort()
         outf = specname[(specname.find('_') + 1):specname.find('.')] + '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
-        header = header + "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
-        header = header + "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
-        header = header + "\nAIRMASS: %1.2f" % ec
+        header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
+        header += "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
+        header += "\nAIRMASS: %1.2f" % ec
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
         print "Saved to " + outf
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description= \
-                                         """Check.py
+    parser = argparse.ArgumentParser(
+        description="""Plot extracted spectrum or data cube.
 
         """, formatter_class=argparse.RawTextHelpFormatter)
 

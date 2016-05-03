@@ -1,0 +1,842 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.rcred &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.rcred</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Sun Jun 14 13:11:52 2015</span>
+
+<span class="sd">@author: nadiablago</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">fitsutils</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">glob</span><span class="o">,</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">pyraf</span> <span class="kn">import</span> <span class="n">iraf</span> 
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">time_utils</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+
+
+<div class="viewcode-block" id="create_masterbias"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.create_masterbias">[docs]</a><span class="k">def</span> <span class="nf">create_masterbias</span><span class="p">(</span><span class="n">biasdir</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="s1">&#39;rc&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Combines slow and fast readout mode biases for the specified channel.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">ccdred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">biasdir</span> <span class="o">==</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">biasdir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">:</span> <span class="n">biasdir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+        
+    <span class="n">outs</span> <span class="o">=</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_slow.fits&quot;</span><span class="o">%</span><span class="n">channel</span>
+    <span class="n">outf</span> <span class="o">=</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_fast.fits&quot;</span><span class="o">%</span><span class="n">channel</span>
+
+    <span class="n">doslow</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">dofast</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span><span class="n">outs</span><span class="p">))):</span> 
+        <span class="k">print</span> <span class="n">outs</span><span class="p">,</span><span class="s2">&quot;master Bias exists!&quot;</span>
+        <span class="n">doslow</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span><span class="n">outf</span><span class="p">))):</span>
+        <span class="k">print</span> <span class="n">outs</span><span class="p">,</span><span class="s2">&quot;master Bias exists!&quot;</span>
+        <span class="n">dofast</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">doslow</span> <span class="ow">or</span> <span class="n">dofast</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Starting the Master Bias creation!&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">biasdir</span><span class="p">)</span>        
+        
+    <span class="n">lfastbias</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lslowbias</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="c1">#Select all filts that are Bias with same instrument</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;rc*fits&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="s2">&quot;BIAS&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">))</span> <span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">):</span>
+                    <span class="n">lfastbias</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lslowbias</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+                
+    <span class="k">print</span> <span class="s2">&quot;Files for bias SLOW mode: &quot;</span><span class="p">,</span> <span class="n">lslowbias</span>
+    <span class="k">print</span> <span class="s2">&quot;Files for bias FAST mode: &quot;</span><span class="p">,</span> <span class="n">lfastbias</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfastbias</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">dofast</span><span class="p">:</span>
+        <span class="n">bfile_fast</span> <span class="o">=</span><span class="s2">&quot;lbias_fast_&quot;</span><span class="o">+</span><span class="n">channel</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">bfile_fast</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lfastbias</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;Bias_stats_fast&quot;</span><span class="p">)):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;Bias_stats_fast&quot;</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imstat</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">bfile_fast</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="s2">&quot;Bias_stats_fast&quot;</span><span class="p">)</span>
+        
+        <span class="n">st</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;Bias_stats_fast&quot;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">st</span>
+        
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">bfile_fast</span><span class="p">,</span> \
+                    <span class="n">output</span> <span class="o">=</span> <span class="n">outf</span><span class="p">,</span> \
+                    <span class="n">combine</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span>\
+                    <span class="n">scale</span> <span class="o">=</span> <span class="s2">&quot;mode&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">bfile_fast</span><span class="p">)</span>
+        
+        <span class="c1">#copy into the reference folder with current date</span>
+        <span class="n">newdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;../../refphot/&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">biasdir</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">newdir</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">newdir</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">outf</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">newdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outf</span><span class="p">))</span> <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">copy_ref_calib</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span> <span class="n">outf</span><span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lslowbias</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">doslow</span><span class="p">:</span>
+
+        <span class="n">bfile_slow</span> <span class="o">=</span><span class="s2">&quot;lbias_slow_&quot;</span><span class="o">+</span><span class="n">channel</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">bfile_slow</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lslowbias</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;Bias_stats_slow&quot;</span><span class="p">)):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;Bias_stats_slow&quot;</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imstat</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">bfile_slow</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="s2">&quot;Bias_stats_slow&quot;</span><span class="p">)</span>
+        
+        <span class="n">st</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;Bias_stats_slow&quot;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">st</span>
+        
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">bfile_slow</span><span class="p">,</span> \
+                    <span class="n">output</span> <span class="o">=</span> <span class="n">outs</span><span class="p">,</span> \
+                    <span class="n">combine</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span>\
+                    <span class="n">scale</span> <span class="o">=</span> <span class="s2">&quot;mode&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">bfile_slow</span><span class="p">)</span>
+        
+        <span class="c1">#copy into the reference folder with current date</span>
+        <span class="n">newdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;../../refphot/&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">biasdir</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">newdir</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">newdir</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">outs</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">newdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outs</span><span class="p">))</span> <span class="p">)</span>  
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">copy_ref_calib</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span> <span class="n">outs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="create_masterflat"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.create_masterflat">[docs]</a><span class="k">def</span> <span class="nf">create_masterflat</span><span class="p">(</span><span class="n">flatdir</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">biasdir</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="s1">&#39;rc&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Creates a masterflat from both dome flats and sky flats if the number of counts in the given filter</span>
+<span class="sd">    is not saturated and not too low (between 3000 and 40000). </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">flatdir</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">flatdir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">):</span> <span class="n">flatdir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+        
+    <span class="k">if</span> <span class="p">(</span><span class="n">biasdir</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">biasdir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">):</span> <span class="n">biasdir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+        
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">flatdir</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;Flat_</span><span class="si">%s</span><span class="s2">*norm.fits&quot;</span><span class="o">%</span><span class="n">channel</span><span class="p">))</span> <span class="o">==</span> <span class="mi">4</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Master Flat exists!&quot;</span>
+        <span class="k">return</span> 
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;Flat_</span><span class="si">%s</span><span class="s2">*norm.fits&quot;</span><span class="o">%</span><span class="n">channel</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Some Master Flat exist!&quot;</span>
+        <span class="k">return</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Starting the Master Flat creation!&quot;</span>
+
+    <span class="n">bias_slow</span> <span class="o">=</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_slow.fits&quot;</span><span class="o">%</span><span class="n">channel</span>
+    <span class="n">bias_fast</span> <span class="o">=</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_fast.fits&quot;</span><span class="o">%</span><span class="n">channel</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_slow</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_fast</span><span class="p">)</span> <span class="p">):</span>
+        <span class="n">create_masterbias</span><span class="p">(</span><span class="n">biasdir</span><span class="p">)</span>
+     
+    <span class="n">lsflat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lfflat</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="n">obj</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">imtype</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    
+    <span class="c1">#Select all filts that are Flats with same instrument</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">channel</span><span class="o">+</span><span class="s2">&quot;*fits&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;OBJECT&quot;</span><span class="p">):</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;OBJECT&quot;</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">):</span>
+                <span class="n">imtype</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+        
+            <span class="c1">#if (&quot;RAINBOW CAM&quot; in str.upper(fitsutils.get_par(f, &quot;CAM_NAME&quot;)) and  (&quot;DOME&quot; in  obj or &quot;FLAT&quot; in obj or &quot;Twilight&quot; in obj or &quot;TWILIGHT&quot; in imtype or &quot;DOME&quot; in imtype)):</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="s2">&quot;TWILIGHT&quot;</span> <span class="ow">in</span> <span class="n">imtype</span><span class="p">):</span>
+
+                <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">):</span>
+                    <span class="n">lfflat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lsflat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Error with retrieving parameters for file&quot;</span><span class="p">,</span> <span class="n">f</span>
+            <span class="k">pass</span>
+                
+    <span class="k">print</span> <span class="s2">&quot;Files for slow flat&quot;</span><span class="p">,</span> <span class="n">lsflat</span>
+    <span class="k">print</span> <span class="s2">&quot;Files for fast flat&quot;</span><span class="p">,</span> <span class="n">lfflat</span>
+    
+    <span class="n">fsfile</span> <span class="o">=</span><span class="s2">&quot;lflat_slow_&quot;</span><span class="o">+</span><span class="n">channel</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fsfile</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lsflat</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">fffile</span> <span class="o">=</span><span class="s2">&quot;lflat_fast_&quot;</span><span class="o">+</span><span class="n">channel</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fffile</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lfflat</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+    <span class="c1"># Running IRAF</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">ccdred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1">#Remove bias from the flat</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lsflat</span><span class="p">)</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">fsfile</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">bias_slow</span><span class="p">,</span> <span class="s2">&quot;b_@&quot;</span><span class="o">+</span><span class="n">fsfile</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfflat</span><span class="p">)</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">fffile</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">bias_fast</span><span class="p">,</span> <span class="s2">&quot;b_@&quot;</span><span class="o">+</span><span class="n">fffile</span><span class="p">)</span>    
+    
+    <span class="c1">#Remove the list files</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fsfile</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fffile</span><span class="p">)</span>
+    
+    <span class="c1">#Slices the flats.</span>
+    <span class="n">debiased_flats</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;b_*.fits&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">debiased_flats</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Slicing file&quot;</span><span class="p">,</span> <span class="n">f</span>
+        <span class="n">slice_rc</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="c1">#Remove the un-sliced file</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        
+    <span class="c1">#Selects the ones that are suitable given the number of counts and combines them.</span>
+    <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;u&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="s2">&quot;Flat_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">out_norm</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span><span class="s2">&quot;_norm.fits&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">out_norm</span><span class="p">)):</span>
+            <span class="k">print</span> <span class="s2">&quot;Master Flat for filter </span><span class="si">%s</span><span class="s2"> exists. Skipping...&quot;</span><span class="o">%</span><span class="n">b</span>
+            <span class="k">continue</span>
+        
+        <span class="n">lfiles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;b_*_</span><span class="si">%s</span><span class="s1">.fits&#39;</span><span class="o">%</span><span class="n">b</span><span class="p">):</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">4000</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span><span class="o">&lt;</span><span class="mi">40000</span><span class="p">:</span>
+                <span class="n">lfiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfiles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;WARNING!!! Could not find suitable flats for band </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">b</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfiles</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;WARNING!!! Could find less than 3 flats for band </span><span class="si">%s</span><span class="s2">. Skipping, as it is not reliable...&quot;</span><span class="o">%</span><span class="n">b</span>
+            <span class="k">continue</span>
+        <span class="n">ffile</span> <span class="o">=</span><span class="s2">&quot;lflat_&quot;</span><span class="o">+</span><span class="n">b</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">ffile</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lfiles</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+        
+        <span class="c1">#Cleaning of old files</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">out</span><span class="p">)):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">out_norm</span><span class="p">)):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">out_norm</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;Flat_stats&quot;</span><span class="p">)):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;Flat_stats&quot;</span><span class="p">)</span>
+        
+        
+        <span class="c1">#Combine flats</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;@&quot;</span><span class="o">+</span><span class="n">ffile</span><span class="p">,</span> \
+                        <span class="n">output</span> <span class="o">=</span> <span class="n">out</span><span class="p">,</span> \
+                        <span class="n">combine</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span>\
+                        <span class="n">scale</span> <span class="o">=</span> <span class="s2">&quot;mode&quot;</span><span class="p">,</span>
+                        <span class="n">weight</span> <span class="o">=</span> <span class="s2">&quot;exposure&quot;</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imstat</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="s2">&quot;image,npix,mean,stddev,min,max,mode&quot;</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="s2">&quot;Flat_stats&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;Flat_stats&quot;</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="c1">#Normalize flats</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">st</span><span class="p">[</span><span class="s2">&quot;MODE&quot;</span><span class="p">],</span> <span class="n">out_norm</span><span class="p">)</span>
+        
+        <span class="c1">#Do some cleaning</span>
+        <span class="k">print</span> <span class="s1">&#39;Removing from lfiles&#39;</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;b_*_</span><span class="si">%s</span><span class="s1">.fits&#39;</span><span class="o">%</span><span class="n">b</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">ffile</span><span class="p">)</span>
+        
+        
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">fsfile</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fsfile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">fffile</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fffile</span><span class="p">)</span>
+
+        <span class="c1">#copy into the reference folder with current date</span>
+        <span class="n">newdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;../../refphot/&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">flatdir</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">newdir</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">newdir</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">out_norm</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">newdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">out_norm</span><span class="p">))</span> <span class="p">)</span>   </div>
+
+<div class="viewcode-block" id="solve_edges"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.solve_edges">[docs]</a><span class="k">def</span> <span class="nf">solve_edges</span><span class="p">(</span><span class="n">flat</span><span class="p">,</span> <span class="n">band</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Finds the edges of the flat, and extends the respons of the average to the edges.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">edgedic</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:[],</span> <span class="s2">&quot;g&quot;</span><span class="p">:[],</span> <span class="s2">&quot;i&quot;</span><span class="p">:[],</span> <span class="s2">&quot;r&quot;</span><span class="p">:[]}</span></div>
+    
+    
+    
+<div class="viewcode-block" id="copy_ref_calib"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.copy_ref_calib">[docs]</a><span class="k">def</span> <span class="nf">copy_ref_calib</span><span class="p">(</span><span class="n">curdir</span><span class="p">,</span> <span class="n">calib</span><span class="o">=</span><span class="s2">&quot;Flat&quot;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Reference master Bias and master Flat are stored in the refphot folder.</span>
+<span class="sd">    The files are copied if they are not found in the folder where the photometry is being reduced.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1">#Check which dates have the calibration files that we need.</span>
+    <span class="n">listcalib</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">curdir</span><span class="p">,</span> <span class="s2">&quot;../../refphot/*/&quot;</span><span class="p">,</span> <span class="n">calib</span><span class="o">+</span><span class="s2">&quot;*&quot;</span><span class="p">))</span>
+    <span class="c1">#Obtain the folder name</span>
+    <span class="n">listdirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">listcalib</span><span class="p">]</span>    
+    <span class="c1">#Unique name</span>
+    <span class="n">calibdates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">listdirs</span><span class="p">)))</span>
+    
+    <span class="c1">#Get the date of the current directory</span>
+    <span class="n">curdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">curdir</span><span class="p">)</span>
+    
+    <span class="c1">#compile the dates in datetime format</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">calibdates</span><span class="p">:</span>
+        <span class="n">dateobs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">dates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">dateobs</span><span class="p">,</span> <span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">))</span>
+
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dates</span><span class="p">)</span>    
+    <span class="n">curdate</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">curdir</span><span class="p">),</span> <span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1">#Select the folder that is closes to the date of the current directory</span>
+    <span class="n">lastdir</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">calibdates</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">curdate</span><span class="o">-</span><span class="n">dates</span><span class="p">))]</span>
+    
+    <span class="c1">#Copy all calibration files that match the calib filter.</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lastdir</span><span class="p">,</span> <span class="n">calib</span><span class="o">+</span><span class="s2">&quot;*&quot;</span><span class="p">)):</span>    
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">curdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>     </div>
+        
+        
+
+<div class="viewcode-block" id="solve_astrometry"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.solve_astrometry">[docs]</a><span class="k">def</span> <span class="nf">solve_astrometry</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">with_pix</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    img: fits image where astrometry should be solved.</span>
+<span class="sd">    radius: radius of uncertainty on astrometric position in image.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">ra</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s1">&#39;OBJRA&#39;</span><span class="p">)</span>
+    <span class="n">dec</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s1">&#39;OBJDEC&#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s2">&quot;Solving astrometry on field with (ra,dec)=&quot;</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span>
+    
+    <span class="n">astro</span> <span class="o">=</span> <span class="s2">&quot;a_&quot;</span> <span class="o">+</span> <span class="n">img</span>
+    
+    <span class="c1">#If astrometry exists, we don&#39;t run it again.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">astro</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overwrite</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">astro</span>
+        
+    <span class="c1">#Store a temporary file with the multiplication of the mask</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="s2">&quot;mask.fits&quot;</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;solve-field --ra </span><span class="si">%s</span><span class="s2"> --dec </span><span class="si">%s</span><span class="s2"> --radius </span><span class="si">%.4f</span><span class="s2"> -p --new-fits </span><span class="si">%s</span><span class="s2"> </span><span class="se">\</span>
+<span class="s2">      -W none -B none -P none -M none -R none -S none --overwrite </span><span class="si">%s</span><span class="s2"> &quot;</span><span class="o">%</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">astro</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">with_pix</span><span class="p">):</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span> <span class="o">+</span> <span class="s2">&quot; --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.425&quot;</span>
+    <span class="k">print</span> <span class="n">cmd</span>
+
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="c1">#Cleaning after astrometry.net</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.axy&quot;</span><span class="p">))):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.axy&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;-indx.xyls&quot;</span><span class="p">))):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;-indx.xyls&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+        
+    <span class="n">is_on_target</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">astro</span></div>
+    
+
+<div class="viewcode-block" id="make_mask_cross"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.make_mask_cross">[docs]</a><span class="k">def</span> <span class="nf">make_mask_cross</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>  
+    
+    <span class="n">maskname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="s2">&quot;mask.fits&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">maskname</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">maskname</span>
+        
+    <span class="n">f</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    
+    <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;g&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">850</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">850</span><span class="p">],</span>
+    <span class="s2">&quot;i&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">850</span><span class="p">,</span> <span class="mi">110</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;r&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1150</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1150</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;u&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1130</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">850</span><span class="p">]</span>
+    <span class="p">}</span>
+    
+    <span class="n">newdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    
+    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">ix</span> <span class="o">=</span> <span class="n">corners</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+        <span class="n">newdata</span><span class="p">[</span><span class="n">ix</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">ix</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ix</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">ix</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span>
+        
+    <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">newdata</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">maskname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">maskname</span></div>
+    
+<div class="viewcode-block" id="get_masked_image"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.get_masked_image">[docs]</a><span class="k">def</span> <span class="nf">get_masked_image</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+
+    <span class="c1"># Running IRAF</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">make_mask_cross</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>    
+    <span class="n">masked</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;_masked.fits&quot;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">masked</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">masked</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">masked</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">masked</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">masked</span></div>
+
+    
+<div class="viewcode-block" id="slice_rc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.slice_rc">[docs]</a><span class="k">def</span> <span class="nf">slice_rc</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Slices the Rainbow Camera into 4 different images and adds the &#39;filter&#39; keyword in the fits file.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>    
+    
+    <span class="c1"># Running IRAF</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>    
+    
+    <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;g&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">910</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">900</span><span class="p">],</span>
+    <span class="s2">&quot;i&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">910</span><span class="p">,</span> <span class="mi">1060</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;r&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1040</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1015</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;u&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1030</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">900</span><span class="p">]</span>
+    <span class="p">}</span>
+    
+    
+    <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
+        
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">corners</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="k">print</span> <span class="s2">&quot;Slicing for filter&quot;</span><span class="p">,</span> <span class="n">b</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;_</span><span class="si">%s</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="n">b</span><span class="p">)</span>
+        
+        <span class="c1">#Clean first</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">name</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imcopy</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">[</span><span class="si">%d</span><span class="s2">:</span><span class="si">%d</span><span class="s2">,</span><span class="si">%d</span><span class="s2">:</span><span class="si">%d</span><span class="s2">]&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">corners</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">corners</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">corners</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="mi">2</span><span class="p">],</span> <span class="n">corners</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="mi">3</span><span class="p">]),</span> <span class="n">name</span><span class="p">)</span>
+         
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;filter&#39;</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">is_on_target</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        
+        <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">filenames</span></div>
+
+<div class="viewcode-block" id="is_on_target"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.is_on_target">[docs]</a><span class="k">def</span> <span class="nf">is_on_target</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Add as a parameter whether the image is on target or not.</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">pywcs</span>
+    <span class="kn">import</span> <span class="nn">coordinates_conversor</span> <span class="kn">as</span> <span class="nn">cc</span>
+    
+    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">hour2deg</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;OBJRA&#39;</span><span class="p">),</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;OBJDEC&#39;</span><span class="p">))</span>
+
+    <span class="n">impf</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">wcs</span> <span class="o">=</span> <span class="n">pywcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="c1">#pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)</span>
+    <span class="n">pra</span><span class="p">,</span> <span class="n">pdec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs_sky2pix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span> <span class="n">ndmin</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">pra</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>  <span class="ow">and</span> <span class="p">(</span><span class="n">pra</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pdec</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pdec</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;ONTARGET&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;ONTARGET&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+        
+    
+<div class="viewcode-block" id="clean_cosmic"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.clean_cosmic">[docs]</a><span class="k">def</span> <span class="nf">clean_cosmic</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    From lacosmic.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">cosmics</span>
+    
+    
+    <span class="n">g</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;GAIN&quot;</span><span class="p">)</span>
+    <span class="n">rn</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;RDNOISE&quot;</span><span class="p">)</span>
+    <span class="n">array</span><span class="p">,</span> <span class="n">header</span> <span class="o">=</span> <span class="n">cosmics</span><span class="o">.</span><span class="n">fromfits</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">cosmics</span><span class="o">.</span><span class="n">cosmicsimage</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="n">g</span><span class="p">,</span> <span class="n">readnoise</span><span class="o">=</span><span class="n">rn</span><span class="p">,</span> <span class="n">sigclip</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">sigfrac</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">satlevel</span> <span class="o">=</span> <span class="mf">64000.0</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">maxiter</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span>  <span class="s1">&#39;_clean.fits&#39;</span><span class="p">)</span>
+    
+        <span class="n">cosmics</span><span class="o">.</span><span class="n">tofits</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">cleanarray</span><span class="p">,</span> <span class="n">header</span><span class="p">)</span>
+        
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+    
+
+    
+                
+<div class="viewcode-block" id="get_overscan_bias_rc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.get_overscan_bias_rc">[docs]</a><span class="k">def</span> <span class="nf">get_overscan_bias_rc</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Bias from overscan region.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">bias</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">990</span><span class="o">-</span><span class="mi">100</span><span class="p">:</span><span class="mi">990</span><span class="o">+</span><span class="mi">100</span><span class="p">,</span><span class="mi">970</span><span class="o">-</span><span class="mi">100</span><span class="p">:</span><span class="mi">970</span><span class="o">+</span><span class="mi">100</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+    
+    <span class="k">return</span> <span class="n">bias</span></div>
+    
+<div class="viewcode-block" id="get_sequential_name"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.get_sequential_name">[docs]</a><span class="k">def</span> <span class="nf">get_sequential_name</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Gets a sequential name if we have a file with the same object name imaged several times.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">newname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;_</span><span class="si">%d</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">)</span>
+        <span class="c1">#If the destination file does not exist...</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">newname</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">newname</span>
+        <span class="c1">#If it does exist, but it is another exposure</span>
+        <span class="k">elif</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">newname</span><span class="p">)):</span>
+            <span class="c1">#If it is not the same exposure, add with different name. Otherwise, replace.</span>
+            <span class="k">if</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;JD&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">newname</span><span class="p">,</span> <span class="s2">&quot;JD&quot;</span><span class="p">):</span>
+                <span class="n">newname</span> <span class="o">=</span> <span class="n">get_sequential_name</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">newname</span>      </div>
+
+
+<div class="viewcode-block" id="reduce_image"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.rcred.reduce_image">[docs]</a><span class="k">def</span> <span class="nf">reduce_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">flatdir</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">biasdir</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">cosmic</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">astrometry</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="s1">&#39;rc&#39;</span><span class="p">,</span> <span class="n">target_dir</span><span class="o">=</span><span class="s1">&#39;reduced&#39;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Applies Flat field and bias calibrations to the image.</span>
+<span class="sd">    </span>
+<span class="sd">    Steps:</span>
+<span class="sd">    </span>
+<span class="sd">    1. - Solve astrometry on the entire image.</span>
+<span class="sd">    2. - Compute master bias (if it does not exist) and de-bias the image.</span>
+<span class="sd">    3. - Separate the image into 4 filters.</span>
+<span class="sd">    4. - Compute flat field for each filter (if it does not exist) and apply flat fielding on the image.</span>
+<span class="sd">    5. - Computes cosmic ray rejectionon the entire image.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">print</span> <span class="s2">&quot;Reducing image &quot;</span><span class="p">,</span> <span class="n">image</span>    
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">objectname</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;NAME&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;FILTER&quot;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;ERROR, image&quot;</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="s2">&quot; does not have a NAME or a FILTER!!!&quot;</span>
+        <span class="k">return</span>
+        
+    <span class="k">print</span> <span class="s2">&quot;For object&quot;</span><span class="p">,</span> <span class="n">objectname</span>
+    
+    <span class="c1">#Change to image directory</span>
+    <span class="n">mydir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mydir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">:</span> <span class="n">mydir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+    <span class="n">mydir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">mydir</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">mydir</span><span class="p">)</span>
+    <span class="c1">#Create destination directory</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)</span>
+
+    <span class="c1">#If we don&#39;t want to overwrite the already extracted images, we check wether they exist.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">overwrite</span><span class="p">):</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;u&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">]:</span>
+            <span class="k">print</span> <span class="s2">&quot;Looking if file&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="s2">&quot;f_b_a_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_0.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">objectname</span><span class="p">,</span> <span class="n">band</span><span class="p">)),</span> <span class="s2">&quot;exists&quot;</span><span class="p">,</span>  <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="s2">&quot;f_b_a_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_0.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">objectname</span><span class="p">,</span> <span class="n">band</span><span class="p">)))</span> <span class="p">)</span>
+            <span class="n">existing</span> <span class="o">=</span> <span class="n">existing</span> <span class="ow">and</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="s2">&quot;f_b_a_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_0.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">objectname</span><span class="p">,</span> <span class="n">band</span><span class="p">)))</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+
+    <span class="c1">#Rename to the image name only</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+
+    <span class="n">astro</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">astrometry</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Solving astometry for the whole image...&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">solve_astrometry</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">img</span><span class="p">)):</span>
+            <span class="n">astro</span><span class="o">=</span><span class="s2">&quot;a_&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;ASTROMETRY DID NOT SOLVE ON IMAGE&quot;</span><span class="p">,</span> <span class="n">image</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">image</span>
+
+        
+    
+    <span class="c1">#Compute BIAS</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">biasdir</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">biasdir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">):</span> <span class="n">biasdir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+    <span class="n">create_masterbias</span><span class="p">(</span><span class="n">biasdir</span><span class="p">)</span>
+    
+    <span class="n">bias_slow</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="s1">&#39;slow&#39;</span><span class="p">))</span>
+    <span class="n">bias_fast</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">biasdir</span><span class="p">,</span> <span class="s2">&quot;Bias_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="s1">&#39;fast&#39;</span><span class="p">))</span>
+    
+    <span class="c1"># Running IRAF to DE-BIAS</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">ccdred</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1">#Compute flat field</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">flatdir</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">flatdir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">):</span> <span class="n">flatdir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+    <span class="n">create_masterflat</span><span class="p">(</span><span class="n">flatdir</span><span class="p">,</span> <span class="n">biasdir</span><span class="p">)</span>
+    
+    <span class="c1">#New names for the object.</span>
+    <span class="n">debiased</span> <span class="o">=</span> <span class="s2">&quot;b_&quot;</span> <span class="o">+</span> <span class="n">img</span>
+    <span class="k">print</span> <span class="s2">&quot;Creating debiased file, &quot;</span><span class="p">,</span><span class="n">debiased</span>
+    
+    <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mf">0.1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_slow</span><span class="p">))</span> \
+        <span class="ow">or</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_fast</span><span class="p">))</span> <span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Master bias not found! Tryting to copy from reference folder...&quot;</span>
+        <span class="n">copy_ref_calib</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="s2">&quot;Bias&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mf">0.1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_slow</span><span class="p">))</span> \
+        <span class="ow">or</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">bias_fast</span><span class="p">))</span> <span class="p">):</span>
+            <span class="k">print</span> <span class="s2">&quot;Bias not found in reference folder&quot;</span>
+            <span class="k">return</span>
+
+
+    <span class="c1">#Clean first</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">debiased</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">debiased</span><span class="p">)</span>
+        
+    <span class="c1">#Debias</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;ADCSPEED&quot;</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">):</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">bias_fast</span><span class="p">,</span> <span class="n">debiased</span><span class="p">)</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">debiased</span><span class="p">,</span> <span class="s2">&quot;BIASFILE&quot;</span><span class="p">,</span> <span class="n">bias_fast</span><span class="p">)</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">debiased</span><span class="p">,</span> <span class="s2">&quot;RDNOISE&quot;</span><span class="p">,</span> <span class="mf">20.</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">bias_slow</span><span class="p">,</span> <span class="n">debiased</span><span class="p">)</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">debiased</span><span class="p">,</span> <span class="s2">&quot;BIASFILE&quot;</span><span class="p">,</span> <span class="n">bias_slow</span><span class="p">)</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">debiased</span><span class="p">,</span> <span class="s2">&quot;RDNOISE&quot;</span><span class="p">,</span> <span class="mf">4.</span><span class="p">)</span>
+
+    <span class="c1">#Set negative counts to zero</span>
+    <span class="n">hdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">debiased</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">debiased</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="c1">#Slicing the image for flats  </span>
+    <span class="n">slice_names</span> <span class="o">=</span> <span class="n">slice_rc</span><span class="p">(</span><span class="n">debiased</span><span class="p">)</span>
+
+    
+    <span class="c1">#Remove un-sliced image</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">debiased</span><span class="p">)</span>
+
+    <span class="c1"># DE-flat each filter and store under object name</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">debiased_f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">slice_names</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">debiased_f</span><span class="p">,</span> <span class="s1">&#39;filter&#39;</span><span class="p">)</span>
+        
+        <span class="n">deflatted</span> <span class="o">=</span> <span class="s2">&quot;f_b_&quot;</span> <span class="o">+</span> <span class="n">astro</span> <span class="o">+</span> <span class="n">objectname</span> <span class="o">+</span> <span class="s2">&quot;_</span><span class="si">%s</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="n">b</span>
+
+        <span class="c1">#Flat to be used for that filter</span>
+        <span class="n">flat</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">flatdir</span><span class="p">,</span> <span class="s2">&quot;Flat_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_norm.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">flat</span><span class="p">)):</span>
+            <span class="k">print</span> <span class="s2">&quot;Master flat not found in&quot;</span><span class="p">,</span> <span class="n">flat</span>
+            <span class="n">copy_ref_calib</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="s2">&quot;Flat_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_norm&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Using flat&quot;</span><span class="p">,</span><span class="n">flat</span>
+            
+        <span class="c1">#Cleans the deflatted file if exists</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">deflatted</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">deflatted</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">debiased_f</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">flat</span><span class="p">)):</span>
+            <span class="k">print</span> <span class="s2">&quot;Storing de-flatted </span><span class="si">%s</span><span class="s2"> as </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">debiased_f</span><span class="p">,</span> <span class="n">deflatted</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">iraf</span><span class="o">.</span><span class="n">imarith</span><span class="p">(</span><span class="n">debiased_f</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">deflatted</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;SOMETHING IS WRONG&quot;</span>
+        
+        <span class="c1">#Removes the de-biased file</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">debiased_f</span><span class="p">)</span>
+        
+        <span class="k">print</span> <span class="s2">&quot;Updating header with original filename and flat field used.&quot;</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">deflatted</span><span class="p">,</span> <span class="s2">&quot;ORIGFILE&quot;</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span>
+        <span class="n">fitsutils</span><span class="o">.</span><span class="n">update_par</span><span class="p">(</span><span class="n">deflatted</span><span class="p">,</span> <span class="s2">&quot;FLATFILE&quot;</span><span class="p">,</span> <span class="n">flat</span><span class="p">)</span>
+
+        <span class="n">slice_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">deflatted</span>
+            
+            
+    <span class="k">if</span> <span class="p">(</span><span class="n">cosmic</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Correcting for cosmic rays...&quot;</span>
+        <span class="c1"># Correct for cosmics each filter</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">deflatted</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">slice_names</span><span class="p">):</span>
+            <span class="n">cclean</span> <span class="o">=</span> <span class="s2">&quot;c_&quot;</span> <span class="o">+</span><span class="n">img</span>
+            <span class="n">clean_cosmic</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">mydir</span><span class="p">),</span> <span class="n">deflatted</span><span class="p">),</span> <span class="n">cclean</span><span class="p">)</span>
+            <span class="n">slice_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cclean</span>
+                
+            
+    <span class="n">reduced_imgs</span> <span class="o">=</span> <span class="p">[]</span>   
+    <span class="c1">#Moving files to the target directory</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">slice_names</span><span class="p">:</span>
+        <span class="n">newname</span> <span class="o">=</span> <span class="n">get_sequential_name</span><span class="p">(</span><span class="n">target_dir</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">newname</span><span class="p">)</span>
+        <span class="n">reduced_imgs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newname</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">reduced_imgs</span></div>
+
+                
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+        <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">        Reduces the photometric images from SEDM Rainbow Camera.</span>
+<span class="sd">        Requires either a list of images to be reduced, or a directory name where the night photometry is.</span>
+<span class="sd">        As an option, can run lacosmic to remove cosmic rays.</span>
+<span class="sd">        By default it invokes astrometry.net before the reduction.</span>
+<span class="sd">        </span>
+<span class="sd">        %run rcred.py -d PHOTDIR </span>
+<span class="sd">                </span>
+<span class="sd">        Reduced images are stored in directory called &quot;reduced&quot;, within the main directory.</span>
+<span class="sd">        </span>
+<span class="sd">        Optionally, it can be used to clean the reduction products generated by this pipeline within PHOTDIR diretory using -c option (clean).</span>
+<span class="sd">        </span>
+<span class="sd">        %run rcred.py -d PHOTDIR -c</span>
+<span class="sd">            </span>
+<span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-l&#39;</span><span class="p">,</span> <span class="s1">&#39;--filelist&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;File containing the list of fits for the night.&#39;</span><span class="p">,</span><span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-d&#39;</span><span class="p">,</span> <span class="s1">&#39;--photdir&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Directory containing the science fits for the night.&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-c&#39;</span><span class="p">,</span> <span class="s1">&#39;--clean&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Clean the reduced images?&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="s1">&#39;--overwrite&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;re-reduce and overwrite the reduced images?&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--cosmic&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Whether cosmic rays should be removed.&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    
+    <span class="n">filelist</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">filelist</span>
+    <span class="n">photdir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">photdir</span>
+    <span class="n">cosmic</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">cosmic</span>
+    <span class="n">clean</span> <span class="o">=</span>  <span class="n">args</span><span class="o">.</span><span class="n">clean</span>
+    <span class="n">overwrite</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span>
+    
+    <span class="n">myfiles</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">photdir</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">clean</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;Flat*&quot;</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;Bias*&quot;</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;a_*fits&quot;</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">photdir</span><span class="p">,</span> <span class="s2">&quot;reduced&quot;</span><span class="p">))):</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">photdir</span><span class="p">,</span> <span class="s2">&quot;reduced&quot;</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="p">(</span><span class="ow">not</span> <span class="n">filelist</span> <span class="ow">is</span> <span class="bp">None</span> <span class="p">):</span>
+        <span class="n">mydir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filelist</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">mydir</span><span class="o">==</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+            <span class="n">mydir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">mydir</span><span class="p">)</span>
+        
+        <span class="n">myfiles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">filelist</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        
+    <span class="k">elif</span> <span class="p">(</span><span class="ow">not</span> <span class="n">photdir</span> <span class="ow">is</span> <span class="bp">None</span> <span class="p">):</span>
+        <span class="n">mydir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">photdir</span><span class="p">)</span>
+        <span class="c1">#Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="s2">&quot;rc*fits&quot;</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span><span class="o">==</span><span class="s2">&quot;SCIENCE&quot;</span><span class="p">):</span>
+                <span class="n">myfiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s1">&#39;&#39;&#39;ERROR! You should specify one of the following:</span><span class="se">\n</span><span class="s1"></span>
+<span class="s1">                   - A filelist name with the images you want to reduce [-l]</span>
+<span class="s1">                   OR</span>
+<span class="s1">                   - The name of the directory which you want to reduce [-d].&#39;&#39;&#39;</span>
+
+    <span class="c1">#if (len(myfiles)&gt;0):</span>
+    <span class="n">create_masterbias</span><span class="p">()</span>
+    <span class="n">create_masterflat</span><span class="p">()</span>  
+    
+    <span class="c1">#Reduce them</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">myfiles</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">f</span>
+        <span class="n">make_mask_cross</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;SCIENCE&quot;</span> <span class="ow">or</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;ACQUISITION&quot;</span><span class="p">):</span>
+            <span class="n">reduced</span> <span class="o">=</span> <span class="n">reduce_image</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">cosmic</span><span class="o">=</span><span class="n">cosmic</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">)</span> 
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

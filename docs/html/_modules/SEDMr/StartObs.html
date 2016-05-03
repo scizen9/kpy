@@ -1,0 +1,877 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.StartObs &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.StartObs</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Conduct automatic reduction of SEDM data in sedmdrp@pharos</span>
+
+<span class="sd">Functions</span>
+<span class="sd">    * :func:`go`           outer loop waits for new data directory in /scr2/sedm/raw</span>
+<span class="sd">    * :func:`ObsLoop`      one night observing loop: processes calibrations and science data</span>
+<span class="sd">    * :func:`cpcal`        copies calibration images into redux directory</span>
+<span class="sd">    * :func:`cpprecal`     copies calibration images from previous day directory</span>
+<span class="sd">    * :func:`find_recent`  finds the most recent processed calibration file</span>
+<span class="sd">    * :func:`cpnew`        copies new images files into redux directory</span>
+<span class="sd">    * :func:`proc_stds`    processes standard star observations</span>
+<span class="sd">    * :func:`proc_bias_crrs`  processes biases and CR rejection</span>
+<span class="sd">    * :func:`docp`            low level copy routine that avoids test and focus images</span>
+<span class="sd">    * :func:`cal_proc_ready`  check if all required raw cal images are present</span>
+<span class="sd">    * :func:`cal_ready`       check if all required processed cal files are present</span>
+<span class="sd">    * :func:`cal_reset`       reset the status of calibration files</span>
+
+<span class="sd">Globals</span>
+<span class="sd">    * fileSize        - size in bytes of a complete fits file, currently 8400960</span>
+<span class="sd">    * nbias,nbias2,nXe,ndome,nHg,nCd  - current count of raw cal files</span>
+<span class="sd">    * CalProcReady    - are all required raw cal images present?</span>
+<span class="sd">    * CalReady        - are all required processed cal files present?</span>
+<span class="sd">    * CalPrevious     - are we using files from a previous night?</span>
+<span class="sd">    * BiasReady       - are there enough biases to process?</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    This is used as a python script as follows::</span>
+
+<span class="sd">        usage: StartObs.py [-h] [--rawdir RAWDIR] [--reduxdir REDUXDIR]</span>
+
+<span class="sd">        optional arguments:</span>
+<span class="sd">          -h, --help           show this help message and exit</span>
+<span class="sd">          --rawdir RAWDIR      Input raw directory (/scr2/sedm/raw)</span>
+<span class="sd">          --reduxdir REDUXDIR  Output reduced directory (/scr2/sedm/redux)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+
+<span class="n">fileSize</span> <span class="o">=</span> <span class="mi">8400960</span>
+<span class="n">nbias2</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">nbias</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">nXe</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">ndome</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">nHg</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">nCd</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">CalProcReady</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">CalReady</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">CalPrevious</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">False</span>
+
+
+<div class="viewcode-block" id="cal_reset"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cal_reset">[docs]</a><span class="k">def</span> <span class="nf">cal_reset</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Reset counts of raw calibration files, and calibration status booleans.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Resets global counters and switches to 0 and/or False</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">nbias</span><span class="p">,</span> <span class="n">nbias2</span><span class="p">,</span> <span class="n">ndome</span><span class="p">,</span> <span class="n">nXe</span><span class="p">,</span> <span class="n">nHg</span><span class="p">,</span> <span class="n">nCd</span><span class="p">,</span> \
+        <span class="n">CalProcReady</span><span class="p">,</span> <span class="n">CalReady</span><span class="p">,</span> <span class="n">CalPrevious</span><span class="p">,</span> <span class="n">BiasReady</span>
+    <span class="c1"># Reset calibration file counters</span>
+    <span class="n">nbias2</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nbias</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nXe</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ndome</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nHg</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nCd</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">CalProcReady</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">CalPrevious</span> <span class="o">=</span> <span class="bp">False</span></div>
+
+
+<div class="viewcode-block" id="cal_ready"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cal_ready">[docs]</a><span class="k">def</span> <span class="nf">cal_ready</span><span class="p">(</span><span class="n">reddir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check for all required calibration files in input reduced directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        reddir (str): directory to check</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Sets BiasReady and/or CalReady global booleans</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">CalReady</span><span class="p">,</span> <span class="n">BiasReady</span>
+    <span class="c1"># Do we have all the calibration files?</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reddir</span><span class="p">,</span> <span class="s1">&#39;bias0.1.fits&#39;</span><span class="p">))</span> <span class="ow">and</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reddir</span><span class="p">,</span> <span class="s1">&#39;bias2.0.fits&#39;</span><span class="p">))):</span>
+        <span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reddir</span><span class="p">,</span> <span class="s1">&#39;cube.npy&#39;</span><span class="p">))</span> <span class="ow">and</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reddir</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">))):</span>
+            <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">False</span></div>
+
+
+<div class="viewcode-block" id="cal_proc_ready"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cal_proc_ready">[docs]</a><span class="k">def</span> <span class="nf">cal_proc_ready</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Check counts for all required raw cal file types in current directory.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Sets CalProcReady global boolean</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">nbias</span><span class="p">,</span> <span class="n">nbias2</span><span class="p">,</span> <span class="n">ndome</span><span class="p">,</span> <span class="n">nXe</span><span class="p">,</span> <span class="n">nHg</span><span class="p">,</span> <span class="n">nCd</span><span class="p">,</span> <span class="n">CalProcReady</span>
+    <span class="c1"># Do we have all the calibration files?</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">nbias2</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">nbias</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">nXe</span> <span class="o">&gt;=</span> <span class="mi">7</span> <span class="ow">and</span> <span class="n">ndome</span> <span class="o">&gt;=</span> <span class="mi">7</span> <span class="ow">and</span>
+            <span class="n">nHg</span> <span class="o">&gt;=</span> <span class="mi">7</span> <span class="ow">and</span> <span class="n">nCd</span> <span class="o">&gt;=</span> <span class="mi">7</span><span class="p">):</span>
+        <span class="n">CalProcReady</span> <span class="o">=</span> <span class="bp">True</span></div>
+
+
+<div class="viewcode-block" id="docp"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.docp">[docs]</a><span class="k">def</span> <span class="nf">docp</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">onsky</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Low level copy from raw directory to redux directory.</span>
+
+<span class="sd">    Checks for raw cal files, standard star observations and</span>
+<span class="sd">    increments their respective counters, while avoiding any</span>
+<span class="sd">    test and focus images. Uses shutil.copy2 to do the copying.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        src (str): source file</span>
+<span class="sd">        dest (str): destination directory</span>
+<span class="sd">        onsky (bool): test for dome conditions or not</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (int, int): number of images copied, number of standard</span>
+<span class="sd">            star images copied</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Increments global raw calibration file counters</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">nbias</span><span class="p">,</span> <span class="n">nbias2</span><span class="p">,</span> <span class="n">ndome</span><span class="p">,</span> <span class="n">nXe</span><span class="p">,</span> <span class="n">nHg</span><span class="p">,</span> <span class="n">nCd</span>
+    <span class="c1"># Read FITS header</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="c1"># Get OBJECT and ADCSPEED keywords</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span>
+    <span class="n">speed</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;ADCSPEED&#39;</span><span class="p">]</span>
+    <span class="n">dome</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;DOMEST&#39;</span><span class="p">]</span>
+    <span class="c1"># Record copies and standard star observations</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nstd</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># check if dome conditions are not right</span>
+    <span class="k">if</span> <span class="n">onsky</span> <span class="ow">and</span> <span class="s1">&#39;CLOSED&#39;</span> <span class="ow">in</span> <span class="n">dome</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s1">&#39;On sky and dome is closed, skipping </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">src</span>
+    <span class="c1"># all other conditions are OK</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Skip test and Focus images</span>
+        <span class="k">if</span> <span class="s1">&#39;test&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span> <span class="ow">and</span> <span class="s1">&#39;Focus:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+            <span class="c1"># Copy with preserving metadata (date, etc.)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s1">&#39;copied </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+            <span class="n">ncp</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># Check for standard star observations</span>
+            <span class="k">if</span> <span class="s1">&#39;STD-&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="n">nstd</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># Check for calibration files</span>
+            <span class="k">elif</span> <span class="s1">&#39;Calib&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s1">&#39;bias&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">speed</span> <span class="o">==</span> <span class="mf">2.0</span><span class="p">:</span>
+                        <span class="n">nbias2</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">speed</span> <span class="o">==</span> <span class="mf">0.1</span><span class="p">:</span>
+                        <span class="n">nbias</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="s1">&#39;Xe&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="n">nXe</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="s1">&#39;dome&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="n">ndome</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="s1">&#39;Hg&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="n">nHg</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="s1">&#39;Cd&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="n">nCd</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># Report skipping and type</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;test&#39;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]:</span>
+                <span class="k">print</span> <span class="s1">&#39;test file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span>
+            <span class="k">if</span> <span class="s1">&#39;Focus:&#39;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]:</span>
+                <span class="k">print</span> <span class="s1">&#39;Focus file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span>
+
+    <span class="k">return</span> <span class="n">ncp</span><span class="p">,</span> <span class="n">nstd</span></div>
+
+
+<div class="viewcode-block" id="proc_bias_crrs"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.proc_bias_crrs">[docs]</a><span class="k">def</span> <span class="nf">proc_bias_crrs</span><span class="p">(</span><span class="n">ncp</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Process biases and CR rejection steps.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ncp (int): number of images copied into redux directory</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if processing was successful, otherwise False</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Are we using old calib files?</span>
+    <span class="k">global</span> <span class="n">CalPrevious</span>
+    <span class="c1"># Default return value</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="c1"># Get new listing</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;~/spy what ifu*.fits &gt; what.list&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">retcode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Generate new Makefile</span>
+        <span class="c1"># Are we using a previous calibration set?</span>
+        <span class="k">if</span> <span class="n">CalPrevious</span><span class="p">:</span>
+            <span class="n">retcode2</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;~/spy plan2 ifu*.fits&quot;</span><span class="p">)</span>
+        <span class="c1"># This calibration set has been generated here</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">retcode2</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;~/spy plan ifu*.fits&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">retcode2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Make bias + bias subtraction</span>
+            <span class="k">if</span> <span class="n">ncp</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">retcode3</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make bias&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;make -j</span><span class="si">%d</span><span class="s2"> bias&quot;</span> <span class="o">%</span> <span class="nb">min</span><span class="p">([</span><span class="n">ncp</span><span class="p">,</span> <span class="mi">16</span><span class="p">])</span>
+                <span class="n">retcode3</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">retcode3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Make CR rejection</span>
+                <span class="k">if</span> <span class="n">ncp</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">retcode4</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make crrs&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;make -j</span><span class="si">%d</span><span class="s2"> crrs&quot;</span> <span class="o">%</span> <span class="nb">min</span><span class="p">([</span><span class="n">ncp</span><span class="p">,</span> <span class="mi">8</span><span class="p">])</span>
+                    <span class="n">retcode4</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+                <span class="c1"># Success on all fronts!</span>
+                <span class="k">if</span> <span class="n">retcode4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="s2">&quot;bias, crrs processed for </span><span class="si">%d</span><span class="s2"> new images&quot;</span> <span class="o">%</span> <span class="n">ncp</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="c1"># Report failures</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="s2">&quot;could not make crrs&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;could not make bias&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;could not make plan&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;could not make what.list&quot;</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="proc_stds"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.proc_stds">[docs]</a><span class="k">def</span> <span class="nf">proc_stds</span><span class="p">(</span><span class="n">ncp</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Process standard star observations.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ncp (int): number of standard star images copied into redux directory</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if processing was successful, otherwise False</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Default return value</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="c1"># Make new stds</span>
+    <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make newstds&quot;</span><span class="p">)</span>
+    <span class="n">procTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+    <span class="c1"># Did it work?</span>
+    <span class="k">if</span> <span class="n">retcode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> new standard star observations processed in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span>
+              <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">procTime</span><span class="p">))</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="cpnew"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cpnew">[docs]</a><span class="k">def</span> <span class="nf">cpnew</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">destdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Copies new files from srcdir to destdir.</span>
+
+<span class="sd">    Searches for most recent ifu image in destdir and looks for and</span>
+<span class="sd">    copies any ifu images in srcdir that are newer and complete.</span>
+<span class="sd">    Then bias subtracts and CR rejects the copied images.  If any are standard</span>
+<span class="sd">    star observations, process them as well.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        srcdir (str): source directory (typically in /scr2/sedm/raw)</span>
+<span class="sd">        destdir (str): destination directory (typically in /scr2/sedm/redux)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Number of ifu images actually copied</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">CalReady</span><span class="p">,</span> <span class="n">BiasReady</span><span class="p">,</span> <span class="n">fileSize</span>
+    <span class="c1"># Get files in destination directory</span>
+    <span class="n">dflist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="s1">&#39;ifu*.fits&#39;</span><span class="p">)))</span>
+    <span class="c1"># Are there any files yet?</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dflist</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Get most recent local ifu image</span>
+        <span class="n">lf</span> <span class="o">=</span> <span class="n">dflist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lf</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="c1"># Record copies and standard star observations</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nstd</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Get list of source files</span>
+    <span class="n">srcfiles</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="s1">&#39;ifu*.fits&#39;</span><span class="p">)))</span>
+    <span class="c1"># Loop over source files</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">srcfiles</span><span class="p">:</span>
+        <span class="c1"># Do we copy?</span>
+        <span class="n">doCopy</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="c1"># Is our source file complete?</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">st_size</span> <span class="o">&gt;=</span> <span class="n">fileSize</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">lf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c1"># Do we have a newer file in the source dir?</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">&gt;</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">lf</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">:</span>
+                    <span class="n">doCopy</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="c1"># No files yet in dest, so all in source are needed</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">doCopy</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">doCopy</span><span class="p">:</span>
+            <span class="c1"># Get ifu image name</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Call copy</span>
+            <span class="n">nc</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">docp</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">destdir</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">fn</span><span class="p">)</span>
+            <span class="c1"># Record copies, stds</span>
+            <span class="n">ncp</span> <span class="o">+=</span> <span class="n">nc</span>
+            <span class="n">nstd</span> <span class="o">+=</span> <span class="n">ns</span>
+    <span class="c1"># We copied files</span>
+    <span class="k">print</span> <span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> files&quot;</span> <span class="o">%</span> <span class="n">ncp</span>
+    <span class="c1"># Are we ready to process biases?</span>
+    <span class="k">if</span> <span class="n">BiasReady</span> <span class="ow">and</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Do bias subtraction, CR rejection</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_bias_crrs</span><span class="p">(</span><span class="n">ncp</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s2">&quot;Error processing bias/crrs&quot;</span>
+        <span class="c1"># Process any standard stars</span>
+        <span class="k">elif</span> <span class="n">CalReady</span> <span class="ow">and</span> <span class="n">nstd</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_stds</span><span class="p">(</span><span class="n">nstd</span><span class="p">):</span>
+                <span class="k">print</span> <span class="s2">&quot;Error processing standard stars&quot;</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">CalReady</span> <span class="ow">and</span> <span class="n">nstd</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> std star obs, but need cube and flat &quot;</span>
+                  <span class="s2">&quot;to process further&quot;</span> <span class="o">%</span> <span class="n">nstd</span><span class="p">)</span>
+    <span class="c1"># Bias not ready yet</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">BiasReady</span> <span class="ow">and</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Need biases to process further&quot;</span>
+
+    <span class="k">return</span> <span class="n">ncp</span></div>
+
+
+<div class="viewcode-block" id="find_recent"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.find_recent">[docs]</a><span class="k">def</span> <span class="nf">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">destdir</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Find the most recent version of fname and copy it to destdir.</span>
+
+<span class="sd">    Look through sorted list of redux directories to find most recent</span>
+<span class="sd">    version of the input file.  Copy it to the destination directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        redd (str): reduced directory (something like /scr2/sedm/redux)</span>
+<span class="sd">        fname (str): what file to look for</span>
+<span class="sd">        destdir (str): where the file should go</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if file found and copied, False otherwise.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Default return value</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="c1"># Make sure the file doesn&#39;t already exist in destdir</span>
+    <span class="n">local_file</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="n">fname</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">local_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> already exists in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">destdir</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="c1"># Search in redd for file</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Get all but the most recent reduced data directories</span>
+        <span class="n">fspec</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;20??????&#39;</span><span class="p">)</span>
+        <span class="n">redlist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fspec</span><span class="p">)</span>
+                          <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">)])[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Go back in reduced dir list until we find our file</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">redlist</span><span class="p">):</span>
+            <span class="n">src</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">fname</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">src</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">destdir</span><span class="p">)</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%s</span><span class="s2"> in directory </span><span class="si">%s</span><span class="s2">, copying to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                      <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">destdir</span><span class="p">))</span>
+                <span class="k">break</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="cpprecal"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cpprecal">[docs]</a><span class="k">def</span> <span class="nf">cpprecal</span><span class="p">(</span><span class="n">dirlist</span><span class="p">,</span> <span class="n">destdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Copy raw cal files from previous date&#39;s directory</span>
+
+<span class="sd">    Make sure we only look in previous day directory for files created</span>
+<span class="sd">    within four hours of the day changeover for possible raw calibration</span>
+<span class="sd">    files required for the current night&#39;s calibration.  Copy any such</span>
+<span class="sd">    files into the destination directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dirlist (list): a list of raw directories (typically in /scr2/sedm/raw)</span>
+<span class="sd">        destdir (str): where to put the files</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: number of images actually copied</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># good image file size</span>
+    <span class="k">global</span> <span class="n">fileSize</span>
+    <span class="c1"># Reset calibration file counters</span>
+    <span class="n">cal_reset</span><span class="p">()</span>
+    <span class="c1"># Get current and previous dates</span>
+    <span class="n">sdate</span> <span class="o">=</span> <span class="n">dirlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">pdate</span> <span class="o">=</span> <span class="n">dirlist</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Record how many images copied</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># If there is a previous night, get those files</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sdate</span><span class="p">)</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="n">pdate</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Set the previous night as the source directory</span>
+        <span class="n">srcdir</span> <span class="o">=</span> <span class="n">dirlist</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1"># Get list of previous night&#39;s raw calibration files</span>
+        <span class="c1"># (within four hours of day changeover)</span>
+        <span class="n">fspec</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="s2">&quot;ifu</span><span class="si">%s</span><span class="s2">_2*.fits&quot;</span> <span class="o">%</span> <span class="n">pdate</span><span class="p">)</span>
+        <span class="n">flist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fspec</span><span class="p">))</span>
+        <span class="c1"># Loop over file list</span>
+        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">src</span><span class="p">)</span><span class="o">.</span><span class="n">st_size</span> <span class="o">&gt;=</span> <span class="n">fileSize</span><span class="p">:</span>
+                <span class="c1"># Read FITS header</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+                <span class="n">hdr</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="c1"># Get OBJECT and ADCSPEED keywords</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span>
+                <span class="c1"># Filter Calibs and avoid test images</span>
+                <span class="k">if</span> <span class="s1">&#39;Calib&#39;</span> <span class="ow">in</span> <span class="n">obj</span> <span class="ow">and</span> <span class="s1">&#39;test&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                    <span class="c1"># Copy cal images</span>
+                    <span class="n">imf</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">destfil</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="n">imf</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">destfil</span><span class="p">):</span>
+                        <span class="n">nc</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">docp</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">destfil</span><span class="p">,</span> <span class="n">onsky</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+                        <span class="n">ncp</span> <span class="o">+=</span> <span class="n">nc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;Truncated file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">src</span>
+    <span class="c1"># Check if we got all the calibration files</span>
+    <span class="n">cal_proc_ready</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">ncp</span></div>
+
+
+<div class="viewcode-block" id="cpcal"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.cpcal">[docs]</a><span class="k">def</span> <span class="nf">cpcal</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">destdir</span><span class="o">=</span><span class="s1">&#39;./&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Copy raw cal files from srcdir into destdir.</span>
+
+<span class="sd">    Find calibration files taken within 10 hours of the day changeover</span>
+<span class="sd">    and copy them to the destination directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        srcdir (str): source for raw cal images, typically in /scr2/sedm/raw</span>
+<span class="sd">        destdir (str): place to put the cal images, typically in /scr2/sedm/redux</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: number of images actually copied</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># good file size</span>
+    <span class="k">global</span> <span class="n">fileSize</span>
+    <span class="c1"># Get current date</span>
+    <span class="n">sdate</span> <span class="o">=</span> <span class="n">srcdir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Get list of current raw calibration files</span>
+    <span class="c1"># (within 10 hours of day changeover)</span>
+    <span class="n">fspec</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="s2">&quot;ifu</span><span class="si">%s</span><span class="s2">_0*.fits&quot;</span> <span class="o">%</span> <span class="n">sdate</span><span class="p">)</span>
+    <span class="n">flist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fspec</span><span class="p">))</span>
+    <span class="c1"># Record number copied</span>
+    <span class="n">ncp</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Loop over file list</span>
+    <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+        <span class="c1"># Get destination filename</span>
+        <span class="n">imf</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">destfil</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="n">imf</span><span class="p">)</span>
+        <span class="c1"># Does our local file already exist?</span>
+        <span class="k">if</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">destfil</span><span class="p">):</span>
+            <span class="c1"># Get the size to compare with source</span>
+            <span class="n">loc_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">destfil</span><span class="p">)</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Doesn&#39;t yet exist locally</span>
+            <span class="n">loc_size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Get source size to compare</span>
+        <span class="n">src_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">src</span><span class="p">)</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="c1"># Copy only if source complete or larger than local file</span>
+        <span class="k">if</span> <span class="n">src_size</span> <span class="o">&gt;=</span> <span class="n">fileSize</span> <span class="ow">and</span> <span class="n">src_size</span> <span class="o">&gt;</span> <span class="n">loc_size</span><span class="p">:</span>
+            <span class="c1"># Read FITS header</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="c1"># Get OBJECT keyword</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="c1"># Filter Calibs and avoid test images</span>
+            <span class="k">if</span> <span class="s1">&#39;Calib&#39;</span> <span class="ow">in</span> <span class="n">obj</span> <span class="ow">and</span> <span class="s1">&#39;test&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+                <span class="c1"># Copy cal images</span>
+                <span class="n">nc</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">docp</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">destfil</span><span class="p">,</span> <span class="n">onsky</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+                <span class="n">ncp</span> <span class="o">+=</span> <span class="n">nc</span>
+    <span class="c1"># Check if calibrations are read</span>
+    <span class="n">cal_proc_ready</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">ncp</span></div>
+
+
+<div class="viewcode-block" id="ObsLoop"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.ObsLoop">[docs]</a><span class="k">def</span> <span class="nf">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;One night observing loop: processes calibrations and science data</span>
+
+<span class="sd">    Copy raw cal files until we are ready to process the night&#39;s</span>
+<span class="sd">    calibrations.  When ready, process them.  If we get to UT = 3:00,</span>
+<span class="sd">    the sun has set and we then retrieve the processed cal files from</span>
+<span class="sd">    the most recent night.  Next, enter a loop that waits for new ifu</span>
+<span class="sd">    images, copies them and performs the basic bias removal and CR</span>
+<span class="sd">    rejection processing.  If there are standard star observations,</span>
+<span class="sd">    re-generate the standard star calibration.  If we get no new ifu</span>
+<span class="sd">    files and we get to UT = 15:00, then the sun is up and we exit</span>
+<span class="sd">    the loop.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        rawlist (list): list of raw data directories (usually in /scr2/sedm/raw)</span>
+<span class="sd">        redd (str): reduced directory (something like /scr2/sedm/redux)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if night completed normally, False otherwise</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        KeyboardInterrupt handler exits gracefully with a ctrl-C.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Global variables</span>
+    <span class="k">global</span> <span class="n">CalProcReady</span><span class="p">,</span> <span class="n">CalReady</span><span class="p">,</span> <span class="n">CalPrevious</span><span class="p">,</span> <span class="n">BiasReady</span>
+    <span class="c1"># Default return value</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="c1"># Source directory is most recent raw dir</span>
+    <span class="n">srcdir</span> <span class="o">=</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Outpur directory is based on source dir</span>
+    <span class="n">outdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="n">srcdir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># Do we have a new directory?  This tells us we are observing tonight</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
+        <span class="c1"># Make it</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+    <span class="c1"># Go there</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+    <span class="c1"># Are there good calibrations there?</span>
+    <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+    <span class="c1"># If not, process them</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">CalReady</span><span class="p">:</span>
+        <span class="c1"># Copy calibration files from previous date directory</span>
+        <span class="n">npre</span> <span class="o">=</span> <span class="n">cpprecal</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+        <span class="c1"># Now check the current source dir for cal files</span>
+        <span class="n">ncp</span> <span class="o">=</span> <span class="n">cpcal</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;bias2.0: </span><span class="si">%d</span><span class="s2">, bias0.1: </span><span class="si">%d</span><span class="s2">, dome: </span><span class="si">%d</span><span class="s2">, Xe: </span><span class="si">%d</span><span class="s2">, Hg: </span><span class="si">%d</span><span class="s2">, Cd: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span>
+              <span class="p">(</span><span class="n">nbias2</span><span class="p">,</span> <span class="n">nbias</span><span class="p">,</span> <span class="n">ndome</span><span class="p">,</span> <span class="n">nXe</span><span class="p">,</span> <span class="n">nHg</span><span class="p">,</span> <span class="n">nCd</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+        <span class="c1"># Now loop until we have calibrations we need</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">CalProcReady</span><span class="p">:</span>
+            <span class="c1"># Wait a minute</span>
+            <span class="k">print</span> <span class="s2">&quot;waiting 60s...&quot;</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new calibration files...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span>
+            <span class="n">ncp</span> <span class="o">=</span> <span class="n">cpcal</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;bias2.0: </span><span class="si">%d</span><span class="s2">, bias0.1: </span><span class="si">%d</span><span class="s2">, dome: </span><span class="si">%d</span><span class="s2">, Xe: </span><span class="si">%d</span><span class="s2">, Hg: </span><span class="si">%d</span><span class="s2">, &quot;</span>
+                  <span class="s2">&quot;Cd: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nbias2</span><span class="p">,</span> <span class="n">nbias</span><span class="p">,</span> <span class="n">ndome</span><span class="p">,</span> <span class="n">nXe</span><span class="p">,</span> <span class="n">nHg</span><span class="p">,</span> <span class="n">nCd</span><span class="p">))</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Check to see if we are definitely after sunset</span>
+                <span class="n">gm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">()</span>
+                <span class="k">if</span> <span class="mi">20</span> <span class="o">&gt;</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="c1"># Get earlier calibrations so we can proceed</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;It&#39;s getting late! UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> &gt;= 03:00&quot;</span> <span class="o">%</span>
+                          <span class="p">(</span><span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
+                    <span class="k">print</span> <span class="s2">&quot;Let&#39;s get our calibrations from a previous night&quot;</span>
+                    <span class="n">ncf</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;fine.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                    <span class="n">ncc</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;cube.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                    <span class="n">ncd</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                    <span class="n">ncb</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;bias0.1.fits&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                    <span class="n">nc2</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;bias2.0.fits&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                    <span class="c1"># Check for failure</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">ncf</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncc</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncd</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncb</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">nc2</span><span class="p">:</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Calibration stage failed: fine = </span><span class="si">%s</span><span class="s2">, &quot;</span> \
+                              <span class="s2">&quot;cube = </span><span class="si">%s</span><span class="s2">, flat = </span><span class="si">%s</span><span class="s2">, bias0.1 = </span><span class="si">%s</span><span class="s2">, &quot;</span> \
+                              <span class="s2">&quot;bias2.0 = </span><span class="si">%s</span><span class="s2">, &quot;</span> \
+                              <span class="s2">&quot;stopping&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncf</span><span class="p">,</span> <span class="n">ncc</span><span class="p">,</span> <span class="n">ncd</span><span class="p">,</span> <span class="n">ncb</span><span class="p">,</span> <span class="n">nc2</span><span class="p">)</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                    <span class="c1"># If we get here, we are done</span>
+                    <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="n">CalPrevious</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">, still less than 03:00, &quot;</span>
+                          <span class="s2">&quot;so keep waiting&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
+        <span class="c1"># Process calibrations if we are using them</span>
+        <span class="k">if</span> <span class="n">CalProcReady</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">CalPrevious</span><span class="p">:</span>
+            <span class="c1"># bias subtract and CR reject</span>
+            <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_bias_crrs</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Could not do bias, crrs processing, stopping&quot;</span><span class="p">)</span>
+            <span class="n">procbTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+            <span class="c1"># check status</span>
+            <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+            <span class="c1"># Process cube</span>
+            <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make cube.npy&quot;</span><span class="p">)</span>
+            <span class="n">proccTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;cube.npy&#39;</span><span class="p">)):</span>
+                <span class="c1"># Process flat</span>
+                <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make flat-dome-700to900.npy&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">))):</span>
+                    <span class="k">print</span> <span class="s2">&quot;Making of flat-dome-700to900.npy failed!&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;Making of fine.npy and cube.npy failed!&quot;</span>
+            <span class="n">procfTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+            <span class="c1"># check status</span>
+            <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">CalReady</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;These calibrations failed!&quot;</span>
+                <span class="k">print</span> <span class="s2">&quot;Let&#39;s get our calibrations from a previous night&quot;</span>
+                <span class="n">ncf</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;fine.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                <span class="n">ncc</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;cube.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                <span class="n">ncd</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                <span class="n">ncb</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;bias0.1.fits&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                <span class="n">nc2</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;bias2.0.fits&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+                <span class="c1"># Check for failure</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">ncf</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncc</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncd</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ncb</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">nc2</span><span class="p">:</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Calibration stage failed: fine = </span><span class="si">%s</span><span class="s2">, cube = </span><span class="si">%s</span><span class="s2">, &quot;</span> \
+                          <span class="s2">&quot;flat = </span><span class="si">%s</span><span class="s2">, bias0.1 = </span><span class="si">%s</span><span class="s2">, bias2.0 = </span><span class="si">%s</span><span class="s2">, &quot;</span> \
+                          <span class="s2">&quot;stopping&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncf</span><span class="p">,</span> <span class="n">ncc</span><span class="p">,</span> <span class="n">ncd</span><span class="p">,</span> <span class="n">ncb</span><span class="p">,</span> <span class="n">nc2</span><span class="p">)</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="c1"># If we get here, we are done</span>
+                <span class="n">CalReady</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="n">BiasReady</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="n">CalPrevious</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Report times</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Calibration processing took &quot;</span>
+                      <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> s (bias,crrs), </span><span class="si">%d</span><span class="s2"> s (cube), and </span><span class="si">%d</span><span class="s2"> s (flat)&quot;</span> <span class="o">%</span>
+                      <span class="p">(</span><span class="n">procbTime</span><span class="p">,</span> <span class="n">proccTime</span><span class="p">,</span> <span class="n">procfTime</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Using previous calibration files bias0.1.fits, bias2.0.fits,&quot;</span>
+                  <span class="s2">&quot; cube.npy, flat-dome-700to900.npy&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Calibrations already present in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">outdir</span>
+    <span class="c1"># Keep track of no copy</span>
+    <span class="n">nnc</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># loop and copy new files</span>
+    <span class="n">doit</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">doit</span><span class="p">:</span>
+            <span class="c1"># Wait a minute</span>
+            <span class="k">print</span> <span class="s2">&quot;waiting 60s for new ifu images...&quot;</span><span class="p">,</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+            <span class="c1"># Check for new ifu images</span>
+            <span class="k">print</span> <span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new ifu images...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="c1"># Record starting time for new file processing</span>
+            <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">ncp</span> <span class="o">=</span> <span class="n">cpnew</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+            <span class="c1"># We copied some new ones so report processing time</span>
+            <span class="k">if</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">procTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+                <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> new ifu images processed in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">procTime</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="n">nnc</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">nnc</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Have we been waiting for a while?</span>
+            <span class="k">if</span> <span class="n">nnc</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="c1"># Check time</span>
+                <span class="n">gm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">:</span>
+                    <span class="c1"># No new observations and sun is probably up!</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;No new images for </span><span class="si">%d</span><span class="s2"> minutes and UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> &gt; &quot;</span>
+                          <span class="s2">&quot;15:59 so sun is probably up!&quot;</span> <span class="o">%</span>
+                          <span class="p">(</span><span class="n">nnc</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
+                    <span class="k">print</span> <span class="s2">&quot;Time to wait until we have a new raw directory&quot;</span>
+                    <span class="n">doit</span> <span class="o">=</span> <span class="bp">False</span>
+                    <span class="c1"># Normal termination</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;No new image for </span><span class="si">%d</span><span class="s2"> minutes but UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> &lt; &quot;</span>
+                          <span class="s2">&quot;16:00, so keep waiting&quot;</span> <span class="o">%</span>
+                          <span class="p">(</span><span class="n">nnc</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
+    <span class="c1"># Handle a ctrl-C</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Exiting&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="go"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.go">[docs]</a><span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="n">rawd</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/raw&#39;</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/redux&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Outermost infinite loop that watches for a new raw directory.</span>
+
+<span class="sd">    Keep a list of raw directories in `redd` and fire off</span>
+<span class="sd">    the ObsLoop procedure when a new directory appears.  Check for</span>
+<span class="sd">    a new raw directory every 10 minutes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        rawd (str): raw directory, should be /scr2/sedm/raw</span>
+<span class="sd">        redd (str): reduced directory, should be like /scr2/sedm/redux</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        KeyboardInterrupt handler exits gracefully with a ctrl-C.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Infinite loop</span>
+    <span class="n">dobs</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="c1"># Keep track of iterations</span>
+    <span class="n">its</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># Get all raw directories</span>
+    <span class="n">fspec</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rawd</span><span class="p">,</span> <span class="s1">&#39;20??????&#39;</span><span class="p">)</span>
+    <span class="n">rawlist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fspec</span><span class="p">)</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">)])</span>
+    <span class="n">nraw</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rawlist</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%d</span><span class="s2"> raw directories in </span><span class="si">%s</span><span class="s2">: putting reduced data in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+          <span class="p">(</span><span class="n">nraw</span><span class="p">,</span> <span class="n">rawd</span><span class="p">,</span> <span class="n">redd</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">dobs</span><span class="p">:</span>
+            <span class="n">stat</span> <span class="o">=</span> <span class="n">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">stat</span><span class="p">:</span>
+                <span class="n">its</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Finished SEDM observing iteration </span><span class="si">%d</span><span class="s2"> in raw dir </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                      <span class="p">(</span><span class="n">its</span><span class="p">,</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+                <span class="k">print</span> <span class="s2">&quot;Now we wait until we get a new raw directory&quot;</span>
+                <span class="n">waiting</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">while</span> <span class="n">waiting</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="s2">&quot;waiting 10min for new raw directory...&quot;</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">600</span><span class="p">)</span>
+                    <span class="c1"># Get all raw directories</span>
+                    <span class="n">new_rawlist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fspec</span><span class="p">)</span>
+                                          <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">)])</span>
+                    <span class="n">new_nraw</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_rawlist</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">new_nraw</span> <span class="o">&gt;</span> <span class="n">nraw</span><span class="p">:</span>
+                        <span class="n">waiting</span> <span class="o">=</span> <span class="bp">False</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                        <span class="n">rawlist</span> <span class="o">=</span> <span class="n">new_rawlist</span>
+                        <span class="n">nraw</span> <span class="o">=</span> <span class="n">new_nraw</span>
+                        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Starting next SEDM observing iteration with &quot;</span>
+                              <span class="s2">&quot;raw dir </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">gm</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">()</span>
+                        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> No new directories yet, &quot;</span>
+                              <span class="s2">&quot;so keep waiting&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+    <span class="c1"># Handle a ctrl-C</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Exiting&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Start SEDM pipeline</span>
+
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--rawdir&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/raw&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input raw directory (/scr2/sedm/raw)&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--reduxdir&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/redux&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output reduced directory (/scr2/sedm/redux)&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">go</span><span class="p">(</span><span class="n">rawd</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">rawdir</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">reduxdir</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

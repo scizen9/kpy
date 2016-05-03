@@ -40,6 +40,9 @@ else
         case "plan":
             python $SEDMPATH/SEDMr/Plan.py ifu*fits
             breaksw
+        case "plan2":
+            python $SEDMPATH/SEDMr/Plan2.py ifu*fits
+            breaksw
         default
             python $*
             breaksw

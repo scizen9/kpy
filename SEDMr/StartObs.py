@@ -1,9 +1,5 @@
 """Conduct automatic reduction of SEDM data in sedmdrp@pharos
 
-*Usage:*
-    ~/spy ~/kpy/SEDMr/StartObs.py
-    no arguments are required, this will run the 'go' function
-
 Functions
     * :func:`go`           outer loop waits for new data directory in /scr2/sedm/raw
     * :func:`ObsLoop`      one night observing loop: processes calibrations and science data
@@ -25,6 +21,16 @@ Globals
     * CalReady        - are all required processed cal files present?
     * CalPrevious     - are we using files from a previous night?
     * BiasReady       - are there enough biases to process?
+
+Note:
+    This is used as a python script as follows::
+
+        usage: StartObs.py [-h] [--rawdir RAWDIR] [--reduxdir REDUXDIR]
+
+        optional arguments:
+          -h, --help           show this help message and exit
+          --rawdir RAWDIR      Input raw directory (/scr2/sedm/raw)
+          --reduxdir REDUXDIR  Output reduced directory (/scr2/sedm/redux)
 
 """
 import time
@@ -772,8 +778,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=
-                                     """StartObs.py
+    parser = argparse.ArgumentParser(
+        description="""Start SEDM pipeline
 
             """, formatter_class=argparse.RawTextHelpFormatter)
 

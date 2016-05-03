@@ -1,10 +1,32 @@
-"""Process standard star corrections.
+"""Process standard star corrections
+
+ The three options for processing are:
+    * CORR    - extract a single correction vector
+    * SUM     - obsolete version of CREATE
+    * CREATE  - create an ensemble correction
+
+Functions:
+    * :func:`handle_corr` output a single correction
+    * :func:`handle_create` create a calibration spectrum
+    * :func:`handle_summary` obsolete version of handle_create
 
 Note:
-    How to invoke from the command line::
+    This is used as a python script as follows::
 
-        ~/spy ~/kpy/SEDMr/AtmCorr.py CORR|SUM|CREATE --A <file>
-                --outname <file> --std <stdfile> --files <file_list>
+        usage: AtmCorr.py [-h] [--A A] [--outname OUTNAME] [--std STD]
+                  [--files file [file ...]]
+                  process
+
+        positional arguments:
+          process               Process [CORR|SUM|CREATE]
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          --A A                 FITS file to correct
+          --outname OUTNAME     Prefix output name
+          --std STD             Name of standard
+          --files file [file ...]
+                                list of spectrum files: sp_STD-*.npy
 
 """
 import argparse
@@ -23,6 +45,54 @@ import NPK.Standards as SS
 import Wavelength
 
 
+def handle_corr(filename, outname='corrected.npy'):
+    """Output single correction. """
+
+    if outname is None:
+        outname = "corr_" + filename
+    dat = np.load("sp_" + filename)[0]
+    if "std-correction" not in dat.keys():
+        print "Not a known standard extraction, returning"
+        return
+    erg_s_cm2_ang = dat['std-correction'] * 1e-16
+    maxnm = dat['std-maxnm']
+
+    object = filename.split('-')[1].split('.')[0]
+
+    pl.figure(1)
+    pl.clf()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        pl.xlim(np.nanmin(dat['nm']) - 10., maxnm + 10.)
+        pl.semilogy(dat['nm'], erg_s_cm2_ang)
+        pl.ylim(1e-20, 1e-15)
+        pl.grid(True)
+
+        pl.xlabel("Wavelength [nm]")
+        pl.ylabel("Correction [erg/s/cm cm/Ang]")
+        pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % object)
+
+        pl.savefig("corr_" + filename.rstrip(".npy") + ".pdf")
+
+    # Construct result
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        res = {
+            "nm": dat['nm'],
+            "maxnm": maxnm,
+            "correction": erg_s_cm2_ang,
+            "doc": "Correct ph/10 m/nm to erg/s/cm2/ang",
+            "Nspec": 1,
+            "correction_std": np.nanstd(erg_s_cm2_ang),
+            "outname": outname,
+            "files": filename,
+            "when": '%s' % datetime.datetime.now(),
+            "user": os.getlogin()
+        }
+
+    np.save(outname, [res])
+
+
 def handle_create(outname=None, filelist=[], plot_filt=False):
     """Create standard star correction. Units are erg/s/cm2/Ang
 
@@ -38,14 +108,14 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         dict: A dictionary containing the ensemble correction and some
         details::
 
-            {   "nm": wavelengths in nm,
+            {   "nm": wavelengths (nm),
                 "maxnm": maximum wavelength,
                 "correction": the correction spectrum,
-                "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
-                "Nspec": number of spectra used for correction,
+                "doc": "Correct ph/10 m/nm to erg/s/cm2/ang",
+                "Nspec": number of spectra used,
                 "correction_std": STDev of ensemble corrections,
-                "outname": outname from args,
-                "files": filelist from args,
+                "outname": outname (see Parameters),
+                "files": filelist (see Parameters),
                 "when": timestamp string,
                 "user": user who ran the process    }
 
@@ -63,18 +133,18 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     legend = ["corr", ]
     filt_legend = ["orig"]
     maxnm = 915.
-    for file in filelist:
+    for ifile in filelist:
         """ Filename is sp_STD-nnnnn_obs*.npy """
 
         # Try to read input file
         try:
-            data = np.load(file)[0]
+            data = np.load(ifile)[0]
         except:
-            raise Exception("Not able to load %s. " % file)
+            raise Exception("Not able to load %s. " % ifile)
 
         # Check for calculated correction
         if "std-correction" not in data.keys():
-            print "No std-correction vector in %s" % file
+            print "No std-correction vector in %s" % ifile
             continue
         correction = data['std-correction']
 
@@ -84,15 +154,15 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
                 maxnm = data['std-maxnm']
         # Convert file named sp_STD-nnnn_obs* to a name compaitable
         # with Standards.py
-        pred = file.lstrip("sp_STD-")
+        pred = ifile.lstrip("sp_STD-")
         pred = pred.split("_")[0]
         legend.append(pred)
         pred = pred.lower().replace("+", "").replace("-", "_")
-        print file, pred, pred in SS.Standards
+        print ifile, pred, pred in SS.Standards
         # Are we in our list of standard stars?
         if pred not in SS.Standards:
             print("File named '%s' is reduced to '%s' and no such standard "
-                  "seems to exist." % (file, pred))
+                  "seems to exist." % (ifile, pred))
             continue
         # Record median correction in ROI
         ROI = (ll > 600) & (ll < 850)
@@ -100,7 +170,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         # Normalize each correction by the median value
         correction /= corr_vals[-1]
         corrs.append(correction)
-    # END: for file in filelist:
+    # END: for ifile in filelist:
 
     # Rescale each correction and scale to erg/s/cm2/Ang
     corrs = np.array(corrs)
@@ -194,14 +264,14 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             "nm": ll,
             "maxnm": maxnm,
             "correction": the_corr,
-            "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
+            "doc": "Correct ph/10 m/nm to erg/s/cm2/ang",
             "Nspec": len(corrs),
             "correction_std": np.nanstd(erg_s_cm2_ang, 0),
             "outname": outname,
             "files": filelist,
             "when": '%s' % datetime.datetime.now(),
             "user": os.getlogin()
-            }
+        }
 
     np.save(outname, [res])
     return res
@@ -215,14 +285,14 @@ def handle_summary(outname=None, filelist=[]):
 
     # Get a list of good correction vectors
     keepers = []
-    for file in filelist:
-        print file
-        f = np.load(file)[0]
+    for ifile in filelist:
+        print ifile
+        f = np.load(ifile)[0]
         # Correction values should be small
         # if "std-correction" not in data.keys():
         if np.nanmin(f['std-correction']) < 9:
             keepers.append(f)
-            print "Keeping %s" % file
+            print "Keeping %s" % ifile
 
     # Set fiducial wavelengths from first correction vector
     corl = keepers[0]['nm'].copy()
@@ -243,56 +313,9 @@ def handle_summary(outname=None, filelist=[]):
     np.save(outname, cor)
 
 
-def handle_corr(filename, outname='corrected.npy'):
-    """Output single correction. """
-
-    if outname is None: outname = "corr_" + filename
-    dat = np.load("sp_" + filename)[0]
-    if "std-correction" not in dat.keys():
-        print "Not a known standard extraction, returning"
-        return
-    erg_s_cm2_ang = dat['std-correction'] * 1e-16
-    maxnm = dat['std-maxnm']
-
-    object = filename.split('-')[1].split('.')[0]
-
-    pl.figure(1)
-    pl.clf()
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        pl.xlim(np.nanmin(dat['nm']) - 10., maxnm + 10.)
-        pl.semilogy(dat['nm'], erg_s_cm2_ang)
-        pl.ylim(1e-20, 1e-15)
-        pl.grid(True)
-
-        pl.xlabel("Wavelength [nm]")
-        pl.ylabel("Correction [erg/s/cm cm/Ang]")
-        pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % object)
-
-        pl.savefig("corr_" + filename.rstrip(".npy") + ".pdf")
-
-    # Construct result
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        res = {
-            "nm": dat['nm'],
-            "maxnm": maxnm,
-            "correction": erg_s_cm2_ang,
-            "doc": "Correct ph/10 m/nm to erg/2/cm2/ang",
-            "Nspec": 1,
-            "correction_std": np.nanstd(erg_s_cm2_ang),
-            "outname": outname,
-            "files": filename,
-            "when": '%s' % datetime.datetime.now(),
-            "user": os.getlogin()
-            }
-
-    np.save(outname, [res])
-
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description= \
-                                         """Process standard star corrections in one of three ways:
+    parser = argparse.ArgumentParser(
+        description="""Process standard star corrections in one of three ways:
   CORR    - extract a single correction vector
   SUM     - obsolete version of CREATE
   CREATE  - create an ensemble correction
