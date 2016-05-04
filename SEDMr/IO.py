@@ -104,10 +104,16 @@ def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
         list = pf.HDUList(pf.PrimaryHDU(towrite))
 
     if no_lossy_compress: 
-        list.writeto(fname.rstrip(".gz"), clobber=clobber)
+        if '.gz' in fname:
+            list.writeto(os.path.splitext(fname)[0], clobber=clobber)
+        else:
+            list.writeto(fname, clobber=clobber)
         return
     
-    n = fname.rstrip(".gz")
+    if '.gz' in fname:
+        n = os.path.splitext(fname)[0]
+    else:
+        n = fname
     list[0].data = UU.floatcompress(list[0].data)
     list.writeto(fname, clobber=clobber)
     

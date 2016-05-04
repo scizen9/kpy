@@ -580,10 +580,12 @@ def imarith(operand1, op, operand2, result, doAirmass=False):
 def gunzip(A, B):
     if A.endswith(".gz"):
         os.system("gunzip %s" % A)
+        A = os.path.splitext(A)[0]
     if B.endswith(".gz"):
         os.system("gunzip %s" % B)
+        B = os.path.splitext(B)[0]
 
-    return A.rstrip(".gz"), B.rstrip(".gz")
+    return A,B
 
 
 def gzip(A,B):
@@ -1492,7 +1494,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     print ""
 
     if args.outname is not None:
-        args.outname = args.outname.rstrip('.npy')
+        args.outname = os.path.splitext(args.outname)[0]
 
     if args.flat_correction is not None:
         print "Using flat data in %s" % args.flat_correction
@@ -1500,7 +1502,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     else: flat = None
 
     if args.A is not None and args.B is not None:
-        print "A B Extraction"
+        print "A B Extraction to %s.npy" % args.outname
         handle_AB(args.A, args.B, args.fine, outname=args.outname,
                     Aoffset=args.Aoffset, Boffset=args.Boffset,
                     radius=args.radius_as, flat_corrections=flat,
@@ -1509,15 +1511,15 @@ Handles a single A image and A+B pair as well as flat extraction.
     elif args.A is not None:
         if args.std is None:
             if args.flat:
-                print "Flat Extraction"
+                print "Flat Extraction to %s.npy" % args.outname
                 handle_Flat(args.A, args.fine, outname=args.outname)
             else:
-                print "Single Extraction"
+                print "Single Extraction to %s.npy" % args.outname
                 handle_A(args.A, args.fine, outname=args.outname,
                             Aoffset=args.Aoffset, radius=args.radius_as,
                             flat_corrections=flat,nosky=args.nosky)
         else:
-            print "Standard Star Extraction"
+            print "Standard Star Extraction to %s.npy" % args.outname
             star = Stds.Standards[args.std]
             handle_Std(args.A, args.fine, outname=args.outname,
                         standard=star, Aoffset=args.Aoffset,

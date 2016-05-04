@@ -19,6 +19,7 @@ References:
 
 """
 
+import os
 import argparse
 import numpy as np
 import pyfits as pf
@@ -374,7 +375,7 @@ STEP is either:
     args = parser.parse_args()
 
     if args.outname is not None:
-        args.outname = args.outname.rstrip('.npy')
+        args.outname = os.path.splitext(args.outname)[0]
 
     step = args.step
     infile = args.extracted

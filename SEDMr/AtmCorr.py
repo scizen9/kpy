@@ -269,7 +269,7 @@ def handle_corr(filename, outname='corrected.npy'):
         pl.ylabel("Correction [erg/s/cm cm/Ang]")
         pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % object)
 
-        pl.savefig("corr_" + filename.rstrip(".npy") + ".pdf")
+        pl.savefig("corr_" + os.path.splitext(filename)[0] + ".pdf")
 
     # Construct result
     with warnings.catch_warnings():
