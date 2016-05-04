@@ -1,5 +1,13 @@
-"""Create a data cube solution.
+"""Convert an extracted file into a data cube.
 
+    STEP is either:
+        * make: To create the data cube (once per night)
+        * extract: To extract the cube (one for each observation)
+
+Functions:
+    * :func:`QR_to_img` convert cube to an image
+    * :func:`extraction_to_cube` calculates sky positions
+    * :func:`reject_outliers` trims data values of outliers
 
 References:
 
@@ -17,6 +25,19 @@ References:
         0,1     1,1     2,1     3,1     4,1
             0,2     1,2     2,2     3,2
 
+Note:
+    This is used as a python script as follows::
+
+        usage: Cube.py [-h] [--step STEP] [--outname OUTNAME] extracted
+
+        positional arguments:
+          extracted          Extracted file
+
+        optional arguments:
+          -h, --help         show this help message and exit
+          --step STEP        [make|extract|dump]
+          --outname OUTNAME  Output cube name
+
 """
 
 import os
@@ -30,6 +51,7 @@ from scipy.interpolate import interp1d
 import SEDMr.Wavelength as Wavelength
 
 import sys
+
 sys.setrecursionlimit(10000)
 
 ncol = 0
@@ -42,15 +64,20 @@ theta = np.deg2rad(-37+13.5)
 ROT = np.array([[np.cos(theta), -np.sin(theta)], 
                 [np.sin(theta),  np.cos(theta)]])
 
-def reject_outliers(data, m=2.):
-    d = np.abs(data - np.median(data))
-    mdev = np.median(d)
-    d[d != d] = 10000.
-    s = d/mdev if mdev else 0.
-    return data[s<m]
 
 
 def QR_to_img(exts, Size=4, outname="cube.fits"):
+    """Convert a data cube to a fits image
+
+    Args:
+        exts (list of Extraction): extractions to convert (see Extraction.py)
+        Size (int): expansion factor, defaults to 4
+        outname (str): output fits file name, defaults to cube.fits
+
+    Returns:
+        None
+
+    """
     
     Xs = np.array([ext.X_as for ext in exts], dtype=np.float)
     Ys = np.array([ext.Y_as for ext in exts], dtype=np.float)
@@ -75,9 +102,12 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
 
     allspec = np.zeros((len(exts), len(l_grid)/2))
     for cnt, ext in enumerate(exts):
-        if ext.xrange is None: continue
-        if ext.exptime is None: ext.exptime = 1
-        if ext.lamcoeff is None: continue
+        if ext.xrange is None:
+            continue
+        if ext.exptime is None:
+            ext.exptime = 1
+        if ext.lamcoeff is None:
+            continue
 
         ix = np.arange(*ext.xrange)
         l = chebval(ix, ext.lamcoeff)
@@ -93,12 +123,13 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
         y = (ext.Y_as - miny)/0.25
 
         try: 
-            for dx in [-1,0,1]:
-                for dy in [-1,0,1]:
-                    img[x+dx,y+dy,:] = fi
-        except: pass
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    img[x+dx, y+dy, :] = fi
+        except:
+            pass
 
-        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x,y)
+        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x, y)
         print outstr,
         sys.stdout.flush()
 
@@ -108,9 +139,12 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
     ff.writeto(outname)
 
     for cnt, ext in enumerate(exts):
-        if ext.xrange is None: continue
-        if ext.exptime is None: ext.exptime = 1
-        if ext.lamcoeff is None: continue
+        if ext.xrange is None:
+            continue
+        if ext.exptime is None:
+            ext.exptime = 1
+        if ext.lamcoeff is None:
+            continue
 
         ix = np.arange(*ext.xrange)
         l = chebval(ix, ext.lamcoeff)
@@ -127,10 +161,11 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
         except:
             continue
         try: 
-            for dx in [-1,0,1]:
-                for dy in [-1,0,1]:
-                    img[x+dx,y+dy,:] = fi
-        except: pass
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    img[x+dx, y+dy, :] = fi
+        except:
+            pass
 
     ff = pf.PrimaryHDU(img.T)
     ff.writeto("bs_" + outname)
@@ -140,31 +175,30 @@ def extraction_to_cube(exts, outname="G.npy"):
     """ Convert the extraction to sky coordinates
 
     Args:
-        exts: The list of extractions
-
-    Results:
-        outname: The file created with the new extraciton
+        exts (list of Extraction): The list of extractions (see Extraction.py)
+        outname (str): The file created with the new extraction
 
     Returns:
-        The new data cube with the following coordinate positions populated:
+        None
 
-        X_as: X position in arcsecond
-        Y_as: Y position in arcsecond
-        Z_as: Z position in arcsecond (the Z coordinate is runs 45 degree to X and is not a ~3rd~ dimension).
+    Note:
+        The new data cube has the following coordinate positions populated:
 
-        Q_ix: The axial Q coordinate in integral units
-        R_ix: The axial R coordinate in integral units
+        * X_as: X position in arcsec
+        * Y_as: Y position in arcsec
+        * Z_as: Z position in arcsec (the Z coordinate runs 45 degrees to X and is not a `3rd` dimension).
+        * Q_ix: The axial Q coordinate in integral units
+        * R_ix: The axial R coordinate in integral units
 
         The relationship of Q/R to X/Y is defined through the pixel mapping
-        matrix times the rotation matrix
+        matrix times the rotation matrix:
 
-        P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])
-        Rot (22 degree)
+        * P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])
+        * Rot (22 degree)
 
     """
 
     global ncol
-
 
     # start with our x,y pixel positions
     Xs = [None] * len(exts)
@@ -193,7 +227,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         Xs[ix] = -999
         Ys[ix] = -999
 
-        # lamcoeff has precidence
+        # lamcoeff has precedence
         if ext.lamcoeff is not None:
             coeff = ext.lamcoeff
             n_lam += 1
@@ -233,11 +267,11 @@ def extraction_to_cube(exts, outname="G.npy"):
     Ys[Ys != Ys] = -999
 
     # Make a KD-Tree
-    dat = np.array([Xs,Ys],dtype=np.float).T
+    dat = np.array([Xs, Ys], dtype=np.float).T
     tree = KDTree(dat)
 
     # Get the index of the spaxel closest to the center of the CCD
-    ignore, Center = tree.query([1024,1024], 1)
+    ignore, Center = tree.query([1024, 1024], 1)
 
     # Set the coords for the center to 0,0 (origin)
     exts[Center].Q_ix = 0
@@ -309,7 +343,7 @@ def extraction_to_cube(exts, outname="G.npy"):
             else:
                 # Check if our hex positions agree
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
-                    (exts[nix].R_ix != r_this + rnd[1]):
+                        (exts[nix].R_ix != r_this + rnd[1]):
                     print "collision: ",
                     print exts[nix].Q_ix, q_this + rnd[0], " ",
                     print exts[nix].R_ix, r_this + rnd[1]
@@ -326,7 +360,6 @@ def extraction_to_cube(exts, outname="G.npy"):
     print "Number of collisions: %d" % ncol
 
     # Now convert Q/R to even-Q X/Y
-    #
 
     # Get arrays of hex positions
     Qs = np.array([ext.Q_ix for ext in exts], dtype=np.float)
@@ -336,7 +369,7 @@ def extraction_to_cube(exts, outname="G.npy"):
     Xs = np.sqrt(3) * (Qs + Rs/2.0)
     Ys = 3/2 * Rs
 
-    #t= np.radians(165.0+45)
+    # t= np.radians(165.0+45)
     # Hex angle relative to positive Y pixel axis
     t= np.radians(180+22)
     # Rotation matrix
@@ -357,15 +390,31 @@ def extraction_to_cube(exts, outname="G.npy"):
     print "Wrote %s.npy" % outname
 
 
+def reject_outliers(data, m=2.):
+    """Reject outliers beyond `m` sigma
+
+    Args:
+        data (numpy float array): data values
+        m (float): sigma factor for rejections threshhold
+
+    Returns:
+        (numpy float array): input array with outliers removed
+
+    """
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    d[d != d] = 10000.
+    s = d/mdev if mdev else 0.
+    return data[s < m]
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
-        """Convert an extracted file into a data cube.
+    parser = argparse.ArgumentParser(
+        description="""Convert an extracted file into a data cube.
 STEP is either:
-  make: To create the data cube (once per night)
-  extract: To extract the cube (one for each observation)
+make: To create the data cube (once per night)
+extract: To extract the cube (one for each observation)
         """, formatter_class=argparse.RawTextHelpFormatter)
-
 
     parser.add_argument('extracted', type=str, help='Extracted file')
     parser.add_argument('--step', type=str, default='make',

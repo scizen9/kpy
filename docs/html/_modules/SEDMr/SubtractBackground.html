@@ -1,0 +1,265 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.SubtractBackground &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.SubtractBackground</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Subtract background from ifu images.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="kn">import</span> <span class="nn">SEDMr.IO</span> <span class="kn">as</span> <span class="nn">IO</span>
+
+<span class="kn">from</span> <span class="nn">scipy.ndimage.filters</span> <span class="kn">import</span> <span class="n">gaussian_filter</span>
+
+<span class="kn">from</span> <span class="nn">scipy.weave</span> <span class="kn">import</span> <span class="n">converters</span>
+<span class="kn">import</span> <span class="nn">scipy.weave</span> <span class="kn">as</span> <span class="nn">weave</span>
+ 
+ 
+<div class="viewcode-block" id="weaveConvolve"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.weaveConvolve">[docs]</a><span class="k">def</span> <span class="nf">weaveConvolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">kernel</span><span class="p">):</span>
+ 
+    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+ 
+    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">nkx</span><span class="p">,</span> <span class="n">nky</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span>
+ 
+    <span class="k">if</span> <span class="n">nkx</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">nky</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Kernel dimensions should be odd&quot;</span><span class="p">)</span>
+ 
+    <span class="n">smoothed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">isvalid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+ 
+    <span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            double top, bot;</span>
+<span class="s2">            int wkx, wky, iimin, iimax, jjmin, jjmax;</span>
+<span class="s2">            wkx = (nkx-1)/2;</span>
+<span class="s2">            wky = (nky-1)/2;</span>
+<span class="s2">            for (int i=0; i&lt;nx; ++i) {</span>
+<span class="s2">                for (int j=0; j&lt;ny; ++j) {</span>
+<span class="s2">                    if(isvalid(i,j)) {</span>
+<span class="s2">                        top = 0.;</span>
+<span class="s2">                        bot = 0.;</span>
+<span class="s2">                        if(i-wkx &gt; 0) { iimin = i-wkx; } else { iimin = 0; };</span>
+<span class="s2">                        if(i+wkx &lt; nx-1) { iimax = i+wkx; } else { iimax = nx-1; };</span>
+<span class="s2">                        if(j-wkx &gt; 0) { jjmin = j-wky; } else { jjmin = 0; };</span>
+<span class="s2">                        if(j+wkx &lt; ny-1) { jjmax = j+wky; } else { jjmax = ny-1; };</span>
+<span class="s2">                        for (int ii=iimin; ii &lt;= iimax ; ++ii) {</span>
+<span class="s2">                            for (int jj=jjmin; jj &lt;= jjmax; ++jj) {</span>
+<span class="s2">                                if(isvalid(ii,jj)) {</span>
+<span class="s2">                                    top = top + kernel(wkx + ii-i,wky + jj-j) * image(ii,jj);</span>
+<span class="s2">                                    bot = bot + kernel(wkx + ii-i,wky + jj-j);</span>
+<span class="s2">                                }</span>
+<span class="s2">                            }</span>
+<span class="s2">                        }</span>
+<span class="s2">                        smoothed(i,j) = top / bot;</span>
+<span class="s2">                    } else {</span>
+<span class="s2">                        smoothed(i,j) = image(i,j);</span>
+<span class="s2">                    }</span>
+<span class="s2">                }</span>
+<span class="s2">            }</span>
+<span class="s2">            return_val = 1;</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+ 
+    <span class="n">weave</span><span class="o">.</span><span class="n">inline</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="s1">&#39;isvalid&#39;</span><span class="p">,</span> <span class="s1">&#39;nx&#39;</span><span class="p">,</span> <span class="s1">&#39;ny&#39;</span><span class="p">,</span> <span class="s1">&#39;kernel&#39;</span><span class="p">,</span> <span class="s1">&#39;nkx&#39;</span><span class="p">,</span> <span class="s1">&#39;nky&#39;</span><span class="p">,</span> <span class="s1">&#39;smoothed&#39;</span><span class="p">],</span>
+                 <span class="n">type_converters</span><span class="o">=</span><span class="n">converters</span><span class="o">.</span><span class="n">blitz</span><span class="p">,</span> <span class="n">compiler</span> <span class="o">=</span> <span class="s1">&#39;gcc&#39;</span><span class="p">)</span>
+ 
+    <span class="k">return</span> <span class="n">smoothed</span></div>
+
+
+<div class="viewcode-block" id="remove"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.remove">[docs]</a><span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="estimateBackground"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.estimateBackground">[docs]</a><span class="k">def</span> <span class="nf">estimateBackground</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">flex</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">gausswidth</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">outname</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Need an output name&quot;</span>
+        <span class="k">return</span>
+
+    <span class="n">dX</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">dY</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+
+    <span class="k">for</span> <span class="n">ff</span> <span class="ow">in</span> <span class="n">fine</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ff</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">ff</span><span class="o">.</span><span class="n">xrange</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">ff</span><span class="o">.</span><span class="n">poly</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
+        
+        <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">ff</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span>
+        <span class="n">ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">poly</span><span class="p">)(</span><span class="n">xs</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">dY</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">):</span>
+            <span class="n">ty</span> <span class="o">=</span> <span class="n">ys</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">-</span> <span class="n">dY</span>
+            <span class="k">try</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">ty</span><span class="p">,</span><span class="n">xs</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+    <span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">convolve_fft</span><span class="p">,</span> <span class="n">Box2DKernel</span>
+
+    <span class="k">print</span> <span class="s2">&quot;Traditional convolve (pass 1)&quot;</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">Box2DKernel</span><span class="p">(</span><span class="mi">17</span><span class="p">)</span>
+    <span class="n">flt</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">NaNs</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">OKs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">flt</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">flt</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="n">flt</span><span class="p">[</span><span class="n">OKs</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">OKs</span><span class="p">]</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Iteration </span><span class="si">%d</span><span class="s2"> of 5&quot;</span> <span class="o">%</span>  <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1">#IO.writefits(pf.PrimaryHDU(flt), &quot;test_%i.fits.gz&quot; % i, clobber=True)</span>
+
+    <span class="n">data</span><span class="p">[</span><span class="n">NaNs</span><span class="p">]</span> <span class="o">=</span> <span class="n">flt</span><span class="p">[</span><span class="n">NaNs</span><span class="p">]</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span> 
+        <span class="s2">&quot;lf_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
+    <span class="c1">#IO.writefits(data, fname, clobber=True)</span>
+    
+
+    <span class="c1">#print &quot;FFT convolve (pass 2)&quot;</span>
+    <span class="k">print</span> <span class="s2">&quot;Gaussian filter with width = </span><span class="si">%d</span><span class="s2"> (pass 2)&quot;</span> <span class="o">%</span> <span class="n">gausswidth</span>
+    <span class="c1">#k = Box2DKernel(70)</span>
+    <span class="c1">#flt = convolve_fft(data, k)</span>
+    <span class="n">flt</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">gausswidth</span><span class="p">)</span>
+
+
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span> 
+        <span class="s2">&quot;bgd_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
+    <span class="n">HDU</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">flt</span><span class="p">)</span>
+    <span class="n">HDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GAUFWID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">gausswidth</span><span class="p">,</span> <span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
+    <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">HDU</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s2">&quot;Background image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span>
+    
+
+    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;BGDSUB&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Background subtracted using </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fname</span>
+    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GAUFWID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">gausswidth</span><span class="p">,</span> 
+                                   <span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span> 
+        <span class="s2">&quot;bs_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
+    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">flt</span>
+
+    <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s2">&quot;Subtracted image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span>
+
+    <span class="k">return</span> <span class="n">flt</span></div>
+
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+        <span class="sd">&#39;&#39;&#39;SubtractBackground.py</span>
+
+<span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;fine&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Fine correction path&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;infile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to FITS file to refit&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--flexfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to flexure npy file&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--gausswidth&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
+
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">fine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">fine</span><span class="p">)</span>
+    <span class="n">infile</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;EXPTIME&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">30</span><span class="p">:</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">),</span> 
+            <span class="s2">&quot;bs_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;gzip --fast --force </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">flexfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">flex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">flexfile</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">flex</span><span class="o">=</span><span class="bp">None</span>
+
+    <span class="n">gausswidth</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">gausswidth</span>
+
+
+    <span class="n">background</span> <span class="o">=</span> <span class="n">estimateBackground</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">flex</span><span class="o">=</span><span class="n">flex</span><span class="p">,</span> 
+                                    <span class="n">gausswidth</span><span class="o">=</span><span class="n">gausswidth</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>NPK.Util &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for NPK.Util</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.coordinates</span> <span class="kn">import</span> <span class="n">Angle</span> 
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Struct:</span>
+<span class="sd">http://stackoverflow.com/questions/1305532/convert-python-dict-to-object</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="Struct"><a class="viewcode-back" href="../../NPK.html#NPK.Util.Struct">[docs]</a><span class="k">class</span> <span class="nc">Struct</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Converts a dictionary into an object</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        a = {&#39;a&#39;: 1, &#39;b&#39;: 2}</span>
+<span class="sd">        o = Struct(a)</span>
+<span class="sd">        print o.a, o.b</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">entries</span><span class="p">):</span> 
+        <span class="s2">&quot;s = Struct(***dict)&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="floatcompress"><a class="viewcode-back" href="../../NPK.html#NPK.Util.floatcompress">[docs]</a><span class="k">def</span> <span class="nf">floatcompress</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ndig</span><span class="o">=</span><span class="mi">14</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Adapted from Finkbeiner IDL routine floatcompress&#39;&#39;&#39;</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">((</span><span class="n">t</span> <span class="o">==</span> <span class="s1">&#39;float32&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">t</span> <span class="o">==</span> <span class="s1">&#39;float64&#39;</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Only works on floating point numbers&quot;</span><span class="p">)</span>
+
+    <span class="n">wzer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">data</span><span class="p">[</span><span class="n">wzer</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="n">log2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">2.0</span><span class="p">))</span>
+    <span class="n">mant</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">data</span><span class="o">/</span><span class="mf">2.0</span><span class="o">**</span><span class="p">(</span><span class="n">log2</span> <span class="o">-</span> <span class="n">ndig</span><span class="p">))</span><span class="o">/</span><span class="mf">2.0</span><span class="o">**</span><span class="n">ndig</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">mant</span><span class="o">*</span><span class="mf">2.0</span><span class="o">**</span><span class="n">log2</span>
+
+    <span class="n">out</span><span class="p">[</span><span class="n">wzer</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+
+<div class="viewcode-block" id="par_angle"><a class="viewcode-back" href="../../NPK.html#NPK.Util.par_angle">[docs]</a><span class="k">def</span> <span class="nf">par_angle</span><span class="p">(</span><span class="n">HA</span><span class="p">,</span> <span class="n">Dec</span><span class="p">,</span> <span class="n">Lat</span><span class="o">=</span><span class="n">Angle</span><span class="p">(</span><span class="s2">&quot;33d 21m 21.6s&quot;</span><span class="p">)):</span>
+    <span class="sd">&#39;&#39;&#39; Compute parallactic angle given an hour angle and declination.</span>
+
+<span class="sd">    Parallactic angle is defined such that 180 is N/S.</span>
+
+<span class="sd">    Latitude defaults to Palomar. Must use Astropy Angle class&#39;&#39;&#39;</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">HA</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Angle</span><span class="p">:</span> <span class="n">HA</span> <span class="o">=</span> <span class="n">Angle</span><span class="p">(</span><span class="n">HA</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;hour&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Dec</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Angle</span><span class="p">:</span> <span class="n">Dec</span> <span class="o">=</span> <span class="n">Angle</span><span class="p">(</span><span class="n">Dec</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;deg&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Angle</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">HA</span><span class="p">),</span> 
+        <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Dec</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">Lat</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Dec</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">HA</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="air_index"><a class="viewcode-back" href="../../NPK.html#NPK.Util.air_index">[docs]</a><span class="k">def</span> <span class="nf">air_index</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">P</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Returns index of refraction of air-1 at</span>
+<span class="sd">        lam in micron at vacuum</span>
+<span class="sd">        Pressure in mm hg</span>
+<span class="sd">        T is temperature in deg C</span>
+<span class="sd">        f is water vapor pressure in mm Hg</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">K1</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">lam</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">nm1e6</span> <span class="o">=</span> <span class="mf">64.328</span> <span class="o">+</span> <span class="mf">29498.1</span><span class="o">/</span><span class="p">(</span><span class="mi">146</span><span class="o">-</span><span class="n">K1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">255.4</span><span class="o">/</span><span class="p">(</span><span class="mi">41</span><span class="o">-</span><span class="n">K1</span><span class="p">)</span>
+
+    <span class="n">nm1e6</span> <span class="o">*=</span> <span class="n">P</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.049</span><span class="o">-</span><span class="mf">0.0157</span> <span class="o">*</span> <span class="n">T</span><span class="p">)</span><span class="o">*</span><span class="mf">1e-6</span><span class="o">*</span><span class="n">P</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">720.883</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> 
+        <span class="mf">0.003661</span> <span class="o">*</span> <span class="n">T</span><span class="p">))</span>
+
+    <span class="n">nm1e6</span> <span class="o">-=</span> <span class="mf">0.0624</span> <span class="o">-</span> <span class="mf">0.000680</span> <span class="o">*</span> <span class="n">K1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">0.003661</span> <span class="o">*</span> <span class="n">T</span><span class="p">)</span> <span class="o">*</span> <span class="n">f</span>
+
+    <span class="k">return</span> <span class="n">nm1e6</span><span class="o">/</span><span class="mf">1e6</span></div>
+
+<div class="viewcode-block" id="atm_disper"><a class="viewcode-back" href="../../NPK.html#NPK.Util.atm_disper">[docs]</a><span class="k">def</span> <span class="nf">atm_disper</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="n">l1</span><span class="p">,</span> <span class="n">airmass</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; atmospheric dispersion in arcsecond between l2 and l1 in micron</span>
+<span class="sd">        at a given airmass. See air index for documentation on pressure,</span>
+<span class="sd">        temperature, and water vapor pressure&#39;&#39;&#39;</span>
+
+    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="mf">1.0</span><span class="o">/</span><span class="n">airmass</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">206265</span> <span class="o">*</span> <span class="p">(</span><span class="n">air_index</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-</span> <span class="n">air_index</span><span class="p">(</span><span class="n">l1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">z</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

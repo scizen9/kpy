@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.pharos &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.pharos</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<div class="viewcode-block" id="Reduce"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce">[docs]</a><span class="k">class</span> <span class="nc">Reduce</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Class script to handle different commands run remotely from pharos&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="s2">&quot;pharos.caltech.edu&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="mi">5006</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Reduce.sock_connect"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce.sock_connect">[docs]</a>    <span class="k">def</span> <span class="nf">sock_connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span><span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">s</span></div>
+
+<div class="viewcode-block" id="Reduce.get_offset"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce.get_offset">[docs]</a>    <span class="k">def</span> <span class="nf">get_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">abpair</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the a or ab offset from a file</span>
+<span class="sd">        Format OFFSET,A or AB,Filename&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">abpair</span><span class="p">:</span>
+            <span class="n">abpair</span><span class="o">=</span><span class="s2">&quot;AB&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">abpair</span><span class="o">=</span><span class="s2">&quot;A&quot;</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;s:/&#39;</span><span class="p">,</span><span class="s1">&#39;/scr2/sedm/raw/&#39;</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;OFFSET,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">abpair</span><span class="p">,</span><span class="n">file_name</span><span class="p">)</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_connect</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Got </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">data</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="Reduce.get_best_focus"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce.get_best_focus">[docs]</a>    <span class="k">def</span> <span class="nf">get_best_focus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">files</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Send a list of focus images to get the best secondary focus</span>
+<span class="sd">        position&quot;&quot;&quot;</span>
+
+        <span class="n">new_files</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">new_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;s:/&#39;</span><span class="p">,</span><span class="s1">&#39;/scr2/sedm/raw/&#39;</span><span class="p">))</span>
+
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;FOCUS,</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_files</span><span class="p">)</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_connect</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Got </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">data</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="Reduce.get_sao_star"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce.get_sao_star">[docs]</a>    <span class="k">def</span> <span class="nf">get_sao_star</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">ra</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="n">dec</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="s2">&quot;Get nearest SAO star&quot;</span>
+        <span class="n">cmd</span> <span class="o">=</span><span class="s2">&quot;SAO</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_connect</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Got </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">data</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Reduce.get_stats"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.pharos.Reduce.get_stats">[docs]</a>    <span class="k">def</span> <span class="nf">get_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">file_name</span><span class="p">):</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;s:/&#39;</span><span class="p">,</span><span class="s1">&#39;/scr2/sedm/raw/&#39;</span><span class="p">)</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;STATS , </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">file_name</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_connect</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Got </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">data</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+	<span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;s:/20160305/rc20160305_03_15_40.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_16_21.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_17_02.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_17_43.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_18_24.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_19_05.fits&#39;</span><span class="p">,</span>
+	<span class="s1">&#39;s:/20160305/rc20160305_03_19_46.fits&#39;</span><span class="p">]</span>
+
+	<span class="n">a</span> <span class="o">=</span> <span class="n">Reduce</span><span class="p">()</span>
+	<span class="c1">#a.get_sao_star()</span>
+	<span class="n">a</span><span class="o">.</span><span class="n">get_offset</span><span class="p">(</span><span class="n">abpair</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">file_name</span><span class="o">=</span><span class="s1">&#39;s:/20160304/rc20160304_07_42_07.fits&#39;</span><span class="p">)</span>
+	<span class="c1">#a.get_best_focus(files)</span>
+	<span class="n">a</span><span class="o">.</span><span class="n">get_stats</span><span class="p">(</span><span class="n">file_name</span><span class="o">=</span><span class="s1">&#39;s:/20160304/rc20160304_08_23_43.fits&#39;</span><span class="p">)</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)</span>
+<span class="sd">s.connect((ip,port))</span>
+
+<span class="sd">s.send()</span>
+
+<span class="sd">#files = glob.glob(&#39;s:/20160302/rc20160302_06_25_02.fits&#39;)</span>
+<span class="sd">s.send(&#39;SOLVE %s\n&#39; % &#39;/20160302/rc20160302_06_25_02.fits&#39; )</span>
+<span class="sd">time.sleep(.3)</span>
+<span class="sd">data = s.recv(2048)</span>
+<span class="sd">print data</span>
+<span class="sd">&quot;&quot;&quot;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

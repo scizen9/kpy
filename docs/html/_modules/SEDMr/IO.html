@@ -1,0 +1,294 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.IO &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.IO</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">NPK.Util</span> <span class="kn">as</span> <span class="nn">UU</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebval</span>
+
+<span class="c1"># These two are default values needed by WCS to achieve a constant R~100</span>
+<span class="c1"># wavelength grid for SEDM. </span>
+<span class="n">CRVAL1</span> <span class="o">=</span> <span class="mf">239.5</span>
+<span class="n">CRPIX1</span> <span class="o">=</span> <span class="mf">88.98</span>
+
+
+<div class="viewcode-block" id="readspec"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.readspec">[docs]</a><span class="k">def</span> <span class="nf">readspec</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">corrname</span><span class="o">=</span><span class="s1">&#39;std-correction.npy&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read numpy spec file</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path (str): full filespec for numpy sp_*.npy file</span>
+<span class="sd">        corrname (str): flux correction file name</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        wavelength array [N]: in nm</span>
+<span class="sd">        spectrum array [N]: in erg/s/cm2/ang</span>
+<span class="sd">        sky spectrum array [N]: in spectrum units</span>
+<span class="sd">        standard deviation of spectrum [N]: in spectrum units</span>
+<span class="sd">        Spectrum object: full spectrum from where above derived</span>
+<span class="sd">        meta {}: The meta dictionary associated with the spectrum</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Check for local version</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">corrname</span><span class="p">):</span>
+        <span class="c1"># Check SEDM_REF env var</span>
+        <span class="n">sref</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SEDM_REF&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">corrname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sref</span><span class="p">,</span><span class="s1">&#39;std-correction.npy&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">corrname</span> <span class="o">=</span> <span class="s1">&#39;/scr2/sedm/ref/std-correction.npy&#39;</span>
+
+    <span class="k">print</span> <span class="s2">&quot;Attempting to load standard correction in: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">corrname</span>
+        
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">corrname</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">corf</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span><span class="n">corr</span><span class="p">[</span><span class="s1">&#39;correction&#39;</span><span class="p">],</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                    <span class="n">fill_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;maxnm&#39;</span> <span class="ow">in</span> <span class="n">corr</span><span class="p">:</span>
+        <span class="n">maxnm</span> <span class="o">=</span> <span class="n">corr</span><span class="p">[</span><span class="s1">&#39;maxnm&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">maxnm</span> <span class="o">=</span> <span class="mf">920.0</span>
+    
+    <span class="n">lam</span><span class="p">,</span> <span class="n">spec</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;ph_10m_nm&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="s1">&#39;skyph&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
+        <span class="n">skyspec</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skyph&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">skyspec</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">print</span> <span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no sky spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span> 
+    
+    <span class="k">if</span> <span class="s1">&#39;var&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">print</span> <span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no variance spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span>
+
+    <span class="k">if</span> <span class="s1">&#39;meta&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;meta&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;maxnm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">maxnm</span>
+
+    <span class="k">return</span> <span class="n">lam</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">skyspec</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">ss</span><span class="p">,</span> <span class="n">meta</span></div>
+
+
+<div class="viewcode-block" id="readfits"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.readfits">[docs]</a><span class="k">def</span> <span class="nf">readfits</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read fits file at path or path.gz&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.gz&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">):</span>
+            <span class="n">path</span> <span class="o">+=</span> <span class="s2">&quot;.gz&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;The file at path </span><span class="si">%s</span><span class="s2"> or </span><span class="si">%s</span><span class="s2">.gz does not exist&quot;</span> <span class="o">%</span> 
+                                                                <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">path</span><span class="p">))</span>
+
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">hdulist</span></div>
+
+
+<div class="viewcode-block" id="writefits"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.writefits">[docs]</a><span class="k">def</span> <span class="nf">writefits</span><span class="p">(</span><span class="n">towrite</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">no_lossy_compress</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">towrite</span><span class="p">)</span> <span class="o">==</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">:</span>
+        <span class="nb">list</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">towrite</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">towrite</span><span class="p">)</span> <span class="o">==</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">:</span>
+        <span class="nb">list</span> <span class="o">=</span> <span class="n">towrite</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">list</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">towrite</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">no_lossy_compress</span><span class="p">:</span> 
+        <span class="nb">list</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.gz&quot;</span><span class="p">),</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="n">n</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
+    <span class="nb">list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">UU</span><span class="o">.</span><span class="n">floatcompress</span><span class="p">(</span><span class="nb">list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="nb">list</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
+    
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;gzip  </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span></div>
+    
+
+<div class="viewcode-block" id="convert_spectra_to_recarray"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.convert_spectra_to_recarray">[docs]</a><span class="k">def</span> <span class="nf">convert_spectra_to_recarray</span><span class="p">(</span><span class="n">spectra</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns an Numpy recarray version of spectra&quot;&quot;&quot;</span>
+
+    <span class="n">keys</span> <span class="o">=</span> <span class="n">spectra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="n">to_remove</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mdn_coeff&quot;</span><span class="p">,</span> <span class="s2">&quot;hg_lines&quot;</span><span class="p">,</span> <span class="s2">&quot;spec&quot;</span><span class="p">,</span> <span class="s2">&quot;specw&quot;</span><span class="p">]</span>
+    <span class="nb">map</span><span class="p">(</span><span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">,</span> <span class="n">to_remove</span><span class="p">)</span>
+
+    <span class="n">types</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;lamcoeff&#39;</span><span class="p">:</span> <span class="n">l</span> <span class="o">=</span> <span class="mi">6</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;spec&#39;</span><span class="p">:</span> <span class="n">l</span> <span class="o">=</span> <span class="mi">265</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;specw&#39;</span><span class="p">:</span> <span class="n">l</span> <span class="o">=</span> <span class="mi">265</span>
+
+        <span class="n">types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">to_handle</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="n">spectra</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">kix</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
+            <span class="n">toadd</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+
+            <span class="n">len_key</span> <span class="o">=</span> <span class="n">types</span><span class="p">[</span><span class="n">kix</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">toadd</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">len_key</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">len_key</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">toadd</span><span class="p">):</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">len_key</span><span class="p">)</span>
+                <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">toadd</span><span class="p">)]</span> <span class="o">=</span> <span class="n">toadd</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">toadd</span>
+
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="n">to_handle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="n">ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rec</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">to_handle</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">types</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ra</span></div>
+
+
+<div class="viewcode-block" id="exp_fid_wave"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.exp_fid_wave">[docs]</a><span class="k">def</span> <span class="nf">exp_fid_wave</span><span class="p">(</span><span class="n">CRVAL1</span><span class="o">=</span><span class="mf">239.5</span><span class="p">,</span> <span class="n">CRPIX1</span><span class="o">=</span><span class="mf">88.98</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a fiducial wavelength grid appropraite for FITS representation</span>
+<span class="sd">    </span>
+<span class="sd">    Computation performed with Mathematica</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">CRVAL1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">265</span><span class="p">)</span><span class="o">+</span><span class="n">CRPIX1</span><span class="p">)</span><span class="o">/</span><span class="n">CRVAL1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="convert_spectra_to_img"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.convert_spectra_to_img">[docs]</a><span class="k">def</span> <span class="nf">convert_spectra_to_img</span><span class="p">(</span><span class="n">spectra</span><span class="p">,</span> <span class="n">CRVAL1</span><span class="p">,</span> <span class="n">CRPIX1</span><span class="p">):</span>
+    
+    <span class="n">lfid</span> <span class="o">=</span> <span class="n">exp_fid_wave</span><span class="p">(</span><span class="n">CRVAL1</span><span class="o">=</span><span class="n">CRVAL1</span><span class="p">,</span> <span class="n">CRPIX1</span><span class="o">=</span><span class="n">CRPIX1</span><span class="p">)</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">spectra</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfid</span><span class="p">)))</span>
+    <span class="n">img2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">spectra</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lfid</span><span class="p">)))</span>
+    <span class="n">img</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">img2</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">spectra</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">specw</span>
+        <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
+
+        <span class="n">img</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">spec</span><span class="p">)]</span> <span class="o">=</span> <span class="n">spec</span>
+
+        <span class="k">try</span><span class="p">:</span> <span class="n">lam</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">spectrum</span><span class="o">.</span><span class="n">xrange</span><span class="p">),</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">lamcoeff</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="n">IF</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+        <span class="n">img2</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">IF</span><span class="p">(</span><span class="n">lfid</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">img2</span></div>
+
+
+<div class="viewcode-block" id="write_cube"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.IO.write_cube">[docs]</a><span class="k">def</span> <span class="nf">write_cube</span><span class="p">(</span><span class="n">spectra</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a FITS file with all spectra written.&quot;&quot;&quot;</span>
+
+    <span class="n">recarr</span> <span class="o">=</span> <span class="n">convert_spectra_to_recarray</span><span class="p">(</span><span class="n">spectra</span><span class="p">)</span>
+
+    <span class="n">img</span><span class="p">,</span><span class="n">img2</span> <span class="o">=</span> <span class="n">convert_spectra_to_img</span><span class="p">(</span><span class="n">spectra</span><span class="p">,</span> <span class="n">CRVAL1</span><span class="p">,</span> <span class="n">CRPIX1</span><span class="p">)</span>
+
+    <span class="n">f1</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">f2</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)))</span>
+    <span class="n">t3</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="p">(</span><span class="n">recarr</span><span class="p">)</span>
+    <span class="n">f4</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">img2</span><span class="p">)</span>
+    <span class="n">f5</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">ImageHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)))</span>
+
+    <span class="n">f4</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CRVAL1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">CRVAL1</span>
+    <span class="n">f4</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CRPIX1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">CRPIX1</span>
+    <span class="n">f4</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;WAVE-LOG&#39;</span>
+    <span class="n">f4</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CUNIT1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NM&#39;</span>
+
+    <span class="n">towrite</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span> <span class="p">[</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="n">t3</span><span class="p">,</span> <span class="n">f4</span><span class="p">,</span> <span class="n">f5</span><span class="p">])</span>
+    <span class="n">towrite</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s1">&#39;test.fits&#39;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

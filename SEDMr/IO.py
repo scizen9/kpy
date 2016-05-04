@@ -15,7 +15,11 @@ CRPIX1 = 88.98
 
 
 def readspec(path, corrname='std-correction.npy'):
-    """Read numpy spec file 
+    """Read numpy spec file
+
+    Args:
+        path (str): full filespec for numpy sp_*.npy file
+        corrname (str): flux correction file name
     
     Returns:
         wavelength array [N]: in nm
@@ -42,40 +46,36 @@ def readspec(path, corrname='std-correction.npy'):
 
     corr = np.load(corrname)[0]
     corf = interp1d(corr['nm'],corr['correction'], bounds_error=False,
-        fill_value=1.0)
+                    fill_value=1.0)
 
-    if ss.has_key('extinction_corr'):
-        ext = ss['extinction_corr']
-        ec = np.median(ext)
-    elif ss.has_key('extinction_corr_A'):
-        ext = ss['extinction_corr_A']
-        ec = np.median(ext)
-
-    try: et = ss['exptime']
-    except: et = 0
-
-    try: maxnm = corr['maxnm']
-    except: maxnm = 920.0
+    if 'maxnm' in corr:
+        maxnm = corr['maxnm']
+    else:
+        maxnm = 920.0
     
     lam, spec = ss['nm'], ss['ph_10m_nm']*corf(ss['nm'])
 
-    if ss.has_key('skyph'):
+    if 'skyph' in ss:
         skyspec = ss['skyph'] * corf(lam)
     else:
         skyspec = None
         print "Spectrum in %s has no sky spectrum" % path 
     
-    if ss.has_key('var'):
+    if 'var' in ss:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             std = np.sqrt(np.abs(ss['var']) * corf(lam)*corf(lam))
     else:
         std = None
-        print "Spectrum in %s has no var" % path
+        print "Spectrum in %s has no variance spectrum" % path
 
-    try: meta = ss['meta']
-    except: meta = {}
+    if 'meta' in ss:
+        meta = ss['meta']
+    else:
+        meta = {}
+
     meta['maxnm'] = maxnm
+
     return lam, spec, skyspec, std, ss, meta
 
 

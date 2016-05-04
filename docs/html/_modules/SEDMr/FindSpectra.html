@@ -1,0 +1,363 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.FindSpectra &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.FindSpectra</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd"> Finds SEDM spectra based on a sextractor segmentation map</span>
+
+<span class="sd">    [c] 2014 Nick Konidaris</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">stsci.tools.gfit</span> <span class="kn">import</span> <span class="n">gfit1d</span>
+
+<span class="n">Coord</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;XY&quot;</span><span class="p">,</span> <span class="s2">&quot;x y&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="spanrange"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.spanrange">[docs]</a><span class="k">def</span> <span class="nf">spanrange</span><span class="p">(</span><span class="n">locs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns a pair of coordinates where index values are true for a 2d array.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        locs[d1,d2]: Boolean array of coordinates</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        [[min x, min y], [max x, max y]]</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">global</span> <span class="n">XX</span><span class="p">,</span> <span class="n">YY</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span>
+
+    <span class="c1"># To avoid expensive creation</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">XX</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">xi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">locs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">yi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">locs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">XX</span><span class="p">,</span> <span class="n">YY</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span>
+
+    <span class="n">mnx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">XX</span><span class="p">[</span><span class="n">locs</span><span class="p">])</span>
+    <span class="n">mny</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">YY</span><span class="p">[</span><span class="n">locs</span><span class="p">])</span>
+    <span class="n">mxx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">XX</span><span class="p">[</span><span class="n">locs</span><span class="p">])</span>
+    <span class="n">mxy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">YY</span><span class="p">[</span><span class="n">locs</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">Coord</span><span class="p">(</span><span class="n">mnx</span><span class="p">,</span> <span class="n">mny</span><span class="p">),</span> <span class="n">Coord</span><span class="p">(</span><span class="n">mxx</span><span class="p">,</span> <span class="n">mxy</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="load_data"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.load_data">[docs]</a><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">objfn</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns HDUs from files segmapfn and objfn.</span>
+<span class="sd">    </span>
+<span class="sd">    load_data is a thin wrapper around pyfits</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">segmap</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">segmapfn</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">objfn</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">segmap</span><span class="p">,</span> <span class="n">obj</span></div>
+
+
+<div class="viewcode-block" id="find_segments_helper"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.find_segments_helper">[docs]</a><span class="k">def</span> <span class="nf">find_segments_helper</span><span class="p">(</span><span class="n">seg_cnt</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Trace a single spaxel segment and return the solution</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        seg_cnt (int): the segment number</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Returns a segmentation map Dictionary</span>
+<span class="sd">        containing::</span>
+
+<span class="sd">            {   &quot;seg_cnt&quot;: Segment ID number,</span>
+<span class="sd">                &quot;xs&quot;: List of x positions of trace,</span>
+<span class="sd">                &quot;mean_ys&quot;: Measured Y position (average) of the trace,</span>
+<span class="sd">                &quot;coeff_ys&quot;: polyfit coefficients to the mean_ys,</span>
+<span class="sd">                &quot;trace_sigma&quot;: Width of trace in pixels (1 sigma),</span>
+<span class="sd">                &quot;ok&quot;: Trace has more than 50 pixels     }</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Global is for inter process communication</span>
+    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span>
+
+    <span class="c1"># Padding in pixels around trace in Y</span>
+    <span class="n">PAD</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="c1"># Get this segment</span>
+    <span class="n">the_seg</span> <span class="o">=</span> <span class="p">(</span><span class="n">segdat</span> <span class="o">==</span> <span class="n">seg_cnt</span><span class="p">)</span>
+
+    <span class="c1"># Test for tiny segment</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="n">the_seg</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="n">tr</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;seg_cnt&quot;</span><span class="p">:</span> <span class="n">seg_cnt</span><span class="p">,</span>
+            <span class="s2">&quot;xs&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="s2">&quot;mean_ys&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="s2">&quot;coeff_ys&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="s2">&quot;trace_sigma&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+            <span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="bp">False</span>
+        <span class="p">}</span>
+        <span class="n">outstr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="si">%4.4i</span><span class="s1">: </span><span class="si">%4.4i</span><span class="s1">, TINY SEGMENT, </span><span class="si">%-5s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">seg_cnt</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                                                         <span class="n">tr</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">])</span>
+        <span class="k">print</span> <span class="n">outstr</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+    <span class="c1"># We are OK</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Get segment&#39;s geometry</span>
+        <span class="n">span</span> <span class="o">=</span> <span class="n">spanrange</span><span class="p">(</span><span class="n">the_seg</span><span class="p">)</span>
+        <span class="n">mnsr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">PAD</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">mxsr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">PAD</span><span class="p">,</span> <span class="n">segdat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">y_slc</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">mnsr</span><span class="p">,</span> <span class="n">mxsr</span><span class="p">)</span>
+        <span class="c1"># y_off = (span[0].y + span[1].y) / 2.0</span>
+
+        <span class="c1"># How long is it in X?</span>
+        <span class="n">n_el</span> <span class="o">=</span> <span class="n">span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span>
+
+        <span class="c1"># Don&#39;t fit short traces, but flag them by setting &quot;ok&quot; to False</span>
+        <span class="k">if</span> <span class="n">n_el</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+
+            <span class="c1"># Flag the sigma with zero</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="mf">0.</span>
+
+            <span class="c1"># Load up the trace with NaNs</span>
+            <span class="n">tr</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;seg_cnt&quot;</span><span class="p">:</span> <span class="n">seg_cnt</span><span class="p">,</span>
+                <span class="s2">&quot;xs&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                <span class="s2">&quot;mean_ys&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                <span class="s2">&quot;coeff_ys&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                <span class="s2">&quot;trace_sigma&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span>
+                <span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="bp">False</span>
+            <span class="p">}</span>
+
+        <span class="c1"># Trace is long enough, so let&#39;s fit it!</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_el</span><span class="p">)</span>
+            <span class="n">trace_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">mxsr</span> <span class="o">-</span> <span class="n">mnsr</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n_el</span><span class="p">):</span>
+                <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+                    <span class="n">XX</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span>
+                    <span class="n">profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">objdat</span><span class="p">[</span><span class="n">y_slc</span><span class="p">,</span> <span class="n">XX</span> <span class="o">-</span> <span class="mi">3</span><span class="p">:</span><span class="n">XX</span> <span class="o">+</span> <span class="mi">3</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">profile</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+
+                    <span class="n">trace_profile</span> <span class="o">+=</span> <span class="n">profile</span>
+
+                    <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">profile</span><span class="p">))</span> <span class="o">+</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">y</span>
+
+                    <span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">xs</span> <span class="o">*</span> <span class="n">profile</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">-</span> <span class="n">PAD</span>
+
+            <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_el</span><span class="p">)</span> <span class="o">+</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span>
+
+            <span class="n">poly</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">means</span><span class="p">,</span> <span class="n">polyorder</span><span class="p">))</span>
+
+            <span class="n">tracefit</span> <span class="o">=</span> <span class="n">gfit1d</span><span class="p">(</span><span class="n">trace_profile</span><span class="p">,</span>
+                              <span class="n">par</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">trace_profile</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">1.7</span><span class="p">],</span> <span class="n">quiet</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">tracefit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="n">tr</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;seg_cnt&quot;</span><span class="p">:</span> <span class="n">seg_cnt</span><span class="p">,</span>
+                <span class="s2">&quot;xs&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span>
+                <span class="s2">&quot;mean_ys&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">means</span><span class="p">),</span>
+                <span class="s2">&quot;coeff_ys&quot;</span><span class="p">:</span> <span class="n">poly</span><span class="p">,</span>
+                <span class="s2">&quot;trace_sigma&quot;</span><span class="p">:</span> <span class="n">sig</span><span class="p">,</span>
+                <span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="bp">True</span>
+            <span class="p">}</span>
+
+        <span class="n">outstr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="si">%4.4i</span><span class="s1">: </span><span class="si">%4.4i</span><span class="s1">, fwhm=</span><span class="si">%3.2f</span><span class="s1"> pix, </span><span class="si">%-5s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">seg_cnt</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span>
+                                                           <span class="n">sig</span> <span class="o">*</span> <span class="mf">2.355</span><span class="p">,</span> <span class="n">tr</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">])</span>
+        <span class="k">print</span> <span class="n">outstr</span><span class="p">,</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">tr</span></div>
+
+
+<div class="viewcode-block" id="find_segments"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.find_segments">[docs]</a><span class="k">def</span> <span class="nf">find_segments</span><span class="p">(</span><span class="n">segmap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Find the segments in obj by tracing ridgelines identified in </span>
+<span class="sd">    the segmentation map.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        segmap ([int,int]): Segmentation map image, first segment is</span>
+<span class="sd">                1 .. max(segmap)</span>
+<span class="sd">        obj ([float,float]): Image data to trace over</span>
+<span class="sd">        order (int): The order of the polynomial used in coeff_ys</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list of dict: Returns a list with length equal to</span>
+<span class="sd">        the max(segmap) segmentation map Dictionaries containing::</span>
+
+<span class="sd">            {   &quot;seg_cnt&quot;: Segment ID number,</span>
+<span class="sd">                &quot;xs&quot;: List of x positions of trace,</span>
+<span class="sd">                &quot;mean_ys&quot;: Measured Y position (average) of the trace,</span>
+<span class="sd">                &quot;coeff_ys&quot;: polyfit coefficients to the mean_ys,</span>
+<span class="sd">                &quot;trace_sigma&quot;: Width of trace in pixels (1 sigma),</span>
+<span class="sd">                &quot;ok&quot;: Trace has more than 50 pixels     }</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span>
+
+    <span class="n">segdat</span> <span class="o">=</span> <span class="n">segmap</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">objdat</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">polyorder</span> <span class="o">=</span> <span class="n">order</span>
+
+    <span class="c1"># First segment begins at 1</span>
+    <span class="n">segrange</span> <span class="o">=</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">segdat</span><span class="o">.</span><span class="n">flatten</span><span class="p">()))</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+    <span class="n">traces</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">find_segments_helper</span><span class="p">,</span> <span class="n">segrange</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">print</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">traces</span></div>
+
+
+<div class="viewcode-block" id="ds9_line_str"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.ds9_line_str">[docs]</a><span class="k">def</span> <span class="nf">ds9_line_str</span><span class="p">(</span><span class="n">startx</span><span class="p">,</span> <span class="n">starty</span><span class="p">,</span> <span class="n">endx</span><span class="p">,</span> <span class="n">endy</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns a string representing a line in ds9&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="s2">&quot;line(</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">) # line=0 0</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">startx</span><span class="p">,</span> <span class="n">starty</span><span class="p">,</span> <span class="n">endx</span><span class="p">,</span> <span class="n">endy</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_reports"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.write_reports">[docs]</a><span class="k">def</span> <span class="nf">write_reports</span><span class="p">(</span><span class="n">segments</span><span class="p">,</span> <span class="n">outname</span><span class="p">):</span>
+    <span class="n">ds9</span> <span class="o">=</span> <span class="s2">&quot;global color=blue</span><span class="se">\n</span><span class="s2">physical</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">seg</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">]:</span>
+            <span class="k">continue</span>
+
+        <span class="n">ff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="s1">&#39;coeff_ys&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">dx</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">]:</span>
+            <span class="n">X1</span> <span class="o">=</span> <span class="n">seg</span><span class="p">[</span><span class="s1">&#39;xs&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">dx</span>
+            <span class="n">Y1</span> <span class="o">=</span> <span class="n">ff</span><span class="p">(</span><span class="n">X1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">X2</span> <span class="o">=</span> <span class="n">X1</span> <span class="o">+</span> <span class="mi">100</span>
+            <span class="n">Y2</span> <span class="o">=</span> <span class="n">ff</span><span class="p">(</span><span class="n">X2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">X1</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">X2</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">Y1</span><span class="p">)</span> <span class="ow">and</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">Y2</span><span class="p">):</span>
+                <span class="n">ds9</span> <span class="o">+=</span> <span class="n">ds9_line_str</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">Y1</span><span class="p">,</span> <span class="n">X2</span><span class="p">,</span> <span class="n">Y2</span><span class="p">)</span>
+
+    <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;ds9_</span><span class="si">%s</span><span class="s2">.reg&quot;</span> <span class="o">%</span> <span class="n">outname</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ds9</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="write_segments"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.write_segments">[docs]</a><span class="k">def</span> <span class="nf">write_segments</span><span class="p">(</span><span class="n">segments</span><span class="p">):</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">objfn</span> <span class="o">+</span> <span class="s2">&quot;_segments&quot;</span><span class="p">,</span> <span class="n">segments</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>
+                                     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    FindSegments.py</span>
+<span class="sd">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;segmap_fits&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Segmentation map .fits file name&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;objfn&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dome flat&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;outname&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output file name prefix&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--order&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Polynomial order&quot;</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">segmapfn</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">segmap_fits</span>
+    <span class="n">objfn</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">objfn</span>
+    <span class="n">outname</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">order</span>
+
+    <span class="n">segmap</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">load_data</span><span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">objfn</span><span class="p">)</span>
+    <span class="n">segments</span> <span class="o">=</span> <span class="n">find_segments</span><span class="p">(</span><span class="n">segmap</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+    <span class="n">write_segments</span><span class="p">(</span><span class="n">segments</span><span class="p">)</span>
+    <span class="n">write_reports</span><span class="p">(</span><span class="n">segments</span><span class="p">,</span> <span class="n">outname</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.Background &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.Background</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">argparse</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">pdb</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">scipy.signal</span> <span class="kn">as</span> <span class="nn">SG</span>
+
+<span class="kn">from</span> <span class="nn">pyraf</span> <span class="kn">import</span> <span class="n">iraf</span>
+
+<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebfit</span><span class="p">,</span> <span class="n">chebval</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Extraction</span> <span class="kn">as</span> <span class="nn">Extraction</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Wavelength</span> <span class="kn">as</span> <span class="nn">Wavelength</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Spectra</span> <span class="kn">as</span> <span class="nn">SS</span>
+<span class="kn">import</span> <span class="nn">SEDMr.GUI</span> <span class="kn">as</span> <span class="nn">GUI</span>
+<span class="kn">import</span> <span class="nn">NPK.Standards</span> <span class="kn">as</span> <span class="nn">Stds</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">Wavelength</span><span class="p">)</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">Extraction</span><span class="p">)</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">GUI</span><span class="p">)</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">SS</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Background"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Background.Background">[docs]</a><span class="k">class</span> <span class="nc">Background</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">interp_fun</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">infile</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">outfile</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">exptime</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">lam_nm</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lam_nm</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">infile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">spec</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">outfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">infile</span> <span class="o">=</span> <span class="n">infile</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">outfile</span> <span class="o">=</span> <span class="n">outfile</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">exptime</span> <span class="o">=</span> <span class="n">exptime</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lam_nm</span> <span class="o">=</span> <span class="n">lam_nm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spec</span> <span class="o">=</span> <span class="n">spec</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_fun</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interp_fun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lam_nm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">,</span> 
+                <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_fun</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="background_subtract"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Background.background_subtract">[docs]</a><span class="k">def</span> <span class="nf">background_subtract</span><span class="p">(</span><span class="n">KT</span><span class="p">,</span> <span class="n">objpos</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> 
+    <span class="n">minl</span><span class="o">=</span><span class="mi">350</span><span class="p">,</span> <span class="n">maxl</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">n_std</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="mi">400</span><span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">objpos</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">exclude</span> <span class="o">=</span> <span class="n">KT</span><span class="o">.</span><span class="n">KT</span><span class="o">.</span><span class="n">query_ball_point</span><span class="p">(</span><span class="n">objpos</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">exclude</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+    <span class="n">lams</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">specs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">ix</span> <span class="ow">in</span> <span class="n">exclude</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">lamnrms</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">e</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">200</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span> <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span><span class="n">l</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">get_flambda</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="n">lams</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+        <span class="n">specs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="n">exptime</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">exptime</span>
+    <span class="n">all_lams</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">lam</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">lams</span> <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">])</span>
+    <span class="n">all_spec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">spec</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">specs</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">])</span>
+
+    <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">all_lams</span><span class="p">)</span>
+    <span class="n">l</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="n">all_lams</span><span class="p">[</span><span class="n">ix</span><span class="p">],</span> <span class="n">all_spec</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+
+    <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span><span class="n">l</span> <span class="o">&gt;</span> <span class="n">minl</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">l</span> <span class="o">&lt;</span> <span class="n">maxl</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">knots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">minl</span><span class="p">,</span> <span class="n">maxl</span><span class="p">,</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">boxcar</span> <span class="o">=</span> <span class="n">SG</span><span class="o">.</span><span class="n">boxcar</span><span class="p">(</span><span class="n">smoothing</span><span class="p">)</span><span class="o">/</span><span class="n">smoothing</span>
+
+    <span class="n">nok</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n_iter</span><span class="p">):</span>
+        <span class="n">smoothed</span> <span class="o">=</span> <span class="n">SG</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">boxcar</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+        <span class="n">ff</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">smoothed</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> 
+            <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="n">ff</span><span class="p">(</span><span class="n">l</span><span class="p">))</span><span class="o">*</span><span class="n">exptime</span>
+
+        <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">res</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s</span><span class="o">*</span><span class="n">exptime</span><span class="p">))</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span><span class="n">l</span> <span class="o">&gt;</span> <span class="n">minl</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">l</span> <span class="o">&lt;</span> <span class="n">maxl</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">std</span> <span class="o">&lt;</span> <span class="n">n_std</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">l</span><span class="p">))</span> 
+
+        <span class="k">print</span> <span class="n">i</span><span class="p">,</span> <span class="n">nok</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">nok</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="o">.</span><span class="mo">001</span><span class="p">:</span> <span class="k">break</span>
+        <span class="n">nok</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
+        
+    <span class="n">n_knots</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">/</span><span class="n">smoothing</span>
+    <span class="n">knots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">minl</span><span class="p">,</span> <span class="n">maxl</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">maxl</span><span class="o">-</span><span class="n">minl</span><span class="p">)</span><span class="o">/</span><span class="n">n_knots</span><span class="p">)</span>
+    <span class="n">bgd</span> <span class="o">=</span> <span class="n">Background</span><span class="p">(</span><span class="n">lam_nm</span><span class="o">=</span><span class="n">knots</span><span class="p">,</span> <span class="n">spec</span><span class="o">=</span><span class="n">ff</span><span class="p">(</span><span class="n">knots</span><span class="p">),</span> <span class="n">exptime</span><span class="o">=</span><span class="n">exptime</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">bgd</span></div>
+
+<div class="viewcode-block" id="plot_residuals"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Background.plot_residuals">[docs]</a><span class="k">def</span> <span class="nf">plot_residuals</span><span class="p">(</span><span class="n">KT</span><span class="p">,</span> <span class="n">bgd</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">lg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">350</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lg</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">l</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">get_flambda</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">residuals</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">lg</span><span class="p">)</span> <span class="o">-</span> <span class="n">bgd</span><span class="p">(</span><span class="n">lg</span><span class="p">)</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-.</span><span class="mo">02</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=.</span><span class="mo">02</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outfile</span> <span class="o">+</span> <span class="s2">&quot;.pdf&quot;</span><span class="p">)</span>
+
+    
+    <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">bgd</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outfile</span> <span class="o">+</span> <span class="s2">&quot;1d.pdf&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="background_subtract_file"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Background.background_subtract_file">[docs]</a><span class="k">def</span> <span class="nf">background_subtract_file</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">minl</span><span class="o">=</span><span class="mi">350</span><span class="p">,</span> <span class="n">maxl</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">n_std</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="mi">400</span><span class="p">):</span>
+    <span class="n">exts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+
+    <span class="n">KT</span> <span class="o">=</span> <span class="n">SS</span><span class="o">.</span><span class="n">Spectra</span><span class="p">(</span><span class="n">exts</span><span class="p">)</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">GUI</span><span class="o">.</span><span class="n">PositionPicker</span><span class="p">(</span><span class="n">KT</span><span class="p">)</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">picked</span>
+
+    <span class="n">bgd</span> <span class="o">=</span> <span class="n">background_subtract</span><span class="p">(</span><span class="n">KT</span><span class="p">,</span> <span class="n">objpos</span><span class="o">=</span><span class="n">pos</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span> <span class="n">minl</span><span class="o">=</span><span class="n">minl</span><span class="p">,</span> 
+        <span class="n">maxl</span><span class="o">=</span><span class="n">maxl</span><span class="p">,</span> <span class="n">n_std</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+    <span class="n">bgd</span><span class="o">.</span><span class="n">infile</span> <span class="o">=</span> <span class="n">infile</span>
+    <span class="n">bgd</span><span class="o">.</span><span class="n">outfile</span> <span class="o">=</span> <span class="n">outfile</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="p">[</span><span class="n">bgd</span><span class="p">])</span>
+
+    <span class="n">plot_residuals</span><span class="p">(</span><span class="n">KT</span><span class="p">,</span> <span class="n">bgd</span><span class="p">,</span> <span class="n">outfile</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+        <span class="sd">&#39;&#39;&#39;Background.py:</span>
+
+<span class="sd">            </span>
+<span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;extraction&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Numpy extracted file&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;outfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Numpy Background class&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--radius&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Radius of object extraction&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--n_std&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Number of deviations to throw out&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--n_iter&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Number of cleaning iterations&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--smoothing&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Amount of smoothing of background&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    
+    <span class="n">background_subtract_file</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">extraction</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">outfile</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span>
+        <span class="n">n_std</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_std</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_iter</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">smoothing</span><span class="p">)</span>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
