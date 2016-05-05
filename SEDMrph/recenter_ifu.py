@@ -201,7 +201,7 @@ def get_offset_center(f, plot=True, interactive=False):
             plt.clf()
 
 
-        return 0, dra-5, ddec+2
+        return 0, dra, ddec
 
 def mad(arr):
     """ Median Absolute Deviation: a "Robust" version of standard deviation.
