@@ -1,0 +1,753 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDM.GUIhandle &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDM.GUIhandle</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">SegmentationMap class wraps around several functions in SEDM package and</span>
+<span class="sd">provides a convenient way to handle SEDM data.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">NPK.Atmosphere</span> <span class="kn">as</span> <span class="nn">Atm</span>
+<span class="kn">import</span> <span class="nn">NPK.PlotHelp</span> <span class="kn">as</span> <span class="nn">PH</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pyfits</span>
+<span class="kn">import</span> <span class="nn">scipy.io</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">from</span> <span class="nn">matplotlib.backend_bases</span> <span class="kn">import</span> <span class="n">KeyEvent</span> 
+<span class="kn">from</span> <span class="nn">matplotlib.backend_bases</span> <span class="kn">import</span> <span class="n">PickEvent</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+
+<span class="kn">import</span> <span class="nn">Disp</span>
+<span class="kn">import</span> <span class="nn">SegMap</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">SegMap</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">SegMap</span> <span class="kn">import</span> <span class="n">SegmentationMap</span>
+
+
+<span class="kn">import</span> <span class="nn">Extract</span>
+<span class="kn">from</span> <span class="nn">NPK.Standards</span> <span class="kn">import</span> <span class="n">Standards</span>
+
+<span class="nb">reload</span><span class="p">(</span><span class="n">Extract</span><span class="p">)</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">Disp</span><span class="p">)</span>
+
+<div class="viewcode-block" id="clean_header"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.clean_header">[docs]</a><span class="k">def</span> <span class="nf">clean_header</span><span class="p">(</span><span class="n">header</span><span class="p">):</span>
+
+    <span class="n">todel</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SIMPLE&#39;</span><span class="p">,</span> <span class="s1">&#39;BITPIX&#39;</span><span class="p">,</span> <span class="s1">&#39;NAXIS&#39;</span><span class="p">,</span> <span class="s1">&#39;NAXIS1&#39;</span><span class="p">,</span> <span class="s1">&#39;NAXIS2&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;NAXIS0&#39;</span><span class="p">,</span> <span class="s1">&#39;EXTEND&#39;</span><span class="p">,</span> <span class="s1">&#39;BZERO&#39;</span><span class="p">,</span> <span class="s1">&#39;BSCALE&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">todel</span><span class="p">:</span> 
+        <span class="k">try</span><span class="p">:</span> <span class="k">del</span> <span class="n">header</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">header</span></div>
+
+<div class="viewcode-block" id="merge_headers"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.merge_headers">[docs]</a><span class="k">def</span> <span class="nf">merge_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">):</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">headers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;NAXIS&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">h</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">h</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="n">new</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                    <span class="k">try</span><span class="p">:</span> <span class="n">h</span><span class="p">[</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;_</span><span class="si">%2.2i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span> <span class="n">h</span><span class="p">[</span><span class="n">key</span> <span class="o">+</span> <span class="s2">&quot;_</span><span class="si">%2.2i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">h</span></div>
+
+<div class="viewcode-block" id="PositionPicker"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker">[docs]</a><span class="k">class</span> <span class="nc">PositionPicker</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Shows the IFU field and allows the user to select an object.</span>
+
+<span class="sd">    Takes:</span>
+<span class="sd">        A plan list that is composed of dictionary that includes:</span>
+<span class="sd">            infiles [N_spec]: String of paths to .mat files</span>
+<span class="sd">            name: String of object name</span>
+<span class="sd">        Optional:</span>
+<span class="sd">            outdir: path to write the results to, otherwise defaults to</span>
+<span class="sd">                oudri/[name]/[obsdate]/version#/....</span>
+<span class="sd">            shifts [N_spec]: Float of pixels to shift spectrum for flexure</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># index into the file list</span>
+    <span class="n">spx_ix</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># index into spectrum list</span>
+    <span class="n">plan</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">subtract_sky</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">picked</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># Spectrum position pixed in IFU coordinates</span>
+    <span class="n">olines</span>  <span class="o">=</span> <span class="p">[</span><span class="mf">372.7</span><span class="p">,</span> <span class="mf">486.1</span><span class="p">,</span> <span class="mf">500.7</span><span class="p">,</span> <span class="mf">656.3</span><span class="p">]</span>
+    <span class="n">tlines</span> <span class="o">=</span> <span class="p">[</span><span class="mf">761.5</span><span class="p">,</span> <span class="mf">589.0</span><span class="p">,</span> <span class="mf">557.7</span><span class="p">,</span> <span class="mf">435.8</span><span class="p">,</span> <span class="mf">519.9</span><span class="p">,</span> <span class="mf">630.0</span><span class="p">]</span>
+    <span class="n">positions</span><span class="o">=</span><span class="bp">None</span>
+    <span class="n">qecurve</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">output_head</span> <span class="o">=</span> <span class="s2">&quot;/scr2/npk/sedm/reduced/&quot;</span>
+    <span class="n">show_calib</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="bp">None</span>
+    
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">plan</span><span class="p">,</span><span class="n">positions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;OnSkyX&#39;</span><span class="p">,</span><span class="s1">&#39;OnSkyY&#39;</span><span class="p">),</span>
+        <span class="n">qefunction</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">stdpaths</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normpath</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Starting picker GUI&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plan</span> <span class="o">=</span> <span class="n">plan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">=</span><span class="n">positions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdpaths</span> <span class="o">=</span> <span class="n">stdpaths</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_stds</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">normpath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">normpath</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">&lt;</span> <span class="o">.</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;key_press_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;pick_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;button_press_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig2</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span><span class="mf">4.5</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig2</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;key_press_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig2</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;pick_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig3</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig3</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;key_press_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig3</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;pick_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig4</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mf">2.25</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig4</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;key_press_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig4</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s2">&quot;pick_event&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">qefunction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="o">=</span> <span class="n">qefunction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_plan</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PositionPicker.check_plan"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.check_plan">[docs]</a>    <span class="k">def</span> <span class="nf">check_plan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Checks the plan to see if it makes sense and the files load&#39;&#39;&#39;</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">:</span>
+            <span class="k">print</span> <span class="n">el</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">el</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: file does not exist&quot;</span> <span class="o">%</span> <span class="n">fname</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="s1">&#39;object_diam&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&gt;</span> <span class="n">el</span><span class="p">[</span><span class="s1">&#39;object_diam&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">300</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: not appropriate object diam&quot;</span> <span class="o">%</span>
+                        <span class="n">el</span><span class="p">[</span><span class="s1">&#39;object_diam&#39;</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="s1">&#39;sky_annulus&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">el</span><span class="p">[</span><span class="s1">&#39;sky_annulus&#39;</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: not appropriate sky annulus&quot;</span> <span class="o">%</span>
+                        <span class="n">el</span><span class="p">[</span><span class="s2">&quot;sky_annulus&quot;</span><span class="p">])</span></div>
+                
+
+
+<div class="viewcode-block" id="PositionPicker.dump"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Write status to file&quot;&quot;&quot;</span>
+        <span class="n">plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;standard&#39;</span><span class="p">:</span>
+            <span class="n">outfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span>
+                <span class="s2">&quot;STD-</span><span class="si">%s</span><span class="s2">.json&quot;</span> <span class="o">%</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span>
+                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.json&quot;</span> <span class="o">%</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+
+        <span class="k">print</span> <span class="s2">&quot;Writing to: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">outfile</span>
+        <span class="nb">str</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;outfile&quot;</span><span class="p">:</span> <span class="n">outfile</span><span class="p">,</span>
+                        <span class="s2">&quot;infiles&quot;</span><span class="p">:</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">],</span>
+                        <span class="s2">&quot;object_diam&quot;</span><span class="p">:</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;object_diam&#39;</span><span class="p">],</span>
+                        <span class="s2">&quot;sky_annulus&quot;</span><span class="p">:</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;sky_annulus&#39;</span><span class="p">],</span>
+                        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                        <span class="s2">&quot;picked&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">,</span>
+                        <span class="s2">&quot;pixel_shift&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">,</span>
+                        <span class="s2">&quot;when&quot;</span><span class="p">:</span> <span class="n">dt</span><span class="p">},</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">=</span><span class="nb">open</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span><span class="p">(</span><span class="s2">&quot;Could not write </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+
+        <span class="n">outfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span>
+            <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_all&quot;</span> <span class="o">%</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_obj_spec</span><span class="p">)</span>
+
+        <span class="n">outfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span>
+            <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_sky&quot;</span> <span class="o">%</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_sky_spec</span><span class="p">)</span>
+
+        
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">obj_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RESULTS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+
+        <span class="n">header</span> <span class="o">=</span> <span class="n">merge_headers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+        <span class="n">pf</span> <span class="o">=</span> <span class="n">pyfits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">result</span><span class="p">,</span><span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+        <span class="n">pf</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;OBJECT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">pf</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;SPEC&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;infiles&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span>
+        <span class="n">outpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%i</span><span class="s2">.fits&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+            
+        <span class="n">pf</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw_res</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="PositionPicker.draw_res"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.draw_res">[docs]</a>    <span class="k">def</span> <span class="nf">draw_res</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Draw the resulting spectrum&#39;&#39;&#39;</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">350</span><span class="p">,</span> <span class="mi">950</span><span class="p">])</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">1000</span><span class="p">,</span><span class="mi">4000</span><span class="p">)</span>
+
+        <span class="n">allwav</span> <span class="o">=</span> <span class="n">allsky</span> <span class="o">=</span> <span class="n">allobj</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RESULTS</span><span class="p">)):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RESULTS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
+
+            <span class="n">header</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">clean_header</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+            <span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+            <span class="n">airmass</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;airmass&#39;</span><span class="p">]</span>
+
+            <span class="n">wave</span><span class="p">,</span> <span class="n">sky</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">skyf</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span><span class="n">sky</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+            <span class="n">objf</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span><span class="n">obj</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">correction</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="s2">&quot;Applying correction&quot;</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="n">Atm</span><span class="o">.</span><span class="n">ext</span><span class="p">(</span><span class="n">wave</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span><span class="o">*</span><span class="n">airmass</span><span class="o">/</span><span class="mf">2.5</span><span class="p">)</span>
+                <span class="n">correction</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span><span class="p">(</span><span class="n">wave</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span><span class="o">*</span><span class="n">ext</span>
+                <span class="n">correction</span><span class="o">=</span><span class="mf">1.</span>
+
+            <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span><span class="n">obj</span><span class="o">*</span><span class="n">correction</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">allwav</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> 
+                <span class="n">allwav</span><span class="o">=</span><span class="n">wave</span><span class="p">[:]</span>
+                <span class="n">allsky</span><span class="o">=</span><span class="n">sky</span><span class="p">[:]</span>
+                <span class="n">allobj</span><span class="o">=</span><span class="n">obj</span><span class="p">[:]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">allsky</span> <span class="o">+=</span> <span class="n">skyf</span><span class="p">(</span><span class="n">allwav</span><span class="p">)</span>
+                <span class="n">allobj</span> <span class="o">+=</span> <span class="n">objf</span><span class="p">(</span><span class="n">allwav</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">correction</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">correction</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span><span class="p">(</span><span class="n">allwav</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">allwav</span><span class="p">,</span> <span class="n">allobj</span><span class="o">*</span><span class="n">correction</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="c1">#pl.step(allwav, allobj, linewidth=3)</span>
+        
+
+        <span class="c1"># Raw data</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">allwav</span><span class="p">,</span> <span class="n">allsky</span><span class="p">,</span> <span class="n">allobj</span><span class="p">])</span>
+        <span class="n">pf</span> <span class="o">=</span> <span class="n">pyfits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+        <span class="n">pf</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;REDNAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">outpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.fits&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+        <span class="n">pf</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+        <span class="c1"># Corrected</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">allwav</span><span class="p">,</span> <span class="n">allsky</span><span class="o">*</span><span class="n">correction</span><span class="p">,</span> <span class="n">allobj</span><span class="o">*</span><span class="n">correction</span><span class="p">])</span>
+            <span class="n">pf</span> <span class="o">=</span> <span class="n">pyfits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+            <span class="n">pf</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;REDNAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">outpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_corr.fits&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+            <span class="n">pf</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PositionPicker.load"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Load the Segmentation map&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span><span class="mi">0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">):</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+            <span class="k">print</span> <span class="s2">&quot;REACHED THE END&quot;</span>
+
+        <span class="n">cur_plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+
+        <span class="n">nfiles</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cur_plan</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">SM</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">nfiles</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SegmentationMap</span><span class="p">(</span><span class="n">cur_plan</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">positions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">))</span>
+            
+            <span class="n">fits</span> <span class="o">=</span> <span class="n">cur_plan</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;shrunk_&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;_SI.mat&#39;</span><span class="p">)</span>
+            <span class="n">FF</span> <span class="o">=</span> <span class="n">pyfits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;unknown&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">picked</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RESULTS</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span>
+
+        
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">cur_plan</span><span class="p">[</span><span class="s1">&#39;infiles&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">print</span> <span class="n">fname</span>
+        <span class="k">if</span> <span class="s2">&quot;shrunk&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;shrunk&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;_crr&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_crr&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;_s&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_s&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;_b&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_b&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;b_&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;b_&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;ifu&quot;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_ifu&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.fits_SI.mat&quot;</span><span class="p">)</span>
+
+        <span class="k">print</span> <span class="n">fname</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">fname</span>
+
+        <span class="n">y</span><span class="p">,</span><span class="n">mon</span><span class="p">,</span><span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">fn</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">4</span><span class="p">],</span> <span class="n">fn</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">6</span><span class="p">],</span> <span class="n">fn</span><span class="p">[</span><span class="mi">6</span><span class="p">:</span><span class="mi">8</span><span class="p">])</span>
+        <span class="n">h</span><span class="p">,</span><span class="nb">min</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">fn</span><span class="p">[</span><span class="mi">9</span><span class="p">:</span><span class="mi">11</span><span class="p">],</span> <span class="n">fn</span><span class="p">[</span><span class="mi">12</span><span class="p">:</span><span class="mi">14</span><span class="p">],</span> <span class="n">fn</span><span class="p">[</span><span class="mi">15</span><span class="p">:</span><span class="mi">17</span><span class="p">])</span>
+
+        <span class="n">month</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;none&quot;</span><span class="p">,</span><span class="s2">&quot;jan&quot;</span><span class="p">,</span> <span class="s2">&quot;feb&quot;</span><span class="p">,</span> <span class="s2">&quot;mar&quot;</span><span class="p">,</span> <span class="s2">&quot;apr&quot;</span><span class="p">,</span> <span class="s2">&quot;may&quot;</span><span class="p">,</span> <span class="s2">&quot;jun&quot;</span><span class="p">,</span> <span class="s2">&quot;jul&quot;</span><span class="p">,</span> <span class="s2">&quot;aug&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sep&quot;</span><span class="p">,</span> <span class="s2">&quot;oct&quot;</span><span class="p">,</span> <span class="s2">&quot;nov&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">][</span><span class="nb">int</span><span class="p">(</span><span class="n">mon</span><span class="p">)]</span>
+
+        <span class="n">outprefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_head</span><span class="p">,</span> 
+            <span class="n">cur_plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> 
+            <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">month</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="nb">min</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outprefix</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">99</span><span class="p">):</span>
+            <span class="n">outdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outprefix</span><span class="p">,</span> <span class="s2">&quot;v</span><span class="si">%2.2i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">outdir</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">outdir</span> <span class="o">=</span> <span class="n">outdir</span>
+                
+        <span class="k">print</span> <span class="p">(</span><span class="s2">&quot;Loaded. Outdir: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outdir</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="PositionPicker.create_spectrum"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.create_spectrum">[docs]</a>    <span class="k">def</span> <span class="nf">create_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="n">plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span><span class="o">.</span><span class="n">pixel_shift</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span>
+
+        <span class="n">X</span><span class="p">,</span><span class="n">Y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">clean_header</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+
+        <span class="n">exptime</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;exptime&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;object_diam&quot;</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">:</span> <span class="n">D</span> <span class="o">=</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;object_diam&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">D</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;object_diam&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;extdiam&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s1">&#39;Extraction diameter&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;sky_annulus&quot;</span> <span class="ow">in</span> <span class="n">plan</span><span class="p">:</span> <span class="n">s1</span><span class="p">,</span><span class="n">s2</span> <span class="o">=</span> <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;sky_annulus&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">s1</span><span class="p">,</span><span class="n">s2</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span><span class="mi">6</span>
+            <span class="n">plan</span><span class="p">[</span><span class="s1">&#39;sky_annulus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">]</span>
+        
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;sky1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="s1">&#39;Sky inner annulus diameter&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;sky2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="s1">&#39;Sky outer annulus diameter&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;ext_pos&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span> <span class="s1">&#39;Extraction position&#39;</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Extracting at: </span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">: diam </span><span class="si">%s</span><span class="s2">, sky </span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">D</span><span class="p">,</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">)</span>
+
+        <span class="n">sky_spec</span><span class="p">,</span> <span class="n">all_sky_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span><span class="o">.</span><span class="n">spectrum_in_annulus</span><span class="p">(</span>
+            <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">small</span><span class="o">=</span><span class="n">s1</span><span class="p">,</span>
+            <span class="n">large</span><span class="o">=</span><span class="n">s2</span><span class="p">)</span>
+        <span class="n">wave</span> <span class="o">=</span> <span class="n">sky_spec</span><span class="p">[</span><span class="s2">&quot;wave_nm&quot;</span><span class="p">]</span>
+        <span class="n">obj_spec</span><span class="p">,</span> <span class="n">all_obj_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span><span class="o">.</span><span class="n">spectrum_near_position</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span> 
+            <span class="n">distance</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">onto</span><span class="o">=</span><span class="n">wave</span><span class="p">)</span>
+
+        <span class="n">sky</span> <span class="o">=</span> <span class="p">[</span><span class="n">wave</span><span class="p">,</span> <span class="n">sky_spec</span><span class="p">[</span><span class="s2">&quot;spec_adu&quot;</span><span class="p">]</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">all_sky_spec</span><span class="p">)</span><span class="o">/</span><span class="n">exptime</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">all_obj_spec</span><span class="p">)]</span>
+        <span class="nb">object</span> <span class="o">=</span> <span class="p">[</span><span class="n">wave</span><span class="p">,</span> <span class="n">obj_spec</span><span class="p">[</span><span class="s2">&quot;spec_adu&quot;</span><span class="p">]</span><span class="o">/</span><span class="n">exptime</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span> <span class="o">=</span> <span class="n">sky</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obj_spec</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_sky_spec</span> <span class="o">=</span> <span class="n">all_sky_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_obj_spec</span> <span class="o">=</span> <span class="n">all_obj_spec</span></div>
+
+
+<div class="viewcode-block" id="PositionPicker.draw_spectrum"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.draw_spectrum">[docs]</a>    <span class="k">def</span> <span class="nf">draw_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Draw the spectrum in figure(2) </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">350</span><span class="p">,</span><span class="mi">920</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> 
+            <span class="k">return</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;wavelength [nm]&quot;</span><span class="p">)</span>
+
+        <span class="n">obj_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj_spec</span><span class="p">[:]</span>
+        <span class="n">sky_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span><span class="p">[:]</span>
+        <span class="n">wave</span> <span class="o">=</span> <span class="n">obj_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">obj_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">obj_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">obj_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">correction</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">correction</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span><span class="p">(</span><span class="n">wave</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+            <span class="n">correction</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">correction</span><span class="p">)</span>
+            <span class="n">bad</span> <span class="o">=</span> <span class="p">(</span><span class="n">wave</span> <span class="o">&lt;</span> <span class="mi">400</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">wave</span> <span class="o">&gt;</span> <span class="mi">920</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">correction</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">correction</span><span class="p">[</span><span class="n">bad</span><span class="p">]</span> <span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">show_calib</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">obj_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">correction</span><span class="p">)</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">sky_spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">correction</span><span class="p">)</span>
+                
+        <span class="n">PH</span><span class="o">.</span><span class="n">transparent_legend</span><span class="p">([</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;o-s&#39;</span><span class="p">,</span> <span class="s1">&#39;c x (o-s)&#39;</span><span class="p">,</span> <span class="s1">&#39;c x s&#39;</span><span class="p">])</span>
+        
+        <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">350</span><span class="p">,</span><span class="mi">920</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">olines</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tlines</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PositionPicker.handle_shift"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.handle_shift">[docs]</a>    <span class="k">def</span> <span class="nf">handle_shift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xdata</span><span class="p">,</span> <span class="n">ydata</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">xdata</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">xdata</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">):</span> <span class="k">return</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">olines</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tlines</span><span class="p">))</span>
+
+        <span class="n">delts</span> <span class="o">=</span> <span class="p">(</span><span class="n">lines</span> <span class="o">-</span> <span class="n">xdata</span><span class="p">)</span>
+        <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">delts</span><span class="p">))</span>
+        <span class="k">print</span> <span class="s2">&quot;Closest to </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lines</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+        
+        <span class="n">line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+        <span class="n">delt</span> <span class="o">=</span> <span class="n">delts</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+        <span class="n">wave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sky_spec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">wix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanargmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">wave</span><span class="o">-</span><span class="n">line</span><span class="p">))</span>
+        <span class="n">dw</span> <span class="o">=</span> <span class="n">wave</span><span class="p">[</span><span class="n">wix</span><span class="p">]</span><span class="o">-</span><span class="n">wave</span><span class="p">[</span><span class="n">wix</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">print</span> <span class="s2">&quot;Delt: {0}, dw: {1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">delt</span><span class="p">,</span> <span class="n">dw</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delt</span><span class="o">/</span><span class="n">dw</span>
+
+        <span class="k">print</span> <span class="s2">&quot;pixel shift is: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw_spectrum</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="PositionPicker.__call__"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Event call handler for Picker gui.&#39;&#39;&#39;</span>
+        
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;button_press_event&#39;</span><span class="p">:</span>
+            <span class="k">print</span> <span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">ydata</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">ydata</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">create_spectrum</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">draw_spectrum</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">draw_selection_circle</span><span class="p">()</span>
+            
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;key_press_event&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;Shifting&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">handle_shift</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">ydata</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">next_spec</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;,&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> 
+                    <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">draw_spectrum</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;toggle show calib&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">show_calib</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">show_calib</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw_spectrum</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;n&#39;</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="s2">&quot;next&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="s2">&quot;prev&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">subtract_sky</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_sky</span>
+                <span class="k">print</span> <span class="s2">&quot;Substract sky: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_sky</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;u&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;unsure&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;bad&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;o&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">next_spec</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;standard&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">next_spec</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;h&#39;</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;&quot;&quot;Help---</span>
+<span class="s2">n - next</span>
+<span class="s2">p - prev</span>
+<span class="s2">- - subtract sky</span>
+<span class="s2">u - unsure: there are targets visible, not sure which is correct.</span>
+<span class="s2">b - bad: nothing visible</span>
+<span class="s2">o - ok: target visible</span>
+<span class="s2">&quot;&quot;&quot;</span>
+            <span class="k">print</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span></div>
+            
+        
+
+<div class="viewcode-block" id="PositionPicker.draw"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.draw">[docs]</a>    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_sky</span><span class="p">:</span>
+            <span class="n">sky</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span><span class="o">.</span><span class="n">sky_median</span><span class="p">()</span>
+            <span class="n">sky_spec</span> <span class="o">=</span> <span class="n">sky</span><span class="p">[</span><span class="s1">&#39;wave_nm&#39;</span><span class="p">],</span> <span class="n">sky</span><span class="p">[</span><span class="s1">&#39;spec_adu&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sky_spec</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">v</span> <span class="o">=</span> <span class="n">Extract</span><span class="o">.</span><span class="n">segmap_to_img</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span> 
+            <span class="n">sky_spec</span><span class="o">=</span><span class="n">sky_spec</span><span class="p">,</span>
+            <span class="n">minl</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">maxl</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span><span class="n">positions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Xs</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Ys</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Values</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw_selection_circle</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="PositionPicker.load_stds"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.load_stds">[docs]</a>    <span class="k">def</span> <span class="nf">load_stds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdpaths</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">STDS</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">stdpath</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdpaths</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">print</span> <span class="n">stdpath</span>
+                <span class="n">FF</span> <span class="o">=</span> <span class="n">pyfits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">stdpath</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;Ignoring </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stdpath</span>
+                <span class="k">continue</span>
+
+            <span class="n">name</span> <span class="o">=</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">std</span> <span class="ow">in</span> <span class="n">Standards</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">std</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="k">print</span> <span class="n">name</span><span class="p">,</span> <span class="n">std</span>
+                    <span class="n">ang</span> <span class="o">=</span> <span class="n">Standards</span><span class="p">[</span><span class="n">std</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">stdflux</span> <span class="o">=</span> <span class="n">Standards</span><span class="p">[</span><span class="n">std</span><span class="p">][:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-16</span> <span class="c1"># to erg/s/cm2/A</span>
+
+                    <span class="n">stdf</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">ang</span><span class="p">,</span> <span class="n">stdflux</span><span class="p">,</span> <span class="n">bounds_error</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+
+                    <span class="c1"># stdf in ADU</span>
+                    <span class="n">obsl</span><span class="p">,</span> <span class="n">obss</span><span class="p">,</span> <span class="n">obsf</span> <span class="o">=</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,:],</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">,:],</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">,:]</span>
+                    <span class="n">exptime</span> <span class="o">=</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;EXPTIME&#39;</span><span class="p">]</span>
+                    <span class="n">std</span> <span class="o">=</span> <span class="p">(</span><span class="n">obsf</span> <span class="o">-</span> <span class="n">obss</span><span class="p">)</span><span class="o">/</span><span class="n">exptime</span>
+                    <span class="k">print</span> <span class="s2">&quot;Std exptime: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">exptime</span>
+
+                    <span class="n">to_fit</span> <span class="o">=</span> <span class="n">std</span><span class="o">/</span><span class="n">stdf</span><span class="p">(</span><span class="n">obsl</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+
+                    <span class="n">zero</span> <span class="o">=</span> <span class="p">(</span><span class="n">obsl</span><span class="o">&gt;</span> <span class="mi">990</span><span class="p">)</span>
+                    <span class="n">to_fit</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">to_fit</span><span class="p">)</span>
+                    <span class="n">to_fit</span><span class="p">[</span><span class="n">zero</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+                    <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">to_fit</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obsl</span><span class="o">&lt;</span><span class="mi">1100</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">obsl</span><span class="o">&gt;</span><span class="mi">350</span><span class="p">)</span>
+                    <span class="n">poly</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">obsl</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="n">to_fit</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="mi">25</span><span class="p">)</span>
+                    <span class="n">qef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+                    <span class="k">print</span> <span class="n">poly</span>
+
+
+                    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">350</span><span class="p">,</span> <span class="mi">950</span><span class="p">])</span>
+                    <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">obsl</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">to_fit</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+                    <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">obsl</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">qef</span><span class="p">(</span><span class="n">obsl</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span><span class="o">*</span><span class="mi">10</span><span class="p">))</span>
+
+            <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">([</span><span class="mi">350</span><span class="p">,</span> <span class="mi">950</span><span class="p">])</span>
+
+
+        <span class="k">def</span> <span class="nf">qe_clean_functor</span><span class="p">(</span><span class="n">qef</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">to_return</span><span class="p">(</span><span class="n">lam</span><span class="p">):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">qef</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">lam</span><span class="o">&lt;</span><span class="mi">3750</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">lam</span><span class="o">&gt;</span><span class="mi">9500</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="k">return</span> <span class="n">v</span>
+            <span class="k">return</span> <span class="n">to_return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qecurve</span> <span class="o">=</span> <span class="n">qe_clean_functor</span><span class="p">(</span><span class="n">qef</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PositionPicker.draw_selection_circle"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.draw_selection_circle">[docs]</a>    <span class="k">def</span> <span class="nf">draw_selection_circle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;OnSkyX&#39;</span><span class="p">:</span> <span class="n">diam</span> <span class="o">=</span> <span class="mf">0.5</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">diam</span> <span class="o">=</span> <span class="mi">1</span>
+
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;{0}:{1}. {2} of {3}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">,</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_sky</span><span class="p">:</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Values</span><span class="p">[:]</span>
+            <span class="n">cut</span><span class="o">=</span><span class="mi">25</span>
+            <span class="n">vals</span><span class="p">[</span><span class="n">vals</span><span class="o">&lt;-</span><span class="n">cut</span><span class="o">/</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">cut</span><span class="o">/</span><span class="mi">4</span>
+            <span class="n">vals</span><span class="p">[</span><span class="n">vals</span><span class="o">&gt;</span><span class="n">cut</span><span class="p">]</span> <span class="o">=</span> <span class="n">cut</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Values</span>
+
+        <span class="n">v</span> <span class="o">=</span> <span class="n">vals</span><span class="p">[:]</span>
+        <span class="c1">#v[v&lt;-100] = -100</span>
+        <span class="c1">#v[v&gt;50000] = 50000</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Xs</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">Ys</span><span class="p">,</span>
+                    <span class="n">c</span><span class="o">=</span><span class="n">vals</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+                    <span class="n">picker</span><span class="o">=</span><span class="n">diam</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;h&#39;</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">X</span><span class="p">,</span><span class="n">Y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picked</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span><span class="p">]</span>
+            <span class="n">s1</span><span class="p">,</span><span class="n">s2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;sky_annulus&#39;</span><span class="p">]</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Adding circle at {0}/{1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">))</span>
+            <span class="n">obj_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">][</span><span class="s1">&#39;object_diam&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">2.0</span>
+            <span class="n">obj_circle</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span> <span class="n">radius</span><span class="o">=</span><span class="n">obj_radius</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">s1_circle</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span> <span class="n">radius</span><span class="o">=</span><span class="n">s1</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">s2_circle</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span> <span class="n">radius</span><span class="o">=</span><span class="n">s2</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">obj_circle</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">s1_circle</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">s2_circle</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PositionPicker.next_spec"><a class="viewcode-back" href="../../SEDM.html#SEDM.GUIhandle.PositionPicker.next_spec">[docs]</a>    <span class="k">def</span> <span class="nf">next_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">max_spx_ix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SM</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">&gt;=</span> <span class="n">max_spx_ix</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">spx_ix</span> <span class="o">=</span> <span class="n">max_spx_ix</span><span class="o">-</span><span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">draw_spectrum</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">draw_selection_circle</span><span class="p">()</span></div></div>
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

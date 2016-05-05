@@ -1,0 +1,460 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.app_phot &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.app_phot</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Sat May 23 18:23:02 2015</span>
+
+<span class="sd">@author: nadiablago</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">&quot;Agg&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">pyraf</span> <span class="kn">import</span> <span class="n">iraf</span> 
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s2">&quot;Not loading iraf&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">zscale</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">fitsutils</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">coordinates_conversor</span> <span class="kn">as</span> <span class="nn">cc</span>
+<span class="kn">import</span> <span class="nn">pywcs</span>
+
+<span class="n">ref_stars_file</span> <span class="o">=</span> <span class="s2">&quot;/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_ps1.csv&quot;</span>
+<span class="n">ref_stars_file_sdss</span> <span class="o">=</span> <span class="s2">&quot;/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_sdss.csv&quot;</span>
+<span class="n">ref_stars_file_2mass</span> <span class="o">=</span> <span class="s2">&quot;/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_2mass.csv&quot;</span>
+<span class="n">ref_stars_file_johnson</span> <span class="o">=</span> <span class="s2">&quot;/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_johnson.csv&quot;</span>
+
+
+
+<div class="viewcode-block" id="get_app_phot"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.app_phot.get_app_phot">[docs]</a><span class="k">def</span> <span class="nf">get_app_phot</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">plot_only</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">wcsin</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    coords: files: </span>
+<span class="sd">    wcsin: can be &quot;world&quot;, &quot;logic&quot;</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># Load packages; splot is in the onedspec package, which is in noao. </span>
+    <span class="c1"># The special keyword _doprint=0 turns off displaying the tasks </span>
+    <span class="c1"># when loading a package. </span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">plot_only</span><span class="p">):</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">digiphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">apphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">unlearn</span><span class="p">(</span><span class="s2">&quot;apphot&quot;</span><span class="p">)</span>
+    
+    <span class="n">out_name</span> <span class="o">=</span> <span class="n">image</span> <span class="o">+</span>  <span class="s2">&quot;.seq.mag&quot;</span>
+    <span class="n">clean_name</span> <span class="o">=</span> <span class="n">image</span> <span class="o">+</span> <span class="s2">&quot;.app.mag&quot;</span>
+    
+    <span class="c1"># Read values from .ec file</span>
+    <span class="n">ecfile</span><span class="o">=</span> <span class="n">image</span><span class="o">+</span><span class="s2">&quot;.ec&quot;</span>
+    <span class="n">filter_value</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ecfile</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">fwhm_value</span> <span class="o">=</span> <span class="n">fwhm</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;FWHM&#39;</span><span class="p">)):</span>
+        <span class="n">fwhm_value</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;FWHM&#39;</span><span class="p">)</span>
+    <span class="n">airmass_value</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;AIRMASS&#39;</span><span class="p">)</span>
+    <span class="n">exptime</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;EXPTIME&#39;</span><span class="p">)</span>
+    <span class="n">gain</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;GAIN&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>      
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ecfile</span><span class="p">),</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;airmass&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="n">airmass_value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">airmass_value</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="s2">&quot;FWHM&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="n">line</span>
+                    <span class="n">fwhm_value</span> <span class="o">=</span>  <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;FWHM=&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">fwhm_value</span> <span class="o">=</span> <span class="n">fwhm_value</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;aperture&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    
+    <span class="k">print</span> <span class="s2">&quot;FWHM&quot;</span><span class="p">,</span> <span class="n">fwhm_value</span>
+    <span class="n">aperture_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fwhm_value</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>      <span class="c1"># Set aperture radius to three times the PSF radius</span>
+    <span class="n">sky_rad</span><span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fwhm_value</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span>
+    
+    <span class="k">print</span> <span class="n">aperture_rad</span><span class="p">,</span> <span class="n">sky_rad</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">plot_only</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">out_name</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">out_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">clean_name</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">clean_name</span><span class="p">)</span>
+
+        <span class="c1"># Check if files in list, otherwise exit</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ecfile</span><span class="p">:</span>
+           <span class="k">print</span> <span class="s2">&quot;No .ec files in directory, exiting&quot;</span>
+           <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+        
+        
+   
+   
+        <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="o">.</span><span class="n">digiphot</span><span class="o">.</span><span class="n">apphot</span><span class="o">.</span><span class="n">qphot</span><span class="p">(</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">,</span>\
+        <span class="n">cbox</span> <span class="o">=</span> <span class="mf">25.</span> <span class="p">,</span>\
+        <span class="n">annulus</span> <span class="o">=</span> <span class="n">sky_rad</span> <span class="p">,</span>\
+        <span class="n">dannulus</span> <span class="o">=</span> <span class="mf">10.</span> <span class="p">,</span>\
+        <span class="n">aperture</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">aperture_rad</span><span class="p">),</span>\
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">coords</span> <span class="p">,</span>\
+        <span class="n">output</span> <span class="o">=</span> <span class="n">out_name</span> <span class="p">,</span>\
+        <span class="n">plotfile</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="p">,</span>\
+        <span class="n">zmag</span> <span class="o">=</span> <span class="mf">0.</span> <span class="p">,</span>\
+        <span class="n">exposure</span> <span class="o">=</span> <span class="s2">&quot;exptime&quot;</span> <span class="p">,</span>\
+        <span class="n">airmass</span> <span class="o">=</span> <span class="s2">&quot;airmass&quot;</span> <span class="p">,</span>\
+        <span class="nb">filter</span> <span class="o">=</span> <span class="s2">&quot;filters&quot;</span> <span class="p">,</span>\
+        <span class="n">obstime</span> <span class="o">=</span> <span class="s2">&quot;DATE&quot;</span> <span class="p">,</span>\
+        <span class="n">epadu</span> <span class="o">=</span> <span class="n">gain</span> <span class="p">,</span>\
+        <span class="n">interactive</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span> <span class="p">,</span>\
+        <span class="n">radplots</span> <span class="o">=</span> <span class="s2">&quot;yes&quot;</span> <span class="p">,</span>\
+        <span class="n">verbose</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span> <span class="p">,</span>\
+        <span class="n">graphics</span> <span class="o">=</span> <span class="s2">&quot;stdgraph&quot;</span> <span class="p">,</span>\
+        <span class="n">display</span> <span class="o">=</span> <span class="s2">&quot;stdimage&quot;</span> <span class="p">,</span>\
+        <span class="n">icommands</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="p">,</span>\
+        <span class="n">wcsin</span> <span class="o">=</span> <span class="n">wcsin</span><span class="p">,</span>
+        <span class="n">wcsout</span> <span class="o">=</span> <span class="s2">&quot;logical&quot;</span><span class="p">,</span>
+        <span class="n">gcommands</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> 
+
+        <span class="sd">&#39;&#39;&#39;iraf.noao.digiphot.apphot.phot(image = image,\</span>
+<span class="sd">            skyfile = &quot;&quot;,\</span>
+<span class="sd">            coords  = coords,\</span>
+<span class="sd">            output  = out_name,\</span>
+<span class="sd">           plotfil = &quot;&quot;,\</span>
+<span class="sd">           datapar = &quot;&quot;,\</span>
+<span class="sd">           centerp = &quot;&quot;,\</span>
+<span class="sd">           fitskyp = &quot;&quot;,\</span>
+<span class="sd">           photpar = &quot;&quot;,\</span>
+<span class="sd">           interac = &quot;no&quot;,\</span>
+<span class="sd">           radplot = &quot;no&quot;,\</span>
+<span class="sd">           icomman = &quot;&quot;,\</span>
+<span class="sd">           gcomman = &quot;&quot;,\</span>
+<span class="sd">           wcsin = wcsin,</span>
+<span class="sd">           wcsout = &quot;logical&quot;,</span>
+<span class="sd">           fwhmpsf = float(fwhm_value),\</span>
+<span class="sd">           datamin = 0   ,\</span>
+<span class="sd">           datamax = 63500,\</span>
+<span class="sd">           ccdread =  &quot;INDEF&quot;,\</span>
+<span class="sd">           gain    =  &quot;INDEF&quot;,\</span>
+<span class="sd">           readnoi =  0,\</span>
+<span class="sd">           epadu   =  2.0,\</span>
+<span class="sd">           exposur = &quot;EXPTIME&quot;,\</span>
+<span class="sd">           airmass = &quot;AIRMASS&quot;,\</span>
+<span class="sd">           filter  = &quot;FILTER&quot;,\</span>
+<span class="sd">           obstime = &quot;DATE-OBS&quot;,\</span>
+<span class="sd">           calgori = &quot;centroid&quot;,\</span>
+<span class="sd">           salgori = &quot;mode&quot;,\</span>
+<span class="sd">           cbox    = 25.,\</span>
+<span class="sd">           annulus = 30,\</span>
+<span class="sd">           dannulu = 10,\</span>
+<span class="sd">           zmag = 0.,\</span>
+<span class="sd">           aperture = str(aperture_rad)</span>
+<span class="sd">          # apert = str(aperture_rad),\</span>
+<span class="sd">           #scale  =                   1.,\</span>
+<span class="sd">           #emissio=                  &quot;yes&quot;,\</span>
+<span class="sd">           #sigma  =                &quot;INDEF&quot;           </span>
+<span class="sd">           )&#39;&#39;&#39;</span>
+        
+         
+        <span class="c1">#iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = &quot;centroid&quot;, aperture=9.3,wcsin=&quot;world&quot;,wcsout=&quot;tv&quot;, interac = &quot;no&quot;, coords=coords, output=out_name)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">txdump</span><span class="p">(</span><span class="n">out_name</span><span class="p">,</span> <span class="s2">&quot;id,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="n">clean_name</span><span class="p">)</span>
+        
+    
+    <span class="n">ma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">clean_name</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span>  <span class="p">(</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Y&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Xshift&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Yshift&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),(</span><span class="s2">&quot;fwhm&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;ph_mag&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;stdev&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fit_mag&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fiterr&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">)])</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>    
+        <span class="n">m</span> <span class="o">=</span> <span class="n">ma</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ma</span><span class="p">[</span><span class="s2">&quot;fit_mag&quot;</span><span class="p">])]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Only one object found!&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ma</span><span class="p">])</span>
+        
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">prihdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="mf">1.</span>
+    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+
+    
+    
+    <span class="n">dimX</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">dimY</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="mi">4</span><span class="p">))</span>
+    <span class="n">outerrad</span> <span class="o">=</span> <span class="n">sky_rad</span><span class="o">+</span><span class="mi">10</span>
+    <span class="n">cutrad</span> <span class="o">=</span> <span class="n">outerrad</span> <span class="o">+</span> <span class="mi">15</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;FWHM=&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">fwhm_value</span><span class="p">))</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">dimX</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">dimY</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">)):</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot2grid</span><span class="p">((</span><span class="n">dimX</span><span class="p">,</span><span class="n">dimY</span><span class="p">),(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">))</span>
+                <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;X&quot;</span><span class="p">]</span><span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;X&quot;</span><span class="p">]</span><span class="o">+</span><span class="n">cutrad</span><span class="p">,</span> <span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;Y&quot;</span><span class="p">]</span><span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;Y&quot;</span><span class="p">]</span><span class="o">+</span><span class="n">cutrad</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">zmin</span><span class="p">,</span> <span class="n">zmax</span> <span class="o">=</span> <span class="n">zscale</span><span class="o">.</span><span class="n">zscale</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">],</span> <span class="n">nsamples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">contrast</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">sh</span><span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+                    <span class="k">if</span> <span class="n">sh</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">sh</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="n">zmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">])</span>
+                        <span class="n">zmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">])</span>
+                        <span class="k">continue</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="n">x1</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span><span class="n">y1</span><span class="p">:</span><span class="n">y2</span><span class="p">],</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;equal&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="n">cutrad</span><span class="p">,</span> <span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="n">cutrad</span><span class="p">),</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">matplotlib</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray_r</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">zmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">zmax</span><span class="p">)</span>
+                <span class="n">c1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">5.</span><span class="p">)</span>
+                <span class="n">c2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;orange&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">sky_rad</span><span class="p">)</span>
+                <span class="n">c3</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">sky_rad</span><span class="o">+</span><span class="mi">10</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">c1</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">c2</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">c3</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+        
+                <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">+</span><span class="mi">5</span><span class="p">,</span> <span class="o">+</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;id&quot;</span><span class="p">])</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="o">-</span><span class="n">cutrad</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">$\pm$</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;fit_mag&quot;</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s2">&quot;fiterr&quot;</span><span class="p">]),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">+</span><span class="mi">1</span>
+    
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">image</span> <span class="o">+</span> <span class="s2">&quot;plot.png&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="get_app_phot_target"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.app_phot.get_app_phot_target">[docs]</a><span class="k">def</span> <span class="nf">get_app_phot_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">plot_only</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">wcsin</span><span class="o">=</span><span class="s2">&quot;world&quot;</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">box</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    coords: files: </span>
+<span class="sd">    wcsin: can be &quot;world&quot;, &quot;logic&quot;</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># Load packages; splot is in the onedspec package, which is in noao. </span>
+    <span class="c1"># The special keyword _doprint=0 turns off displaying the tasks </span>
+    <span class="c1"># when loading a package. </span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">plot_only</span><span class="p">):</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">digiphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">apphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">unlearn</span><span class="p">(</span><span class="s2">&quot;apphot&quot;</span><span class="p">)</span>
+    
+    <span class="c1">#Check that actually the object is within this frame.</span>
+    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">hour2deg</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;OBJRA&#39;</span><span class="p">),</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;OBJDEC&#39;</span><span class="p">))</span>
+    
+    <span class="n">impf</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">wcs</span> <span class="o">=</span> <span class="n">pywcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    <span class="c1">#pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)</span>
+    <span class="n">pra</span><span class="p">,</span> <span class="n">pdec</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs_sky2pix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span> <span class="n">ndmin</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">pra</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>  <span class="ow">and</span> <span class="p">(</span><span class="n">pra</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pdec</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pdec</span> <span class="o">&lt;</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#print image, &quot;ERROR! Object coordinates are outside this frame. Skipping any aperture photometry!!&quot;</span>
+        <span class="c1">#print pra, pdec, shape</span>
+        <span class="k">return</span>
+    
+    <span class="n">out_name</span> <span class="o">=</span> <span class="n">image</span> <span class="o">+</span>  <span class="s2">&quot;.seq.mag&quot;</span>
+    <span class="n">clean_name</span> <span class="o">=</span> <span class="n">image</span> <span class="o">+</span> <span class="s2">&quot;.objapp.mag&quot;</span>
+    
+    
+    <span class="n">fwhm_value</span> <span class="o">=</span> <span class="n">fwhm</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;FWHM&#39;</span><span class="p">)):</span>
+        <span class="n">fwhm_value</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;FWHM&#39;</span><span class="p">)</span>
+    <span class="n">airmass_value</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;AIRMASS&#39;</span><span class="p">)</span>
+    <span class="n">exptime</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;EXPTIME&#39;</span><span class="p">)</span>
+    <span class="n">gain</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s1">&#39;GAIN&#39;</span><span class="p">)</span>
+    
+    <span class="c1">#print &quot;FWHM&quot;, fwhm_value</span>
+    <span class="n">aperture_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fwhm_value</span><span class="p">)</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>      <span class="c1"># Set aperture radius to three times the PSF radius</span>
+    <span class="n">sky_rad</span><span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fwhm_value</span><span class="p">)</span><span class="o">*</span><span class="mi">4</span><span class="p">)</span>
+    
+    <span class="c1">#print aperture_rad, sky_rad</span>
+
+    
+    
+    <span class="n">coords</span> <span class="o">=</span> <span class="s2">&quot;/tmp/coords.dat&quot;</span>
+    
+    <span class="c1">#print &quot;Saving coodinates for the object in pixels&quot;,pra,pdec</span>
+    
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="s2">&quot;/tmp/coords.dat&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">]]),</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%.4f</span><span class="s2"> </span><span class="si">%.4f</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">zmin</span><span class="p">,</span> <span class="n">zmax</span> <span class="o">=</span> <span class="n">zscale</span><span class="o">.</span><span class="n">zscale</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+       
+    <span class="n">im</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">zmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">zmax</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">pra</span><span class="p">,</span> <span class="n">pdec</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">plot_only</span><span class="p">):</span> 
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">image</span><span class="o">+</span><span class="s2">&quot;.png&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">out_name</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">out_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">clean_name</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">clean_name</span><span class="p">)</span>
+
+
+        <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="o">.</span><span class="n">digiphot</span><span class="o">.</span><span class="n">apphot</span><span class="o">.</span><span class="n">qphot</span><span class="p">(</span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">,</span>\
+        <span class="n">cbox</span> <span class="o">=</span> <span class="n">box</span> <span class="p">,</span>\
+        <span class="n">annulus</span> <span class="o">=</span> <span class="n">sky_rad</span> <span class="p">,</span>\
+        <span class="n">dannulus</span> <span class="o">=</span> <span class="mf">10.</span> <span class="p">,</span>\
+        <span class="n">aperture</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">aperture_rad</span><span class="p">),</span>\
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">coords</span> <span class="p">,</span>\
+        <span class="n">output</span> <span class="o">=</span> <span class="n">out_name</span> <span class="p">,</span>\
+        <span class="n">plotfile</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="p">,</span>\
+        <span class="n">zmag</span> <span class="o">=</span> <span class="mf">0.</span> <span class="p">,</span>\
+        <span class="n">exposure</span> <span class="o">=</span> <span class="s2">&quot;exptime&quot;</span> <span class="p">,</span>\
+        <span class="n">airmass</span> <span class="o">=</span> <span class="s2">&quot;airmass&quot;</span> <span class="p">,</span>\
+        <span class="nb">filter</span> <span class="o">=</span> <span class="s2">&quot;filters&quot;</span> <span class="p">,</span>\
+        <span class="n">obstime</span> <span class="o">=</span> <span class="s2">&quot;DATE&quot;</span> <span class="p">,</span>\
+        <span class="n">epadu</span> <span class="o">=</span> <span class="n">gain</span> <span class="p">,</span>\
+        <span class="n">interactive</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span> <span class="p">,</span>\
+        <span class="n">radplots</span> <span class="o">=</span> <span class="s2">&quot;yes&quot;</span> <span class="p">,</span>\
+        <span class="n">verbose</span> <span class="o">=</span> <span class="s2">&quot;no&quot;</span> <span class="p">,</span>\
+        <span class="n">graphics</span> <span class="o">=</span> <span class="s2">&quot;stdgraph&quot;</span> <span class="p">,</span>\
+        <span class="n">display</span> <span class="o">=</span> <span class="s2">&quot;stdimage&quot;</span> <span class="p">,</span>\
+        <span class="n">icommands</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="p">,</span>\
+        <span class="n">wcsin</span> <span class="o">=</span> <span class="n">wcsin</span><span class="p">,</span>
+        <span class="n">wcsout</span> <span class="o">=</span> <span class="s2">&quot;logical&quot;</span><span class="p">,</span>
+        <span class="n">gcommands</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> 
+
+
+        <span class="c1">#iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = &quot;centroid&quot;, aperture=9.3,wcsin=&quot;world&quot;,wcsout=&quot;tv&quot;, interac = &quot;no&quot;, coords=coords, output=out_name)</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">txdump</span><span class="p">(</span><span class="n">out_name</span><span class="p">,</span> <span class="s2">&quot;id,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="n">clean_name</span><span class="p">)</span>
+        
+    
+        <span class="n">ma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">clean_name</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span>  <span class="p">(</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Y&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Xshift&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Yshift&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),(</span><span class="s2">&quot;fwhm&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;ph_mag&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;stdev&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fit_mag&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fiterr&quot;</span><span class="p">,</span><span class="s2">&quot;&lt;f4&quot;</span><span class="p">)])</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>  
+            <span class="k">if</span> <span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">size</span><span class="o">==</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">ma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ma</span><span class="p">])</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">ma</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ma</span><span class="p">[</span><span class="s2">&quot;fit_mag&quot;</span><span class="p">])]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Only one object found!&quot;</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ma</span><span class="p">])</span>
+            
+    
+        <span class="k">if</span> <span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;ZP&quot;</span><span class="p">)):</span>
+            <span class="n">band</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;filter&quot;</span><span class="p">)</span>
+            <span class="k">print</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;NAME&quot;</span><span class="p">),</span> <span class="n">band</span><span class="p">,</span> <span class="n">ma</span><span class="p">[</span><span class="s1">&#39;fit_mag&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;ZP&quot;</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ma</span><span class="p">[</span><span class="s1">&#39;fiterr&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;ZPERR&quot;</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">fwhm_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">band</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;filter&quot;</span><span class="p">)</span>
+            <span class="k">print</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;NAME&quot;</span><span class="p">),</span> <span class="n">band</span><span class="p">,</span> <span class="n">ma</span><span class="p">[</span><span class="s1">&#39;fit_mag&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="p">,</span> <span class="n">ma</span><span class="p">[</span><span class="s1">&#39;fiterr&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">fwhm_value</span>
+                 
+        <span class="n">X</span> <span class="o">=</span> <span class="n">ma</span><span class="p">[</span><span class="s2">&quot;X&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">ma</span><span class="p">[</span><span class="s2">&quot;Y&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">image</span><span class="o">+</span><span class="s2">&quot;.png&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+        
+        <span class="n">im</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">X</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">X</span><span class="o">+</span><span class="mi">50</span><span class="p">,</span><span class="n">Y</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">Y</span><span class="o">+</span><span class="mi">50</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">zmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">zmax</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">,</span><span class="o">-</span><span class="mi">50</span><span class="p">,</span><span class="mi">50</span><span class="p">))</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span> <span class="p">(</span><span class="n">pra</span><span class="o">-</span><span class="n">X</span><span class="p">,</span> <span class="n">pdec</span><span class="o">-</span><span class="n">Y</span><span class="p">),</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">sky_rad</span><span class="p">)</span>
+        <span class="n">c2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;orange&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">sky_rad</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">c1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">c2</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;MIN: </span><span class="si">%.0f</span><span class="s2"> MAX: </span><span class="si">%.0f</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">X</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">X</span><span class="o">+</span><span class="mi">50</span><span class="p">,</span><span class="n">Y</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">Y</span><span class="o">+</span><span class="mi">50</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">impf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">X</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">X</span><span class="o">+</span><span class="mi">50</span><span class="p">,</span><span class="n">Y</span><span class="o">-</span><span class="mi">50</span><span class="p">:</span><span class="n">Y</span><span class="o">+</span><span class="mi">50</span><span class="p">])))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">image</span><span class="o">+</span><span class="s2">&quot;_zoom.png&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span></div>
+
+ 
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+        <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">        Runs astrometry.net on the image specified as a parameter and returns </span>
+<span class="sd">        the offset needed to be applied in order to center the object coordinates </span>
+<span class="sd">        in the reference pixel.</span>
+<span class="sd">            </span>
+<span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;reduced&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Directory containing the reduced fits for the night.&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    
+    <span class="n">reduced</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">reduced</span>
+    
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">reduced</span><span class="p">)</span>
+    
+
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.fits&quot;</span><span class="p">):</span>
+        <span class="c1">#print f</span>
+        <span class="n">get_app_phot_target</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">box</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

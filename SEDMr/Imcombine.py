@@ -7,17 +7,18 @@ def imcombine(filelist, out, listfile=None, bpmask=None, reject="none",
     """Convenience wrapper around IRAF task imcombine
 
     Args:
-        filelist: The list of files to imcombine
-        out: The full path to the output file
-        bpmask: The full path to the bad pixel mask
-        reject: none, minmax, sigclip, avsigclip, pclip
-        nlow,nhigh: Parameters for minmax rejection, see iraf docs
+        filelist (list of str): The list of files to imcombine
+        out (str): The full path to the output file
+        bpmask (str): The full path to the bad pixel mask
+        reject (str): none, minmax, sigclip, avsigclip, pclip
+        nlow,nhigh (int,int): Parameters for minmax rejection, see iraf docs
     
     Returns:
         None
 
     Side effects:
-        Creates the imcombined file at location `out'
+        Creates the imcombined file at location `out`
+
     """
 
     #TODO: REMOVE Iraf and use python instead. STSCI Python has

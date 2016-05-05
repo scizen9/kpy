@@ -1,0 +1,226 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>NPK.ETC &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for NPK.ETC</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">Atmosphere</span> <span class="kn">as</span> <span class="nn">AA</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="nb">reload</span><span class="p">(</span><span class="n">AA</span><span class="p">)</span>
+
+<div class="viewcode-block" id="abmag_to_flambda"><a class="viewcode-back" href="../../NPK.html#NPK.ETC.abmag_to_flambda">[docs]</a><span class="k">def</span> <span class="nf">abmag_to_flambda</span><span class="p">(</span><span class="n">AB</span><span class="p">,</span> <span class="n">lam_ang</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert AB Magnitude to erg/s/cm^2/ang</span>
+
+<span class="sd">    Arg:</span>
+<span class="sd">        AB: AB Magnitude</span>
+<span class="sd">        lam_ang: Wavelength [angstrom]</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        erg/s/cm^2/Ang&#39;&#39;&#39;</span>
+
+    <span class="n">c</span> <span class="o">=</span> <span class="mf">2.9979e18</span> <span class="c1"># Angstrom / s</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">2000</span> <span class="o">&lt;</span> <span class="n">lam_ang</span> <span class="o">&lt;</span> <span class="mi">20000</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;LAM MAY NOT BE IN Angstrom&quot;</span>
+
+    <span class="c1"># Return erg/s/cm^2/ang</span>
+    <span class="k">return</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">AB</span><span class="o">+</span><span class="mf">48.6</span><span class="p">)</span><span class="o">/</span><span class="mf">2.5</span><span class="p">)</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="n">lam_ang</span><span class="o">**</span><span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="go"><a class="viewcode-back" href="../../NPK.html#NPK.ETC.go">[docs]</a><span class="k">def</span> <span class="nf">go</span><span class="p">(</span>
+    <span class="n">source_ab</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+    <span class="n">leff_ang</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+    <span class="n">R</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">fwhm_as</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">phase</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">t_s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">Atel_cm2</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">n_pix</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+    <span class="n">RN</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">eta</span><span class="o">=.</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">coadds</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">sky_level</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+
+    <span class="sd">&#39;&#39;&#39;Calculates the signal to noise of a source with source_ab</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        source_ab: Source magnitude in AB</span>
+<span class="sd">        leff_ang: Central wavelength in Angstrom</span>
+<span class="sd">        R: Spectral resolution of an element</span>
+<span class="sd">        fwhm_as: Extraction FWHM in as</span>
+<span class="sd">        phase: Moon phase</span>
+<span class="sd">        t_s: Exposure time in second</span>
+<span class="sd">        Atel_cm2: Telescope area in cm2 </span>
+<span class="sd">        n_pix: Number of pixels that participate</span>
+<span class="sd">        RN: The read noise in electron</span>
+<span class="sd">        eta: The efficiency of the instrument</span>
+<span class="sd">        coadds: The number of coadds [1]</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        {All Arg parameters and</span>
+<span class="sd">        &#39;epp&#39;: Energy per photon in erg</span>
+<span class="sd">        &#39;dlambda&#39;: The full with of the band</span>
+<span class="sd">        &#39;s_npp&#39;: The number of photons receive from the object</span>
+<span class="sd">        &#39;sky_area&#39;: The area of extraction&#39;</span>
+<span class="sd">        &#39;k_npp&#39;: The number of sky photons received in the extraction area</span>
+<span class="sd">        &#39;k_npp_pix&#39;: The number of sky photons received in a pixel</span>
+<span class="sd">        &#39;k_npp_as2&#39;: The number of sky photons received per as2</span>
+<span class="sd">        &#39;noise_obj&#39;: The noise from the object [e-]</span>
+<span class="sd">        &#39;noise_sky&#39;: The noise from the sky [e-]</span>
+<span class="sd">        &#39;noise_read&#39;: Total read noise</span>
+<span class="sd">        &#39;noise&#39;: Total number of noise photons</span>
+<span class="sd">        &#39;snr&#39;: The delivered signal to noise</span>
+<span class="sd">        &#39;sky_level&#39;: Multiply sky level by this value</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">results</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;AB&#39;</span><span class="p">:</span> <span class="n">source_ab</span><span class="p">,</span> <span class="s1">&#39;leff&#39;</span><span class="p">:</span> <span class="n">leff_ang</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span> <span class="n">R</span><span class="p">,</span> <span class="s1">&#39;fwhm_as&#39;</span><span class="p">:</span> <span class="n">fwhm_as</span><span class="p">,</span>
+        <span class="s1">&#39;phase&#39;</span><span class="p">:</span> <span class="n">phase</span><span class="p">,</span> <span class="s1">&#39;t&#39;</span><span class="p">:</span> <span class="n">t_s</span><span class="p">,</span> <span class="s1">&#39;Atel&#39;</span><span class="p">:</span> <span class="n">Atel_cm2</span><span class="p">,</span> <span class="s1">&#39;n_pix&#39;</span><span class="p">:</span> <span class="n">n_pix</span><span class="p">,</span>
+        <span class="s1">&#39;RN&#39;</span><span class="p">:</span> <span class="n">RN</span><span class="p">,</span> <span class="s1">&#39;eta&#39;</span><span class="p">:</span> <span class="n">eta</span><span class="p">,</span> <span class="s1">&#39;coadds&#39;</span><span class="p">:</span> <span class="n">coadds</span><span class="p">,</span> <span class="s1">&#39;sky_level&#39;</span><span class="p">:</span> <span class="n">sky_level</span><span class="p">}</span>
+
+
+    <span class="n">hc</span> <span class="o">=</span> <span class="mf">1.98644521e-8</span> <span class="c1"># erg angstrom</span>
+    
+    <span class="n">epp</span> <span class="o">=</span> <span class="n">hc</span><span class="o">/</span><span class="n">leff_ang</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;epp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">epp</span>
+
+    <span class="n">dlambda</span> <span class="o">=</span> <span class="n">leff_ang</span><span class="o">/</span><span class="n">R</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;dlambda&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dlambda</span>
+
+    <span class="n">t_eff</span> <span class="o">=</span> <span class="n">t_s</span> <span class="o">*</span> <span class="n">coadds</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;t_eff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_eff</span>
+
+    <span class="n">s_flam</span> <span class="o">=</span> <span class="n">abmag_to_flambda</span><span class="p">(</span><span class="n">source_ab</span><span class="p">,</span> <span class="n">leff_ang</span><span class="p">)</span> <span class="c1"># erg/s/cm2/ang</span>
+    <span class="n">s_npp</span> <span class="o">=</span> <span class="n">s_flam</span><span class="o">/</span><span class="n">epp</span> <span class="o">*</span> <span class="n">t_eff</span> <span class="o">*</span> <span class="n">Atel_cm2</span> <span class="o">*</span> <span class="n">dlambda</span> <span class="o">*</span> <span class="n">eta</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;s_npp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_npp</span>
+
+    <span class="n">skyfun</span> <span class="o">=</span> <span class="n">AA</span><span class="o">.</span><span class="n">sky_function</span><span class="p">(</span><span class="n">phase</span><span class="p">)</span>
+
+    <span class="n">sky_area</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="p">(</span><span class="n">fwhm_as</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;sky_area&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sky_area</span>
+    <span class="n">k_flam</span> <span class="o">=</span> <span class="n">skyfun</span><span class="p">(</span><span class="n">leff_ang</span><span class="p">)</span> <span class="c1"># photon/s/cm2/ang/as2</span>
+    <span class="n">k_npp</span> <span class="o">=</span> <span class="n">k_flam</span> <span class="o">*</span> <span class="n">t_eff</span> <span class="o">*</span> <span class="n">Atel_cm2</span> <span class="o">*</span> <span class="n">dlambda</span> <span class="o">*</span> <span class="n">sky_area</span> <span class="o">*</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">sky_level</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;k_npp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_npp</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;k_npp_pix&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_npp</span><span class="o">/</span><span class="n">n_pix</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;k_npp_pas2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">k_npp</span><span class="o">/</span><span class="n">sky_area</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_obj&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s_npp</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_sky&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">k_npp</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_read&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">RN</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">n_pix</span><span class="o">*</span><span class="n">coadds</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_obj&#39;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> 
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_sky&#39;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span>
+        <span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise_read&#39;</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;snr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_npp</span><span class="o">/</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;noise&#39;</span><span class="p">]</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;rtel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Atel_cm2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;l0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">leff_ang</span><span class="o">-</span><span class="n">dlambda</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">results</span><span class="p">[</span><span class="s1">&#39;l1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">leff_ang</span><span class="o">+</span><span class="n">dlambda</span><span class="o">/</span><span class="mi">2</span>
+
+    
+
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;                          Signal        Noise&quot;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;  Time    Mag   SNR     Star Sky/as2    Star     Sky    Read  R [cm] Waverange  as2&quot;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{t_eff:6.1f} {AB:6.2f} {snr:5.1f}  {s_npp:7.1f} {k_npp_pas2:7.1f} {noise_obj:7.1f} {noise_sky:7.1f} {noise_read:7.1f} {rtel:7.1f} {l0:.0f}-{l1:.0f} {sky_area:4.1f}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">results</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="n">eta</span> <span class="o">=</span> <span class="p">(</span><span class="o">.</span><span class="mi">9</span> <span class="o">*</span> <span class="c1"># camera</span>
+        <span class="o">.</span><span class="mi">7</span> <span class="o">*</span><span class="c1"># atmosphere</span>
+        <span class="o">.</span><span class="mi">4</span><span class="p">)</span> <span class="c1">#ccd</span>
+
+    <span class="n">Atel_cm2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="mi">45</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">go</span><span class="p">(</span><span class="mf">20.0</span><span class="p">,</span> <span class="n">t_s</span><span class="o">=</span><span class="mf">120.0</span><span class="p">,</span> <span class="n">Atel_cm2</span><span class="o">=</span><span class="n">Atel_cm2</span><span class="p">,</span> <span class="n">eta</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">phase</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">leff_ang</span><span class="o">=</span><span class="mi">5500</span><span class="p">,</span>
+        <span class="n">fwhm_as</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s2">&quot;Should print out about SNR 33&quot;</span>
+
+    <span class="n">ergpersectowatt</span> <span class="o">=</span> <span class="mf">1e-7</span>
+    <span class="n">cm2tom2</span> <span class="o">=</span> <span class="mf">1e-4</span>
+    <span class="n">angtomicron</span> <span class="o">=</span> <span class="mf">1e-4</span>
+
+    <span class="n">toWpm2pmicron</span> <span class="o">=</span> <span class="n">ergpersectowatt</span> <span class="o">/</span> <span class="n">cm2tom2</span> <span class="o">/</span> <span class="n">angtomicron</span>
+    
+    <span class="c1"># Code Check</span>
+    <span class="k">assert</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">abmag_to_flambda</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5240</span><span class="p">)</span> <span class="o">*</span> <span class="n">toWpm2pmicron</span> <span class="o">-</span> <span class="mf">4.069e-8</span><span class="p">)</span> <span class="o">&lt;</span> <span class="o">.</span><span class="mf">2e-8</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

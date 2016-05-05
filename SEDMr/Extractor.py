@@ -21,10 +21,10 @@ import NPK.Util
 import NPK.Standards as Stds
 import NPK.Atmosphere as Atm
 
-#Nadia imports
-import SEDMrph.zeropoint as zeropoint
+# Nadia imports
 from scipy.interpolate import griddata
 import scipy.optimize as opt
+
 
 def reject_outliers(data, m=2.):
     d = np.abs(data - np.median(data))
@@ -75,7 +75,24 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     print "DX %2.1f, DY %2.1f, D %2.1f" % (DX, DY, np.sqrt(DX*DX + DY*DY))
     return positions
 
-def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None, 
+
+def Gaussian_2D(xdata_tuple, amplitude, xo, yo, sigma_x, sigma_y, theta, offset):
+    '''
+    Produces a 2D gaussian centered in xo, yo with the parameters specified.
+    xdata_tuple: coordinates of the points where the 2D Gaussian is computed.
+
+    '''
+    (x, y) = xdata_tuple
+    xo = float(xo)
+    yo = float(yo)
+    a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
+    b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
+    c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
+    g = offset + amplitude*np.exp( - (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo) + c*((y-yo)**2)))
+    return g.ravel()
+
+
+def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
                                lmin=400, lmax=900, airmass=1.0):
     """ 
      Returns index of spectra picked by Guassian fit.
@@ -116,7 +133,7 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, 
                         np.nanmean(grid_Vs))
 
-    popt, pcov = opt.curve_fit(zeropoint.twoD_Gaussian, (X, Y), 
+    popt, pcov = opt.curve_fit(Gaussian_2D, (X, Y),
                                 grid_Vs.flatten(), p0=initial_guess)
     xc = popt[1]
     if xc < -30. or xc > 30.:
@@ -154,6 +171,7 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     
     return KT.good_positions[kix], pos, positions, a
 
+
 def find_positions_ellipse(xy, h, k, a, b, A):
     """
     xy: Vector with pairs [[x0, y0], [x1, y1]] of coordinates.
@@ -170,6 +188,7 @@ def find_positions_ellipse(xy, h, k, a, b, A):
         ((x-h)*np.sin(A)-(y-k)*np.cos(A))**2/(b**2)
     
     return positions[dist<1]
+
 
 def identify_spectra_gui(spectra, outname=None, radius=2, 
                          lmin=650, lmax=700, PRLLTC=None, 
@@ -201,6 +220,7 @@ def identify_spectra_gui(spectra, outname=None, radius=2,
     kix = list(sets.Set(all_kix))
 
     return KT.good_positions[kix], pos, positions, radius
+
 
 def identify_sky_spectra(spectra, pos, inner=3, lmin=650, lmax=700):
     KT = SS.Spectra(spectra)
@@ -328,8 +348,8 @@ def identify_spectra(spectra, outname=None, low=-np.inf, hi=np.inf, plot=False):
 
     to_image(outname)
 
-
     return ixs[ok]
+
 
 def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None):
     """ Convert spectra list into image_[outname].pdf """
@@ -393,6 +413,7 @@ def c_to_nm(coefficients, pix, offset=0):
     t = coefficients[:]
     t[0] += offset
     return chebval(pix, t)
+
 
 def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     corrfile=None, dnm=0, onto=None):
@@ -475,7 +496,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         print "Wrote allspec_%s" % outname
     if plot:pl.show()
 
-
     # Package results
     doc = """Result contains:
         nm [N float]: Wavelength solution
@@ -522,14 +542,13 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             print "Wrote corr_spec_%s" % outname
         if plot: pl.show()
 
-
     pl.figure(2)
 
     return result
 
+
 def load_corr():
     corr = pf.open("CORR.npy")
-
 
 
 def imarith(operand1, op, operand2, result, doAirmass=False):
@@ -557,13 +576,17 @@ def imarith(operand1, op, operand2, result, doAirmass=False):
         of[0].header['airmass2'] = am2
         of.writeto(result, clobber=True)
 
+
 def gunzip(A, B):
     if A.endswith(".gz"):
         os.system("gunzip %s" % A)
+        A = os.path.splitext(A)[0]
     if B.endswith(".gz"):
         os.system("gunzip %s" % B)
+        B = os.path.splitext(B)[0]
 
-    return A.rstrip(".gz"), B.rstrip(".gz")
+    return A,B
+
 
 def gzip(A,B):
     if not A.endswith(".gz"):
@@ -573,6 +596,7 @@ def gzip(A,B):
 
     return A+".gz", B+".gz"
 
+
 def add(A,B, outname):
     A,B = gunzip(A,B)
     imarith(A, "+", B, outname)
@@ -580,12 +604,14 @@ def add(A,B, outname):
 
     return pf.open(outname)
 
+
 def addcon(A,B, outname):
     A,B = gunzip(A,B)
     imarith(A, "+", B, outname)
     gzip(A,"junk.gz")
 
     return pf.open(outname)
+
 
 def subtract(A,B, outname):
     if os.path.exists(outname):
@@ -596,6 +622,7 @@ def subtract(A,B, outname):
     A,B = gzip(A,B)
 
     return pf.open(outname)
+
 
 def divide(A,B, outname):
     A,B = gunzip(A,B)
@@ -651,6 +678,7 @@ def combine4(A,B,C,D, outname):
 
     return pf.open(outname)
 
+
 def bgd_level(extractions):
     """Remove background from extractions"""
 
@@ -689,6 +717,7 @@ def handle_extract(data, outname=None, fine='fine.npy',flexure_x_corr_nm=0.0,
         E, meta = np.load(exfile)
 
     return E
+
 
 def handle_Flat(A, fine, outname=None):
     """Loads IFU Flat frame "A" and extracts spectra using "fine".
@@ -1294,8 +1323,7 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
     varA = interp_spectra(E_var, sixA, sign=1, outname=outname+"_A_var.pdf")
     varB = interp_spectra(E_var, sixB, sign=1, outname=outname+"_B_var.pdf")
 
-
-    ## Plot out the X/Y selected spectra
+    # Plot out the X/Y selected spectra
     XSA = []
     YSA = []
     XSB = []
@@ -1418,6 +1446,7 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
     np.save("sp_" + outname, res)
     print "Wrote sp_"+outname+".npy"
 
+
 def measure_flexure(sky):
     """ Measure expected (589.3 nm) - measured emission line in nm"""
     ll, ss = sky['nm'], sky['ph_10m_nm']
@@ -1433,7 +1462,6 @@ def measure_flexure(sky):
     dnm = 589.3 - skynms[ixmin]
 
     return dnm
-
 
 
 if __name__ == '__main__':
@@ -1463,11 +1491,10 @@ Handles a single A image and A+B pair as well as flat extraction.
 
     args = parser.parse_args()
 
-
     print ""
 
     if args.outname is not None:
-        args.outname = args.outname.rstrip('.npy')
+        args.outname = os.path.splitext(args.outname)[0]
 
     if args.flat_correction is not None:
         print "Using flat data in %s" % args.flat_correction
@@ -1475,7 +1502,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     else: flat = None
 
     if args.A is not None and args.B is not None:
-        print "A B Extraction"
+        print "A B Extraction to %s.npy" % args.outname
         handle_AB(args.A, args.B, args.fine, outname=args.outname,
                     Aoffset=args.Aoffset, Boffset=args.Boffset,
                     radius=args.radius_as, flat_corrections=flat,
@@ -1484,15 +1511,15 @@ Handles a single A image and A+B pair as well as flat extraction.
     elif args.A is not None:
         if args.std is None:
             if args.flat:
-                print "Flat Extraction"
+                print "Flat Extraction to %s.npy" % args.outname
                 handle_Flat(args.A, args.fine, outname=args.outname)
             else:
-                print "Single Extraction"
+                print "Single Extraction to %s.npy" % args.outname
                 handle_A(args.A, args.fine, outname=args.outname,
                             Aoffset=args.Aoffset, radius=args.radius_as,
                             flat_corrections=flat,nosky=args.nosky)
         else:
-            print "Standard Star Extraction"
+            print "Standard Star Extraction to %s.npy" % args.outname
             star = Stds.Standards[args.std]
             handle_Std(args.A, args.fine, outname=args.outname,
                         standard=star, Aoffset=args.Aoffset,

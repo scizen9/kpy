@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDM.SexSpectra &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDM.SexSpectra</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+
+
+
+
+
+
+
+<span class="c1"># catalog_name, output_name</span>
+<span class="n">sex_params</span> <span class="o">=</span> \
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">CATALOG_NAME     {catalog_name} # name of the output catalog</span>
+<span class="sd">CATALOG_TYPE     ASCII_HEAD     # NONE,ASCII,ASCII_HEAD, ASCII_SKYCAT,</span>
+<span class="sd">                                # ASCII_VOTABLE, FITS_1.0 or FITS_LDAC</span>
+<span class="sd">PARAMETERS_NAME  /tmp/sex.sex.param  # name of the file containing catalog contents</span>
+<span class="sd"> </span>
+<span class="sd">#------------------------------- Extraction ----------------------------------</span>
+<span class="sd"> </span>
+<span class="sd">DETECT_TYPE      CCD            # CCD (linear) or PHOTO (with gamma correction)</span>
+<span class="sd">DETECT_MINAREA   30              # minimum number of pixels above threshold</span>
+<span class="sd">DETECT_THRESH    6.5            # &lt;sigmas&gt; or &lt;threshold&gt;,&lt;ZP&gt; in mag.arcsec-2</span>
+<span class="sd">ANALYSIS_THRESH  6.5            # &lt;sigmas&gt; or &lt;threshold&gt;,&lt;ZP&gt; in mag.arcsec-2</span>
+<span class="sd"> </span>
+<span class="sd">FILTER           N              # apply filter for detection (Y or N)?</span>
+<span class="sd">#FILTER_NAME      default.conv   # name of the file containing the filter</span>
+<span class="sd"> </span>
+<span class="sd">DEBLEND_NTHRESH  32             # Number of deblending sub-thresholds</span>
+<span class="sd">DEBLEND_MINCONT  0.005          # Minimum contrast parameter for deblending</span>
+<span class="sd"> </span>
+<span class="sd">CLEAN            Y              # Clean spurious detections? (Y or N)?</span>
+<span class="sd">CLEAN_PARAM      1.0            # Cleaning efficiency</span>
+<span class="sd"> </span>
+<span class="sd">MASK_TYPE        CORRECT        # type of detection MASKing: can be one of</span>
+<span class="sd">                                # NONE, BLANK or CORRECT</span>
+<span class="sd"> </span>
+<span class="sd">#------------------------------ Photometry -----------------------------------</span>
+<span class="sd"> </span>
+<span class="sd">PHOT_APERTURES   32              # MAG_APER aperture diameter(s) in pixels</span>
+<span class="sd">PHOT_AUTOPARAMS  2.5, 3.5       # MAG_AUTO parameters: &lt;Kron_fact&gt;,&lt;min_radius&gt;</span>
+<span class="sd">PHOT_PETROPARAMS 2.0, 3.5       # MAG_PETRO parameters: &lt;Petrosian_fact&gt;,</span>
+<span class="sd">                                # &lt;min_radius&gt;</span>
+<span class="sd"> </span>
+<span class="sd">SATUR_LEVEL      50000.0        # level (in ADUs) at which arises saturation</span>
+<span class="sd">SATUR_KEY        SATURATE       # keyword for saturation level (in ADUs)</span>
+<span class="sd"> </span>
+<span class="sd">MAG_ZEROPOINT    0.0            # magnitude zero-point</span>
+<span class="sd">MAG_GAMMA        4.0            # gamma of emulsion (for photographic scans)</span>
+<span class="sd">GAIN             0.0            # detector gain in e-/ADU</span>
+<span class="sd">GAIN_KEY         GAIN           # keyword for detector gain in e-/ADU</span>
+<span class="sd">PIXEL_SCALE      1.0            # size of pixel in arcsec (0=use FITS WCS info)</span>
+<span class="sd">                                # PIXEL_SCALE set by npk</span>
+<span class="sd"> </span>
+<span class="sd">#------------------------- Star/Galaxy Separation ----------------------------</span>
+<span class="sd"> </span>
+<span class="sd">SEEING_FWHM      2.5            # stellar FWHM in arcsec. Set to 2.5 by NPK </span>
+<span class="sd">STARNNW_NAME     default.nnw    # Neural-Network_Weight table filename</span>
+<span class="sd"> </span>
+<span class="sd">#------------------------------ Background -----------------------------------</span>
+<span class="sd"> </span>
+<span class="sd">BACK_SIZE        64,30          # Background mesh: &lt;size&gt; or &lt;width&gt;,&lt;height&gt;</span>
+<span class="sd">BACK_FILTERSIZE  3              # Background filter: &lt;size&gt; or &lt;width&gt;,&lt;height&gt;</span>
+<span class="sd"> </span>
+<span class="sd">BACKPHOTO_TYPE   GLOBAL         # can be GLOBAL or LOCAL</span>
+<span class="sd"> </span>
+<span class="sd">#------------------------------ Check Image ----------------------------------</span>
+<span class="sd"> </span>
+<span class="sd">CHECKIMAGE_TYPE  -BACKGROUND  SEGMENTATION BACKGROUND</span>
+<span class="sd">                                # can be NONE, BACKGROUND, BACKGROUND_RMS,</span>
+<span class="sd">                                # MINIBACKGROUND, MINIBACK_RMS, -BACKGROUND,</span>
+<span class="sd">                                # FILTERED, OBJECTS, -OBJECTS, SEGMENTATION,</span>
+<span class="sd">                                # or APERTURES</span>
+<span class="sd">CHECKIMAGE_NAME  s_{output_name} seg_{output_name} back_{output_name}</span>
+<span class="sd"> </span>
+<span class="sd">#--------------------- Memory (change with caution!) -------------------------</span>
+<span class="sd"> </span>
+<span class="sd">MEMORY_OBJSTACK  3000           # number of objects in stack</span>
+<span class="sd">MEMORY_PIXSTACK  300000         # number of pixels in stack</span>
+<span class="sd">MEMORY_BUFSIZE   1024           # number of lines in buffer</span>
+<span class="sd"> </span>
+<span class="sd">#----------------------------- Miscellaneous ---------------------------------</span>
+<span class="sd"> </span>
+<span class="sd">VERBOSE_TYPE     QUIET # can be QUIET, NORMAL or FULL</span>
+<span class="sd">WRITE_XML        N              # Write XML file (Y/N)?</span>
+<span class="sd">XML_NAME         sex.xml        # Filename for XML output</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+
+
+<div class="viewcode-block" id="go"><a class="viewcode-back" href="../../SEDM.html#SEDM.SexSpectra.go">[docs]</a><span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;/tmp/sex.sex.param&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;NUMBER</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+        <span class="n">name</span><span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">c</span> <span class="o">=</span> <span class="n">sex_params</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s2">&quot;catalog_name&quot;</span><span class="p">:</span> <span class="s2">&quot;deleteme&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;output_name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">})</span>
+
+        <span class="n">conf_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/tmp/sedm_sex_conf.sex&quot;</span><span class="p">,</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">conf_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">conf_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;sex -c /tmp/sedm_sex_conf.sex {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">))</span></div>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="n">go</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
