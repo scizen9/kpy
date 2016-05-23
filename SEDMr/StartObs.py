@@ -329,12 +329,13 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     # We copied files
     print "Copied %d files" % ncp
     # Do bias subtraction, CR rejection
-    if not proc_bias_crrs(ncp, oldcals=oldcals):
-        print "Error processing bias/crrs"
-    # Process any standard stars
-    if nstd > 0:
-        if not proc_stds(nstd):
-            print "Error processing standard stars"
+    if ncp > 0:
+        if not proc_bias_crrs(ncp, oldcals=oldcals):
+            print "Error processing bias/crrs"
+        # Process any standard stars
+        if nstd > 0:
+            if not proc_stds(nstd):
+                print "Error processing standard stars"
 
     return ncp
     # END: cpsci
@@ -541,6 +542,8 @@ def ObsLoop(rawlist=None, redd=None):
         os.mkdir(outdir)
     # Go there
     os.chdir(outdir)
+    # report
+    print "Raw files from  : %s\nReduced files to: %s" % (srcdir, outdir)
     # Check if processed cal files are ready
     if not cal_ready(outdir):
         # Wait for cal files until sunset
