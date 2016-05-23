@@ -119,13 +119,13 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
                         ncd += 1
 
         # Do we have the ideal number of calibration files?
-        if (nbias2 > 10 and nbias > 10 and nxe >= 7 and ndome >= 7 and
-                nhg >= 7 and ncd >= 7):
+        if (nbias2 > 9 and nbias > 9 and nxe > 6 and ndome > 6 and
+                nhg > 6 and ncd > 6):
             ret = True
         # Do we have the minimum allowed number of calibration files?
         if mintest:
-            if (nbias2 > 5 and nbias > 5 and nxe >= 3 and ndome >= 3 and
-                    nhg >= 3 and ncd >= 3):
+            if (nbias2 > 4 and nbias > 4 and nxe > 2 and ndome > 2 and
+                    nhg > 2 and ncd > 2):
                 ret = True
     print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
           (nbias2, nbias, ndome, nxe, nhg, ncd))
@@ -423,7 +423,7 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                 # Get OBJECT keyword
                 obj = hdr['OBJECT']
                 # Filter Calibs and avoid test images
-                if 'Calib' in obj and 'test' not in obj:
+                if 'Calib' in obj and 'of' in obj and 'test' not in obj:
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
@@ -487,12 +487,10 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
             except:
                 obj = ''
             # Filter Calibs and avoid test images
-            if 'Calib' in obj and 'test' not in obj:
+            if 'Calib' in obj and 'of' in obj and 'test' not in obj:
                 # Copy cal images
                 nc, ns = docp(src, destfil, onsky=False, verbose=True)
                 ncp += nc
-    # Check if calibrations are read
-    cal_proc_ready()
 
     return ncp
     # END: cpcal
@@ -564,16 +562,16 @@ def ObsLoop(rawlist=None, redd=None):
             print "Copied %d raw cal files from %s" % (ncp, srcdir)
             sys.stdout.flush()
             if ncp <= 0:
-                # Check to see if we are still before sunset
+                # Check to see if we are still before and hour after sunset
                 now = ephem.now()
-                if now < sunset:
-                    print("UT  = %02d:%02d < sunset (%02d:%02d), "
+                if now < sunset + ephem.hour:
+                    print("UT  = %02d:%02d < sunset (%02d:%02d) + 1hr, "
                           "so keep waiting" % (now.tuple()[3],
                                                now.tuple()[4],
                                                sunset.tuple()[3],
                                                sunset.tuple()[4]))
                 else:
-                    print("UT = %02d:%02d >= sunset (%02d:%02d), "
+                    print("UT = %02d:%02d >= sunset (%02d:%02d) + 1hr, "
                           "time get a cal set" % (now.tuple()[3],
                                                   now.tuple()[4],
                                                   sunset.tuple()[3],
