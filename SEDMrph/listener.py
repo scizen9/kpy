@@ -44,7 +44,7 @@ def start_listening_loop():
     
     #create continous while loop to listen for request
     #Exit the loop at 11:00AM, as the new day will start.
-    while (datetime.datetime.now()).hour != 11:
+    while True:
         connection,caddress = s.accept()
         time.sleep(1)
         cmd = "touch /tmp/sedm_listener_alive"
