@@ -1,0 +1,498 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDM.SegMap &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDM.SegMap</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">SegmentationMap class wraps around several functions in SEDM package and</span>
+<span class="sd">provides a convenient way to handle SEDM data.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">pyfits</span>
+<span class="kn">import</span> <span class="nn">scipy.io</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">from</span> <span class="nn">matplotlib.backend_bases</span> <span class="kn">import</span> <span class="n">KeyEvent</span> 
+<span class="kn">from</span> <span class="nn">matplotlib.backend_bases</span> <span class="kn">import</span> <span class="n">PickEvent</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+
+<span class="kn">import</span> <span class="nn">Disp</span>
+
+
+<span class="kn">import</span> <span class="nn">Extract</span>
+
+<span class="nb">reload</span><span class="p">(</span><span class="n">Extract</span><span class="p">)</span>
+<span class="nb">reload</span><span class="p">(</span><span class="n">Disp</span><span class="p">)</span>
+
+   
+
+<div class="viewcode-block" id="SegmentationMap"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap">[docs]</a><span class="k">class</span> <span class="nc">SegmentationMap</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">KT</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># KD Tree</span>
+    <span class="n">KT_spax</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># Spaxel-based KD Tree</span>
+    <span class="n">OK</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># list of segmap elements with np.isfinite OnSkyX and OnSkyY</span>
+        <span class="c1"># positions. Note that the KT index values return an index into</span>
+        <span class="c1"># OK and not SegMap. Any KT Queries will require something like:</span>
+        <span class="c1"># ixs = KT.query_(x,y ..)</span>
+        <span class="c1"># SegMap[OK[ixs[i]]]</span>
+    <span class="n">SegMap</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># The segmentation map</span>
+    <span class="n">sky_spectrum</span> <span class="o">=</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span> <span class="c1"># Sky spectrum (Wavelength, Spectrum)</span>
+        <span class="c1"># sky spectrum is a per-spaxel spectrum</span>
+    <span class="n">pixel_shift</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># The number of pixels to translate the spectra. pixel_shift</span>
+        <span class="c1"># is used for flexure correction and is measured from the spectra</span>
+        <span class="c1"># themselves.</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="bp">None</span> <span class="c1"># Normalization vector</span>
+
+    <span class="n">positions</span><span class="o">=</span><span class="bp">None</span> <span class="c1"># Use OnSky? or Mean? from the SegmentationMap</span>
+    <span class="n">signal_field</span><span class="o">=</span><span class="bp">None</span> <span class="c1"># Use SpexSpecFit or SpexSpecCenter</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">segmap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">positions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;OnSkyX&#39;</span><span class="p">,</span> <span class="s1">&#39;OnSkyY&#39;</span><span class="p">),</span>
+        <span class="n">signal_field</span><span class="o">=</span><span class="s1">&#39;SpexSpecFit&#39;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Loads the segmap, creates the KD Tree.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            segmap: Either a filename or a segmentation map array &#39;&#39;&#39;</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">segmap</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">segmap</span><span class="p">)</span> <span class="o">==</span> <span class="nb">unicode</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s2">&quot;Loading: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">segmap</span>
+            <span class="n">mat</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">loadmat</span><span class="p">(</span><span class="n">segmap</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span> <span class="o">=</span> <span class="n">mat</span><span class="p">[</span><span class="s1">&#39;SegmentsInfo&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span> <span class="o">=</span> <span class="n">segmap</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">norm</span>
+        <span class="k">if</span> <span class="n">norm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">norm</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;SpexSpecCenter&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;SpexSpecFit&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">=</span><span class="n">positions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="o">=</span><span class="n">signal_field</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OK</span> <span class="o">=</span> <span class="n">Extract</span><span class="o">.</span><span class="n">segmap_to_kdtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span>
+            <span class="n">positions</span><span class="o">=</span><span class="n">positions</span><span class="p">,</span><span class="n">signal_field</span><span class="o">=</span><span class="n">signal_field</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="SegmentationMap.to_spaxel"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.to_spaxel">[docs]</a>    <span class="k">def</span> <span class="nf">to_spaxel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Convert pixel numbers to spaxels.</span>
+
+<span class="sd">        Recall, for a hexagon oriented as </span>
+<span class="sd">                                        UL UR</span>
+<span class="sd">                                         \ /</span>
+<span class="sd">                                       L -o- R</span>
+<span class="sd">                                         / \</span>
+<span class="sd">                                        DL DR</span>
+<span class="sd">    The orientation of spaxels follows 3:2:1 triangle rules where the </span>
+<span class="sd">    distance oUR is (sqrt 3/2, 1), oR (sqrt 3, 0), and the rest are</span>
+<span class="sd">    reflections around these two values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Nothing</span>
+
+<span class="sd">        Side effects:</span>
+<span class="sd">            Populats KT_spaxel&#39;&#39;&#39;</span>
+
+        <span class="n">traversed</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">map</span> <span class="o">=</span> <span class="p">{}</span>
+
+            
+        <span class="k">def</span> <span class="nf">find_near</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="n">spax</span><span class="p">,</span> <span class="n">curr</span><span class="p">):</span>
+            <span class="sd">&#39;&#39;&#39;Helper function&#39;&#39;&#39;</span>
+            <span class="n">dist</span><span class="p">,</span> <span class="nb">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="n">direction</span><span class="p">)</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">dist</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span> <span class="k">return</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="nb">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">traversed</span><span class="p">):</span>
+                <span class="n">accum</span> <span class="o">=</span> <span class="n">curr</span> <span class="o">+</span> <span class="n">spax</span>
+                <span class="n">traversed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+                <span class="n">positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">accum</span><span class="p">)</span>
+
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="mi">12</span><span class="p">,</span><span class="mi">50</span><span class="p">],</span>  <span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="mi">48</span><span class="p">,</span><span class="mi">15</span><span class="p">],</span>  <span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>      <span class="mf">0.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="mi">37</span><span class="p">,</span><span class="mi">35</span><span class="p">],</span>  <span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">48</span><span class="p">],</span> <span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">48</span><span class="p">,</span><span class="mi">14</span><span class="p">],</span> <span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>      <span class="mf">0.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+                <span class="n">find_near</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mi">36</span><span class="p">,</span><span class="mi">35</span><span class="p">],</span> <span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">,</span>  <span class="mf">1.0</span><span class="p">),</span> <span class="n">accum</span><span class="p">)</span>
+
+
+        <span class="n">npa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+        <span class="n">find_near</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">npa</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">npa</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">npa</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]))</span>
+    
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positions</span><span class="p">:</span> <span class="k">print</span> <span class="n">p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KT_spax</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">KDTree</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">positions</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ids_spax</span> <span class="o">=</span> <span class="n">traversed</span></div>
+            
+
+
+
+<div class="viewcode-block" id="SegmentationMap.add"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Adds B.SegMap to self.Segmap</span>
+
+<span class="sd">        sm.add(B) has side effects and overwrites the segmap in self</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            B: The SegmentationMap object to subtract off</span>
+<span class="sd">            signal_field: String containing the field to extract signal from</span>
+<span class="sd">                defaults to SpexSpecFit, could also be SpexSpecCenter&#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Mismatched segmentation maps&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">!=</span> <span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="n">ok</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Mismatched segmentation maps, wave&quot;</span><span class="p">)</span>
+
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> \
+                    <span class="o">+</span>  <span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.divide_scalar"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.divide_scalar">[docs]</a>    <span class="k">def</span> <span class="nf">divide_scalar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">divisor</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Divides self.SegMap / divisor</span>
+
+<span class="sd">        Function has side effects and overwrites the segmap in self</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            B: A scalar value to divide by</span>
+<span class="sd">            signal_field: String containing the field to extract signal from</span>
+<span class="sd">                defaults to SpexSpecFit, could also be SpexSpecCenter&#39;&#39;&#39;</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> \
+                    <span class="o">/</span> <span class="n">divisor</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span></div>
+
+
+
+    
+<div class="viewcode-block" id="SegmentationMap.subtract"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.subtract">[docs]</a>    <span class="k">def</span> <span class="nf">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Subtracts B.SegMap from current self.SegMap.</span>
+
+<span class="sd">        sm.substract(B) has side effects and overwrites the segmap in self</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            B: The SegmentationMap object to subtract off</span>
+<span class="sd">            signal_field: String containing the field to extract signal from</span>
+<span class="sd">                defaults to SpexSpecFit, could also be SpexSpecCenter</span>
+<span class="sd">            </span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Nothing, but has side effects.&#39;&#39;&#39;</span>
+
+    
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Mismatched segmentation maps&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">)):</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">!=</span> <span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;WaveCalib&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="n">ok</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Mismatched segmentation maps, wave&quot;</span><span class="p">)</span>
+
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> \
+                    <span class="o">-</span>  <span class="n">B</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.draw"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.draw">[docs]</a>    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figure_number</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">minl</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span> <span class="n">maxl</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> 
+        <span class="n">subtract_sky</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">outfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">cmin</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">cmax</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Draw a figure showing the segmentation map cube</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            figure_number: Plot figure number</span>
+<span class="sd">            minl/maxl: Minimum/Maximum wavelength to sum over</span>
+<span class="sd">            outfile: The path to the output file</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Nothing</span>
+<span class="sd">            </span>
+<span class="sd">        Side Effects:</span>
+<span class="sd">            Plots a new figure(figure_number) with the data cube.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">sky_spec</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">subtract_sky</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sky_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Request to subtract sky; however, no sky has been measured&quot;</span><span class="p">)</span>
+            <span class="n">sky_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sky_spectrum</span>
+
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">v</span> <span class="o">=</span> <span class="n">Extract</span><span class="o">.</span><span class="n">segmap_to_img</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span> <span class="n">minl</span><span class="o">=</span><span class="n">minl</span><span class="p">,</span> <span class="n">maxl</span><span class="o">=</span><span class="n">maxl</span><span class="p">,</span> 
+            <span class="n">sky_spec</span><span class="o">=</span><span class="n">sky_spec</span><span class="p">,</span><span class="n">positions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">,</span> 
+            <span class="n">signal_field</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">signal_field</span><span class="p">)</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figure_number</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2200</span><span class="p">)</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2200</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">12</span><span class="p">,</span> <span class="mi">17</span><span class="p">)</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="mi">27</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">v</span><span class="p">[:]</span>
+        <span class="k">if</span> <span class="n">cmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="n">c</span><span class="o">&lt;</span><span class="n">cmin</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmin</span>
+        <span class="k">if</span> <span class="n">cmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="n">c</span><span class="o">&gt;</span><span class="n">cmax</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmax</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">picker</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;h&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">v</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.select_circle"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.select_circle">[docs]</a>    <span class="k">def</span> <span class="nf">select_circle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">center_xs</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> 
+        <span class="n">positions</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;OnSkyX&#39;</span><span class="p">,</span><span class="s1">&#39;OnSkyY&#39;</span><span class="p">)):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Selects and reutrns the object spectra near spectrum index `center_xs`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            [center_xs]: center_xs[0] is the spectrum index to search around.</span>
+<span class="sd">                all other values in center_xs ignored.</span>
+<span class="sd">            distance: Radial distance to search around in arcsecond.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List of spectra:</span>
+<span class="sd">                [[Wavelength [nm], Counts [ADU], spectrum index]]</span>
+
+<span class="sd">            Note the spectra are on a different wavelength grid.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">distance</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">distance</span><span class="o">*=</span><span class="mi">60</span>
+
+        <span class="k">if</span> <span class="n">center_xs</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+        <span class="n">ix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OK</span><span class="p">[</span><span class="n">center_xs</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">ix</span><span class="p">][</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">[</span><span class="n">ix</span><span class="p">][</span><span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">print</span> <span class="n">X</span><span class="p">,</span><span class="n">Y</span>
+
+        <span class="n">spectra</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra_near_position</span><span class="p">(</span> <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span>
+                                        <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">spectra</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.spectra_near_position"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.spectra_near_position">[docs]</a>    <span class="k">def</span> <span class="nf">spectra_near_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns all spectra within distance of (X,Y)</span>
+
+<span class="sd">        Notice spectra_* methods return all spectra, spectrum_* methods</span>
+<span class="sd">            convert spectra into a single spectrum.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X,Y: The X/Y position of the spectrum to extract in as</span>
+<span class="sd">            distance: The extraction radius in arcsecond</span>
+
+<span class="sd">        Returns a list of (wavelength, spectra, index). E.g.:</span>
+<span class="sd">            [[array(365...1000) , array(50 .. 63), 950] ..]</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            import SegMap as SM</span>
+<span class="sd">            sm = SM.SegmentationMap(&quot;/path/b_ifu20130808_23_08_44.fits_SI.mat&quot;)</span>
+<span class="sd">            spec = sm.spectra_near_position(5, 5)</span>
+<span class="sd">            print len (spec)</span>
+<span class="sd">                &gt;&gt; 34</span>
+<span class="sd">            ll, ss = spec[0][0], spec[0][1]</span>
+<span class="sd">            plot(ll, ss) # Plots the spectrum</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">distance</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">distance</span><span class="o">*=</span><span class="mi">60</span>
+
+        <span class="k">return</span> <span class="n">Extract</span><span class="o">.</span><span class="n">spectra_near_position</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span>
+                        <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">,</span> <span class="n">ixmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> 
+                        <span class="n">pixel_shift</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.spectrum_near_position"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.spectrum_near_position">[docs]</a>    <span class="k">def</span> <span class="nf">spectrum_near_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">onto</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
+                                <span class="n">sky_spec</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Interpolate spectra in a circle radius distance arround X,Y</span>
+
+<span class="sd">        See spectrum_near_position</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">            X,Y: The X/Y position of the central spectrum</span>
+<span class="sd">            small, large: the small and large radius of extraciton</span>
+<span class="sd">            onto: The wavelength grid to interpolate onto, None to ignore.</span>
+<span class="sd">            sky_spec: The sky spectrum to subtract</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            {&#39;wave_nm&#39;: wavelength of sky spectrum, </span>
+<span class="sd">                &#39;spec_adu&#39;, the median sky spectrum, </span>
+<span class="sd">                &#39;all_spec&#39;: and a matrix of spectra,</span>
+<span class="sd">                &#39;num_spec&#39;: The number of spectra}&#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">distance</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">distance</span><span class="o">*=</span><span class="mi">60</span>
+
+        <span class="n">spectra</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra_near_position</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Extract</span><span class="o">.</span><span class="n">interp_and_sum_spectra</span><span class="p">(</span>
+                <span class="n">spectra</span><span class="p">,</span>
+                <span class="n">onto</span><span class="o">=</span><span class="n">onto</span><span class="p">,</span> <span class="n">sky_spec</span><span class="o">=</span><span class="n">sky_spec</span><span class="p">),</span> <span class="n">spectra</span></div>
+        
+<div class="viewcode-block" id="SegmentationMap.spectra_in_annulus"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.spectra_in_annulus">[docs]</a>    <span class="k">def</span> <span class="nf">spectra_in_annulus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">small</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">large</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns all spectra in the annulus between radius small and large.</span>
+
+<span class="sd">        Notice spectra_* methods return all spectra, spectrum_* methods</span>
+<span class="sd">            convert spectra into a single spectrum.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X,Y: The X/Y position of the central spectrum</span>
+<span class="sd">            small,large: The small and large radius of extraction</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of spectra, see spectra_near_position&#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">small</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">small</span> <span class="o">*=</span> <span class="mi">60</span>
+            <span class="k">if</span> <span class="n">large</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">large</span> <span class="o">*=</span> <span class="mi">60</span>
+            
+        <span class="k">return</span> <span class="n">Extract</span><span class="o">.</span><span class="n">spectra_in_annulus</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span>
+                <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">small</span><span class="o">=</span><span class="n">small</span><span class="p">,</span> <span class="n">large</span><span class="o">=</span><span class="n">large</span><span class="p">,</span> <span class="n">ixmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> 
+                <span class="n">pixel_shift</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SegmentationMap.spectrum_in_annulus"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.spectrum_in_annulus">[docs]</a>    <span class="k">def</span> <span class="nf">spectrum_in_annulus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">small</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">large</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">onto</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns the interpolated spectrum in an annulus arround X,Y</span>
+
+<span class="sd">        See spectra_in_annulus</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">            X,Y: The X/Y position of the central spectrum</span>
+<span class="sd">            small, large: the small and large radius of extraciton</span>
+<span class="sd">            onto: The wavelength grid to interpolate onto, None to ignore.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            {&#39;wave_nm&#39;: wavelength of sky spectrum, </span>
+<span class="sd">                &#39;spec_adu&#39;, the median sky spectrum, </span>
+<span class="sd">                &#39;all_spec&#39;: and a matrix of spectra,</span>
+<span class="sd">                &#39;num_spec&#39;: The number of spectra}&#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">small</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">small</span> <span class="o">*=</span> <span class="mi">60</span>
+            <span class="k">if</span> <span class="n">large</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">large</span> <span class="o">*=</span> <span class="mi">60</span>
+
+        <span class="n">spectra</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectra_in_annulus</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span> <span class="n">small</span><span class="p">,</span> <span class="n">large</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Extract</span><span class="o">.</span><span class="n">interp_and_sum_spectra</span><span class="p">(</span>
+                <span class="n">spectra</span><span class="p">,</span> <span class="n">onto</span><span class="o">=</span><span class="n">onto</span><span class="p">),</span> <span class="n">spectra</span></div>
+            
+
+<div class="viewcode-block" id="SegmentationMap.sky_median"><a class="viewcode-back" href="../../SEDM.html#SEDM.SegMap.SegmentationMap.sky_median">[docs]</a>    <span class="k">def</span> <span class="nf">sky_median</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">Y</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Generates a sky spectrum from the median of a large sky area.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X/Y: the X/Y position of the center coordinate</span>
+<span class="sd">            distance: the radius around the center coordinate</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            {&#39;wave_nm&#39;: wavelength of sky spectrum, </span>
+<span class="sd">                &#39;spec_adu&#39;, the median sky spectrum, </span>
+<span class="sd">                &#39;all_spec&#39;: and a matrix of spectra,</span>
+<span class="sd">                &#39;num_spec&#39;: The number of spectra}</span>
+
+<span class="sd">        Side Effects:</span>
+<span class="sd">            Stores the returned values into the class&#39;&#39;&#39;</span>
+
+       
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;MeanX&#39;</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">X</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span>
+                <span class="n">X</span> <span class="o">=</span> <span class="mi">1024</span>
+                <span class="n">Y</span><span class="o">=</span><span class="mi">1024</span>
+            <span class="k">if</span> <span class="n">distance</span><span class="o">&lt;</span><span class="mi">60</span><span class="p">:</span> <span class="n">distance</span><span class="o">*=</span> <span class="mi">60</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">Extract</span><span class="o">.</span><span class="n">sky_median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegMap</span><span class="p">,</span> <span class="n">ixmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span>
+            <span class="n">pixel_shift</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pixel_shift</span><span class="p">,</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="o">=</span><span class="n">Y</span><span class="p">,</span><span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

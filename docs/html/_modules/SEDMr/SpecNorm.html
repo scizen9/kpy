@@ -1,0 +1,309 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.SpecNorm &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.SpecNorm</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span> 
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">splrep</span><span class="p">,</span><span class="n">splev</span>
+<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebfit</span><span class="p">,</span> <span class="n">chebval</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage.filters</span> <span class="kn">import</span> <span class="n">gaussian_filter</span>
+
+<span class="kn">import</span> <span class="nn">NPK.Standards</span> <span class="kn">as</span> <span class="nn">Stds</span>
+
+<div class="viewcode-block" id="near_balmer"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SpecNorm.near_balmer">[docs]</a><span class="k">def</span> <span class="nf">near_balmer</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">Rwindow</span><span class="o">=.</span><span class="mo">02</span><span class="p">):</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="mf">656.3</span><span class="p">,</span> <span class="mf">486.1</span><span class="p">,</span> <span class="mf">434.1</span><span class="p">,</span> <span class="mf">410.2</span><span class="p">,</span> <span class="mf">397.0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">lam</span><span class="o">-</span><span class="n">lines</span><span class="p">)</span><span class="o">/</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Rwindow</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span></div>
+
+<div class="viewcode-block" id="normalizer"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SpecNorm.normalizer">[docs]</a><span class="k">class</span> <span class="nc">normalizer</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An interactive spline fitting routine for determining the continuum</span>
+<span class="sd">     level of a spectrum.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span> <span class="n">sss</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mf">15.0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wave</span> <span class="o">=</span> <span class="n">wave</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flux</span> <span class="o">=</span> <span class="n">flux</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfunc</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">std_star_fun</span> <span class="o">=</span> <span class="n">sss</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="c1"># the width of the median window taken at each point</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">winwidth</span> <span class="o">=</span> <span class="n">window</span><span class="o">/</span><span class="mf">2.0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span><span class="n">where</span><span class="o">=</span><span class="s1">&#39;mid&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;spectrum&#39;</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+
+        <span class="c1"># Connect the different functions to the different events</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;key_press_event&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ontype</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;button_press_event&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">onclick</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;pick_event&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">onpick</span><span class="p">)</span>
+
+        <span class="k">print</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">20</span>
+        <span class="k">print</span> <span class="s1">&#39; L click to define spline points&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39; R click on a point to remove it&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39; press enter at any point to refit continuum&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39; after continuum is fit, press &quot;n&quot; to normalize&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39; press &quot;r&quot; to reset&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39; press &quot;w&quot; to write normalized spectrum out to file&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39;When finished, the continuum is accessible as &quot;&lt;normalizer&gt;.continuum&quot;&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39;The continuum function is accessible as &quot;&lt;normalizer&gt;.cfunc&quot;&#39;</span>
+        <span class="k">print</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">20</span>
+
+        <span class="c1"># Now put some control points down</span>
+            
+        <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">350</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">1100</span><span class="p">),</span> <span class="mi">20</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">near_balmer</span><span class="p">(</span><span class="n">lam</span><span class="p">):</span> <span class="k">continue</span>
+
+            <span class="n">window</span> <span class="o">=</span> <span class="p">((</span><span class="n">lam</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">winwidth</span><span class="p">)</span><span class="o">&lt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span> <span class="o">&amp;</span>\
+                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">&lt;=</span><span class="p">(</span><span class="n">lam</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">winwidth</span><span class="p">))</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">[</span><span class="n">window</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">y</span> <span class="o">!=</span> <span class="n">y</span><span class="p">:</span> 
+                <span class="k">continue</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;rs&#39;</span><span class="p">,</span><span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">picker</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;cont_pnt&#39;</span><span class="p">)</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span> <span class="c1"># show the window</span>
+
+
+<div class="viewcode-block" id="normalizer.onclick"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SpecNorm.normalizer.onclick">[docs]</a>    <span class="k">def</span> <span class="nf">onclick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># when none of the toolbar buttons is activated and the user clicks in the</span>
+        <span class="c1"># plot somewhere, compute the median value of the spectrum in a 10angstrom</span>
+        <span class="c1"># window around the x-coordinate of the clicked point. The y coordinate</span>
+        <span class="c1"># of the clicked point is not important. Make sure the continuum points</span>
+        <span class="c1"># `feel` it when it gets clicked, set the `feel-radius` (picker) to 5 points</span>
+        <span class="n">toolbar</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">get_current_fig_manager</span><span class="p">()</span><span class="o">.</span><span class="n">toolbar</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="o">==</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">toolbar</span><span class="o">.</span><span class="n">mode</span><span class="o">==</span><span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">window</span> <span class="o">=</span> <span class="p">((</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">winwidth</span><span class="p">)</span><span class="o">&lt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span> <span class="o">&amp;</span>\
+                      <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="o">&lt;=</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">winwidth</span><span class="p">))</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">[</span><span class="n">window</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">y</span> <span class="o">!=</span> <span class="n">y</span><span class="p">:</span> 
+                <span class="k">print</span> <span class="s2">&quot;clicked out of range&quot;</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="n">near_balmer</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;bs&#39;</span><span class="p">,</span><span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">picker</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;cont_pnt&#39;</span><span class="p">)</span>
+                <span class="k">print</span> <span class="s2">&quot;Blue point near balmer line&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">xdata</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;rs&#39;</span><span class="p">,</span><span class="n">ms</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">picker</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;cont_pnt&#39;</span><span class="p">)</span>
+
+        <span class="n">pl</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="normalizer.onpick"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SpecNorm.normalizer.onpick">[docs]</a>    <span class="k">def</span> <span class="nf">onpick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># when the user right clicks on a continuum point, remove it</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">mouseevent</span><span class="o">.</span><span class="n">button</span><span class="o">==</span><span class="mi">3</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">artist</span><span class="p">,</span><span class="s1">&#39;get_label&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">artist</span><span class="o">.</span><span class="n">get_label</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;cont_pnt&#39;</span><span class="p">:</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">artist</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="normalizer.ontype"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SpecNorm.normalizer.ontype">[docs]</a>    <span class="k">def</span> <span class="nf">ontype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="c1"># when the user hits enter:</span>
+        <span class="c1"># 1. Cycle through the artists in the current axes. If it is a continuum</span>
+        <span class="c1">#    point, remember its coordinates. If it is the fitted continuum from the</span>
+        <span class="c1">#    previous step, remove it</span>
+        <span class="c1"># 2. sort the continuum-point-array according to the x-values</span>
+        <span class="c1"># 3. fit a spline and evaluate it in the wavelength points</span>
+        <span class="c1"># 4. plot the continuum</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="o">==</span><span class="s1">&#39;enter&#39;</span><span class="p">:</span>
+            <span class="n">cont_pnt_coord</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">artist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">get_children</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">artist</span><span class="p">,</span><span class="s1">&#39;get_label&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">artist</span><span class="o">.</span><span class="n">get_label</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;cont_pnt&#39;</span><span class="p">:</span>
+                    <span class="n">cont_pnt_coord</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">artist</span><span class="o">.</span><span class="n">get_data</span><span class="p">())</span>
+                <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">artist</span><span class="p">,</span><span class="s1">&#39;get_label&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">artist</span><span class="o">.</span><span class="n">get_label</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;continuum&#39;</span><span class="p">:</span>
+                    <span class="n">artist</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+
+            <span class="n">cont_pnt_coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cont_pnt_coord</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sort_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">cont_pnt_coord</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">cont_pnt_coord</span><span class="p">[</span><span class="n">sort_array</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="n">x</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="n">y</span>
+            <span class="n">spline</span> <span class="o">=</span> <span class="n">splrep</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span> <span class="o">=</span> <span class="n">splev</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span><span class="n">spline</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cfunc</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">splev</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">spline</span><span class="p">)</span>
+            <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">continuum</span><span class="p">,</span><span class="s1">&#39;r-&#39;</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;continuum&#39;</span><span class="p">)</span>
+
+        <span class="c1"># when the user hits &#39;n&#39; and a spline-continuum is fitted, normalise the</span>
+        <span class="c1"># spectrum</span>
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="o">==</span><span class="s1">&#39;n&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
+                <span class="n">std_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">std_star_fun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">)</span>
+
+                <span class="c1"># Convole spectrum to SEDM Resolution</span>
+                <span class="n">std_spec</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">std_spec</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">correction</span> <span class="o">=</span> <span class="n">std_spec</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">correction</span><span class="p">,</span><span class="s1">&#39;k-&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;normalised&#39;</span><span class="p">)</span>
+
+        <span class="c1"># when the user hits &#39;r&#39;: clear the axes and plot the original spectrum</span>
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="o">==</span><span class="s1">&#39;r&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wave</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span><span class="s1">&#39;k-&#39;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;q&#39;</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+        <span class="c1"># when the user hits &#39;w&#39;: if the normalised spectrum exists, write it to a</span>
+        <span class="c1"># file.</span>
+
+        <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="o">==</span><span class="s1">&#39;w&#39;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">artist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">get_children</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">artist</span><span class="p">,</span><span class="s1">&#39;get_label&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">artist</span><span class="o">.</span><span class="n">get_label</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;normalised&#39;</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">artist</span><span class="o">.</span><span class="n">get_data</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;normalised_spec.flm&#39;</span>
+                    
+                    <span class="n">results</span> <span class="o">=</span> <span class="p">[{</span>
+                        <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+                        <span class="s1">&#39;locations_nm&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span>
+                        <span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                        <span class="s1">&#39;continuum&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuum</span><span class="p">,</span>
+                        <span class="s1">&#39;correction&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">correction</span><span class="p">,</span>
+                        <span class="s1">&#39;wave&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">wave</span>
+                    <span class="p">}]</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Saved to file:&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+                    <span class="k">break</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+    <span class="sd">&quot;&quot;&quot;Measure the continuum of a standard star spectrum&quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;spectrum&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> 
+            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Numpy file of spectrum extraction&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--window&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> 
+            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Width (nm) to median the splien points over&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--spline_points&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> 
+            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to ascii text file specifying where to put spline knots&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--std&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> 
+            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Name of standard star (see NPK.Standard for acceptable names)&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outname&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Name of output file&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">spectrum</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">sp</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">]</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">sp</span><span class="p">[</span><span class="s1">&#39;ph_10m_nm&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">std</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> 
+        <span class="n">sss</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">std</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;SpecNorm.py: Could not find the standard named </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">std</span>
+        <span class="n">sss</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lstd</span> <span class="o">=</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">][:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sstd</span> <span class="o">=</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">][:,</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lstd</span> <span class="o">/=</span> <span class="mf">10.0</span>
+        <span class="n">fun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">lstd</span><span class="p">,</span> <span class="n">sstd</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">spectrum</span><span class="p">)</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">spectrum</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;corr_&quot;</span><span class="o">+</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span>
+
+    <span class="n">nr</span> <span class="o">=</span> <span class="n">normalizer</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="n">s</span><span class="p">,</span> <span class="n">fun</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">fname</span><span class="p">)</span>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

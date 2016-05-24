@@ -1,0 +1,165 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDM.Disp &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDM.Disp</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="kn">as</span> <span class="nn">sp</span>
+<span class="kn">import</span> <span class="nn">IO</span>
+
+<span class="nb">reload</span><span class="p">(</span><span class="n">IO</span><span class="p">)</span>
+
+<div class="viewcode-block" id="cube"><a class="viewcode-back" href="../../SEDM.html#SEDM.Disp.cube">[docs]</a><span class="k">def</span> <span class="nf">cube</span><span class="p">(</span><span class="n">cube</span><span class="p">):</span>
+    
+    <span class="n">shp</span> <span class="o">=</span> <span class="n">cube</span><span class="p">[</span><span class="s1">&#39;Cube&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">im</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">shp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">shp</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">shp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">shp</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">shp</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>
+            <span class="n">im</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="n">shp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">j</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">cube</span><span class="p">[</span><span class="s1">&#39;Cube&#39;</span><span class="p">][:,</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">im</span></div>
+
+
+<span class="k">def</span> <span class="nf">ds9</span><span class="p">(</span><span class="n">cube</span><span class="p">):</span>
+    
+    <span class="n">preamble</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1"># Region file format: DS9 version 4.1</span>
+<span class="s1">global color=blue dashlist=8 3 width=1 font=&quot;helvetica 10 normal&quot; select=1 highlite=1 dash=0 fixed=1 edit=0 move=0 delete=1 include=1 source=1</span>
+<span class="s1">physical</span>
+<span class="s1">line(938,1117,1103,1117) # line=0 0</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+
+<div class="viewcode-block" id="ds9"><a class="viewcode-back" href="../../SEDM.html#SEDM.Disp.ds9">[docs]</a><span class="k">def</span> <span class="nf">ds9</span><span class="p">(</span><span class="n">segments</span><span class="p">):</span>
+    <span class="n">preamble</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1"># Region file format: DS9 version 4.1</span>
+<span class="s1">global color=blue dashlist=8 3 width=1 font=&quot;helvetica 6 normal&quot; select=1 highlite=1 dash=0 fixed=1 edit=0 move=0 delete=1 include=1 source=1</span>
+<span class="s1">physical</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segments</span><span class="p">)):</span>
+        <span class="n">segment</span> <span class="o">=</span> <span class="n">segments</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">minx</span> <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;MinX&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">maxx</span> <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;MaxX&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">pp</span>   <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;Par1&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">pf</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">pp</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;MeasuredOffset&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+
+        <span class="n">preamble</span> <span class="o">+=</span> <span class="s2">&quot;line(</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">) # text={</span><span class="si">%i</span><span class="s2">}</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">minx</span><span class="p">,</span> <span class="n">pf</span><span class="p">(</span><span class="n">minx</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span> 
+                                                        <span class="n">maxx</span><span class="p">,</span> <span class="n">pf</span><span class="p">(</span><span class="n">maxx</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span> 
+                                                        <span class="n">i</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">preamble</span></div>
+
+
+
+<div class="viewcode-block" id="ds92"><a class="viewcode-back" href="../../SEDM.html#SEDM.Disp.ds92">[docs]</a><span class="k">def</span> <span class="nf">ds92</span><span class="p">(</span><span class="n">segments</span><span class="p">):</span>
+    <span class="n">preamble</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1"># Region file format: DS9 version 4.1</span>
+<span class="s1">global color=blue dashlist=8 3 width=1 font=&quot;helvetica 6 normal&quot; select=1 highlite=1 dash=0 fixed=1 edit=0 move=0 delete=1 include=1 source=1</span>
+<span class="s1">physical</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segments</span><span class="p">)):</span>
+        <span class="n">segment</span> <span class="o">=</span> <span class="n">segments</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">X</span> <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;BlockCenterX&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">segment</span><span class="p">[</span><span class="s1">&#39;BlockCenterY&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">pp</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">pf</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">pp</span><span class="p">)</span>
+        <span class="n">minx</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">maxx</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">preamble</span> <span class="o">+=</span> <span class="s2">&quot;line(</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">,</span><span class="si">%f</span><span class="s2">) # text={</span><span class="si">%i</span><span class="s2">}</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">minx</span><span class="p">,</span> <span class="n">pf</span><span class="p">(</span><span class="n">minx</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span> 
+                                                        <span class="n">maxx</span><span class="p">,</span> <span class="n">pf</span><span class="p">(</span><span class="n">maxx</span><span class="p">)</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span> 
+                                                        <span class="n">i</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">preamble</span></div>
+
+
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

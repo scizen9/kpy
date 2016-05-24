@@ -28,7 +28,7 @@ def start_listening_loop():
     
     #Log into a file
     FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-    root_dir = "/tmp/"
+    root_dir = "/scr2/sedm/logs/"
     timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
     timestamp=timestamp.split("T")[0]
     logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)

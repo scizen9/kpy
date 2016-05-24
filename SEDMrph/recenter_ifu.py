@@ -25,7 +25,7 @@ import logging
 
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-root_dir = "/tmp/"
+root_dir = "/scr2/sedm/logs/"
 timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
 timestamp=timestamp.split("T")[0]
 logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
@@ -201,7 +201,7 @@ def get_offset_center(f, plot=True, interactive=False):
             plt.clf()
 
 
-        return 0, dra-5, ddec+2
+        return 0, dra, ddec
 
 def mad(arr):
     """ Median Absolute Deviation: a "Robust" version of standard deviation.
@@ -407,9 +407,12 @@ def main(infile, isAB, astro=True, plot=True):
             
         if (not os.path.isfile(newfile)):
             retcode, dra, ddec = get_offset_center_failed_astro(infile, plot=True, interactive=False)
+    else:
+        retcode, dra, ddec = get_offset_center(infile, plot=True, interactive=False)
+        newfile = infile
 
     
-    if (isAB and os.path.isfile(newfile) ):
+    if ( isAB and os.path.isfile(newfile) ):
         retcode, aoff, boff = get_offsets_A_B(newfile, plot=plot, interactive=False)
     
         aoff[0] += dra
@@ -419,10 +422,11 @@ def main(infile, isAB, astro=True, plot=True):
         logger.info( "Offsets computed for A+B: \n A %.4f %.4f \n B %.4f %.4f"%(aoff[0], aoff[1], boff[0], boff[1]))
 
         return retcode, aoff[0], aoff[1], boff[0], boff[1]
-    elif (isAB and not os.path.isfile(newfile) ):
+    elif (isAB and astro and not os.path.isfile(newfile)):
         
-        np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
-        logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec,0,0))
+        np.savetxt(offset_file, np.array([("A", "%.2f"%(dra), "%.2f"%ddec), ("B", "%.2f"%(3.), "%.2f"%(3.))]), fmt="%s")
+        logger.warn("Astrometry file not found. Using default offsets (3,3).")        
+        logger.info( "Offsets computed for AB: \n AB %.4f %.4f %.4f %.4f"%(dra, ddec, 3, 3 ))
         return retcode,dra,ddec,3,3 
     else:
         np.savetxt(offset_file, np.array([("CENTER", "%.2f"%dra, "%.2f"%ddec)]), fmt="%s")
@@ -443,7 +447,7 @@ if __name__ == '__main__':
            
         -i image
         -b It is AB shot.
-        - Astrometry is needed.
+        -a Astrometry is needed.
         -p plot results.
         ''', formatter_class=argparse.RawTextHelpFormatter)
 

@@ -1,0 +1,427 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.Check &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.Check</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Graphical check of either a spectrum or a cube.</span>
+
+<span class="sd">Generate matplotlib plots for visual confirmation of</span>
+<span class="sd">extractions, or generate PDF files of the extractions.</span>
+<span class="sd">Also can produce an ascii spectrum suitable for upload</span>
+<span class="sd">or input to transient classification programs.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">    * :func:`checkCube`   Plot a cube</span>
+<span class="sd">    * :func:`checkSpec`   Plot a spectrum</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    This is used as a python script as follows::</span>
+
+<span class="sd">        usage: Check.py [-h] [--cube CUBE] [--lambdarms] [--savefig] [--savespec]</span>
+<span class="sd">                [--spec SPEC] [--corrname CORRNAME] [--redshift REDSHIFT]</span>
+<span class="sd">                [--smoothing SMOOTHING]</span>
+
+<span class="sd">        optional arguments:</span>
+<span class="sd">          -h, --help            show this help message and exit</span>
+<span class="sd">          --cube CUBE           Fine correction path</span>
+<span class="sd">          --lambdarms           Show lambda soln rms</span>
+<span class="sd">          --savefig             Save pdf figure</span>
+<span class="sd">          --savespec            Save spec ASCII file</span>
+<span class="sd">          --spec SPEC           Extracted spectrum file</span>
+<span class="sd">          --corrname CORRNAME</span>
+<span class="sd">          --redshift REDSHIFT   Redshift</span>
+<span class="sd">          --smoothing SMOOTHING</span>
+<span class="sd">                                Smoothing in pixels</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">import</span> <span class="nn">scipy.signal</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">sigmaclip</span>
+
+<span class="kn">import</span> <span class="nn">IO</span>
+<span class="kn">import</span> <span class="nn">NPK.Standards</span> <span class="kn">as</span> <span class="nn">SS</span>
+
+
+<div class="viewcode-block" id="checkCube"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Check.checkCube">[docs]</a><span class="k">def</span> <span class="nf">checkCube</span><span class="p">(</span><span class="n">cubename</span><span class="p">,</span> <span class="n">showlamrms</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">savefig</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Plot a datacube.</span>
+
+<span class="sd">        This function can produce a PDF file of the data cube.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cubename (str): name of cube numpy file</span>
+<span class="sd">            showlamrms (bool): display the rms of the wavelength fit,</span>
+<span class="sd">                otherwise display average trace width</span>
+<span class="sd">            savefig (bool): save a pdf of the plot</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">cubename</span><span class="p">):</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;No such file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cubename</span><span class="p">)</span>
+
+    <span class="n">cc</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cubename</span><span class="p">)</span>
+    <span class="n">fid_wave</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;fiducial_wavelength&#39;</span><span class="p">]</span>
+
+    <span class="n">Xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">X_as</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">]</span>
+    <span class="n">Ys</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">Y_as</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">showlamrms</span><span class="p">:</span>
+        <span class="n">Ss</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">cc</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cc</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">cc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">lamrms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">lamrms</span><span class="p">):</span>
+                    <span class="n">Ss</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">lamrms</span>
+
+        <span class="n">c</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span> <span class="n">upp</span> <span class="o">=</span> <span class="n">sigmaclip</span><span class="p">(</span><span class="n">Ss</span><span class="p">)</span>
+        <span class="n">Smdn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">Sstd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Nspax: </span><span class="si">%d</span><span class="s2">, Nclip: </span><span class="si">%d</span><span class="s2">, &lt;RMS&gt;: </span><span class="si">%f</span><span class="s2">, RMS(std): </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span>
+              <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cc</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cc</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)),</span> <span class="n">Smdn</span><span class="p">,</span> <span class="n">Sstd</span><span class="p">))</span>
+        <span class="n">smx</span> <span class="o">=</span> <span class="n">Smdn</span> <span class="o">+</span> <span class="mf">3.</span> <span class="o">*</span> <span class="n">Sstd</span>
+        <span class="n">smn</span> <span class="o">=</span> <span class="n">Smdn</span> <span class="o">-</span> <span class="mf">3.</span> <span class="o">*</span> <span class="n">Sstd</span>
+        <span class="k">if</span> <span class="n">smn</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">smn</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">cbtitle</span> <span class="o">=</span> <span class="s2">&quot;Wavelength RMS [nm]&quot;</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="s2">&quot;cube_lambdarms.pdf&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Ss</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">trace_sigma</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">]</span>
+        <span class="n">smx</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">smn</span> <span class="o">=</span> <span class="mf">0.8</span>
+        <span class="n">cbtitle</span> <span class="o">=</span> <span class="s2">&quot;RMS trace width [pix]&quot;</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="s2">&quot;cube_trace_sigma.pdf&quot;</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">Xs</span><span class="p">,</span> <span class="n">Ys</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">Ss</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">smn</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">smx</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Hexagonal Grid of Cube Positions&quot;</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="n">cbtitle</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;X position [as] @ </span><span class="si">%6.1f</span><span class="s2"> nm&quot;</span> <span class="o">%</span> <span class="n">fid_wave</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Y position [as]&quot;</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ioff</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">savefig</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outf</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Figure saved to &quot;</span> <span class="o">+</span> <span class="n">outf</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="checkSpec"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Check.checkSpec">[docs]</a><span class="k">def</span> <span class="nf">checkSpec</span><span class="p">(</span><span class="n">specname</span><span class="p">,</span> <span class="n">corrname</span><span class="o">=</span><span class="s1">&#39;std-correction.npy&#39;</span><span class="p">,</span>
+              <span class="n">redshift</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">smoothing</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">savefig</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">savespec</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Plot a spectrum.</span>
+
+<span class="sd">    This function can produce an ascii spectrum suitable for uploading</span>
+<span class="sd">    to the iPTF marshal and including header lines that describe the</span>
+<span class="sd">    spectrum.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        specname (str): name of spectrum numpy file, typically prefixed with &quot;sp_&quot;</span>
+<span class="sd">        corrname (str): name of the calibration correction numpy file</span>
+<span class="sd">        redshift (float): readshift for wavelength scale</span>
+<span class="sd">        smoothing (int): number of pixels to smooth over</span>
+<span class="sd">        savefig (bool): save a pdf of the plot</span>
+<span class="sd">        savespec (bool): save an ascii spectrum</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">specname</span><span class="p">):</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;No such file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">specname</span><span class="p">)</span>
+
+    <span class="c1"># IO.readspec applies the calibration in the file specified</span>
+    <span class="n">lam</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">skyspec</span><span class="p">,</span> <span class="n">stdspec</span><span class="p">,</span> <span class="n">ss</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> \
+        <span class="n">IO</span><span class="o">.</span><span class="n">readspec</span><span class="p">(</span><span class="n">specname</span><span class="p">,</span> <span class="n">corrname</span><span class="o">=</span><span class="n">corrname</span><span class="p">)</span>
+
+    <span class="c1"># Convert to Angstrom sized bins</span>
+    <span class="n">lam</span> <span class="o">*=</span> <span class="mf">10.</span>
+    <span class="n">spec</span> <span class="o">/=</span> <span class="mf">10.</span>
+    <span class="k">if</span> <span class="n">skyspec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">skyspec</span> <span class="o">/=</span> <span class="mf">10.</span>
+    <span class="k">if</span> <span class="n">stdspec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">stdspec</span> <span class="o">/=</span> <span class="mf">10.</span>
+
+    <span class="c1"># Get object name</span>
+    <span class="k">if</span> <span class="s1">&#39;header&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+        <span class="n">hdr</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;header&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s1">&#39;OBJECT&#39;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hdr</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">print</span> <span class="s2">&quot;Plotting spectrum in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">specname</span>
+    <span class="k">if</span> <span class="s1">&#39;radius_as&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Extraction radius: </span><span class="si">%1.2f</span><span class="s2"> asec&quot;</span> <span class="o">%</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;radius_as&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="s1">&#39;airmass&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+        <span class="n">ec</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;airmass&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ec</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="s1">&#39;exptime&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
+        <span class="n">et</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;exptime&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">et</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="s1">&#39;maxnm&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+        <span class="n">maxwl</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;maxnm&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">10.</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">maxwl</span> <span class="o">=</span> <span class="mf">9200.0</span>
+
+    <span class="k">print</span> <span class="s2">&quot;Max Angstroms: </span><span class="si">%7.1f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">maxwl</span>
+
+    <span class="k">if</span> <span class="s1">&#39;airmass2&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+        <span class="n">et</span> <span class="o">*=</span> <span class="mi">2</span>
+
+    <span class="k">if</span> <span class="s1">&#39;user&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">utc</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;utc&#39;</span><span class="p">]</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">utc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> \
+               <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">utc</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y %m </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; </span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> \
+                                          <span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">parts</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">parts</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">utc</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="c1"># Annotate plots</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s2">(airmass: </span><span class="si">%1.2f</span><span class="s2"> | Exptime: </span><span class="si">%i</span><span class="s2">)&quot;</span> <span class="o">%</span>
+             <span class="p">(</span><span class="n">specname</span><span class="p">,</span> <span class="n">ec</span><span class="p">,</span> <span class="n">et</span><span class="p">))</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Wavelength [Ang]&quot;</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;erg/s/cm2/ang&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Handle plot geometry</span>
+    <span class="n">plm</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">get_current_fig_manager</span><span class="p">()</span>
+    <span class="n">plm</span><span class="o">.</span><span class="n">window</span><span class="o">.</span><span class="n">wm_geometry</span><span class="p">(</span><span class="s2">&quot;900x500+10+10&quot;</span><span class="p">)</span>
+
+    <span class="c1"># See if this is a standard star</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="n">specname</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;sp_STD-&quot;</span><span class="p">)</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">SS</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
+        <span class="c1"># Remove nm to Ang conversion (?)</span>
+        <span class="n">spec</span> <span class="o">*=</span> <span class="mf">10.</span>
+        <span class="n">skyspec</span> <span class="o">*=</span> <span class="mf">10.</span>
+        <span class="n">stdspec</span> <span class="o">*=</span> <span class="mf">10.</span>
+
+        <span class="c1"># Get reference spectrum</span>
+        <span class="n">standard</span> <span class="o">=</span> <span class="n">SS</span><span class="o">.</span><span class="n">Standards</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span>
+        <span class="n">slam</span> <span class="o">=</span> <span class="n">standard</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">sflx</span> <span class="o">=</span> <span class="n">standard</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1.e-16</span>
+
+        <span class="c1"># Calculate ratio in select region of spectrum</span>
+        <span class="n">lroi</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&gt;</span> <span class="mi">4500</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&lt;</span> <span class="mi">6500</span><span class="p">)</span>
+        <span class="n">lmed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">lroi</span><span class="p">])</span>
+
+        <span class="n">sroi</span> <span class="o">=</span> <span class="p">(</span><span class="n">slam</span> <span class="o">&gt;</span> <span class="mi">4500</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">slam</span> <span class="o">&lt;</span> <span class="mi">6500</span><span class="p">)</span>
+        <span class="n">smed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">sflx</span><span class="p">[</span><span class="n">sroi</span><span class="p">])</span>
+
+        <span class="n">rat</span> <span class="o">=</span> <span class="p">(</span><span class="n">lmed</span> <span class="o">/</span> <span class="n">smed</span><span class="p">)</span>
+
+        <span class="c1"># Report offset</span>
+        <span class="n">ratmag</span> <span class="o">=</span> <span class="mf">2.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">rat</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Ref offset (Ref - Obs): </span><span class="si">%6.2f</span><span class="s2"> mag&quot;</span> <span class="o">%</span> <span class="n">ratmag</span>
+
+        <span class="c1"># Apply offset for plotting</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">spec</span> <span class="o">/</span> <span class="n">rat</span>
+
+    <span class="c1"># Set wavelength range</span>
+    <span class="n">OK</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&gt;</span> <span class="mi">3800</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&lt;</span> <span class="n">maxwl</span><span class="p">)</span>
+
+    <span class="c1"># Apply redshift</span>
+    <span class="n">lamz</span> <span class="o">=</span> <span class="n">lam</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">redshift</span><span class="p">)</span>
+
+    <span class="c1"># Plot object spectrum</span>
+
+    <span class="c1"># Plot limits</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">3600</span><span class="p">,</span> <span class="n">maxwl</span> <span class="o">+</span> <span class="mi">200</span><span class="p">)</span>
+
+    <span class="n">mx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">OK</span><span class="p">])</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="n">mx</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="n">mx</span> <span class="o">+</span> <span class="p">(</span><span class="n">mx</span> <span class="o">/</span> <span class="mi">20</span><span class="p">))</span>
+
+    <span class="c1"># No smoothing</span>
+    <span class="k">if</span> <span class="n">smoothing</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lamz</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># Plot data</span>
+    <span class="c1"># Smoothing</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">smoothing</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">smoothed</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">signal</span><span class="o">.</span><span class="n">savgol_filter</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">smoothing</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lamz</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">smoothed</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># Plot smoothed data</span>
+
+    <span class="c1"># Legend for plot</span>
+    <span class="n">legend</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="p">]</span>
+
+    <span class="c1"># Overplot sky spectrum</span>
+    <span class="k">if</span> <span class="n">skyspec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lamz</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">skyspec</span><span class="p">[</span><span class="n">OK</span><span class="p">])</span>
+        <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;sky&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Overplot standard deviation spectrum</span>
+    <span class="k">if</span> <span class="n">stdspec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lamz</span><span class="p">[</span><span class="n">OK</span><span class="p">],</span> <span class="n">stdspec</span><span class="p">[</span><span class="n">OK</span><span class="p">])</span>
+        <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;err&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Overplot reference spectrum</span>
+    <span class="k">if</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">SS</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Overplotting </span><span class="si">%s</span><span class="s2"> reference spectrum&quot;</span> <span class="o">%</span> <span class="n">pred</span>
+        <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;ref&quot;</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">slam</span><span class="p">,</span> <span class="n">sflx</span><span class="p">)</span>
+
+        <span class="c1"># Remove plotting offset</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">spec</span> <span class="o">*</span> <span class="n">rat</span>
+
+    <span class="c1"># Add legend</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">legend</span><span class="p">)</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ioff</span><span class="p">()</span>
+
+    <span class="c1"># Save fig to file</span>
+    <span class="k">if</span> <span class="n">savefig</span><span class="p">:</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="n">specname</span><span class="p">[(</span><span class="n">specname</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span><span class="n">specname</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)]</span> <span class="o">+</span> <span class="s1">&#39;_SEDM.pdf&#39;</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outf</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Figure saved to &quot;</span> <span class="o">+</span> <span class="n">outf</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">savespec</span><span class="p">:</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&gt;</span> <span class="mf">3800.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lam</span> <span class="o">&lt;</span> <span class="n">maxwl</span><span class="p">)</span>
+        <span class="n">wl</span> <span class="o">=</span> <span class="n">lam</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
+        <span class="n">fl</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
+        <span class="n">srt</span> <span class="o">=</span> <span class="n">wl</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="n">specname</span><span class="p">[(</span><span class="n">specname</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span><span class="n">specname</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)]</span> <span class="o">+</span> <span class="s1">&#39;_SEDM.txt&#39;</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="s2">&quot;TELESCOPE: P60</span><span class="se">\n</span><span class="s2">INSTRUMENT: SED-Machine</span><span class="se">\n</span><span class="s2">USER: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">user</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">OBJECT: </span><span class="si">%s</span><span class="se">\n</span><span class="s2">OUTFILE: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">outf</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">OBSUTC: </span><span class="si">%s</span><span class="se">\n</span><span class="s2">EXPTIME </span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">utc</span><span class="p">,</span> <span class="n">et</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">AIRMASS: </span><span class="si">%1.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ec</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">outf</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">wl</span><span class="p">[</span><span class="n">srt</span><span class="p">],</span> <span class="n">fl</span><span class="p">[</span><span class="n">srt</span><span class="p">]])</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%8.1f</span><span class="s1">  </span><span class="si">%.4e</span><span class="s1">&#39;</span><span class="p">,</span>
+                   <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Saved to &quot;</span> <span class="o">+</span> <span class="n">outf</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Plot extracted spectrum or data cube.</span>
+
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--cube&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Fine correction path&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--lambdarms&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Show lambda soln rms&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--savefig&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Save pdf figure&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--savespec&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Save spec ASCII file&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--spec&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Extracted spectrum file&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--corrname&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;std-correction.npy&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--redshift&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Redshift&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--smoothing&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Smoothing in pixels&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cube</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">checkCube</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">cube</span><span class="p">,</span> <span class="n">showlamrms</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">lambdarms</span><span class="p">,</span> <span class="n">savefig</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">savefig</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">checkSpec</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">spec</span><span class="p">,</span> <span class="n">corrname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">corrname</span><span class="p">,</span> <span class="n">redshift</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">redshift</span><span class="p">,</span>
+                  <span class="n">smoothing</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">smoothing</span><span class="p">,</span>
+                  <span class="n">savefig</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">savefig</span><span class="p">,</span> <span class="n">savespec</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">savespec</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

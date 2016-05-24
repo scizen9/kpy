@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>NPK.Fit &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for NPK.Fit</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">stsci.tools.nmpfit</span> <span class="kn">as</span> <span class="nn">mpfit</span>
+
+<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">Chebyshev</span> <span class="k">as</span> <span class="n">CC</span>
+
+<div class="viewcode-block" id="gaussian4"><a class="viewcode-back" href="../../NPK.html#NPK.Fit.gaussian4">[docs]</a><span class="k">def</span> <span class="nf">gaussian4</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; gaussian model</span>
+<span class="sd">    p[0] -- scale factor</span>
+<span class="sd">    p[1] -- centroid</span>
+<span class="sd">    p[2] -- sigma</span>
+<span class="sd">    p[3] -- offset</span>
+
+<span class="sd">    Area: (p[0]-p[3]) x p[2] x np.sqrt(2 x pi)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">u</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">u</span><span class="o">*</span><span class="n">u</span><span class="p">)</span> <span class="o">+</span> <span class="n">p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> </div>
+
+<div class="viewcode-block" id="gaussian5"><a class="viewcode-back" href="../../NPK.html#NPK.Fit.gaussian5">[docs]</a><span class="k">def</span> <span class="nf">gaussian5</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; gaussian model</span>
+<span class="sd">    p[0] -- scale factor</span>
+<span class="sd">    p[1] -- centroid</span>
+<span class="sd">    p[2] -- sigma</span>
+<span class="sd">    p[3] -- offset</span>
+<span class="sd">    p[4] -- slope</span>
+
+<span class="sd">    Area: (p[0]-p[3]) x p[2] x np.sqrt(2 x pi)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">u</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">u</span><span class="o">*</span><span class="n">u</span><span class="p">)</span> <span class="o">+</span> <span class="n">p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">p</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">x</span></div>
+
+<div class="viewcode-block" id="sedm_wavelen"><a class="viewcode-back" href="../../NPK.html#NPK.Fit.sedm_wavelen">[docs]</a><span class="k">def</span> <span class="nf">sedm_wavelen</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; SED Machine wavelength function</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+
+    <span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">D</span> <span class="o">=</span> <span class="n">p</span>
+
+    <span class="k">return</span> 
+    <span class="k">return</span> <span class="n">A</span> <span class="o">+</span> <span class="n">B</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">C</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">D</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">3</span>
+    <span class="k">return</span> <span class="n">A</span><span class="o">*</span><span class="n">B</span><span class="o">**</span><span class="n">x</span>  <span class="o">+</span> <span class="n">C</span><span class="o">*</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">D</span><span class="p">)</span><span class="o">**</span><span class="mi">1</span> </div>
+
+
+<div class="viewcode-block" id="mpfit_residuals"><a class="viewcode-back" href="../../NPK.html#NPK.Fit.mpfit_residuals">[docs]</a><span class="k">def</span> <span class="nf">mpfit_residuals</span><span class="p">(</span><span class="n">modelfun</span><span class="p">,</span> <span class="n">preffun</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Returns a residual function for mpfit code&#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">fun</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">fjac</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Generic function&#39;&#39;&#39;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">modelfun</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">preffun</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># There is a parameter prefernece</span>
+            <span class="n">prefval</span> <span class="o">=</span> <span class="n">preffun</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">prefval</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">status</span><span class="p">,</span> <span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="n">model</span><span class="p">)</span> <span class="o">*</span> <span class="n">prefval</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">status</span><span class="p">,</span> <span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="n">model</span><span class="p">)</span><span class="o">/</span><span class="n">error</span><span class="o">*</span><span class="n">prefval</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">fun</span></div>
+
+
+<div class="viewcode-block" id="mpfit_do"><a class="viewcode-back" href="../../NPK.html#NPK.Fit.mpfit_do">[docs]</a><span class="k">def</span> <span class="nf">mpfit_do</span><span class="p">(</span><span class="n">residual_fun</span><span class="p">,</span> <span class="c1"># function returned from mpfit_residuals() above</span>
+        <span class="n">x</span><span class="p">,</span> <span class="c1"># input x</span>
+        <span class="n">y</span><span class="p">,</span> <span class="c1"># input y = f(x)</span>
+        <span class="n">parinfo</span><span class="p">,</span> <span class="c1"># initial parameter guess</span>
+        <span class="n">error</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">quiet</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">maxiter</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Returns mpfit fit sturcture for residual fun</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        residual_fun: residual_fun from mpfit_residuals</span>
+<span class="sd">        x, y: x and y data values</span>
+<span class="sd">        parinfo: Structure containing mpfit pars see</span>
+<span class="sd">            help(mpfit)</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        g4res = Fit.mpfit_residuals(Fit.gaussian4)</span>
+<span class="sd">        parguess = [{&#39;value&#39;: 1600}, {&#39;value&#39;: 0}, {&#39;value&#39;: 2}, {&#39;value&#39;: 200}]</span>
+<span class="sd">        fit = Fit.mpfit_do(g4res, xs, prof, parguess)&#39;&#39;&#39;</span>
+
+
+    <span class="n">fa</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">fa</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">error</span>
+
+    <span class="n">lsf</span> <span class="o">=</span> <span class="n">mpfit</span><span class="o">.</span><span class="n">mpfit</span><span class="p">(</span><span class="n">residual_fun</span><span class="p">,</span> <span class="n">parinfo</span><span class="o">=</span><span class="n">parinfo</span><span class="p">,</span> <span class="n">functkw</span><span class="o">=</span><span class="n">fa</span><span class="p">,</span>
+            <span class="n">quiet</span><span class="o">=</span><span class="n">quiet</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="n">maxiter</span><span class="p">)</span>
+
+
+    <span class="k">return</span> <span class="n">lsf</span></div>
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
