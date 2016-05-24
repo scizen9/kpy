@@ -846,8 +846,29 @@ def plot_zp_airmass(zpfile):
     plt.show()
     
     
- 
+def main(reduced):
+    '''
+    Performs the main zeropoint calculations for the folder and plots the results.
+    
+    '''
+    os.chdir(reduced)
+    
+    plotdir = "zeropoint"
+    if (not os.path.isdir(plotdir)):
+        os.makedirs(plotdir)
+    
+
+    for f in glob.glob("*.fits"):
+        print f
+        if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
+            calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
+    	if (os.path.isfile("zeropoint.log")):
+	    plot_zp("zeropoint.log", plotdir)
+	if (os.path.isfile("allstars_zp.log")):
+	    lsq_zeropoint("allstars_zp.log", plotdir)
+     
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(description=\
         '''
 
@@ -866,19 +887,6 @@ if __name__ == '__main__':
     
     if (reduced is None):
         print "Please, add the directory containing reduced data as a parameter."
-    os.chdir(reduced)
-    
-    plotdir = "zeropoint"
-    if (not os.path.isdir(plotdir)):
-        os.makedirs(plotdir)
-    
-
-    for f in glob.glob("*.fits"):
-        print f
-        if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
-            calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
-    	if (os.path.isfile("zeropoint.log")):
-	    plot_zp("zeropoint.log", plotdir)
-	if (os.path.isfile("allstars_zp.log")):
-	    lsq_zeropoint("allstars_zp.log", plotdir)
+    else:
+        main(reduced)
 

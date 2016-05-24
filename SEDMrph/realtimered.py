@@ -11,6 +11,7 @@ import glob, os, time
 import argparse
 import fitsutils
 import datetime
+import zeropoint
 
 def reduce_all_dir(photdir, overwrite=False):
     
@@ -37,8 +38,11 @@ def reduce_on_the_fly(photdir):
     
     dayname = os.path.basename(photdir)
     
-    #Permanently monitor the night for new files.
-    while True:
+    time_ini = datetime.datetime.now()
+    time_curr = datetime.datetime.now()
+    
+    #Run this loop for 12h since the start.
+    while (time_curr-time_ini).total_seconds() < 12*3600.:
         nfilesnew = glob.glob(os.path.join(photdir, "rc*fits"))
         if len(nfilesnew) == len(nfiles):
             time.sleep(10)
@@ -58,8 +62,10 @@ def reduce_on_the_fly(photdir):
                         cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(r, dayname)
                         subprocess.call(cmd, shell=True)
                         print "Successfully copied the image", cmd
-
+        time_curr = datetime.datetime.now()
         nfiles = nfilesnew  
+        
+    
          
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
@@ -89,3 +95,6 @@ if __name__ == '__main__':
     if (fullred):
         reduce_all_dir(os.path.abspath(photdir), overwrite=overwrite)
     reduce_on_the_fly(os.path.abspath(photdir))
+    
+    #After 12h, invoke the zeropoint calibration.
+    zeropoint.calibrate_zeropoint(os.path.abspath(os.path.join(photdir, "reduced")))
