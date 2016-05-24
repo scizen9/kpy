@@ -29,7 +29,8 @@ def start_listening_loop():
     #Log into a file
     FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
     root_dir = "/scr2/sedm/logs/"
-    timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+    now = datetime.datetime.utcnow()
+    timestamp=datetime.datetime.isoformat(now)
     timestamp=timestamp.split("T")[0]
     logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
     logger = logging.getLogger('listener')
@@ -42,6 +43,7 @@ def start_listening_loop():
         return
     s.listen(10)
     
+    
     #create continous while loop to listen for request
     #Exit the loop at 11:00AM, as the new day will start.
     while True:
@@ -51,6 +53,11 @@ def start_listening_loop():
         subprocess.call(cmd, shell=True)
 
         while True:
+            
+            #Exit and restart a new listener if the program is running for more than 12 hours and 
+            #it is later than 10AM, so we don't disrupt the night scheduler.
+            if (datetime.datetime.utcnow()-now).total_seconds() > 12*3600. and (datetime.datetime.utcnow()).hour>17:
+                sys.exit(0)
             cmd = "touch /tmp/sedm_listener_alive"
             subprocess.call(cmd, shell=True)
             data = connection.recv(2048)
