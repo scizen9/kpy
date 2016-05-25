@@ -782,7 +782,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     fwhm = fitsutils.get_par(image, "fwhm")
     fwhm_as = fwhm * 0.394
 
-    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic')
+    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir)
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det.txt", image, plot=plot, plotdir=plotdir)
     
     #Log the current zeropoint for this image
@@ -806,6 +806,8 @@ def plot_zp(zpfile, plotdir=None):
     def mkdate(text):
         return datetime.datetime.strptime(text, '%Y-%m-%dT%H:%M:%S') 
     
+
+    plt.clf()
     a = np.genfromtxt(zpfile, names=True, dtype=None, delimiter=',')
     
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
@@ -816,7 +818,6 @@ def plot_zp(zpfile, plotdir=None):
             a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i])
         print "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint']))
 
-    plt.clf()
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
     plt.ylabel("ZP [mag]")
