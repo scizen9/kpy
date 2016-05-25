@@ -97,4 +97,4 @@ if __name__ == '__main__':
     reduce_on_the_fly(os.path.abspath(photdir))
     
     #After 12h, invoke the zeropoint calibration.
-    zeropoint.calibrate_zeropoint(os.path.abspath(os.path.join(photdir, "reduced")))
+    zeropoint.calibrate_zeropoint(os.path.join(os.path.abspath(photdir), "reduced")))
