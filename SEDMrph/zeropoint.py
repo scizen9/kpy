@@ -578,6 +578,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
                 
         if (plot):
+            plt.close("all")
             f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
             ax1.plot(ab['color'], emp_col, "o", color=cols[b], ms=4, alpha=0.4)
             ax1.plot(ab['color'],  pred_col, color=cols[b])
@@ -781,7 +782,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     fwhm = fitsutils.get_par(image, "fwhm")
     fwhm_as = fwhm * 0.394
 
-    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic')
+    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir)
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det.txt", image, plot=plot, plotdir=plotdir)
     
     #Log the current zeropoint for this image
@@ -805,6 +806,8 @@ def plot_zp(zpfile, plotdir=None):
     def mkdate(text):
         return datetime.datetime.strptime(text, '%Y-%m-%dT%H:%M:%S') 
     
+
+    plt.clf()
     a = np.genfromtxt(zpfile, names=True, dtype=None, delimiter=',')
     
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
@@ -846,8 +849,29 @@ def plot_zp_airmass(zpfile):
     plt.show()
     
     
- 
+def main(reduced):
+    '''
+    Performs the main zeropoint calculations for the folder and plots the results.
+    
+    '''
+    os.chdir(reduced)
+    
+    plotdir = "zeropoint"
+    if (not os.path.isdir(plotdir)):
+        os.makedirs(plotdir)
+    
+
+    for f in glob.glob("*.fits"):
+        print f
+        if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
+            calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
+    if (os.path.isfile("zeropoint.log")):
+        plot_zp("zeropoint.log", plotdir)
+    if (os.path.isfile("allstars_zp.log")):
+        lsq_zeropoint("allstars_zp.log", plotdir)
+     
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(description=\
         '''
 
@@ -866,19 +890,6 @@ if __name__ == '__main__':
     
     if (reduced is None):
         print "Please, add the directory containing reduced data as a parameter."
-    os.chdir(reduced)
-    
-    plotdir = "zeropoint"
-    if (not os.path.isdir(plotdir)):
-        os.makedirs(plotdir)
-    
-
-    for f in glob.glob("*.fits"):
-        print f
-        if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
-            calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
-    	if (os.path.isfile("zeropoint.log")):
-	    plot_zp("zeropoint.log", plotdir)
-	if (os.path.isfile("allstars_zp.log")):
-	    lsq_zeropoint("allstars_zp.log", plotdir)
+    else:
+        main(reduced)
 

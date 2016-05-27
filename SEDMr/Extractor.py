@@ -499,6 +499,18 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         print "Wrote allspec_%s" % outname
     if plot:pl.show()
 
+    pl.figure(4)
+    pl.clf()
+    s_grid = np.array(s_grid)
+    for f in s_grid:
+        pl.plot(s_grid, alpha=0.5)
+    pl.xlabel('Wavelength bin [pixel]')
+
+    if outname is not None: 
+        pl.savefig("allspecextract_%s" % outname)
+        print "Wrote allspecextract_%s" % outname
+    if plot:pl.show()
+
     # Package results
     doc = """Result contains:
         nm [N float]: Wavelength solution
