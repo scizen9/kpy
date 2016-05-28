@@ -60,6 +60,8 @@ class PositionPicker(object):
     picked = None
     radius_as = None
     bgd_sub = False
+    xc = None
+    yc = None
 
     def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
                  lmax=650):
@@ -131,6 +133,8 @@ class PositionPicker(object):
         if event.name == 'button_press_event':
             print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
             self.picked = (event.xdata, event.ydata)
+            self.xc = event.xdata
+            self.yc = event.ydata
             pl.close(self.figure)
 
 
