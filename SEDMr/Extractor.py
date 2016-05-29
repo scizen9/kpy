@@ -38,13 +38,13 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     """ Return list of (X,Y) positions indicating trace of atmospheric dispersion
 
     Args:
-        PRLLTC: parralactic angle in Angle class
-        pos: (x,y) position of source in arcsec at wavelength leff
-        leff: Effective wavelength, micron
-        airmass: Atmospheric airmass. Note, if airmass=1 there's no dispersion
+        PRLLTC (float): parralactic angle in Angle class
+        pos (float,float): (x,y) position of source in arcsec at wavelength leff
+        leff (float): Effective wavelength, micron
+        airmass (float): Atmospheric airmass. Note, if airmass=1 there's no dispersion
 
     Returns:
-        List of positions of the source in arcsec: [ (x0,y0) ... (xn,yn) ]
+        (list): List of positions of the source in arcsec: [ (x0,y0) ... (xn,yn) ]
 
         Note: if airmass=1, then the list is equivalent of [ pos ]
 
