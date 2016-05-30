@@ -34,6 +34,25 @@ def reject_outliers(data, m=2.):
     return data[s<m]
 
 
+def get_ellipse_xys(ell):
+    a = ell[0]
+    b = ell[1]
+
+    pts = np.zeros((361, 2))
+    beta = -ell[4] * np.pi / 180.
+    sin_beta = np.sin(beta)
+    cos_beta = np.cos(beta)
+    alpha = np.radians(np.r_[0.:360.:1j * 361])
+
+    sin_alpha = np.sin(alpha)
+    cos_alpha = np.cos(alpha)
+
+    pts[:, 0] = ell[2] + (a * cos_alpha * cos_beta - b * sin_alpha * sin_beta)
+    pts[:, 1] = ell[3] + (a * cos_alpha * sin_beta + b * sin_alpha * cos_beta)
+
+    return pts
+
+
 def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     """ Return list of (X,Y) positions indicating trace of atmospheric dispersion
 
@@ -194,7 +213,7 @@ def find_positions_ellipse(xy, h, k, a, b, A):
     return positions[dist < 1]
 
 
-def identify_spectra_gui(spectra, radius=2, lmin=650, lmax=700, PRLLTC=None,
+def identify_spectra_gui(spectra, radius=2., lmin=650, lmax=700, PRLLTC=None,
                          object=object, airmass=1.0):
     """ Returns index of spectra picked in GUI.
 
@@ -230,10 +249,10 @@ def identify_spectra_gui(spectra, radius=2, lmin=650, lmax=700, PRLLTC=None,
     return KT.good_positions[kix], pos, positions, ellipse
 
 
-def identify_sky_spectra(spectra, pos, inner=3, lmin=650, lmax=700):
+def identify_sky_spectra(spectra, pos, inner=3., lmin=650, lmax=700):
     KT = SS.Spectra(spectra)
 
-    outer = inner + 3
+    outer = inner + 3.
 
     skys = KT.good_positions.tolist()
     objs = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)]
@@ -283,10 +302,10 @@ def identify_sky_spectra(spectra, pos, inner=3, lmin=650, lmax=700):
     return skys
 
 
-def identify_bgd_spectra(spectra, pos, inner=3):
+def identify_bgd_spectra(spectra, pos, inner=3.):
     KT = SS.Spectra(spectra)
 
-    outer = inner + 3
+    outer = inner + 3.
 
     objs = KT.good_positions[KT.KT.query_ball_point(pos, r=inner)]
     skys = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)].tolist()
@@ -298,7 +317,7 @@ def identify_bgd_spectra(spectra, pos, inner=3):
 
 
 def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None,
-             ellipse=None):
+             ellipse=None, ellipseB=None):
     """ Convert spectra list into image_[outname].pdf """
 
     Xs = []
@@ -342,26 +361,12 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None,
     pl.scatter(Xs, Ys, c=Vs, s=50, marker='H', linewidth=0,
             vmin=Vmin, vmax=Vmax)
 
-    def get_ellipse_xys(ell):
-        a = ell[0]
-        b = ell[1]
-
-        pts = np.zeros((361, 2))
-        beta = -ell[4] * np.pi / 180.
-        sin_beta = np.sin(beta)
-        cos_beta = np.cos(beta)
-        alpha = np.radians(np.r_[0.:360.:1j*361])
-
-        sin_alpha = np.sin(alpha)
-        cos_alpha = np.cos(alpha)
-
-        pts[:, 0] = ell[2] + (a * cos_alpha * cos_beta - b * sin_alpha * sin_beta)
-        pts[:, 1] = ell[3] + (a * cos_alpha * sin_beta + b * sin_alpha * cos_beta)
-
-        return pts
-
     if ellipse is not None:
         xys = get_ellipse_xys(ellipse)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
+    if ellipseB is not None:
+        xys = get_ellipse_xys(ellipseB)
         pl.plot(xys[:, 0], xys[:, 1], 'g.-')
 
     if adcpos is not None:
@@ -877,9 +882,14 @@ def handle_Std(A, fine, outname=None, standard=None, Aoffset=None,
     pl.ylim(-20,20)
     pl.xlim(-22,20)
     pl.grid(True)
+
     if posA is not None:
         pl.axvline(posA[0], color='black', linewidth=.5)
         pl.axhline(posA[1], color='black', linewidth=.5)
+    if ellipse is not None:
+        xys = get_ellipse_xys(ellipse)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
     pl.scatter(XSA,YSA, color='red', marker='H', s=50, linewidth=0)
@@ -1101,9 +1111,14 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2,
     pl.ylim(-20,20)
     pl.xlim(-22,20)
     pl.grid(True)
+
     if posA is not None:
         pl.axvline(posA[0], color='black', linewidth=.5)
         pl.axhline(posA[1], color='black', linewidth=.5)
+    if ellipse is not None:
+        xys = get_ellipse_xys(ellipse)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
     pl.scatter(XSA,YSA, color='red', marker='H', s=50, linewidth=0)
@@ -1282,15 +1297,15 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
                                  airmass=meta['airmass'])
     radius_used_A = ellipse[0] * 0.5
     print "\nMark negative (blue) target next"
-    sixB, posB, adc_B, ellipse = \
+    sixB, posB, adc_B, ellipseB = \
             identify_spectra_gui(E, radius=radius_used_A,
                                  PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax, object=object, 
                                  airmass=meta['airmass'])
-    radius_used_B = ellipse[0] * 0.5
+    radius_used_B = ellipseB[0] * 0.5
 
     to_image(E, meta, outname, posA=posA, posB=posB, adcpos=adc_A,
-             ellipse=ellipse)
+             ellipse=ellipse, ellipseB=ellipseB)
 
     kixA = identify_bgd_spectra(E, posA, inner=radius_used_A*1.1)
     kixB = identify_bgd_spectra(E, posB, inner=radius_used_B*1.1)
@@ -1298,7 +1313,7 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
     resA = interp_spectra(E, sixA, sign=1, outname=outname+"_A.pdf")
     resB = interp_spectra(E, sixB, sign=-1, outname=outname+"_B.pdf")
     skyA = interp_spectra(E, kixA, sign=1, outname=outname+"_skyA.pdf")
-    skyB = interp_spectra(E, kixB, sign=-1, outname=outname+"_skYB.pdf")
+    skyB = interp_spectra(E, kixB, sign=-1, outname=outname+"_skyB.pdf")
     varA = interp_spectra(E_var, sixA, sign=1, outname=outname+"_A_var.pdf")
     varB = interp_spectra(E_var, sixB, sign=1, outname=outname+"_B_var.pdf")
 
@@ -1329,12 +1344,22 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None,
     pl.ylim(-20,20)
     pl.xlim(-22,20)
     pl.grid(True)
+
     if posA is not None:
         pl.axvline(posA[0], color='black', linewidth=.5)
         pl.axhline(posA[1], color='black', linewidth=.5)
     if posB is not None:
         pl.axvline(posB[0], color='black', linewidth=.5)
         pl.axhline(posB[1], color='black', linewidth=.5)
+
+    if ellipse is not None:
+        xys = get_ellipse_xys(ellipse)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
+    if ellipseB is not None:
+        xys = get_ellipse_xys(ellipseB)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
     pl.scatter(XSA,YSA, color='blue', marker='H', s=50, linewidth=0)
