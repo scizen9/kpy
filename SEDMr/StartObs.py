@@ -487,11 +487,33 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 obj = hdr['OBJECT']
             except:
                 obj = ''
-            # Filter Calibs and avoid test images
+            # Filter Calibs and avoid test images and be sure it is part of
+            # a series.
             if 'Calib' in obj and 'of' in obj and 'test' not in obj:
-                # Copy cal images
-                nc, ns = docp(src, destfil, onsky=False, verbose=True)
-                ncp += nc
+                exptime = hdr['EXPTIME']
+                # Check for dome exposures
+                if 'dome' in obj:
+                    if exptime > 100. and (
+                                    'Hal' in obj and 'Xe' not in obj and
+                                    'Hg' not in obj and 'Cd' not in obj):
+                    # Copy dome images
+                        nc, ns = docp(src, destfil, onsky=False,
+                                      verbose=True)
+                        ncp += nc
+                # Check for arcs
+                elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
+                    if exptime > 25.:
+                        # Copy arc images
+                        nc, ns = docp(src, destfil, onsky=False,
+                                      verbose=True)
+                        ncp += nc
+                # Check for biases
+                elif 'bias' in obj:
+                    if exptime <= 0.:
+                        # Copy bias images
+                        nc, ns = docp(src, destfil, onsky=False,
+                                      verbose=True)
+                        ncp += nc
 
     return ncp
     # END: cpcal

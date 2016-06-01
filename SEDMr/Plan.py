@@ -219,7 +219,7 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy: cube.npy dome.fits
-	$(PY) $(PYC)/Extractor.py cube.npy --A dome.fits --outname dome --flat
+	$(PY) $(PYC)/Extractor.py cube.npy --A dome.fits --outname dome --extflat
 
 flat-dome-700to900.npy: dome.npy
 	$(PY) $(PYC)/Flat.py dome.npy

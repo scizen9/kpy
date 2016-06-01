@@ -49,7 +49,7 @@ class Spectra(object):
         for ix, el in enumerate(data):
 
             try:
-                l,fl = el.get_counts()
+                l, fl = el.get_counts()
                 fl = el.specw
                 haix = find_ha(el.lamcoeff)
             except:
@@ -60,10 +60,11 @@ class Spectra(object):
             x = el.X_as
             y = el.Y_as
 
-            positions.append( (x,y) )
+            positions.append((x, y))
 
         if len(positions) == 0:
-            raise Exception("For some reason, no good spectrum exists in the submitted spectral set.")
+            raise Exception("For some reason, no good spectrum exists"
+                            " in the submitted spectral set.")
 
         data = np.array(positions)
         bad = (data != data)
@@ -71,7 +72,7 @@ class Spectra(object):
         self.KT = scipy.spatial.KDTree(data)
         self.good_positions = np.array(good_positions)
 
-    def to_xyv(self, lmin=500, lmax=700):
+    def to_xyv(self, lmin=500., lmax=700.):
         """ Method converts a spectral set into X, Y, and intensity tuples
         
         X
@@ -105,7 +106,7 @@ class Spectra(object):
             datix = self.good_positions[ix]
             el = self.data[datix]
             try:
-                l,fl = el.get_flambda()
+                l, fl = el.get_flambda()
             except: 
                 continue
 

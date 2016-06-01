@@ -12,7 +12,7 @@ import SEDMr.Wavelength as Wavelength
 
 
 def measure_flexure_x(fine, HDUlist, plot=True, dY=0,
-    skyline=589.0, lamstart=1000.0, lamratio=239./240., lamlen=250,
+    skyline=557.0, lamstart=1000.0, lamratio=239./240., lamlen=250,
     extract_width=3, skywidth=9, outfile='dX'):
     """Measures flexure in X direction, returns pixel offset
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('--profwidth', type=float, 
             help='Profile width to extract for Y flexure', default=5)
     parser.add_argument('--skyline', type=float, 
-            help='skyline position in nm to measure X flexure', default=589.0)
+            help='skyline position in nm to measure X flexure', default=557.7)
     parser.add_argument('--lamstart', type=float, 
             help='Wavelength to start interpolating grid ', default=1000.0)
     parser.add_argument('--lamratio', type=float, 
