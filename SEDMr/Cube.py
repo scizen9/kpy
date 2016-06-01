@@ -65,7 +65,6 @@ ROT = np.array([[np.cos(theta), -np.sin(theta)],
                 [np.sin(theta),  np.cos(theta)]])
 
 
-
 def QR_to_img(exts, Size=4, outname="cube.fits"):
     """Convert a data cube to a fits image
 
@@ -153,7 +152,6 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
         f = interp1d(l, s, fill_value=np.nan, bounds_error=False)
         fi = f(l_grid)/dl_grid 
         fi = fi[0:len(fi):2] + fi[1:len(fi):2] - back
-
 
         try:
             x = np.round(Size*np.sqrt(3.) * (ext.Q_ix + ext.R_ix/2)) + XSz
@@ -371,7 +369,7 @@ def extraction_to_cube(exts, outname="G.npy"):
 
     # t= np.radians(165.0+45)
     # Hex angle relative to positive Y pixel axis
-    t= np.radians(180+22)
+    t = np.radians(180+22)
     # Rotation matrix
     Rot = np.array([[np.cos(t), -np.sin(t)],
                     [np.sin(t),  np.cos(t)]])
