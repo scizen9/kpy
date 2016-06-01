@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pylab as pl
 import pyfits as pf
-import scipy.signal as SG
 import sets
 import itertools
 import warnings
@@ -53,12 +52,12 @@ def get_ellipse_xys(ell):
     return pts
 
 
-def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
+def atm_dispersion_positions(prlltc, pos, leff, airmass):
     """ Return list of (X,Y) positions indicating trace of
     atmospheric dispersion
 
     Args:
-        PRLLTC (float): parralactic angle in Angle class
+        prlltc (float): parralactic angle in Angle class
         pos (float,float): (x,y) position of source in arcsec at wave leff
         leff (float): Effective wavelength, micron
         airmass (float): Atmospheric airmass, airmass=1 means no dispersion
@@ -74,30 +73,30 @@ def atm_dispersion_positions(PRLLTC, pos, leff, airmass):
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad = NPK.Util.atm_disper(leff, 0.95, airmass)
     print 'Blue AD is %1.1f", Red AD is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
-                                                                PRLLTC.degree)
+                                                                prlltc.degree)
 
-    dx = -np.sin(PRLLTC.radian)
-    dy = np.cos(PRLLTC.radian)
+    dx = -np.sin(prlltc.radian)
+    dy = np.cos(prlltc.radian)
 
-    DELTA = 0.1
-    bpos = np.array(pos) - np.array([dx, dy]) * blue_ad * DELTA
+    delta = 0.1
+    bpos = np.array(pos) - np.array([dx, dy]) * blue_ad * delta
 
     positions = []
-    nstep = np.int(np.round((blue_ad - red_ad)/DELTA))
+    nstep = np.int(np.round((blue_ad - red_ad)/delta))
     if nstep == 0:
         nstep = 1
-    for delta in xrange(nstep):
-        t = [bpos[0] + delta * dx * DELTA, bpos[1] + delta * dy * DELTA]
+    for step in xrange(nstep):
+        t = [bpos[0] + step * dx * delta, bpos[1] + step * dy * delta]
         positions.append(t)
 
-    DX = positions[0][0] - positions[-1][0]
-    DY = positions[0][1] - positions[-1][1]
+    dx = positions[0][0] - positions[-1][0]
+    dy = positions[0][1] - positions[-1][1]
 
-    print "DX %2.1f, DY %2.1f, D %2.1f" % (DX, DY, np.sqrt(DX*DX + DY*DY))
+    print "DX %2.1f, DY %2.1f, D %2.1f" % (dx, dy, np.sqrt(dx*dx + dy*dy))
     return positions
 
 
-def Gaussian_2D(xdata_tuple, amplitude, xo, yo,
+def gaussian_2d(xdata_tuple, amplitude, xo, yo,
                 sigma_x, sigma_y, theta, offset):
     """
     Produces a 2D gaussian centered in xo, yo with the parameters specified.
@@ -116,8 +115,8 @@ def Gaussian_2D(xdata_tuple, amplitude, xo, yo,
     return g.ravel()
 
 
-def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
-                               lmin=400, lmax=900, airmass=1.0):
+def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
+                               airmass=1.0):
     """ 
      Returns index of spectra picked by Guassian fit.
     
@@ -125,10 +124,10 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     """
     pl.ioff()
     
-    KT = SS.Spectra(spectra)   
+    kt = SS.Spectra(spectra)
     
     # Get X,Y positions (arcsec) and summed values between lmin and lmax
-    Xs, Ys, Vs = KT.to_xyv(lmin=lmin, lmax=lmax)
+    Xs, Ys, Vs = kt.to_xyv(lmin=lmin, lmax=lmax)
     
     xi = np.linspace(np.nanmin(Xs), np.nanmax(Xs), 100)
     yi = np.linspace(np.nanmin(Ys), np.nanmax(Ys), 200)
@@ -160,7 +159,7 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, 
                      np.nanmean(grid_Vs))
 
-    popt, pcov = opt.curve_fit(Gaussian_2D, (X, Y),
+    popt, pcov = opt.curve_fit(gaussian_2d, (X, Y),
                                grid_Vs.flatten(), p0=initial_guess)
     xc = popt[1]
     yc = popt[2]
@@ -183,21 +182,21 @@ def identify_spectra_Gauss_fit(spectra, outname=None, PRLLTC=None,
     
     leff = (lmax+lmin)/2.0
     
-    if PRLLTC is not None:
-        positions = atm_dispersion_positions(PRLLTC, pos, leff, airmass)
+    if prlltc is not None:
+        positions = atm_dispersion_positions(prlltc, pos, leff, airmass)
     else:
         positions = [pos]
     
     all_kix = []
     for the_pos in positions:
-        all_kix.append(list(find_positions_ellipse(KT.KT.data, xc, yc, a, b,
+        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
                                                    -theta)))
 
     all_kix = list(itertools.chain(*all_kix))
     kix = list(sets.Set(all_kix))
     print "found this many spaxels: %d" % len(kix)
     
-    return KT.good_positions[kix], pos, positions, ellipse
+    return kt.good_positions[kix], pos, positions, ellipse
 
 
 def find_positions_ellipse(xy, h, k, a, b, A):
@@ -218,17 +217,17 @@ def find_positions_ellipse(xy, h, k, a, b, A):
     return positions[dist < 1]
 
 
-def identify_spectra_gui(spectra, radius=2., lmin=650, lmax=700, PRLLTC=None,
-                         object=object, airmass=1.0):
+def identify_spectra_gui(spectra, radius=2., lmin=650., lmax=700., prlltc=None,
+                         objname=None, airmass=1.0):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
     """
 
     print "\nStarting with a %s arcsec radius" % radius
-    KT = SS.Spectra(spectra)
-    g = GUI.PositionPicker(KT, bgd_sub=True, radius_as=radius, 
-                           lmin=lmin, lmax=lmax, objname=object)
+    kt = SS.Spectra(spectra)
+    g = GUI.PositionPicker(kt, bgd_sub=True, radius_as=radius,
+                           lmin=lmin, lmax=lmax, objname=objname)
     pos = g.picked
     radius = g.radius_as
     a = radius
@@ -239,37 +238,37 @@ def identify_spectra_gui(spectra, radius=2., lmin=650, lmax=700, PRLLTC=None,
     ellipse = (a, b, xc, yc, 0.)
 
     leff = (lmax+lmin)/2.0
-    if PRLLTC is not None:
-        positions = atm_dispersion_positions(PRLLTC, pos, leff, airmass)
+    if prlltc is not None:
+        positions = atm_dispersion_positions(prlltc, pos, leff, airmass)
     else:
         positions = [pos]
 
     all_kix = []
     for the_pos in positions:
-        all_kix.append(KT.KT.query_ball_point(the_pos, radius))
+        all_kix.append(kt.KT.query_ball_point(the_pos, radius))
 
     all_kix = list(itertools.chain(*all_kix))
     kix = list(sets.Set(all_kix))
 
-    return KT.good_positions[kix], pos, positions, ellipse
+    return kt.good_positions[kix], pos, positions, ellipse
 
 
-def identify_sky_spectra(spectra, pos, inner=3., lmin=650, lmax=700):
-    KT = SS.Spectra(spectra)
+def identify_sky_spectra(spectra, pos, inner=3., lmin=650., lmax=700.):
+    kt = SS.Spectra(spectra)
 
     outer = inner + 3.
 
-    skys = KT.good_positions.tolist()
-    objs = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)]
+    skys = kt.good_positions.tolist()
+    objs = kt.good_positions[kt.KT.query_ball_point(pos, r=outer)]
 
     for o in objs:
         if o in skys:
             skys.remove(o)
 
     newspec = [spectra[i] for i in skys]
-    KT = SS.Spectra(newspec)
+    kt = SS.Spectra(newspec)
 
-    Xs, Ys, Vs = KT.to_xyv(lmin=lmin, lmax=lmax)
+    Xs, Ys, Vs = kt.to_xyv(lmin=lmin, lmax=lmax)
     Vmdn = np.median(Vs)
 
     Vstd = np.nanstd(Vs)
@@ -279,7 +278,7 @@ def identify_sky_spectra(spectra, pos, inner=3., lmin=650, lmax=700):
     print("Median: %6.2f, STD: %6.2f, Hi Thresh: %6.2f, Lo Thresh: %6.2f" %
           (Vmdn, Vstd, hi_thresh, lo_thresh))
 
-    KT = SS.Spectra(spectra)
+    kt = SS.Spectra(spectra)
 
     n_hi_rem = 0
     n_lo_rem = 0
@@ -309,12 +308,12 @@ def identify_sky_spectra(spectra, pos, inner=3., lmin=650, lmax=700):
 
 
 def identify_bgd_spectra(spectra, pos, inner=3.):
-    KT = SS.Spectra(spectra)
+    kt = SS.Spectra(spectra)
 
     outer = inner + 3.
 
-    objs = KT.good_positions[KT.KT.query_ball_point(pos, r=inner)]
-    skys = KT.good_positions[KT.KT.query_ball_point(pos, r=outer)].tolist()
+    objs = kt.good_positions[kt.KT.query_ball_point(pos, r=inner)]
+    skys = kt.good_positions[kt.KT.query_ball_point(pos, r=outer)].tolist()
 
     for o in objs:
         if o in skys:
@@ -392,7 +391,7 @@ def to_image(spectra, meta, outname, posA=None, posB=None, adcpos=None,
     print "Wrote image_%s.pdf" % outname
 
 
-def c_to_nm(coefficients, pix, offset=0):
+def c_to_nm(coefficients, pix, offset=0.):
 
     t = coefficients[:]
     t[0] += offset
@@ -400,7 +399,7 @@ def c_to_nm(coefficients, pix, offset=0):
 
 
 def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
-                   corrfile=None, dnm=0, onto=None):
+                   corrfile=None, dnm=0., onto=None):
     """Interp spectra onto common grid
 
     Args:
@@ -421,7 +420,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     for ix in six:
         spectrum = all_spectra[ix]
 
-        l,s = spectrum.get_counts(the_spec='specw')
+        l, s = spectrum.get_counts(the_spec='specw')
         pix = np.arange(*spectrum.xrange)
 
         # This is wrong: should give preference to lamcoeff according to Nick
@@ -543,10 +542,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     return result
 
 
-def load_corr():
-    corr = pf.open("CORR.npy")
-
-
 def imarith(operand1, op, operand2, result, doAirmass=False):
     from pyraf import iraf
     iraf.images()
@@ -630,75 +625,6 @@ def divide(A, B, outname):
     return pf.open(outname)
 
 
-def combines(A, B, C, D, outname):
-    """ Creates outname with A+B+C+D """
-    if os.path.exists(outname):
-        return pf.open(outname)
-
-    try:
-        os.remove('AB.fits')
-    except:
-        pass
-    try:
-        os.remove('CD.fits')
-    except:
-        pass
-    add(A, B, 'AB.fits')
-    add(C, D, 'CD.fits')
-
-    add('AB.fits', 'CD.fits', outname)
-    try:
-        os.remove('AB.fits')
-    except:
-        pass
-    try:
-        os.remove('CD.fits')
-    except:
-        pass
-
-
-def combine4(A, B, C, D, outname):
-    """Creates outname which is == A-(B+C+D)/3"""
-
-    if os.path.exists(outname):
-        return pf.open(outname)
-
-    try:
-        os.remove("APB.fits")
-    except:
-        pass
-    add(A, B, "APB.fits")
-    try:
-        os.remove("3ABC.fits")
-    except:
-        pass
-    add(B, C, "3ABC.fits")
-    try:
-        os.remove(outname)
-    except:
-        pass
-    divide("3ABC.fits", "3", "ABC.fits")
-    try:
-        os.remove("3ABC.fits")
-    except:
-        pass
-    try:
-        os.remove(outname)
-    except:
-        pass
-    subtract(A, "ABC.fits", outname)
-    try:
-        os.remove("ABC.fits")
-    except:
-        pass
-    try:
-        os.remove("APB.fits")
-    except:
-        pass
-
-    return pf.open(outname)
-
-
 def bgd_level(extractions):
     """Remove background from extractions"""
 
@@ -719,25 +645,6 @@ def bgd_level(extractions):
     pl.axhline(bgd-sd)
     pl.ylim(-20*sd-bgd, 20*sd-bgd)
     pl.show()
-
-
-def handle_extract(data, outname=None, fine='fine.npy', flexure_x_corr_nm=0.0,
-                   flexure_y_corr_pix=0.0, flat_corrections=None):
-
-    exfile = "extracted_%s.npy" % outname
-    if not os.path.exists(outname + ".npy"):
-        E, meta = \
-            Wavelength.wavelength_extract(data, fine, filename=outname,
-                                          flexure_x_corr_nm=flexure_x_corr_nm,
-                                          flexure_y_corr_pix=flexure_y_corr_pix,
-                                          flat_corrections=flat_corrections)
-
-        np.save(exfile, [E, meta])
-        print "Wrote %s.npy" % exfile
-    else:
-        E, meta = np.load(exfile)
-
-    return E
 
 
 def handle_Flat(A, fine, outname=None):
@@ -800,7 +707,7 @@ def handle_Flat(A, fine, outname=None):
 
 
 def handle_Std(A, fine, outname=None, standard=None, Aoffset=None, 
-               flat_corrections=None, lmin=650, lmax=700):
+               flat_corrections=None, lmin=650., lmax=700.):
     """Loads IFU frame "A" and extracts standard star spectra using "fine".
 
     Args:
@@ -841,8 +748,8 @@ def handle_Std(A, fine, outname=None, standard=None, Aoffset=None,
         flexure_y_corr_pix = ff[0]['dYpix']
         print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
     else:
-        flexure_x_corr_nm = 0
-        flexure_y_corr_pix = 0
+        flexure_x_corr_nm = 0.
+        flexure_y_corr_pix = 0.
     # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
         print "USING extractions in %s.npy!" % outname
@@ -854,235 +761,6 @@ def handle_Std(A, fine, outname=None, standard=None, Aoffset=None,
         print "\nCREATING extractions ..."
         # Load spectrum image
         spec = pf.open(A)
-        # Set up variance image by adding read noise to Poisson noise
-        adcspeed = spec[0].header["ADCSPEED"]
-        if adcspeed == 2: read_var = 22*22
-        else: read_var = 5*5
-        # Variance image is input image plus read variance
-        var = addcon(A, str(read_var), "var_" + outname + ".fits")
-        # Extract each object spaxel
-        print "\nExtracting object spectra"
-        E, meta = \
-            Wavelength.wavelength_extract(spec, fine,
-                                          filename=outname,
-                                          flexure_x_corr_nm=flexure_x_corr_nm,
-                                          flexure_y_corr_pix=flexure_y_corr_pix,
-                                          flat_corrections=flat_corrections)
-        # Extract metadata
-        meta['airmass'] = spec[0].header['airmass']
-        header = {}
-        for k, v in spec[0].header.iteritems():
-            try:
-                header[k] = v
-            except:
-                pass
-        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
-        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
-        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
-        meta['PRLLTC'] = \
-            header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
-        meta['EQUINOX'] = \
-            header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
-        if 'UTC' in header:
-            meta['utc'] = header['UTC']
-        else:
-            tjd = Time(header['JD'], format='jd', scale='utc')
-            meta['utc'] = tjd.yday
-        meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
-        meta['header'] = header
-        meta['exptime'] = spec[0].header['exptime']
-        # Save object extraction
-        np.save(outname, [E, meta])
-        print "Wrote %s.npy" % outname
-        # Extract each variance spaxel
-        print "\nExtracting variance spectra"
-        E_var, meta_var = \
-            Wavelength.wavelength_extract(var, fine,
-                                          filename=outname,
-                                          flexure_x_corr_nm=flexure_x_corr_nm,
-                                          flexure_y_corr_pix=flexure_y_corr_pix,
-                                          flat_corrections=flat_corrections)
-        # Save variance extraction
-        np.save("var_" + outname, [E_var, meta_var])
-        print "Wrote var_%s.npy" % outname
-
-    # Get the object name of record
-    object = meta['header']['OBJECT'].split()[0]
-
-    # Automatic extraction using Gaussian fit for Standard Stars
-    sixA, posA, adcpos, ellipse = \
-        identify_spectra_Gauss_fit(E,
-                                   outname=outname,
-                                   PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-                                   lmin=lmin, lmax=lmax,
-                                   airmass=meta['airmass'])
-    radius_used = ellipse[0] * 0.5
-    # Use all sky spaxels in image for Standard Stars
-    kixA = identify_sky_spectra(E, posA, inner=radius_used*1.1)
-
-    # Make an image of the spaxels for the record
-    to_image(E, meta, outname, posA=posA, adcpos=adcpos, ellipse=ellipse)
-    # get the mean spectrum over the selected spaxels
-    resA = interp_spectra(E, sixA, outname=outname+".pdf")
-    skyA = interp_spectra(E, kixA, outname=outname+"_sky.pdf")
-    varA = interp_spectra(E_var, sixA, outname=outname+"_var.pdf")
-    # Plot out the X/Y positions of the selected spaxels
-    XSA = []
-    YSA = []
-    XSK = []
-    YSK = []
-    for ix in sixA:
-        XSA.append(E[ix].X_as)
-        YSA.append(E[ix].Y_as)
-    for ix in kixA:
-        XSK.append(E[ix].X_as)
-        YSK.append(E[ix].Y_as)
-
-    pl.figure()
-    pl.clf()
-    pl.ylim(-20, 20)
-    pl.xlim(-22, 20)
-    pl.grid(True)
-
-    if posA is not None:
-        pl.axvline(posA[0], color='black', linewidth=.5)
-        pl.axhline(posA[1], color='black', linewidth=.5)
-    if ellipse is not None:
-        xys = get_ellipse_xys(ellipse)
-        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
-
-    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
-    pl.ylabel("Y [as]")
-    pl.scatter(XSA, YSA, color='red', marker='H', s=50, linewidth=0)
-    pl.scatter(XSK, YSK, color='green', marker='H', s=50, linewidth=0)
-    pl.title("%d selected spaxels for %s" % (len(XSA), object))
-    pl.savefig("XYs_%s.pdf" % outname)
-    pl.close()
-    print "Wrote XYs_%s.pdf" % outname
-    # / End Plot
-
-    # Define our standard wavelength grid
-    ll = Wavelength.fiducial_spectrum()
-    # Resample sky onto standard wavelength grid
-    sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)
-    sky = sky_A(ll)
-    # Resample variance onto standard wavelength grid
-    var_A = interp1d(varA[0]['nm'], varA[0]['ph_10m_nm'], bounds_error=False)
-    varspec = var_A(ll)
-    # Copy and resample object spectrum onto standard wavelength grid
-    res = np.copy(resA)
-    res = [{"doc": resA[0]["doc"], "ph_10m_nm": np.copy(resA[0]["ph_10m_nm"]),
-            "spectra": np.copy(resA[0]["spectra"]),
-            "coefficients": np.copy(resA[0]["coefficients"]),
-            "nm": np.copy(resA[0]["ph_10m_nm"])}]
-    res[0]['nm'] = np.copy(ll)
-    f1 = interp1d(resA[0]['nm'], resA[0]['ph_10m_nm'], bounds_error=False)
-    # Calculate airmass correction
-    airmass = meta['airmass']
-    extCorr = 10**(Atm.ext(ll*10) * airmass/2.5)
-    print "Median airmass corr: %.4f" % np.median(extCorr)
-    # Calculate output corrected spectrum
-    # Account for sky, airmass and aperture
-    res[0]['ph_10m_nm'] = (f1(ll)-sky_A(ll)) * extCorr * len(sixA)
-
-    # Process standard star objects
-    print "STANDARD"
-    # Extract reference data
-    wav = standard[:, 0]/10.0
-    flux = standard[:, 1]
-    # Calculate/Interpolate correction onto object wavelengths
-    fun = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
-    correction0 = fun(res[0]['nm'])/res[0]['ph_10m_nm']
-    # Filter for resolution
-    flxf = filters.gaussian_filter(flux,19.)
-    # Calculate/Interpolate filtered correction
-    fun = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
-    correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
-    # Use unfiltered for H-beta region
-    ROI = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
-    correction[ROI] = correction0[ROI]
-    # Store correction and max calibrated wavelength
-    res[0]['std-correction'] = correction
-    res[0]['std-maxnm'] = np.max(wav)
-
-    # Store new metadata
-    res[0]['exptime'] = meta['exptime']
-    res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
-    res[0]['extinction_corr'] = extCorr
-    res[0]['skyph'] = sky * len(sixA)
-    res[0]['skynm'] = ll
-    res[0]['var'] = varspec
-    res[0]['radius_as'] = radius_used
-    res[0]['position'] = posA
-    res[0]['N_spax'] = len(sixA)
-    res[0]['meta'] = meta
-    res[0]['object_spaxel_ids'] = sixA
-    res[0]['sky_spaxel_ids'] = kixA
-    res[0]['sky_spectra'] = skyA[0]['spectra']
-    # Calculate wavelength offsets
-    coef = chebfit(np.arange(len(ll)), ll, 4)
-    xs = np.arange(len(ll)+1)
-    newll = chebval(xs, coef)
-    # Store offsets
-    res[0]['dlam'] = np.diff(newll)
-    # Save the final spectrum
-    np.save("sp_" + outname, res)
-    print "Wrote sp_"+outname+".npy"
-
-
-def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
-             flat_corrections=None, nosky=False, lmin=650, lmax=700):
-    """Loads IFU frame "A" and extracts spectra using "fine".
-
-    Args:
-        A (string): filename of ifu FITS file to extract from.
-        fine (string): filename of NumPy file with locations + wavelength
-            soln
-        outname (string): filename to write results to
-        Aoffset (2tuple): X (nm)/Y (pix) shift to apply for flexure correction
-        radius (float): Extraction radius in arcsecond
-        flat_corrections (list): A list of FlatCorrection objects for
-            correcting the extraction
-        nosky (Boolean): if True don't subtract sky, merely sum in aperture
-
-    Returns:
-        The extracted spectrum, a dictionary:
-        {'ph_10m_nm': Flux in photon / 10 m / nanometer integrated
-        'nm': Wavelength solution in nm
-        'N_spax': Total number of spaxels that created ph_10m_nm
-        'skyph': Sky flux in photon / 10 m / nanometer / spaxel
-        'radius_as': Extraction radius in arcsec
-        'pos': X/Y extraction location of spectrum in arcsec}
-
-    Raises:
-        None
-    """
-
-    # Load wavelength/spatial solution
-    fine, fmeta = np.load(fine)
-    # Set a default outname if needed
-    if outname is None:
-        outname = "%s" % A
-    # Check for flexure offsets
-    if Aoffset is not None:
-        ff = np.load(Aoffset)
-        flexure_x_corr_nm = ff[0]['dXnm']
-        flexure_y_corr_pix = ff[0]['dYpix']
-        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
-    else:
-        flexure_x_corr_nm = 0
-        flexure_y_corr_pix = 0
-    # The spaxel extraction already exist, so load them in
-    if os.path.isfile(outname+".npy"):
-        print "USING extractions in %s.npy!" % outname
-        print "rm %s.npy # if you want to recreate extractions" % outname
-        E, meta = np.load(outname+".npy")
-        E_var, meta_var = np.load("var_" + outname + ".npy")
-    # No extractions yet, so generate them
-    else:
-        print "\nCREATING extractions ..."
-        # Load spectrum image
-        spec = pf.openA
         # Set up variance image by adding read noise to Poisson noise
         adcspeed = spec[0].header["ADCSPEED"]
         if adcspeed == 2:
@@ -1138,14 +816,247 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
         print "Wrote var_%s.npy" % outname
 
     # Get the object name of record
-    object = meta['header']['OBJECT'].split()[0]
+    objname = meta['header']['OBJECT'].split()[0]
+
+    # Automatic extraction using Gaussian fit for Standard Stars
+    sixA, posA, adcpos, ellipse = \
+        identify_spectra_gauss_fit(E,
+                                   outname=outname,
+                                   prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                   lmin=lmin, lmax=lmax,
+                                   airmass=meta['airmass'])
+    radius_used = ellipse[0] * 0.5
+    # Use all sky spaxels in image for Standard Stars
+    kixA = identify_sky_spectra(E, posA, inner=radius_used*1.1)
+
+    # Make an image of the spaxels for the record
+    to_image(E, meta, outname, posA=posA, adcpos=adcpos, ellipse=ellipse)
+    # get the mean spectrum over the selected spaxels
+    resA = interp_spectra(E, sixA, outname=outname+".pdf")
+    skyA = interp_spectra(E, kixA, outname=outname+"_sky.pdf")
+    varA = interp_spectra(E_var, sixA, outname=outname+"_var.pdf")
+    # Plot out the X/Y positions of the selected spaxels
+    XSA = []
+    YSA = []
+    XSK = []
+    YSK = []
+    for ix in sixA:
+        XSA.append(E[ix].X_as)
+        YSA.append(E[ix].Y_as)
+    for ix in kixA:
+        XSK.append(E[ix].X_as)
+        YSK.append(E[ix].Y_as)
+
+    pl.figure()
+    pl.clf()
+    pl.ylim(-20, 20)
+    pl.xlim(-22, 20)
+    pl.grid(True)
+
+    if posA is not None:
+        pl.axvline(posA[0], color='black', linewidth=.5)
+        pl.axhline(posA[1], color='black', linewidth=.5)
+    if ellipse is not None:
+        xys = get_ellipse_xys(ellipse)
+        pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
+    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
+    pl.ylabel("Y [as]")
+    pl.scatter(XSA, YSA, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(XSK, YSK, color='green', marker='H', s=50, linewidth=0)
+    pl.title("%d selected spaxels for %s" % (len(XSA), objname))
+    pl.savefig("XYs_%s.pdf" % outname)
+    pl.close()
+    print "Wrote XYs_%s.pdf" % outname
+    # / End Plot
+
+    # Define our standard wavelength grid
+    ll = Wavelength.fiducial_spectrum()
+    # Resample sky onto standard wavelength grid
+    sky_A = interp1d(skyA[0]['nm'], skyA[0]['ph_10m_nm'], bounds_error=False)
+    sky = sky_A(ll)
+    # Resample variance onto standard wavelength grid
+    var_A = interp1d(varA[0]['nm'], varA[0]['ph_10m_nm'], bounds_error=False)
+    varspec = var_A(ll)
+    # Copy and resample object spectrum onto standard wavelength grid
+    res = np.copy(resA)
+    res = [{"doc": resA[0]["doc"], "ph_10m_nm": np.copy(resA[0]["ph_10m_nm"]),
+            "spectra": np.copy(resA[0]["spectra"]),
+            "coefficients": np.copy(resA[0]["coefficients"]),
+            "nm": np.copy(resA[0]["ph_10m_nm"])}]
+    res[0]['nm'] = np.copy(ll)
+    f1 = interp1d(resA[0]['nm'], resA[0]['ph_10m_nm'], bounds_error=False)
+    # Calculate airmass correction
+    airmass = meta['airmass']
+    extCorr = 10**(Atm.ext(ll*10) * airmass/2.5)
+    print "Median airmass corr: %.4f" % np.median(extCorr)
+    # Calculate output corrected spectrum
+    # Account for sky, airmass and aperture
+    res[0]['ph_10m_nm'] = (f1(ll)-sky_A(ll)) * extCorr * len(sixA)
+
+    # Process standard star objects
+    print "STANDARD"
+    # Extract reference data
+    wav = standard[:, 0]/10.0
+    flux = standard[:, 1]
+    # Calculate/Interpolate correction onto object wavelengths
+    fun = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
+    correction0 = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+    # Filter for resolution
+    flxf = filters.gaussian_filter(flux, 19.)
+    # Calculate/Interpolate filtered correction
+    fun = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
+    correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+    # Use unfiltered for H-beta region
+    ROI = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
+    correction[ROI] = correction0[ROI]
+    # Store correction and max calibrated wavelength
+    res[0]['std-correction'] = correction
+    res[0]['std-maxnm'] = np.max(wav)
+
+    # Store new metadata
+    res[0]['exptime'] = meta['exptime']
+    res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
+    res[0]['extinction_corr'] = extCorr
+    res[0]['skyph'] = sky * len(sixA)
+    res[0]['skynm'] = ll
+    res[0]['var'] = varspec
+    res[0]['radius_as'] = radius_used
+    res[0]['position'] = posA
+    res[0]['N_spax'] = len(sixA)
+    res[0]['meta'] = meta
+    res[0]['object_spaxel_ids'] = sixA
+    res[0]['sky_spaxel_ids'] = kixA
+    res[0]['sky_spectra'] = skyA[0]['spectra']
+    # Calculate wavelength offsets
+    coef = chebfit(np.arange(len(ll)), ll, 4)
+    xs = np.arange(len(ll)+1)
+    newll = chebval(xs, coef)
+    # Store offsets
+    res[0]['dlam'] = np.diff(newll)
+    # Save the final spectrum
+    np.save("sp_" + outname, res)
+    print "Wrote sp_"+outname+".npy"
+
+
+def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
+             flat_corrections=None, nosky=False, lmin=650., lmax=700.):
+    """Loads IFU frame "A" and extracts spectra using "fine".
+
+    Args:
+        A (string): filename of ifu FITS file to extract from.
+        fine (string): filename of NumPy file with locations + wavelength
+            soln
+        outname (string): filename to write results to
+        Aoffset (2tuple): X (nm)/Y (pix) shift to apply for flexure correction
+        radius (float): Extraction radius in arcsecond
+        flat_corrections (list): A list of FlatCorrection objects for
+            correcting the extraction
+        nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        lmin (float): lower wavelength limit for image generation
+        lmax (float): upper wavelength limit for image generation
+
+    Returns:
+        The extracted spectrum, a dictionary:
+        {'ph_10m_nm': Flux in photon / 10 m / nanometer integrated
+        'nm': Wavelength solution in nm
+        'N_spax': Total number of spaxels that created ph_10m_nm
+        'skyph': Sky flux in photon / 10 m / nanometer / spaxel
+        'radius_as': Extraction radius in arcsec
+        'pos': X/Y extraction location of spectrum in arcsec}
+
+    Raises:
+        None
+    """
+
+    # Load wavelength/spatial solution
+    fine, fmeta = np.load(fine)
+    # Set a default outname if needed
+    if outname is None:
+        outname = "%s" % A
+    # Check for flexure offsets
+    if Aoffset is not None:
+        ff = np.load(Aoffset)
+        flexure_x_corr_nm = ff[0]['dXnm']
+        flexure_y_corr_pix = ff[0]['dYpix']
+        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+    else:
+        flexure_x_corr_nm = 0
+        flexure_y_corr_pix = 0
+    # The spaxel extraction already exist, so load them in
+    if os.path.isfile(outname+".npy"):
+        print "USING extractions in %s.npy!" % outname
+        print "rm %s.npy # if you want to recreate extractions" % outname
+        E, meta = np.load(outname+".npy")
+        E_var, meta_var = np.load("var_" + outname + ".npy")
+    # No extractions yet, so generate them
+    else:
+        print "\nCREATING extractions ..."
+        # Load spectrum image
+        spec = pf.open(A)
+        # Set up variance image by adding read noise to Poisson noise
+        adcspeed = spec[0].header["ADCSPEED"]
+        if adcspeed == 2:
+            read_var = 22*22
+        else:
+            read_var = 5*5
+        # Variance image is input image plus read variance
+        var = addcon(A, str(read_var), "var_" + outname + ".fits")
+        # Extract each object spaxel
+        print "\nExtracting object spectra"
+        E, meta = \
+            Wavelength.wavelength_extract(spec, fine,
+                                          filename=outname,
+                                          flexure_x_corr_nm=flexure_x_corr_nm,
+                                          flexure_y_corr_pix=flexure_y_corr_pix,
+                                          flat_corrections=flat_corrections)
+        # Extract metadata
+        meta['airmass'] = spec[0].header['airmass']
+        header = {}
+        for k, v in spec[0].header.iteritems():
+            try:
+                header[k] = v
+            except:
+                pass
+        meta['HA'] = header['HA'] if 'HA' in header else header['TEL_HA']
+        meta['DEC'] = header['DEC'] if 'DEC' in header else header['TEL_DEC']
+        meta['RA'] = header['RA'] if 'RA' in header else header['TEL_RA']
+        meta['PRLLTC'] = \
+            header['PRLLTC'] if 'PRLLTC' in header else header['TEL_PA']
+        meta['EQUINOX'] = \
+            header['EQUINOX'] if 'EQUINOX' in header else header['TELEQX']
+        if 'UTC' in header:
+            meta['utc'] = header['UTC']
+        else:
+            tjd = Time(header['JD'], format='jd', scale='utc')
+            meta['utc'] = tjd.yday
+        meta['fiducial_wavelength'] = fmeta['fiducial_wavelength']
+        meta['header'] = header
+        meta['exptime'] = spec[0].header['exptime']
+        # Save object extraction
+        np.save(outname, [E, meta])
+        print "Wrote %s.npy" % outname
+        # Extract each variance spaxel
+        print "\nExtracting variance spectra"
+        E_var, meta_var = \
+            Wavelength.wavelength_extract(var, fine,
+                                          filename=outname,
+                                          flexure_x_corr_nm=flexure_x_corr_nm,
+                                          flexure_y_corr_pix=flexure_y_corr_pix,
+                                          flat_corrections=flat_corrections)
+        # Save variance extraction
+        np.save("var_" + outname, [E_var, meta_var])
+        print "Wrote var_%s.npy" % outname
+
+    # Get the object name of record
+    objname = meta['header']['OBJECT'].split()[0]
 
     # Automatic extraction using Gaussian fit for Standard Stars
     if standard is not None:
         sixA, posA, adcpos, ellipse = \
-            identify_spectra_Gauss_fit(E,
+            identify_spectra_gauss_fit(E,
                                        outname=outname,
-                                       PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
+                                       prllct=Angle(meta['PRLLTC'], unit='deg'),
                                        lmin=lmin, lmax=lmax,
                                        airmass=meta['airmass'])
         radius_used = ellipse[0] * 0.5
@@ -1155,8 +1066,8 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
     else:
         sixA, posA, adcpos, ellipse = \
             identify_spectra_gui(E, radius=radius,
-                                 object=object,
-                                 PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
+                                 objname=objname,
+                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax,
                                  airmass=meta['airmass'])
         radius_used = ellipse[0] * 0.5
@@ -1198,7 +1109,7 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
     pl.ylabel("Y [as]")
     pl.scatter(XSA, YSA, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(XSK, YSK, color='green', marker='H', s=50, linewidth=0)
-    pl.title("%d selected spaxels for %s" % (len(XSA), object))
+    pl.title("%d selected spaxels for %s" % (len(XSA), objname))
     pl.savefig("XYs_%s.pdf" % outname)
     print "Wrote XYs_%s.pdf" % outname
     pl.close()
@@ -1258,7 +1169,7 @@ def handle_A(A, fine, outname=None, standard=None, Aoffset=None, radius=2.,
 
 
 def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None, radius=2.,
-              flat_corrections=None, nosky=False, lmin=650, lmax=700):
+              flat_corrections=None, nosky=False, lmin=650., lmax=700.):
     """Loads IFU frame "A" and "B" and extracts A-B spectra using "fine".
 
     Args:
@@ -1272,6 +1183,8 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None, radius=2.,
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
         nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        lmin (float): lower wavelength limit for image generation
+        lmax (float): upper wavelength limit for image generation
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -1370,22 +1283,22 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None, radius=2.,
         np.save("var_" + outname, [E_var, meta_var])
         print "Wrote var_%s.npy" % outname
 
-    object = header['OBJECT'].split()[0]
+    objname = header['OBJECT'].split()[0]
 
     print "\nMark positive (red) target first"
     sixA, posA, adc_A, ellipse = \
-            identify_spectra_gui(E, radius=radius,
-                                 PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-                                 lmin=lmin, lmax=lmax, object=object, 
-                                 airmass=meta['airmass'])
-    radius_used_A = ellipse[0] * 0.5
+        identify_spectra_gui(E, radius=radius,
+                             prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                             lmin=lmin, lmax=lmax, objname=objname,
+                             airmass=meta['airmass'])
+    radius_used_A = ellipse[0]
     print "\nMark negative (blue) target next"
     sixB, posB, adc_B, ellipseB = \
-            identify_spectra_gui(E, radius=radius_used_A,
-                                 PRLLTC=Angle(meta['PRLLTC'], unit='deg'),
-                                 lmin=lmin, lmax=lmax, object=object, 
-                                 airmass=meta['airmass'])
-    radius_used_B = ellipseB[0] * 0.5
+        identify_spectra_gui(E, radius=radius_used_A,
+                             prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                             lmin=lmin, lmax=lmax, objname=objname,
+                             airmass=meta['airmass'])
+    radius_used_B = ellipseB[0]
 
     to_image(E, meta, outname, posA=posA, posB=posB, adcpos=adc_A,
              ellipse=ellipse, ellipseB=ellipseB)
@@ -1531,23 +1444,6 @@ def handle_AB(A, B, fine, outname=None, Aoffset=None, Boffset=None, radius=2.,
     print "Wrote sp_"+outname+".npy"
 
 
-def measure_flexure(sky):
-    """ Measure expected (589.3 nm) - measured emission line in nm"""
-    ll, ss = sky['nm'], sky['ph_10m_nm']
-
-    pl.figure()
-    pl.step(ll, ss)
-
-    pix = SG.argrelmax(ss, order=20)[0]
-    skynms = chebval(pix, sky['coefficients'])
-    for s in skynms: pl.axvline(s)
-
-    ixmin = np.argmin(np.abs(skynms - 589.3))
-    dnm = 589.3 - skynms[ixmin]
-
-    return dnm
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=
@@ -1583,7 +1479,8 @@ Handles a single A image and A+B pair as well as flat extraction.
     if args.flat_correction is not None:
         print "Using flat data in %s" % args.flat_correction
         flat = np.load(args.flat_correction)
-    else: flat = None
+    else:
+        flat = None
 
     if args.A is not None and args.B is not None:
         print "A B Extraction to %s.npy" % args.outname
