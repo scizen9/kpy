@@ -12,6 +12,8 @@ import argparse
 import fitsutils
 import datetime
 import zeropoint
+import matplotlib
+matplotlib.use("Agg")
 
 def reduce_all_dir(photdir, overwrite=False):
     
