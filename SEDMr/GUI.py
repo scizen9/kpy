@@ -3,7 +3,8 @@ import matplotlib.pyplot as pl
 from matplotlib import gridspec
 from matplotlib.widgets import Cursor
 
-import scipy, scipy.spatial
+import scipy
+import scipy.spatial
 
 from numpy.polynomial.chebyshev import chebval
 
@@ -33,9 +34,9 @@ class MouseCross(object):
 
     def size_cross(self, event):
         self.line.set_visible(False)
-        if (event.key == "z"):
+        if event.key == "z":
             self.radius_as -= 0.2
-        elif (event.key == "x"):
+        elif event.key == "x":
             self.radius_as += 0.2
 
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
@@ -59,15 +60,15 @@ class PositionPicker(object):
     picked = None
     radius_as = None
     bgd_sub = False
+    xc = None
+    yc = None
 
-    def __init__(self, spectra=None, figure=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
                  lmax=650):
         """ Create spectum picking gui.
 
         Args:
             spectra: SEDMr.Spectra object
-            figure: Figure to draw to [default is None or open a new figure
-                window
         """
 
         self.spectra = spectra
@@ -102,7 +103,7 @@ class PositionPicker(object):
 
         # get standard deviation
         Vstd = np.nanstd(self.Vs)
-        if Vstd > 0 and Vstd < 100:
+        if 0 < Vstd < 100:
             dVmin = Vmid - 3.0 * Vstd
             dVmax = Vmid + 3.0 * Vstd
         else:
@@ -132,6 +133,8 @@ class PositionPicker(object):
         if event.name == 'button_press_event':
             print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
             self.picked = (event.xdata, event.ydata)
+            self.xc = event.xdata
+            self.yc = event.ydata
             pl.close(self.figure)
 
 
@@ -153,13 +156,11 @@ class WaveFixer(object):
     ax_cube = None
     ax_spec = None
 
-    def __init__(self, cube=None, figure=None, pointsize=65, bgd_sub=False, radius_as=3):
+    def __init__(self, cube=None, pointsize=65):
         """ Create spectum picking gui.
 
         Args:
             cube: Data cube list
-            figure: Figure to draw to [default is None or open a new figure
-                window
                 
         """
 
@@ -169,7 +170,8 @@ class WaveFixer(object):
         self.pointsize = pointsize
 
         for ix, s in enumerate(self.cube):
-            if s.xrange is None: continue
+            if s.xrange is None:
+                continue
             xs = np.arange(s.xrange[0], s.xrange[1], .1)
 
             if s.lamcoeff is not None:
@@ -227,7 +229,8 @@ class WaveFixer(object):
 
     def draw_spectra(self):
         """ Draw nearest spectra """
-        if self.picked is None: return
+        if self.picked is None:
+            return
 
         print "Drawing spectra"
         # xl = self.ax_spec.get_xlim()
@@ -235,7 +238,6 @@ class WaveFixer(object):
         self.ax_spec.cla()
         # self.ax_spec.set_xlim(xl)
         # self.ax_spec.set_ylim(yl)
-
 
         x, y = self.X2[self.picked], self.Y1[self.picked]
         objs = self.KT.query_ball_point((x, y), 70)

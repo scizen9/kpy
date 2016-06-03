@@ -1,0 +1,597 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.fitsutils &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.fitsutils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Mar 10 13:18:46 2015</span>
+
+<span class="sd">@author: nadiablago</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">StringIO</span>
+<span class="kn">import</span> <span class="nn">urllib</span><span class="o">,</span> <span class="nn">base64</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">image</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">optparse</span> <span class="kn">import</span> <span class="n">OptionParser</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pywcs</span>
+<span class="kn">import</span> <span class="nn">zscale</span>
+<span class="kn">import</span> <span class="nn">time_utils</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">OptionParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-d&quot;</span><span class="p">,</span> <span class="s2">&quot;--dir&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;dir&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;Directory to be plotted&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-a&quot;</span><span class="p">,</span> <span class="s2">&quot;--ra&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-b&quot;</span><span class="p">,</span> <span class="s2">&quot;--dec&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-p&quot;</span><span class="p">,</span> <span class="s2">&quot;--pattern&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;pattern&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;pattern&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;*.fits&quot;</span><span class="p">)</span>
+
+
+    <span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="bp">None</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+    	<span class="n">parser</span><span class="o">.</span><span class="n">print_help</span><span class="p">()</span>
+    	<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    	
+    <span class="n">mydir</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="s1">&#39;dir&#39;</span><span class="p">]</span>
+    <span class="n">plot_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="s2">&quot;png&quot;</span><span class="p">)</span>
+    
+
+    <span class="n">ra</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
+    <span class="n">dec</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="s1">&#39;pattern&#39;</span><span class="p">]</span>
+
+    <span class="k">print</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">mydir</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">pattern</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Plotting&quot;</span><span class="p">,</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.png&quot;</span><span class="p">)</span>
+        <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+        
+            <span class="n">prihdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="mf">1.</span>
+            
+            <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">ra</span> <span class="o">*</span> <span class="n">dec</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+    
+                <span class="c1"># Get pixel coordinates of SN</span>
+                <span class="n">wcs</span> <span class="o">=</span> <span class="n">pywcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">prihdr</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">target_pix</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs_sky2pix</span><span class="p">([(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span><span class="n">dec</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">))],</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="s2">&quot;ERROR when converting sky to wcs. Is astrometry in place? Default coordinates assigned.&quot;</span>
+                    <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+    
+                <span class="k">print</span> <span class="n">target_pix</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+               
+            <span class="n">img</span> <span class="o">=</span> <span class="n">img</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            <span class="n">av</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+            <span class="n">mi</span><span class="p">,</span> <span class="n">ma</span> <span class="o">=</span> <span class="n">zscale</span><span class="o">.</span><span class="n">zscale</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="n">aspect</span><span class="o">=</span><span class="s2">&quot;equal&quot;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nx</span><span class="p">),</span> \
+            <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;lower&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">matplotlib</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray_r</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">av</span><span class="p">),</span> <span class="n">vmax</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">av</span><span class="p">))</span> <span class="c1">#, interpolation=&quot;lanczos&quot;)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">filename</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="o">+</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;_{:}.png&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="move_to_discarded"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.move_to_discarded">[docs]</a><span class="k">def</span> <span class="nf">move_to_discarded</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">)):</span>
+        <span class="n">frames_with_target</span> <span class="o">=</span> <span class="n">get_frames_with_target</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">frames_with_target</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">discarddir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="s2">&quot;discarded&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">discarddir</span><span class="p">)):</span>
+                <span class="k">print</span> <span class="s2">&quot;Creating directory for discarded files (with no target)&quot;</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">discarddir</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s2">&quot;Moving file &quot;</span><span class="p">,</span><span class="n">f</span><span class="p">,</span><span class="s2">&quot; to discarded directory&quot;</span><span class="p">,</span><span class="n">discarddir</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">discarddir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Object found in frames&quot;</span><span class="p">,</span> <span class="n">frames_with_target</span><span class="p">,</span> <span class="s2">&quot; in file &quot;</span><span class="p">,</span><span class="n">f</span>
+            <span class="k">print</span> <span class="s2">&quot;Extracting this field&quot;</span>
+            <span class="n">extract_field_from_moscaic</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="n">frames_with_target</span><span class="p">,</span> <span class="n">origname</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+            
+<div class="viewcode-block" id="get_frames_with_target"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.get_frames_with_target">[docs]</a><span class="k">def</span> <span class="nf">get_frames_with_target</span><span class="p">(</span><span class="n">myfile</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+        
+    <span class="n">frames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+    
+        <span class="n">prihdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="mf">1.</span>
+        
+        <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ra</span> <span class="o">*</span> <span class="n">dec</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+
+            <span class="c1"># Get pixel coordinates of SN</span>
+            <span class="n">wcs</span> <span class="o">=</span> <span class="n">pywcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">prihdr</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">target_pix</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs_sky2pix</span><span class="p">([(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span><span class="n">dec</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">))],</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s2">&quot;ERROR when converting sky to wcs. Is astrometry in place? Default coordinates assigned.&quot;</span>
+                <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="n">i</span><span class="p">,</span> <span class="n">target_pix</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&lt;</span><span class="n">nx</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;</span><span class="n">ny</span><span class="p">):</span>
+            <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">frames</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="cut_frame_with_target"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.cut_frame_with_target">[docs]</a><span class="k">def</span> <span class="nf">cut_frame_with_target</span><span class="p">(</span><span class="n">myfile</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="mi">4000</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">img</span> <span class="o">=</span> <span class="n">hdulist</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="mf">1.</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">T</span>
+    
+    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ra</span> <span class="o">*</span> <span class="n">dec</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+
+        <span class="c1"># Get pixel coordinates of SN</span>
+        <span class="n">wcs</span> <span class="o">=</span> <span class="n">pywcs</span><span class="o">.</span><span class="n">WCS</span><span class="p">(</span><span class="n">hdulist</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">target_pix</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">wcs_sky2pix</span><span class="p">([(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span><span class="n">dec</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">))],</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;ERROR when converting sky to wcs. Is astrometry in place? Default coordinates assigned.&quot;</span>
+            <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="n">i</span><span class="p">,</span> <span class="n">target_pix</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">target_pix</span> <span class="o">=</span> <span class="p">[</span><span class="o">+</span><span class="n">nx</span><span class="o">/</span><span class="mf">2.</span><span class="p">,</span> <span class="n">ny</span><span class="o">/</span><span class="mf">2.</span><span class="p">]</span>
+    
+    <span class="c1">#If contained in the frame</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&lt;</span><span class="n">nx</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;</span><span class="n">ny</span><span class="p">):</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">w</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">w</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">ymin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">h</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">ymax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">ny</span><span class="p">,</span> <span class="n">target_pix</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">h</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+        
+        <span class="k">print</span> <span class="s2">&quot;Target&quot;</span><span class="p">,</span> <span class="n">target_pix</span><span class="p">,</span> <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span>
+        
+        <span class="n">newhdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">()</span>
+        <span class="n">newhdu</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">hdulist</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">newhdu</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">hdulist</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">ymin</span><span class="p">:</span><span class="n">ymax</span><span class="p">,</span><span class="n">xmin</span><span class="p">:</span><span class="n">xmax</span><span class="p">]</span>
+        
+        <span class="n">newname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">myfile</span><span class="p">),</span><span class="s2">&quot;out.fits&quot;</span><span class="p">)</span>
+        <span class="n">newhdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">newname</span><span class="p">,</span> <span class="n">output_verify</span><span class="o">=</span><span class="s2">&quot;fix&quot;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s2">&quot;Extracted region around target and stored to &quot;</span><span class="p">,</span><span class="n">newname</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Target not in the frame!&quot;</span></div>
+    
+<div class="viewcode-block" id="extract_field_from_moscaic"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.extract_field_from_moscaic">[docs]</a><span class="k">def</span> <span class="nf">extract_field_from_moscaic</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">,</span> <span class="n">nfields</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">origname</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">nfields</span><span class="p">):</span>
+        <span class="n">nfields</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">nfields</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">mydir</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">myfilter</span><span class="p">)):</span>
+        <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nfields</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">nfields</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nfields</span><span class="p">:</span>
+            <span class="n">hdu</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span> <span class="o">+</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+            <span class="n">hduheader</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">()</span>
+            <span class="n">hduheader</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">header</span>
+            <span class="n">hduheader</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span>
+            <span class="n">hdulist1</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">hduheader</span><span class="p">,</span> <span class="n">hdu</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">origname</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;_</span><span class="si">%d</span><span class="s2">.fits&quot;</span><span class="p">)</span>
+                <span class="n">hdulist1</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">name</span><span class="o">%</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">output_verify</span><span class="o">=</span><span class="s2">&quot;fix&quot;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">hdulist1</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s2">&quot;out</span><span class="si">%d</span><span class="s2">_</span><span class="si">%d</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">n</span><span class="p">),</span> <span class="n">output_verify</span><span class="o">=</span><span class="s2">&quot;fix&quot;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+        
+        
+<div class="viewcode-block" id="unify_header"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.unify_header">[docs]</a><span class="k">def</span> <span class="nf">unify_header</span><span class="p">(</span><span class="n">prihdr</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Reads the different fields from different telescopes and unifies them under common names.</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">dic</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;GAIN&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;RDNOISE&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;AIRMASS&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;EXPTIME&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;AIRMASS&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;FILTER&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;MJD-OBS&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">}</span>
+    <span class="n">filters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;SDSS-G&quot;</span><span class="p">:</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="s2">&quot;SDSS-R&quot;</span><span class="p">:</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;SDSS-I&quot;</span><span class="p">:</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="s2">&quot;SDSS-Z&quot;</span><span class="p">:</span><span class="s2">&quot;z&quot;</span><span class="p">}</span>    
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">telescope</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;TELESCOP&quot;</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">telescope</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;HIERARCH FPA.TELESCOPE&quot;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Could not locate the telescope field&quot;</span>
+            <span class="k">return</span>
+        
+    <span class="k">if</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;NOT&quot;</span><span class="p">:</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_utils</span><span class="o">.</span><span class="n">utc2mjd</span><span class="p">(</span><span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;DATE-OBS&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;StanCam&quot;</span><span class="p">:</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;STFLTNM&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;NOTCAM&quot;</span><span class="p">:</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN1&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;RDNOISE1&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;NCFLTNM2&quot;</span><span class="p">]</span>
+            
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;UKIRT&quot;</span><span class="p">:</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;READNOIS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXP_TIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AMSTART&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;PS1&quot;</span><span class="p">:</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;HIERARCH CELL.GAIN&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;HIERARCH CELL.READNOISE&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;HIERARCH FPA.FILTERID&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;INT&quot;</span><span class="p">:</span>
+            
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;RDNOISE&quot;</span> <span class="ow">in</span> <span class="n">prihdr</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;READNOIS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;WFFBAND&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;WHT&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;ACAM&quot;</span><span class="p">:</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;READNOIS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;ACAMFILT&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;ISIS&quot;</span> <span class="ow">in</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]:</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;READNOIS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;ISIFILTA&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;ISIFILTB&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GRISM&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;ISIGRAT&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;SLIT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;ISISLITW&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;CFHT 3.6m&quot;</span><span class="p">:</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;Liverpool Telescope&quot;</span><span class="p">:</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;READNOIS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER1&quot;</span><span class="p">],</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER1&quot;</span><span class="p">])</span>
+        <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD&quot;</span><span class="p">]</span>
+        
+    <span class="k">elif</span> <span class="n">telescope</span> <span class="o">==</span> <span class="s2">&quot;GTC&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span><span class="o">==</span><span class="s2">&quot;OSIRIS&quot;</span><span class="p">):</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;EXPTIME&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;AIRMASS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER1&quot;</span><span class="p">],</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;FILTER1&quot;</span><span class="p">])</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;GRISM&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;GRISM&quot;</span><span class="p">]</span>
+            <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;SLIT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;SLITW&quot;</span><span class="p">]</span>
+            
+            <span class="n">speed</span> <span class="o">=</span> <span class="n">prihdr</span><span class="p">[</span><span class="s2">&quot;RSPEED&quot;</span><span class="p">]</span>
+            <span class="c1">#From http://www.gtc.iac.es/instruments/osiris/osiris.php</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">speed</span> <span class="o">==</span> <span class="mi">200</span><span class="p">):</span>
+                <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">4.5</span>
+            <span class="k">elif</span> <span class="p">(</span><span class="n">speed</span> <span class="o">==</span> <span class="mi">100</span><span class="p">):</span>
+                <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">3.5</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dic</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">9</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;Telescope unknown!&quot;</span>
+    
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dic</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">prihdr</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">prihdr</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">prihdr</span></div>
+   
+<div class="viewcode-block" id="unify_fits"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.unify_fits">[docs]</a><span class="k">def</span> <span class="nf">unify_fits</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">field</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Creates a unified standard version of the fits file header, creating standard fields for the most used fields.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfits</span><span class="p">)</span>
+    
+    <span class="k">print</span> <span class="n">hdulist</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+    
+    <span class="n">nfields</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span>
+    <span class="n">datafields</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nfields</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">hdulist</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="n">datafields</span> <span class="o">+=</span><span class="mi">1</span>
+            
+    <span class="k">if</span> <span class="n">nfields</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">field</span><span class="o">==-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">datafields</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s2">&quot;WARNING, there are several images stored. Plsease, specify which number you want to extract.&quot;</span>
+            <span class="k">print</span> <span class="s2">&quot;Exiting...&quot;</span>
+            <span class="k">return</span> 
+            
+        <span class="n">nfields</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdulist</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nfields</span><span class="p">:</span>
+            <span class="n">hdu</span><span class="o">.</span><span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">header</span> <span class="o">+</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+            
+        <span class="n">hdu</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="n">field</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hdu</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">new_header</span> <span class="o">=</span> <span class="n">unify_header</span><span class="p">(</span><span class="n">hdu</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+    
+    <span class="n">primhdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span> <span class="o">=</span> <span class="n">new_header</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">hdu</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">primhdu</span><span class="p">])</span>
+            
+    <span class="k">if</span> <span class="p">(</span><span class="n">overwrite</span><span class="p">):</span>
+        <span class="n">hdulist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;OBJECT&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">filt</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span> 
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">slit</span> <span class="o">=</span> <span class="s2">&quot;_</span><span class="si">%.1f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;SLIT&quot;</span><span class="p">]</span>
+            <span class="n">grism</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GRISM&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">slit</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">grism</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s%s%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_1.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">inst</span><span class="p">,</span><span class="n">grism</span><span class="p">,</span> <span class="n">slit</span><span class="p">,</span> <span class="n">filt</span><span class="p">)</span>
+        
+        <span class="k">while</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">seq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_</span><span class="si">%d</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="n">seq</span><span class="p">,</span> <span class="s2">&quot;_</span><span class="si">%d</span><span class="s2">.fits&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">seq</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">hdulist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_par"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.get_par">[docs]</a><span class="k">def</span> <span class="nf">get_par</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">par</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns the header parameter from the fits.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfits</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="k">return</span> <span class="n">header</span><span class="p">[</span><span class="nb">str</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">par</span><span class="p">)]</span></div>
+    
+<div class="viewcode-block" id="update_par"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.update_par">[docs]</a><span class="k">def</span> <span class="nf">update_par</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">par</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Updates the fits files with the new parameter.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfits</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="n">header</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">par</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="has_par"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.has_par">[docs]</a><span class="k">def</span> <span class="nf">has_par</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">par</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Updates the fits files with the new parameter.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfits</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    <span class="k">return</span> <span class="n">par</span> <span class="ow">in</span> <span class="n">header</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span></div>
+    
+<div class="viewcode-block" id="arrange_fits_in_directories"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.arrange_fits_in_directories">[docs]</a><span class="k">def</span> <span class="nf">arrange_fits_in_directories</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">,</span> <span class="n">destdir</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Automatically sorts the fits files ina directory structure with the filter name as the fierst level, and the integer of the MJD of the observation at</span>
+<span class="sd">    the second level.</span>
+<span class="sd">    mydir: where the files to be sorted are.</span>
+<span class="sd">    myfilter: what filter applies to find them.</span>
+<span class="sd">    destdir: whhich is the main level directory where fiels should be moved to.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">shutil</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mydir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">)):</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">filt</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;FILTER&quot;</span><span class="p">]</span>
+        <span class="n">mjd</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;MJD-OBS&quot;</span><span class="p">])</span>
+        <span class="n">instrument</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;INSTRUME&quot;</span><span class="p">]</span>
+        <span class="n">destination</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">/</span><span class="si">%d</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">instrument</span><span class="p">,</span><span class="n">filt</span><span class="p">,</span> <span class="n">mjd</span><span class="p">))</span> 
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">destination</span><span class="p">)</span> <span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">destination</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s2">&quot;Creating directory&quot;</span><span class="p">,</span> <span class="n">destination</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)))</span></div>
+        
+    
+<div class="viewcode-block" id="get_gain_ron"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.get_gain_ron">[docs]</a><span class="k">def</span> <span class="nf">get_gain_ron</span><span class="p">(</span><span class="n">fitsfile</span><span class="p">):</span>
+
+    <span class="n">hdulist</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fitsfile</span><span class="p">)</span>
+    <span class="n">prihdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+
+    <span class="n">uheader</span> <span class="o">=</span> <span class="n">unify_header</span><span class="p">(</span><span class="n">prihdr</span><span class="p">)</span>
+    <span class="n">gain</span> <span class="o">=</span> <span class="n">uheader</span><span class="p">[</span><span class="s2">&quot;GAIN&quot;</span><span class="p">]</span>
+    <span class="n">ron</span> <span class="o">=</span> <span class="n">uheader</span><span class="p">[</span><span class="s2">&quot;RDNOISE&quot;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">gain</span><span class="p">,</span> <span class="n">ron</span></div>
+    
+<div class="viewcode-block" id="get_gain_ron_combined_i"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.get_gain_ron_combined_i">[docs]</a><span class="k">def</span> <span class="nf">get_gain_ron_combined_i</span><span class="p">(</span><span class="n">gain</span><span class="p">,</span> <span class="n">ron</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;median&quot;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns the combined gain and read out noise for different modes of combining images.</span>
+<span class="sd">    Avaialable modes: (sum, average, median)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">n</span><span class="o">==</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">gain</span><span class="p">,</span> <span class="n">ron</span>
+        
+    <span class="k">if</span> <span class="p">(</span><span class="n">mode</span><span class="o">==</span><span class="s2">&quot;sum&quot;</span><span class="p">):</span>
+            <span class="n">gain</span><span class="o">=</span><span class="n">gain</span>
+            <span class="n">ron</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">ron</span>
+    <span class="k">elif</span><span class="p">(</span><span class="n">mode</span><span class="o">==</span><span class="s2">&quot;average&quot;</span><span class="p">):</span>
+            <span class="n">gain</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">*</span><span class="n">n</span><span class="o">*</span><span class="n">gain</span>
+            <span class="n">ron</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">*</span><span class="n">ron</span>
+    <span class="k">elif</span><span class="p">(</span><span class="n">mode</span><span class="o">==</span><span class="s2">&quot;median&quot;</span><span class="p">):</span>
+            <span class="n">gain</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">n</span><span class="o">*</span><span class="n">gain</span><span class="o">/</span><span class="mf">3.</span>
+            <span class="n">ron</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">n</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span><span class="o">*</span><span class="n">ron</span>
+    <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Unknown selected mode. Avaialable values: (sum, average, median)&quot;</span>
+    
+    <span class="k">print</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">gain</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">ron</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">gain</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">ron</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span></div>
+    
+
+<div class="viewcode-block" id="get_gain_ron_combined"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.get_gain_ron_combined">[docs]</a><span class="k">def</span> <span class="nf">get_gain_ron_combined</span><span class="p">(</span><span class="n">fitsfile</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;median&quot;</span><span class="p">):</span>
+    <span class="n">gain</span><span class="p">,</span> <span class="n">ron</span> <span class="o">=</span> <span class="n">get_gain_ron</span><span class="p">(</span><span class="n">fitsfile</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">get_gain_ron_combined_i</span><span class="p">(</span><span class="n">gain</span><span class="p">,</span><span class="n">ron</span><span class="p">,</span><span class="n">n</span><span class="p">,</span><span class="n">mode</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="align_combine"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.align_combine">[docs]</a><span class="k">def</span> <span class="nf">align_combine</span><span class="p">(</span><span class="n">fitsdir</span><span class="p">,</span> <span class="n">myfilter</span><span class="p">,</span> <span class="n">examine</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">pyraf</span> <span class="kn">import</span> <span class="n">iraf</span> 
+    
+    <span class="n">iraf</span><span class="o">.</span><span class="n">noao</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">digiphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">apphot</span><span class="p">(</span><span class="n">_doprint</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">fitsdir</span><span class="p">)</span>
+    <span class="n">listfiles</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">myfilter</span><span class="p">)</span>
+    <span class="n">listfiles</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">examine</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;Opening &quot;</span><span class="p">,</span><span class="n">listfiles</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="s2">&quot; to examine.&quot;</span>
+        <span class="n">iraf</span><span class="o">.</span><span class="n">imexamine</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="n">listfiles</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> \
+                    <span class="n">logfile</span><span class="o">=</span><span class="s2">&quot;coords.dat&quot;</span><span class="p">,</span> \
+                    <span class="n">keeplog</span><span class="o">=</span><span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;align.list&quot;</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">listfiles</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">print</span> <span class="s2">&quot;Aligning with reference:&quot;</span><span class="p">,</span><span class="n">listfiles</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imalign</span><span class="p">(</span> <span class="nb">input</span>   <span class="o">=</span>  <span class="s2">&quot;@align.list&quot;</span><span class="p">,</span> <span class="n">referenc</span><span class="o">=</span> <span class="n">listfiles</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">coords</span>  <span class="o">=</span>  <span class="s2">&quot;coords.dat&quot;</span><span class="p">,</span> <span class="n">output</span>  <span class="o">=</span> <span class="s2">&quot;a_@align.list&quot;</span><span class="p">)</span>  
+    
+    <span class="n">listfiles</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;a_&quot;</span><span class="o">+</span><span class="n">myfilter</span><span class="p">)</span>
+    <span class="n">listfiles</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;comb.list&quot;</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">listfiles</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+    <span class="k">print</span> <span class="s2">&quot;Combining&quot;</span>        
+    <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="nb">input</span> <span class="o">=</span> <span class="s2">&quot;@comb.list&quot;</span><span class="p">,</span>\
+                   <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;out.fits&quot;</span><span class="p">,</span>\
+                   <span class="n">combine</span><span class="o">=</span> <span class="s2">&quot;median&quot;</span><span class="p">)</span></div>
+    
+    
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">#How to use the wcs with manual set-up: http://stsdas.stsci.edu/astrolib/pywcs/examples.html#loading-wcs-information-from-a-fits-file</span>
+
+<span class="sd">                # Create a new WCS object.  The number of axes must be set</span>
+<span class="sd">                # from the start</span>
+<span class="sd">                wcs = pywcs.WCS(naxis=2)</span>
+<span class="sd">                </span>
+<span class="sd">                # Set up an &quot;Airy&#39;s zenithal&quot; projection</span>
+<span class="sd">                # Vector properties may be set with Python lists, or Numpy arrays</span>
+<span class="sd">                wcs.wcs.crpix = [ prihdr[&quot;CRPIX1&quot;],  prihdr[&quot;CRPIX2&quot;]]</span>
+<span class="sd">                wcs.wcs.cdelt = np.array([prihdr[&quot;CD1_1&quot;], prihdr[&quot;CD1_2&quot;], prihdr[&quot;CD2_1&quot;], prihdr[&quot;CD2_2&quot;]])</span>
+<span class="sd">                wcs.wcs.crval = [prihdr[&quot;CRVAL1&quot;], prihdr[&quot;CRVAL2&quot;]]</span>
+<span class="sd">                wcs.wcs.ctype = [prihdr[&quot;CTYPE1&quot;], prihdr[&quot;CTYPE2&quot;]]</span>
+<span class="sd">                wcs.wcs.set_pv([(prihdr[&quot;PV2_1&quot;], prihdr[&quot;PV2_2&quot;], prihdr[&quot;PV2_3&quot;])]) </span>
+<span class="sd">&#39;&#39;&#39;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

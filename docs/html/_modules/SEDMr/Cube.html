@@ -1,0 +1,534 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.Cube &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.Cube</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Convert an extracted file into a data cube.</span>
+
+<span class="sd">    STEP is either:</span>
+<span class="sd">        * make: To create the data cube (once per night)</span>
+<span class="sd">        * extract: To extract the cube (one for each observation)</span>
+
+<span class="sd">Functions:</span>
+<span class="sd">    * :func:`QR_to_img` convert cube to an image</span>
+<span class="sd">    * :func:`extraction_to_cube` calculates sky positions</span>
+<span class="sd">    * :func:`reject_outliers` trims data values of outliers</span>
+
+<span class="sd">References:</span>
+
+<span class="sd">    See figures here: http://www.astro.caltech.edu/sedm/_images/HexCoords.png</span>
+
+<span class="sd">    Axial coordinates of a cube::</span>
+
+<span class="sd">            (q,r-1)   (q+1,r-1)</span>
+<span class="sd">        (q-1, r)   (q, r)   (q+1, r)</span>
+<span class="sd">            (q-1,r+1)   (q, r+1)</span>
+
+<span class="sd">    Even Q coordinates look like::</span>
+<span class="sd">    </span>
+<span class="sd">            0,0     1,0     2,0     3,0</span>
+<span class="sd">        0,1     1,1     2,1     3,1     4,1</span>
+<span class="sd">            0,2     1,2     2,2     3,2</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    This is used as a python script as follows::</span>
+
+<span class="sd">        usage: Cube.py [-h] [--step STEP] [--outname OUTNAME] extracted</span>
+
+<span class="sd">        positional arguments:</span>
+<span class="sd">          extracted          Extracted file</span>
+
+<span class="sd">        optional arguments:</span>
+<span class="sd">          -h, --help         show this help message and exit</span>
+<span class="sd">          --step STEP        [make|extract|dump]</span>
+<span class="sd">          --outname OUTNAME  Output cube name</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">KDTree</span> 
+
+<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebval</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Wavelength</span> <span class="kn">as</span> <span class="nn">Wavelength</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">setrecursionlimit</span><span class="p">(</span><span class="mi">10000</span><span class="p">)</span>
+
+<span class="n">ncol</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">scale</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">H2P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="o">/</span><span class="mf">2.</span><span class="p">]])</span> <span class="o">*</span> <span class="n">scale</span>
+<span class="n">P2H</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="mf">3.</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">/</span><span class="mf">3.</span><span class="p">]])</span> <span class="o">/</span> <span class="n">scale</span>
+
+<span class="c1"># Rotation matrix</span>
+<span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="o">-</span><span class="mi">37</span><span class="o">+</span><span class="mf">13.5</span><span class="p">)</span>
+<span class="n">ROT</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)],</span> 
+                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span>  <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)]])</span>
+
+
+
+<div class="viewcode-block" id="QR_to_img"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Cube.QR_to_img">[docs]</a><span class="k">def</span> <span class="nf">QR_to_img</span><span class="p">(</span><span class="n">exts</span><span class="p">,</span> <span class="n">Size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="s2">&quot;cube.fits&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert a data cube to a fits image</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        exts (list of Extraction): extractions to convert (see Extraction.py)</span>
+<span class="sd">        Size (int): expansion factor, defaults to 4</span>
+<span class="sd">        outname (str): output fits file name, defaults to cube.fits</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">Xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ext</span><span class="o">.</span><span class="n">X_as</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="n">Ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ext</span><span class="o">.</span><span class="n">Y_as</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+    <span class="n">minx</span> <span class="o">=</span> <span class="n">Size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">Xs</span><span class="p">)</span>
+    <span class="n">miny</span> <span class="o">=</span> <span class="n">Size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">Ys</span><span class="p">)</span>
+    <span class="n">maxx</span> <span class="o">=</span> <span class="n">Size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">Xs</span><span class="p">)</span>
+    <span class="n">maxy</span> <span class="o">=</span> <span class="n">Size</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">Ys</span><span class="p">)</span>
+
+    <span class="n">Dx</span> <span class="o">=</span> <span class="p">(</span><span class="n">maxx</span><span class="o">-</span><span class="n">minx</span><span class="p">)</span><span class="o">/.</span><span class="mi">25</span>
+    <span class="n">Dy</span> <span class="o">=</span> <span class="p">(</span><span class="n">maxy</span><span class="o">-</span><span class="n">miny</span><span class="p">)</span><span class="o">/.</span><span class="mi">25</span>
+    <span class="n">l_grid</span> <span class="o">=</span> <span class="n">Wavelength</span><span class="o">.</span><span class="n">fiducial_spectrum</span><span class="p">()</span>
+    <span class="n">l_grid</span> <span class="o">=</span> <span class="n">l_grid</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">dl_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">l_grid</span><span class="p">)</span>
+    <span class="n">l_grid</span> <span class="o">=</span> <span class="n">l_grid</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Dx</span><span class="p">,</span> <span class="n">Dy</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">l_grid</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">img</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">XSz</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">YSz</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span>
+
+    <span class="n">allspec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">exts</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">l_grid</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">ext</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">xrange</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">exptime</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ext</span><span class="o">.</span><span class="n">exptime</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">ext</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">ix</span><span class="p">,</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">specw</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">fi</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">l_grid</span><span class="p">)</span> <span class="o">/</span> <span class="n">dl_grid</span>
+        <span class="n">fi</span> <span class="o">=</span> <span class="n">fi</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">fi</span><span class="p">):</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">fi</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">fi</span><span class="p">):</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">allspec</span><span class="p">[</span><span class="n">cnt</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">fi</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">X_as</span> <span class="o">-</span> <span class="n">minx</span><span class="p">)</span><span class="o">/</span><span class="mf">0.25</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">Y_as</span> <span class="o">-</span> <span class="n">miny</span><span class="p">)</span><span class="o">/</span><span class="mf">0.25</span>
+
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="k">for</span> <span class="n">dx</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">dy</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">img</span><span class="p">[</span><span class="n">x</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="n">dy</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">fi</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="n">outstr</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">X = </span><span class="si">%+10.5f</span><span class="s2">, Y = </span><span class="si">%+10.5f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">outstr</span><span class="p">,</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="n">back</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">allspec</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">ff</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">ff</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outname</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">ext</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">xrange</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">exptime</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ext</span><span class="o">.</span><span class="n">exptime</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">ext</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">ix</span><span class="p">,</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">specw</span> 
+
+        <span class="n">f</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">fi</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">l_grid</span><span class="p">)</span><span class="o">/</span><span class="n">dl_grid</span> 
+        <span class="n">fi</span> <span class="o">=</span> <span class="n">fi</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">fi</span><span class="p">):</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">fi</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">fi</span><span class="p">):</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">back</span>
+
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Size</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">+</span> <span class="n">ext</span><span class="o">.</span><span class="n">R_ix</span><span class="o">/</span><span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="n">XSz</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Size</span><span class="o">*</span><span class="mf">3.</span><span class="o">/</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">ext</span><span class="o">.</span><span class="n">R_ix</span><span class="p">)</span> <span class="o">+</span> <span class="n">YSz</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="k">for</span> <span class="n">dx</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">dy</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">img</span><span class="p">[</span><span class="n">x</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="n">dy</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">fi</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="n">ff</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">ff</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s2">&quot;bs_&quot;</span> <span class="o">+</span> <span class="n">outname</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="extraction_to_cube"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Cube.extraction_to_cube">[docs]</a><span class="k">def</span> <span class="nf">extraction_to_cube</span><span class="p">(</span><span class="n">exts</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="s2">&quot;G.npy&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert the extraction to sky coordinates</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        exts (list of Extraction): The list of extractions (see Extraction.py)</span>
+<span class="sd">        outname (str): The file created with the new extraction</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        The new data cube has the following coordinate positions populated:</span>
+
+<span class="sd">        * X_as: X position in arcsec</span>
+<span class="sd">        * Y_as: Y position in arcsec</span>
+<span class="sd">        * Z_as: Z position in arcsec (the Z coordinate runs 45 degrees to X and is not a `3rd` dimension).</span>
+<span class="sd">        * Q_ix: The axial Q coordinate in integral units</span>
+<span class="sd">        * R_ix: The axial R coordinate in integral units</span>
+
+<span class="sd">        The relationship of Q/R to X/Y is defined through the pixel mapping</span>
+<span class="sd">        matrix times the rotation matrix:</span>
+
+<span class="sd">        * P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])</span>
+<span class="sd">        * Rot (22 degree)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">global</span> <span class="n">ncol</span>
+
+    <span class="c1"># start with our x,y pixel positions</span>
+    <span class="n">Xs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">exts</span><span class="p">)</span>
+    <span class="n">Ys</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">exts</span><span class="p">)</span>
+
+    <span class="c1"># these are the hex axial coords</span>
+    <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">:</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">=</span> <span class="bp">None</span>
+    
+    <span class="c1"># counters for which wavelength solution is used:</span>
+    <span class="c1"># mdn = median, lam = lambda, tot = total used</span>
+    <span class="n">n_mdn</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">n_lam</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">n_tot</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">ext</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exts</span><span class="p">):</span>
+        <span class="c1"># The X/Y location of a lenslet is based on its</span>
+        <span class="c1"># trace Y position and where the fiducial wavelength</span>
+        <span class="c1"># is expected in the X direction.</span>
+
+        <span class="c1"># skip bad solutions</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ext</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span> <span class="k">continue</span>
+
+        <span class="c1"># initialize</span>
+        <span class="n">Xs</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">999</span>
+        <span class="n">Ys</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">999</span>
+
+        <span class="c1"># lamcoeff has precedence</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">coeff</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">lamcoeff</span>
+            <span class="n">n_lam</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">ext</span><span class="o">.</span><span class="n">mdn_coeff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span> 
+            <span class="n">coeff</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">mdn_coeff</span>
+            <span class="n">n_mdn</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">n_tot</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># get pixel and wavelength vectors</span>
+        <span class="n">ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">ext</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span>
+        <span class="n">LL</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">ixs</span><span class="p">,</span> <span class="n">coeff</span><span class="p">)</span>
+        
+        <span class="c1"># fill in the x,y pix positions</span>
+        <span class="n">Xs</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span> <span class="o">+</span> <span class="n">ext</span><span class="o">.</span><span class="n">xrefpix</span>
+        <span class="n">Ys</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">yrange</span><span class="p">)</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">X_pix</span> <span class="o">=</span> <span class="n">Xs</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">Y_pix</span> <span class="o">=</span> <span class="n">Ys</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">xrefpix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">xrefpix</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">LL</span><span class="p">):</span>
+                <span class="n">ext</span><span class="o">.</span><span class="n">xreflam</span> <span class="o">=</span> <span class="n">LL</span><span class="p">[</span><span class="n">ext</span><span class="o">.</span><span class="n">xrefpix</span><span class="p">]</span>
+    <span class="c1"># End loop over all extractions</span>
+
+    <span class="c1"># Record wavelength mean and report stats</span>
+    <span class="n">xreflams</span> <span class="o">=</span> <span class="n">reject_outliers</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ext</span><span class="o">.</span><span class="n">xreflam</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">))</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fiducial_wavelength&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xreflams</span><span class="p">)}</span>
+    <span class="k">print</span> <span class="s2">&quot;Avg lam, Std lam: </span><span class="si">%f</span><span class="s2">, </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xreflams</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">xreflams</span><span class="p">))</span>
+
+    <span class="c1"># make arrays</span>
+    <span class="n">Xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Xs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="n">Ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Ys</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="c1"># replace None&#39;s with -999</span>
+    <span class="n">Xs</span><span class="p">[</span><span class="n">Xs</span> <span class="o">!=</span> <span class="n">Xs</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">999</span>
+    <span class="n">Ys</span><span class="p">[</span><span class="n">Ys</span> <span class="o">!=</span> <span class="n">Ys</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">999</span>
+
+    <span class="c1"># Make a KD-Tree</span>
+    <span class="n">dat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Xs</span><span class="p">,</span> <span class="n">Ys</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">tree</span> <span class="o">=</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span>
+
+    <span class="c1"># Get the index of the spaxel closest to the center of the CCD</span>
+    <span class="n">ignore</span><span class="p">,</span> <span class="n">Center</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">([</span><span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Set the coords for the center to 0,0 (origin)</span>
+    <span class="n">exts</span><span class="p">[</span><span class="n">Center</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">exts</span><span class="p">[</span><span class="n">Center</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">print</span> <span class="s2">&quot;IN: </span><span class="si">%d</span><span class="s2">, EXT: </span><span class="si">%d</span><span class="s2">, LAM: </span><span class="si">%d</span><span class="s2">, MDN: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">exts</span><span class="p">),</span> <span class="n">n_tot</span><span class="p">,</span> <span class="n">n_lam</span><span class="p">,</span> <span class="n">n_mdn</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">populate_hex</span><span class="p">(</span><span class="n">to_populate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Breadth-first search </span>
+
+<span class="sd">            For each spaxel in the datacube this piece of code identifies</span>
+<span class="sd">            the relative offset based on the rotation matrix defined</span>
+<span class="sd">            earlier in the file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">ncol</span>
+        <span class="c1"># NOTE: self refers to the extraction with index in</span>
+        <span class="c1"># the called parameter (to_populate).</span>
+
+        <span class="c1"># Query 7 for the object + six surrounding members</span>
+        <span class="c1"># Generate pixel distances relative to self and indices</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Xs</span><span class="p">[</span><span class="n">to_populate</span><span class="p">],</span> <span class="n">Ys</span><span class="p">[</span><span class="n">to_populate</span><span class="p">]])</span>
+        <span class="n">Dists</span><span class="p">,</span> <span class="n">Ixs</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+        <span class="c1"># Transformation matrix</span>
+        <span class="n">Tfm</span> <span class="o">=</span> <span class="n">P2H</span> <span class="o">*</span> <span class="n">ROT</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">Dists</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+
+        <span class="c1"># Trim self reference</span>
+        <span class="k">if</span> <span class="n">Dists</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span> 
+            <span class="n">Dists</span> <span class="o">=</span> <span class="n">Dists</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">Ixs</span> <span class="o">=</span> <span class="n">Ixs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="c1"># Trim to within 70 pixels</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="n">Dists</span> <span class="o">&lt;</span> <span class="mi">70</span>
+        <span class="n">Dists</span> <span class="o">=</span> <span class="n">Dists</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span>
+        <span class="n">Ixs</span> <span class="o">=</span> <span class="n">Ixs</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span>
+
+        <span class="c1"># Get the Q,R of the extraction we are populating</span>
+        <span class="n">q_this</span> <span class="o">=</span> <span class="n">exts</span><span class="p">[</span><span class="n">to_populate</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span>
+        <span class="n">r_this</span> <span class="o">=</span> <span class="n">exts</span><span class="p">[</span><span class="n">to_populate</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span>
+
+        <span class="c1"># Loop over the current nearest extractions</span>
+        <span class="k">for</span> <span class="n">nix</span> <span class="ow">in</span> <span class="n">Ixs</span><span class="p">:</span>
+            <span class="c1"># Search around current hex via a recrusive call</span>
+            <span class="c1"># to populate_hex</span>
+
+            <span class="c1"># Current extraction</span>
+            <span class="n">nv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Xs</span><span class="p">[</span><span class="n">nix</span><span class="p">],</span> <span class="n">Ys</span><span class="p">[</span><span class="n">nix</span><span class="p">]])</span>
+            <span class="c1"># Offset between self and current</span>
+            <span class="n">D</span> <span class="o">=</span> <span class="n">nv</span><span class="o">-</span><span class="n">v</span>
+            <span class="c1"># Get offset in Q, R frame</span>
+            <span class="n">dp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Tfm</span><span class="p">,</span> <span class="n">D</span><span class="p">)</span>
+            <span class="c1"># Integer hex positions so we round</span>
+            <span class="n">rnd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span>
+
+            <span class="c1"># Coincident with center spaxel, so skip</span>
+            <span class="k">if</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Offset larger than a single hex, so skip</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># A new hex position</span>
+            <span class="k">if</span> <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">=</span> <span class="n">q_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">=</span> <span class="n">r_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="c1"># Drill deeper</span>
+                <span class="n">populate_hex</span><span class="p">(</span><span class="n">nix</span><span class="p">)</span>
+            <span class="c1"># We&#39;ve been to this position before</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Check if our hex positions agree</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">!=</span> <span class="n">q_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">or</span> \
+                        <span class="p">(</span><span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">!=</span> <span class="n">r_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                    <span class="k">print</span> <span class="s2">&quot;collision: &quot;</span><span class="p">,</span>
+                    <span class="k">print</span> <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span><span class="p">,</span> <span class="n">q_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot; &quot;</span><span class="p">,</span>
+                    <span class="k">print</span> <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span><span class="p">,</span> <span class="n">r_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="c1"># Update with this one, but don&#39;t drill more</span>
+                    <span class="c1"># otherwise we get in an infinite loop</span>
+                    <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">Q_ix</span> <span class="o">=</span> <span class="n">q_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">exts</span><span class="p">[</span><span class="n">nix</span><span class="p">]</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">=</span> <span class="n">r_this</span> <span class="o">+</span> <span class="n">rnd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">ncol</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># end loop over current nearest extractions</span>
+    <span class="c1"># end def populate_hex</span>
+
+    <span class="n">populate_hex</span><span class="p">(</span><span class="n">Center</span><span class="p">)</span>
+
+    <span class="k">print</span> <span class="s2">&quot;Number of collisions: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ncol</span>
+
+    <span class="c1"># Now convert Q/R to even-Q X/Y</span>
+
+    <span class="c1"># Get arrays of hex positions</span>
+    <span class="n">Qs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ext</span><span class="o">.</span><span class="n">Q_ix</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="n">Rs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ext</span><span class="o">.</span><span class="n">R_ix</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+    <span class="c1"># convert to pixel X,Y</span>
+    <span class="n">Xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Qs</span> <span class="o">+</span> <span class="n">Rs</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">Ys</span> <span class="o">=</span> <span class="mi">3</span><span class="o">/</span><span class="mi">2</span> <span class="o">*</span> <span class="n">Rs</span>
+
+    <span class="c1"># t= np.radians(165.0+45)</span>
+    <span class="c1"># Hex angle relative to positive Y pixel axis</span>
+    <span class="n">t</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mi">180</span><span class="o">+</span><span class="mi">22</span><span class="p">)</span>
+    <span class="c1"># Rotation matrix</span>
+    <span class="n">Rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">)],</span>
+                    <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>  <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">t</span><span class="p">)]])</span>
+
+    <span class="c1"># Loop over extractions and project onto X,Y</span>
+    <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">ext</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exts</span><span class="p">):</span>
+        <span class="c1"># Project into X,Y frame</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Rot</span> <span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Xs</span><span class="p">[</span><span class="n">ix</span><span class="p">],</span> <span class="n">Ys</span><span class="p">[</span><span class="n">ix</span><span class="p">]]))</span>
+        <span class="c1"># Convert to RA, Dec</span>
+        <span class="c1"># Note 0.633 is plate scale measured on 22 May 2014.</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">X_as</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="o">-</span><span class="mf">0.633</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">Y_as</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.633</span>
+
+    <span class="c1"># Write out the cube</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outname</span><span class="p">,</span> <span class="p">[</span><span class="n">exts</span><span class="p">,</span> <span class="n">meta</span><span class="p">])</span>
+    <span class="k">print</span> <span class="s2">&quot;Wrote </span><span class="si">%s</span><span class="s2">.npy&quot;</span> <span class="o">%</span> <span class="n">outname</span></div>
+
+
+<div class="viewcode-block" id="reject_outliers"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Cube.reject_outliers">[docs]</a><span class="k">def</span> <span class="nf">reject_outliers</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">2.</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reject outliers beyond `m` sigma</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data (numpy float array): data values</span>
+<span class="sd">        m (float): sigma factor for rejections threshhold</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (numpy float array): input array with outliers removed</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="n">mdev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="n">d</span><span class="p">[</span><span class="n">d</span> <span class="o">!=</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mf">10000.</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">d</span><span class="o">/</span><span class="n">mdev</span> <span class="k">if</span> <span class="n">mdev</span> <span class="k">else</span> <span class="mf">0.</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="n">s</span> <span class="o">&lt;</span> <span class="n">m</span><span class="p">]</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Convert an extracted file into a data cube.</span>
+<span class="s2">STEP is either:</span>
+<span class="s2">make: To create the data cube (once per night)</span>
+<span class="s2">extract: To extract the cube (one for each observation)</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;extracted&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Extracted file&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--step&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;make&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;[make|extract|dump]&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outname&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output cube name&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">outname</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;.npy&#39;</span><span class="p">)</span>
+
+    <span class="n">step</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">step</span>
+    <span class="n">infile</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">extracted</span>
+
+    <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="s1">&#39;make&#39;</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">MAKING cube from </span><span class="si">%s</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="n">infile</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+        <span class="n">cube</span> <span class="o">=</span> <span class="n">extraction_to_cube</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">outname</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">step</span> <span class="o">==</span> <span class="s1">&#39;extract&#39;</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">EXTRACTING from </span><span class="si">%s</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="n">infile</span>
+        <span class="n">ext</span><span class="p">,</span><span class="n">meta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+        <span class="n">QR_to_img</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">Size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">outname</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">step</span> <span class="o">==</span> <span class="s1">&#39;dump&#39;</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">DUMPING from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">_dump.txt&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">infile</span><span class="p">)</span>
+        <span class="n">cube</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+        <span class="n">Xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">X_as</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cube</span><span class="p">])</span>
+        <span class="n">Ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">Y_as</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cube</span><span class="p">])</span>
+        <span class="n">Sid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">seg_id</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cube</span><span class="p">])</span>
+
+        <span class="n">dat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Xs</span><span class="p">,</span><span class="n">Ys</span><span class="p">,</span><span class="n">Sid</span><span class="p">])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_dump.txt&quot;</span> <span class="o">%</span> <span class="n">infile</span><span class="p">,</span> <span class="n">dat</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s2">&quot;NO STEP TO PERFORM&quot;</span>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.flatfield &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.flatfield</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Thu Mar  3 15:34:47 2016</span>
+
+<span class="sd">@author: nadiablago</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">fitsutils</span>
+<span class="kn">import</span> <span class="nn">rcred</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">time_utils</span>
+<span class="kn">import</span> <span class="nn">coordinates_conversor</span> <span class="kn">as</span> <span class="nn">cc</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">curve_fit</span>
+
+        
+<div class="viewcode-block" id="get_flats_counts"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.flatfield.get_flats_counts">[docs]</a><span class="k">def</span> <span class="nf">get_flats_counts</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+
+    <span class="n">flatlist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;g&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">910</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">900</span><span class="p">],</span>
+    <span class="s2">&quot;i&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">910</span><span class="p">,</span> <span class="mi">1060</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;r&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1040</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1015</span><span class="p">,</span> <span class="mi">2045</span><span class="p">],</span>
+    <span class="s2">&quot;u&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mi">1030</span><span class="p">,</span> <span class="mi">2045</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">900</span><span class="p">]</span>
+    <span class="p">}</span>
+    
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s2">&quot;/rc*fits&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">has_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;IMGTYPE&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;TWILIGHT&quot;</span><span class="p">:</span>
+            <span class="n">flatlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">flatlist</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s2">&quot;No suitable twilight flats found in directory: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">directory</span>
+        <span class="k">return</span>
+        
+    <span class="n">counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:[],</span> <span class="s2">&quot;g&quot;</span><span class="p">:[],</span> <span class="s2">&quot;r&quot;</span><span class="p">:[],</span> <span class="s2">&quot;i&quot;</span><span class="p">:[]}</span>
+    <span class="n">sun_decs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:[],</span> <span class="s2">&quot;g&quot;</span><span class="p">:[],</span> <span class="s2">&quot;r&quot;</span><span class="p">:[],</span> <span class="s2">&quot;i&quot;</span><span class="p">:[]}</span>
+    
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">flatlist</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">f</span>
+        <span class="k">print</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;JD&quot;</span><span class="p">)</span>
+        
+        <span class="n">bias</span> <span class="o">=</span> <span class="n">rcred</span><span class="o">.</span><span class="n">get_overscan_bias_rc</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">exptime</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;EXPTIME&quot;</span><span class="p">)</span>
+        <span class="n">sunsettime</span> <span class="o">=</span> <span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;SUNSET&quot;</span><span class="p">)</span>
+        <span class="n">utc</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">time_utils</span><span class="o">.</span><span class="n">jd2utc</span><span class="p">(</span><span class="n">fitsutils</span><span class="o">.</span><span class="n">get_par</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;JD&quot;</span><span class="p">)),</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">sunsettime</span><span class="p">,</span> <span class="s2">&quot;%H:%M&quot;</span><span class="p">)</span>
+
+        
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="mi">3600</span><span class="o">*</span><span class="p">(</span><span class="n">utc</span><span class="o">.</span><span class="n">hour</span> <span class="o">-</span> <span class="n">st</span><span class="o">.</span><span class="n">hour</span><span class="p">)</span> <span class="o">+</span> <span class="mi">60</span><span class="o">*</span><span class="p">(</span><span class="n">utc</span><span class="o">.</span><span class="n">minute</span> <span class="o">-</span> <span class="n">st</span><span class="o">.</span><span class="n">minute</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">utc</span><span class="o">.</span><span class="n">second</span> <span class="o">-</span> <span class="n">st</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">elapsed</span> <span class="o">&gt;</span> <span class="mi">3000</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">print</span> <span class="n">elapsed</span><span class="p">,</span> <span class="n">utc</span><span class="p">,</span> <span class="n">st</span>
+        
+        
+        <span class="n">data</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">corners</span><span class="p">[</span><span class="n">band</span><span class="p">]</span>
+            <span class="n">sf</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span><span class="n">c</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">sf</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">55000</span><span class="p">):</span>
+                <span class="n">counts</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">sf</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span><span class="o">-</span><span class="n">bias</span><span class="p">)</span><span class="o">/</span><span class="n">exptime</span><span class="p">)</span>
+                <span class="n">sun_decs</span><span class="p">[</span><span class="n">band</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">elapsed</span><span class="p">)</span>        
+    
+    
+
+
+    <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">coefs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">sun_decs</span><span class="p">[</span><span class="n">band</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">band</span><span class="p">]),</span> <span class="n">deg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="mf">1.</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">band</span><span class="p">])))</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">coefs</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sun_decs</span><span class="p">[</span><span class="n">band</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sun_decs</span><span class="p">[</span><span class="n">band</span><span class="p">]),</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">sun_decs</span><span class="p">[</span><span class="n">band</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">band</span><span class="p">]),</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">band</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Model &quot;</span><span class="o">+</span><span class="n">band</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Elapsed second since Sunset&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Counts/s&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+            
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

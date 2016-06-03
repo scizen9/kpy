@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMr.Archive &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMr.Archive</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+
+<span class="n">outdir</span> <span class="o">=</span> <span class="s2">&quot;/scr2/neill/sedm/redux/&quot;</span>
+<span class="n">VER</span> <span class="o">=</span> <span class="s2">&quot;2015A&quot;</span>
+
+ 
+<div class="viewcode-block" id="archive"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Archive.archive">[docs]</a><span class="k">def</span> <span class="nf">archive</span><span class="p">(</span><span class="n">corrname</span><span class="o">=</span><span class="s1">&#39;std-correction.npy&#39;</span><span class="p">):</span>
+
+    <span class="c1"># Check for local version</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">corrname</span><span class="p">):</span>
+        <span class="c1"># Check SEDM_REF env var</span>
+        <span class="n">sref</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SEDM_REF&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">corrname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sref</span><span class="p">,</span> <span class="s1">&#39;std-correction.npy&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">corrname</span> <span class="o">=</span> <span class="s1">&#39;/scr2/sedm/ref/std-correction.npy&#39;</span>
+
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">specname</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">corrname</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">corf</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span><span class="n">corr</span><span class="p">[</span><span class="s1">&#39;correction&#39;</span><span class="p">],</span> <span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                    <span class="n">fill_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="n">ec</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">ss</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s1">&#39;extinction_corr&#39;</span><span class="p">):</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;extinction_corr&#39;</span><span class="p">]</span>
+        <span class="n">ec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ss</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s1">&#39;extinction_corr_A&#39;</span><span class="p">):</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;extinction_corr_A&#39;</span><span class="p">]</span>
+        <span class="n">ec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span>
+
+    <span class="n">et</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;exptime&#39;</span><span class="p">]</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s2">(airmass corr factor ~ </span><span class="si">%1.2f</span><span class="s2"> Exptime: </span><span class="si">%i</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">specname</span><span class="p">,</span> <span class="n">ec</span><span class="p">,</span> <span class="n">et</span><span class="p">))</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Wavelength [nm]&quot;</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;erg/s/cm2/ang&quot;</span><span class="p">)</span>
+    
+    <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;ph_10m_nm&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">]),</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skynm&#39;</span><span class="p">],</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skyph&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skynm&#39;</span><span class="p">]))</span>
+    <span class="k">except</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skyph&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;N_spaxA&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;N_spaxB&#39;</span><span class="p">])</span><span class="o">*</span>
+        <span class="n">corf</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">]))</span>
+
+    <span class="k">try</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">]))</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;nm&#39;</span><span class="p">]))</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+    <span class="n">pl</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s1">&#39;obj&#39;</span><span class="p">,</span> <span class="s1">&#39;sky&#39;</span><span class="p">,</span> <span class="s1">&#39;err&#39;</span><span class="p">])</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">360</span><span class="p">,</span><span class="mi">1100</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+    
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+        <span class="sd">&#39;&#39;&#39;Check.py</span>
+
+<span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
+
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Object name to archive&#39;</span><span class="p">)</span>
+
+
+    <span class="n">archive</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>SEDMrph.sextractor &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for SEDMrph.sextractor</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Tue Mar  1 20:19:04 2016</span>
+
+<span class="sd">@author: nadiablago</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">rcred</span>
+
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span> <span class="k">as</span> <span class="n">plt</span>
+
+
+<div class="viewcode-block" id="run_sex"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.sextractor.run_sex">[docs]</a><span class="k">def</span> <span class="nf">run_sex</span><span class="p">(</span><span class="n">flist</span><span class="p">):</span>
+    
+    <span class="n">d</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">flist</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+    <span class="c1">#Create the directory where the sextracted images are going to go.</span>
+    <span class="n">sexdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;sextractor&quot;</span><span class="p">)</span>    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">sexdir</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">sexdir</span><span class="p">)</span>
+        
+    <span class="n">newlist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">masked</span> <span class="o">=</span> <span class="n">rcred</span><span class="o">.</span><span class="n">get_masked_image</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">cmd</span><span class="o">=</span><span class="s2">&quot;sex -c </span><span class="si">%s</span><span class="s2">/config/daofind.sex </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SEDMPH&quot;</span><span class="p">],</span> <span class="n">masked</span><span class="p">)</span> 
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">print</span> <span class="n">cmd</span>
+        <span class="n">newimage</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sexdir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.sex&quot;</span><span class="p">))</span> 
+        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="s2">&quot;image.sex&quot;</span><span class="p">,</span> <span class="n">newimage</span><span class="p">)</span>
+        <span class="n">newlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newimage</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">newlist</span></div>
+        
+<div class="viewcode-block" id="analyse_sex"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.sextractor.analyse_sex">[docs]</a><span class="k">def</span> <span class="nf">analyse_sex</span><span class="p">(</span><span class="n">sexfileslist</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Analyses the sextractor filelist to determine the best focus.</span>
+<span class="sd">    </span>
+<span class="sd">    returns: A tuple containing:</span>
+<span class="sd">        1. - The best focus values as interpolated from the images.</span>
+<span class="sd">        2. - The sigma whithin which we should look for a finer focus.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="n">focpos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">fwhms</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sexfileslist</span><span class="p">):</span>
+        <span class="n">fits</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;sextractor/&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.sex&quot;</span><span class="p">,</span> <span class="s2">&quot;.fits&quot;</span><span class="p">)</span>
+	<span class="k">print</span> <span class="n">fits</span>
+        <span class="n">FF</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fits</span><span class="p">)</span>
+        <span class="n">pos</span><span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;focpos&#39;</span><span class="p">])</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+        <span class="c1">#Select bright magnitudes</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">s</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">2</span><span class="p">],</span> <span class="mi">10</span><span class="p">)]</span>
+        <span class="c1">#Select round sources (ellipticity is 1-axis_ratio)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">s</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">7</span><span class="p">],</span> <span class="mi">10</span><span class="p">)]</span>
+        
+        <span class="n">focpos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+        <span class="n">fwhms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span><span class="o">*</span><span class="mf">0.394</span><span class="p">))</span>
+    
+    <span class="n">focpos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">focpos</span><span class="p">)</span>
+    <span class="n">fwhms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fwhms</span><span class="p">)</span>
+    
+    <span class="n">coefs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">focpos</span><span class="p">,</span> <span class="n">fwhms</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="n">fwhms</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">focpos</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">focpos</span><span class="p">),</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">coefs</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s2">&quot;Best focus:</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="o">%</span> <span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">))],</span> <span class="n">coefs</span>
+    
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">plot</span><span class="o">==</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Best focus:</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="o">%</span> <span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">))])</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;/tmp/focus&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">focpos</span><span class="p">))</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">fwhms</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">focpos</span><span class="p">,</span> <span class="n">fwhms</span><span class="p">,</span> <span class="s2">&quot;o&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s2">&quot;-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Focus (mm)&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;FWHM (arcsec)&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">interactive</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sexfileslist</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span><span class="s2">&quot;focus.png&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">))],</span> <span class="n">coefs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+    
+
+<div class="viewcode-block" id="analyse_image"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.sextractor.analyse_image">[docs]</a><span class="k">def</span> <span class="nf">analyse_image</span><span class="p">(</span><span class="n">sexfile</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Analyses the sextractor filelist to determine the best focus.</span>
+<span class="sd">    </span>
+<span class="sd">    returns: A tuple containing:</span>
+<span class="sd">        1. - The best focus values as interpolated from the images.</span>
+<span class="sd">        2. - The sigma whithin which we should look for a finer focus.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+
+
+    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">sexfile</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+    <span class="c1">#Select round sources (ellipticity is 1-axis_ratio)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">s</span><span class="p">[:,</span><span class="mi">7</span><span class="p">]</span><span class="o">&lt;</span><span class="mf">0.1</span><span class="p">]</span>
+
+    <span class="c1">#Select FWHM at least 1.2 arcsec and lower than 6</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span> <span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span><span class="o">*</span><span class="mf">0.394</span><span class="o">&gt;</span><span class="mf">1.2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span><span class="o">*</span><span class="mf">0.394</span><span class="o">&lt;</span><span class="mi">6</span><span class="p">)]</span>
+    
+    <span class="n">nsources</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">nsources</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">nsources</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span>
+        
+    <span class="c1">#Select bright magnitudes</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">s</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">2</span><span class="p">],</span> <span class="mi">20</span><span class="p">)]</span>
+       
+    <span class="n">fwhm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">6</span><span class="p">]</span><span class="o">*</span><span class="mf">0.394</span><span class="p">)</span>
+    <span class="n">ellipticity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">s</span><span class="p">[:,</span><span class="mi">7</span><span class="p">]</span><span class="o">*</span><span class="mf">0.394</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">nsources</span><span class="p">,</span> <span class="n">fwhm</span><span class="p">,</span> <span class="n">ellipticity</span></div>
+        
+<div class="viewcode-block" id="get_focus"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.sextractor.get_focus">[docs]</a><span class="k">def</span> <span class="nf">get_focus</span><span class="p">(</span><span class="n">lfiles</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Receives a list of focus files and returns the best focus value.</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">sexfiles</span> <span class="o">=</span> <span class="n">run_sex</span><span class="p">(</span><span class="n">lfiles</span><span class="p">)</span>
+    <span class="n">focus</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">analyse_sex</span><span class="p">(</span><span class="n">sexfiles</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">focus</span><span class="p">,</span> <span class="n">sigma</span></div>
+    
+<div class="viewcode-block" id="get_image_pars"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.sextractor.get_image_pars">[docs]</a><span class="k">def</span> <span class="nf">get_image_pars</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns a set of statistics for a given image.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">sexfiles</span> <span class="o">=</span> <span class="n">run_sex</span><span class="p">([</span><span class="n">image</span><span class="p">])</span>
+    <span class="n">pars</span> <span class="o">=</span> <span class="n">analyse_image</span><span class="p">(</span><span class="n">sexfiles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">pars</span></div>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

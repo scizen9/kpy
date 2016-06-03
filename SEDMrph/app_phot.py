@@ -31,7 +31,7 @@ ref_stars_file_johnson = "/Users/nadiablago/Documents/Projects/M101/cats/ref_sta
 
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir="."):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -212,7 +212,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
                 plt.text(-cutrad, -cutrad, "%.2f$\pm$%.2f"%(m[k]["fit_mag"], m[k]["fiterr"]), color="b")
             k = k+1
     
-    plt.savefig(image + "plot.png")
+    plt.savefig(os.path.join(plotdir, image + "plot.png"))
     plt.clf()
 
 def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=2, box=20):

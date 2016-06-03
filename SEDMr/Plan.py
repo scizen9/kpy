@@ -1,34 +1,36 @@
 """Generate Makefile for reducing ifu data"""
 
-import argparse
-import numpy as np
-import pyfits as pf
+import os
 import sys
+
+import pyfits as pf
 
 import NPK.Bar as Bar
 import NPK.Standards as Stds
 
 
 def extract_info(infiles):
-
     headers = []
 
     print "-- Ingesting headers --"
     update_rate = len(infiles) / (Bar.setup() - 1)
-    if update_rate <= 0: update_rate = 1
-    for ix, file in enumerate(infiles):
-        if ix % update_rate == 0: Bar.update()
-        FF = pf.open(file)
-        FF[0].header['filename'] = file
+    if update_rate <= 0:
+        update_rate = 1
+    for ix, ifile in enumerate(infiles):
+        if ix % update_rate == 0:
+            Bar.update()
+        FF = pf.open(ifile)
+        FF[0].header['filename'] = ifile
         if 'JD' not in FF[0].header:
-            #print "Skipping %s" % file
+            # print "Skipping %s" % ifile
             continue
         headers.append(FF[0].header)
         FF.close()
-    
+
     Bar.done()
-    
+
     return sorted(headers, key=lambda x: x['JD'])
+
 
 def identify_observations(headers):
     """Return a list of object name, observation number, and list of files.
@@ -47,7 +49,6 @@ def identify_observations(headers):
     objs = {}
     calibs = {}
 
-    curr = ""
     for header in headers:
         if header['JD'] < JD:
             raise Exception("Headers not sorted by JD")
@@ -58,7 +59,8 @@ def identify_observations(headers):
         name = header['NAME']
         exptime = header['exptime']
         adcspeed = header['ADCSPEED']
-        if "test" in obj: continue
+        if "test" in obj:
+            continue
         if "Calib" in obj or "bias" in obj:
 
             def appendToCalibs(Str):
@@ -69,7 +71,7 @@ def identify_observations(headers):
                         prefix = ""
                         suffix = ""
                     elif "Xe" in Str or "Hg" in Str or "Cd" in Str or \
-                            "Ne" in Str or "dome" in Str:
+                                    "Ne" in Str or "dome" in Str:
                         prefix = "b_"
                         suffix = ""
                     else:
@@ -77,8 +79,8 @@ def identify_observations(headers):
                         suffix = ""
 
                     if "bias" in Str and exptime != 0.:
-                        print("Mis-labeled bias with exptime > 0: %9.1f" % 
-                                    exptime)
+                        print("Mis-labeled bias with exptime > 0: %9.1f" %
+                              exptime)
                     else:
                         calibs[Str] = calibs.get(Str, [])
                         calibs[Str].append(prefix + fname + suffix)
@@ -91,18 +93,23 @@ def identify_observations(headers):
             appendToCalibs("Ne")
             appendToCalibs("twilight")
 
-        if "Focus:" in obj: continue
-        if "dark" in obj: continue
-        if "Calib" in obj: continue
-        if "STOW" in name: continue
-        if obj.rstrip() == "": continue
-        name= name.replace(" ", "_")
-        name= name.replace(")", "_")
-        name= name.replace("(", "_")
-        name= name.replace("[", "_")
-        name= name.replace("]", "_")
-        name= name.replace("/", "_")
-        name= name.replace(":", "_")
+        if "Focus:" in obj:
+            continue
+        if "dark" in obj:
+            continue
+        if "Calib" in obj:
+            continue
+        if "STOW" in name:
+            continue
+        if obj.rstrip() == "":
+            continue
+        name = name.replace(" ", "_")
+        name = name.replace(")", "_")
+        name = name.replace("(", "_")
+        name = name.replace("[", "_")
+        name = name.replace("]", "_")
+        name = name.replace("/", "_")
+        name = name.replace(":", "_")
 
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
@@ -116,16 +123,16 @@ def identify_observations(headers):
             objs[name][cnt].append(fname)
 
     print "\n-- Calibrations --"
-    for k,v in calibs.iteritems():
+    for k, v in calibs.iteritems():
         print "%15s : %2.0i" % (k, len(v))
 
     print "\n-- Standard Star Sets --"
-    for k,v in objs.iteritems():
+    for k, v in objs.iteritems():
         if "STD-" in k:
             print "%20s : %2.0i" % (k, len(v))
 
     print "\n-- Science Object Sets --"
-    for k,v in objs.iteritems():
+    for k, v in objs.iteritems():
         if "STD-" not in k:
             print "%20s : %2.0i" % (k, len(v))
 
@@ -134,17 +141,17 @@ def identify_observations(headers):
 
 make_preamble = """
 PY = ~/spy
-PYC = ~/kpy/SEDM
-EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
-ATM =  $(PY) $(PYC)r/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)r/Extractor.py 
-FLEXCMD = $(PY) $(PYC)r/Flexure.py
-IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
-PLOT = $(PY) $(PYC)r/Check.py
+PYC = ~/kpy/SEDMr
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py 
+ATM =  $(PY) $(PYC)/AtmCorr.py 
+EXTPAIR =  $(PY) $(PYC)/Extractor.py 
+FLEXCMD = $(PY) $(PYC)/Flexure.py
+IMCOMBINE = $(PY) $(PYC)/Imcombine.py
+PLOT = $(PY) $(PYC)/Check.py
 
-BSUB = $(PY) $(PYC)/Bias.py
-BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
-CRRSUB =  $(PY) $(PYC)r/CosmicX.py
+BSUB = $(PY) $(PYC)/Debias.py
+BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
+CRRSUB =  $(PY) $(PYC)/CosmicX.py
 
 SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
@@ -186,22 +193,22 @@ $(BACK):
     
 
 seg_dome.fits: dome.fits
-	$(PY) $(PYC)r/SexLamps.py dome.fits
+	$(PY) $(PYC)/SexLamps.py dome.fits
 
 seg_Hg.fits: Hg.fits
-	$(PY) $(PYC)r/SexSpectra.py Hg.fits
+	$(PY) $(PYC)/SexSpectra.py Hg.fits
 
 dome.fits_segments.npy: seg_dome.fits
-	$(PY) $(PYC)r/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
+	$(PY) $(PYC)/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
 
 rough.npy: dome.fits_segments.npy seg_Hg.fits
-	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
+	$(PY) $(PYC)/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
 
 fine.npy: rough.npy Cd.fits Xe.fits
-	$(PY) $(PYC)r/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
+	$(PY) $(PYC)/Wavelength.py fine --cdfits Cd.fits --xefits Xe.fits --hgfits Hg.fits --hgassoc assoc_Hg.npy --outname fine
 
 cube.npy: fine.npy
-	$(PY) $(PYC)r/Cube.py fine.npy --step make --outname cube.npy
+	$(PY) $(PYC)/Cube.py fine.npy --step make --outname cube.npy
 	$(PLOT) --cube cube.npy --savefig
 	$(PLOT) --cube cube.npy --lambdarms --savefig
 
@@ -212,10 +219,10 @@ bs_dome.fits.gz: dome.fits fine.npy
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy: cube.npy dome.fits
-	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
+	$(PY) $(PYC)/Extractor.py cube.npy --A dome.fits --outname dome --extflat
 
 flat-dome-700to900.npy: dome.npy
-	$(PY) $(PYC)r/Flat.py dome.npy
+	$(PY) $(PYC)/Flat.py dome.npy
     
 wave: fine.npy
 cube: cube.npy
@@ -235,9 +242,9 @@ newstds: cleanstds stds
 
 """
 
+
 def MF_imcombine(objname, files, dependencies=""):
-    
-    filelist = " ".join(["%s " % file for file in files])
+    filelist = " ".join(["%s " % ifile for ifile in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
     if len(filelist) > 7:
@@ -245,81 +252,92 @@ def MF_imcombine(objname, files, dependencies=""):
     else:
         reject = "none"
     if "bias" in objname:
-        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 2 --files %s\n" % (objname, objname, reject, filelist)
+        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 2 --files %s\n" % (
+            objname, objname, reject, filelist)
     else:
-        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (objname, objname, reject, filelist)
+        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (
+            objname, objname, reject, filelist)
 
     if "bias" not in objname and "dome" not in objname:
-        second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
+        second += "\n%s.npy : cube.npy %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (
+            objname, objname, objname, objname)
 
-    return  first+second+"\n"
+    return first + second + "\n"
 
 
-def MF_single(objname, obsnum, file, standard=None):
+def MF_single(objname, obsnum, ifile, standard=None):
     """Create the MF entry for a observation with a single file. """
 
-    #print objname, obsnum, file
+    # print objname, obsnum, ifile
 
-    tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % file}
+    tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
-    if standard is None: tp['STD'] = ''
-    else: tp['STD'] = "--std %s" % (standard)
-    tp['flexname'] = "flex_bs_crr_b_%s.npy" % (file.rstrip(".fits"))
+    if standard is None:
+        tp['STD'] = ''
+    else:
+        tp['STD'] = "--std %s" % standard
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
 %(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+\t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 cube_%(outname)s.fits: %(outname)s
-\t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+\t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 """ % tp
     second = """corr_%(outname)s: %(outname)s
-\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" %  tp
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" % tp
     fn = "%(outname)s" % tp
 
-    if standard is None: return first+"\n", fn
-    else: return first+second+"\n", fn 
+    if standard is None:
+        return first + "\n", fn
+    else:
+        return first + second + "\n", fn
 
-    
 
 def MF_AB(objname, obsnum, A, B):
     """Create the MF entry for an A-B observation"""
 
-    #print objname, obsnum, A, B
+    # print objname, obsnum, A, B
     tp = {'objname': objname, 'A': "bs_crr_b_" + A, 'B': "bs_crr_b_" + B}
-    if obsnum == 1: tp['num'] = ''
-    else: tp['num'] = '_obs%i' % obsnum
+    if obsnum == 1:
+        tp['num'] = ''
+    else:
+        tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
-    tp['flexname'] = "flex_bs_crr_b_%s.npy" % A.rstrip('.fits')
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(A)[0]
 
-    tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
-    tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
+    tp['bgdnameA'] = "bgd_%s.npy" % os.path.splitext(A)[0]
+    tp['bgdnameB'] = "bgd_%s.npy" % os.path.splitext(B)[0]
 
     return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
-\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n""" %  tp, "%(outname)s " % tp
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s " % tp
 
 
 def to_makefile(objs, calibs):
-    
     MF = ""
 
     all = ""
     stds = ""
     stds_dep = ""
     sci = ""
-    
+
     flexures = ""
 
     for calibname, files in calibs.iteritems():
-        
+
         if "bias" not in calibname:
             pass
         MF += MF_imcombine(calibname, files)
         all += "%s.fits " % calibname
-    
+
     flatfiles = []
     for objname, observations in objs.iteritems():
 
@@ -334,14 +352,14 @@ def to_makefile(objs, calibs):
 
             # Handle Standard Stars
             if objname.startswith("STD-"):
-                pred = objname[4:].rstrip().lower().replace("+","").replace("-","_")
+                pred = objname[4:].rstrip().lower().replace("+", "").replace("-", "_")
                 if pred in Stds.Standards:
                     standard = pred
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m,a = MF_single(objname, "%i_%i" % (obsnum, ix), 
-                            obsfile, 
-                            standard=standard)
+                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                                         obsfile,
+                                         standard=standard)
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "
@@ -351,36 +369,36 @@ def to_makefile(objs, calibs):
                     standard = None
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m,a = MF_single(objname, "%i_%i" % (obsnum, ix), 
-                            obsfile, 
-                            standard=standard)
+                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                                         obsfile,
+                                         standard=standard)
                         MF += m
                         sci += a + " "
                 continue
 
             # Handle science targets
-            #print "****", objname, obsnum, obsfiles
+            # print "****", objname, obsnum, obsfiles
             if len(obsfiles) == 2:
-                m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
+                m, a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
 
                 MF += m
                 all += a + " "
-                
+
                 if not objname.startswith("STD-"):
                     sci += a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
 
-                    m,a = MF_single(objname, "%i_%i" % (obsnum,obsfilenum), 
-                        obsfile)
+                    m, a = MF_single(objname, "%i_%i" % (obsnum, obsfilenum),
+                                     obsfile)
 
                     if standard is not None:
-                        stds += "corr_%s " % (a)
+                        stds += "corr_%s " % a
 
                     MF += m
                     all += a + " "
-                    
+
                     if not objname.startswith("STD-") and not objname.startswith("STOW"):
                         sci += a + " "
     stds += " "
@@ -396,6 +414,7 @@ def to_makefile(objs, calibs):
             "\n" + MF + "\n" + flexures)
     f.close()
 
+
 def make_plan(headers):
     """Convert headers to a makefile, assuming headers sorted by JD."""
 
@@ -404,10 +423,7 @@ def make_plan(headers):
 
 
 if __name__ == '__main__':
-
     files = sys.argv[1:]
     to_process = extract_info(files)
 
-    objs = make_plan(to_process)
-
-
+    make_plan(to_process)

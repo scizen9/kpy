@@ -1,21 +1,30 @@
+"""Divide a science frame by the flat frame with flexure
+
+This routine may be obsolete and is currently unused by the pipeline.
+
+Note:
+    This is used as a python script as follows::
+
+        usage: DivideFlat.py [-h] [--flexnpy FLEXNPY] [--outfile OUTFILE]
+                     flatfits toflattenfits
+
+        positional arguments:
+          flatfits           Flat field fits file
+          toflattenfits      To flatten fits file
+
+        optional arguments:
+          -h, --help         show this help message and exit
+          --flexnpy FLEXNPY  Flexure .npy file
+          --outfile OUTFILE  Output filename
+
+"""
 
 import argparse
-import pdb
 import numpy as np
-import pylab as pl
 import pyfits as pf
-import sys
-
 
 import NPK.Fit as FF
 import SEDMr.IO as IO
-from astropy.table import Table 
-
-from scipy.spatial import KDTree 
-import scipy.signal as SG
-from scipy.interpolate import interp1d
-
-
 
 import SEDMr.Extraction as Extraction
 import SEDMr.Wavelength as Wavelength
@@ -24,16 +33,11 @@ reload(Extraction)
 reload(Wavelength)
 
 
-
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
-        '''MakeFlat.py
+    parser = argparse.ArgumentParser(
+        description="""Divides a science frame by the flat frame, handles flexure
 
-            Divides a science frame by the flat frame, handles flexure
-
-        ''', formatter_class=argparse.RawTextHelpFormatter)
-
+        """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('flatfits', type=str, help='Flat field fits file')
     parser.add_argument('toflattenfits', type=str, help='To flatten fits file')
@@ -54,7 +58,7 @@ if __name__ == '__main__':
         flat = np.roll(flat, dY, 0)
         flat = np.roll(flat, dX, 1)
         toflat[0].header["FLATROLL"] = ("%s/%s" % (dX, dY), 
-                                "Flat field flexure correction")
+                                        "Flat field flexure correction")
 
     toflat[0].data /= flat
     toflat[0].header["FLATBY"] = (args.toflattenfits, "Flat field applied")

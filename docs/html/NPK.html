@@ -1,0 +1,390 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>1. NPK package &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="index.html" />
+    <link rel="next" title="2. SEDM package" href="SEDM.html" />
+    <link rel="prev" title="Welcome to SED Machines’s data reduction pipeline documentation" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="npk-package">
+<h1>1. NPK package<a class="headerlink" href="#npk-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-NPK.Aluminum">
+<span id="npk-aluminum-module"></span><h2>1.1. NPK.Aluminum module<a class="headerlink" href="#module-NPK.Aluminum" title="Permalink to this headline">¶</a></h2>
+<p>Reflectivity of Aluminium from the Handbook of CHEMISTRY and PHYSICS
+Coefficients were renormalized to 86% at 6700</p>
+<dl class="function">
+<dt id="NPK.Aluminum.reflectivity">
+<code class="descclassname">NPK.Aluminum.</code><code class="descname">reflectivity</code><span class="sig-paren">(</span><em>lam</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Aluminum.html#reflectivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Aluminum.reflectivity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reflectivity of Al as function of wavelength (Ang)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.Atmosphere">
+<span id="npk-atmosphere-module"></span><h2>1.2. NPK.Atmosphere module<a class="headerlink" href="#module-NPK.Atmosphere" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.Atmosphere.sky_function">
+<code class="descclassname">NPK.Atmosphere.</code><code class="descname">sky_function</code><span class="sig-paren">(</span><em>PHASE</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Atmosphere.html#sky_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Atmosphere.sky_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a function of wavelength that returns photon/s/cm^2/ang/as^2</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>PHASE</strong> &#8211; Moon Phase</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">function(wavelength in angstrom) that returns photon/s/cm^2/ang/as^2</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>f = sky_function(3)</p>
+<p>print(&#8220;Sky at 5300 Ang is {0} photon/s/cm^2/ang/as^2&#8221;.{f(5300)})</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.Bar">
+<span id="npk-bar-module"></span><h2>1.3. NPK.Bar module<a class="headerlink" href="#module-NPK.Bar" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.Bar.done">
+<code class="descclassname">NPK.Bar.</code><code class="descname">done</code><span class="sig-paren">(</span><em>mapped=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Bar.html#done"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Bar.done" title="Permalink to this definition">¶</a></dt>
+<dd><p>Carriage return and flush the console</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Bar.setup">
+<code class="descclassname">NPK.Bar.</code><code class="descname">setup</code><span class="sig-paren">(</span><em>toolbar_width=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Bar.html#setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Bar.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize console with toolbar_width spaces between [ ]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>toolbar_width</strong> &#8211; Number of spaces between the brackets</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">toolbar_width [int]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Bar.update">
+<code class="descclassname">NPK.Bar.</code><code class="descname">update</code><span class="sig-paren">(</span><em>char='-'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Bar.html#update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Bar.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints char to indicate an update on the toolbar</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>char</strong> &#8211; The character to print</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.Centroid">
+<span id="npk-centroid-module"></span><h2>1.4. NPK.Centroid module<a class="headerlink" href="#module-NPK.Centroid" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.Centroid.wm">
+<code class="descclassname">NPK.Centroid.</code><code class="descname">wm</code><span class="sig-paren">(</span><em>box</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Centroid.html#wm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Centroid.wm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computer centroid via weighted mean</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.ETC">
+<span id="npk-etc-module"></span><h2>1.5. NPK.ETC module<a class="headerlink" href="#module-NPK.ETC" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.ETC.abmag_to_flambda">
+<code class="descclassname">NPK.ETC.</code><code class="descname">abmag_to_flambda</code><span class="sig-paren">(</span><em>AB</em>, <em>lam_ang</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/ETC.html#abmag_to_flambda"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.ETC.abmag_to_flambda" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert AB Magnitude to erg/s/cm^2/ang</p>
+<dl class="docutils">
+<dt>Arg:</dt>
+<dd>AB: AB Magnitude
+lam_ang: Wavelength [angstrom]</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">erg/s/cm^2/Ang</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.ETC.go">
+<code class="descclassname">NPK.ETC.</code><code class="descname">go</code><span class="sig-paren">(</span><em>source_ab=None</em>, <em>leff_ang=5000</em>, <em>R=5</em>, <em>fwhm_as=2</em>, <em>phase=0</em>, <em>t_s=1</em>, <em>Atel_cm2=100</em>, <em>n_pix=9</em>, <em>RN=5</em>, <em>eta=0.2</em>, <em>coadds=1</em>, <em>sky_level=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/ETC.html#go"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.ETC.go" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the signal to noise of a source with source_ab</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>source_ab</strong> &#8211; Source magnitude in AB</li>
+<li><strong>leff_ang</strong> &#8211; Central wavelength in Angstrom</li>
+<li><strong>R</strong> &#8211; Spectral resolution of an element</li>
+<li><strong>fwhm_as</strong> &#8211; Extraction FWHM in as</li>
+<li><strong>phase</strong> &#8211; Moon phase</li>
+<li><strong>t_s</strong> &#8211; Exposure time in second</li>
+<li><strong>Atel_cm2</strong> &#8211; Telescope area in cm2</li>
+<li><strong>n_pix</strong> &#8211; Number of pixels that participate</li>
+<li><strong>RN</strong> &#8211; The read noise in electron</li>
+<li><strong>eta</strong> &#8211; The efficiency of the instrument</li>
+<li><strong>coadds</strong> &#8211; The number of coadds [1]</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">{All Arg parameters and
+&#8216;epp&#8217;: Energy per photon in erg
+&#8216;dlambda&#8217;: The full with of the band
+&#8216;s_npp&#8217;: The number of photons receive from the object
+&#8216;sky_area&#8217;: The area of extraction&#8217;
+&#8216;k_npp&#8217;: The number of sky photons received in the extraction area
+&#8216;k_npp_pix&#8217;: The number of sky photons received in a pixel
+&#8216;k_npp_as2&#8217;: The number of sky photons received per as2
+&#8216;noise_obj&#8217;: The noise from the object [e-]
+&#8216;noise_sky&#8217;: The noise from the sky [e-]
+&#8216;noise_read&#8217;: Total read noise
+&#8216;noise&#8217;: Total number of noise photons
+&#8216;snr&#8217;: The delivered signal to noise
+&#8216;sky_level&#8217;: Multiply sky level by this value</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.Fit">
+<span id="npk-fit-module"></span><h2>1.6. NPK.Fit module<a class="headerlink" href="#module-NPK.Fit" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.Fit.gaussian4">
+<code class="descclassname">NPK.Fit.</code><code class="descname">gaussian4</code><span class="sig-paren">(</span><em>p</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Fit.html#gaussian4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Fit.gaussian4" title="Permalink to this definition">¶</a></dt>
+<dd><p>gaussian model
+p[0] &#8211; scale factor
+p[1] &#8211; centroid
+p[2] &#8211; sigma
+p[3] &#8211; offset</p>
+<p>Area: (p[0]-p[3]) x p[2] x np.sqrt(2 x pi)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Fit.gaussian5">
+<code class="descclassname">NPK.Fit.</code><code class="descname">gaussian5</code><span class="sig-paren">(</span><em>p</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Fit.html#gaussian5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Fit.gaussian5" title="Permalink to this definition">¶</a></dt>
+<dd><p>gaussian model
+p[0] &#8211; scale factor
+p[1] &#8211; centroid
+p[2] &#8211; sigma
+p[3] &#8211; offset
+p[4] &#8211; slope</p>
+<p>Area: (p[0]-p[3]) x p[2] x np.sqrt(2 x pi)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Fit.mpfit_do">
+<code class="descclassname">NPK.Fit.</code><code class="descname">mpfit_do</code><span class="sig-paren">(</span><em>residual_fun</em>, <em>x</em>, <em>y</em>, <em>parinfo</em>, <em>error=None</em>, <em>quiet=1</em>, <em>maxiter=20</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Fit.html#mpfit_do"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Fit.mpfit_do" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns mpfit fit sturcture for residual fun</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>residual_fun</strong> &#8211; residual_fun from mpfit_residuals</li>
+<li><strong>y</strong> (<em>x,</em>) &#8211; x and y data values</li>
+<li><strong>parinfo</strong> &#8211; Structure containing mpfit pars see
+help(mpfit)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>g4res = Fit.mpfit_residuals(Fit.gaussian4)
+parguess = [{&#8216;value&#8217;: 1600}, {&#8216;value&#8217;: 0}, {&#8216;value&#8217;: 2}, {&#8216;value&#8217;: 200}]
+fit = Fit.mpfit_do(g4res, xs, prof, parguess)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Fit.mpfit_residuals">
+<code class="descclassname">NPK.Fit.</code><code class="descname">mpfit_residuals</code><span class="sig-paren">(</span><em>modelfun</em>, <em>preffun=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Fit.html#mpfit_residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Fit.mpfit_residuals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a residual function for mpfit code</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Fit.sedm_wavelen">
+<code class="descclassname">NPK.Fit.</code><code class="descname">sedm_wavelen</code><span class="sig-paren">(</span><em>p</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Fit.html#sedm_wavelen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Fit.sedm_wavelen" title="Permalink to this definition">¶</a></dt>
+<dd><p>SED Machine wavelength function</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK.PlotHelp">
+<span id="npk-plothelp-module"></span><h2>1.7. NPK.PlotHelp module<a class="headerlink" href="#module-NPK.PlotHelp" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="NPK.PlotHelp.transparent_legend">
+<code class="descclassname">NPK.PlotHelp.</code><code class="descname">transparent_legend</code><span class="sig-paren">(</span><em>legend</em>, <em>alpha=0.5</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/PlotHelp.html#transparent_legend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.PlotHelp.transparent_legend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-NPK.Standards">
+<span id="npk-standards-module"></span><h2>1.8. NPK.Standards module<a class="headerlink" href="#module-NPK.Standards" title="Permalink to this headline">¶</a></h2>
+<p>Loads standard spectra from Oke 1990 (Aj, 99, 1621).</p>
+<dl class="docutils">
+<dt>See:</dt>
+<dd><a class="reference external" href="ftp://ftp.eso.org/pub/stecf/standards/okestan/aaareadme.oke">ftp://ftp.eso.org/pub/stecf/standards/okestan/aaareadme.oke</a></dd>
+<dt>Defines:</dt>
+<dd>Standards[standard_name]: [Wavelength, flux, flux, bin]
+units: &#8216;Wavelength [A], Flux [erg/s/cm/cm/A 10**16], flux [mJy], bin [A]&#8217;</dd>
+</dl>
+</div>
+<div class="section" id="module-NPK.Util">
+<span id="npk-util-module"></span><h2>1.9. NPK.Util module<a class="headerlink" href="#module-NPK.Util" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="NPK.Util.Struct">
+<em class="property">class </em><code class="descclassname">NPK.Util.</code><code class="descname">Struct</code><span class="sig-paren">(</span><em>**entries</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Util.html#Struct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Util.Struct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Converts a dictionary into an object</p>
+<p class="rubric">Example</p>
+<p>a = {&#8216;a&#8217;: 1, &#8216;b&#8217;: 2}
+o = Struct(a)
+print o.a, o.b</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Util.air_index">
+<code class="descclassname">NPK.Util.</code><code class="descname">air_index</code><span class="sig-paren">(</span><em>lam</em>, <em>P=600</em>, <em>T=7</em>, <em>f=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Util.html#air_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Util.air_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns index of refraction of air-1 at
+lam in micron at vacuum
+Pressure in mm hg
+T is temperature in deg C
+f is water vapor pressure in mm Hg</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Util.atm_disper">
+<code class="descclassname">NPK.Util.</code><code class="descname">atm_disper</code><span class="sig-paren">(</span><em>l2</em>, <em>l1</em>, <em>airmass</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Util.html#atm_disper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Util.atm_disper" title="Permalink to this definition">¶</a></dt>
+<dd><p>atmospheric dispersion in arcsecond between l2 and l1 in micron
+at a given airmass. See air index for documentation on pressure,
+temperature, and water vapor pressure</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Util.floatcompress">
+<code class="descclassname">NPK.Util.</code><code class="descname">floatcompress</code><span class="sig-paren">(</span><em>data</em>, <em>ndig=14</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Util.html#floatcompress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Util.floatcompress" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapted from Finkbeiner IDL routine floatcompress</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="NPK.Util.par_angle">
+<code class="descclassname">NPK.Util.</code><code class="descname">par_angle</code><span class="sig-paren">(</span><em>HA</em>, <em>Dec</em>, <em>Lat=&lt;Angle 33.356 deg&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/NPK/Util.html#par_angle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#NPK.Util.par_angle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute parallactic angle given an hour angle and declination.</p>
+<p>Parallactic angle is defined such that 180 is N/S.</p>
+<p>Latitude defaults to Palomar. Must use Astropy Angle class</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-NPK">
+<span id="module-contents"></span><h2>1.10. Module contents<a class="headerlink" href="#module-NPK" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">1. NPK package</a><ul>
+<li><a class="reference internal" href="#module-NPK.Aluminum">1.1. NPK.Aluminum module</a></li>
+<li><a class="reference internal" href="#module-NPK.Atmosphere">1.2. NPK.Atmosphere module</a></li>
+<li><a class="reference internal" href="#module-NPK.Bar">1.3. NPK.Bar module</a></li>
+<li><a class="reference internal" href="#module-NPK.Centroid">1.4. NPK.Centroid module</a></li>
+<li><a class="reference internal" href="#module-NPK.ETC">1.5. NPK.ETC module</a></li>
+<li><a class="reference internal" href="#module-NPK.Fit">1.6. NPK.Fit module</a></li>
+<li><a class="reference internal" href="#module-NPK.PlotHelp">1.7. NPK.PlotHelp module</a></li>
+<li><a class="reference internal" href="#module-NPK.Standards">1.8. NPK.Standards module</a></li>
+<li><a class="reference internal" href="#module-NPK.Util">1.9. NPK.Util module</a></li>
+<li><a class="reference internal" href="#module-NPK">1.10. Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to SED Machines&#8217;s data reduction pipeline documentation</a></li>
+      <li>Next: <a href="SEDM.html" title="next chapter">2. SEDM package</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/NPK.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/NPK.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

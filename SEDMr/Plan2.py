@@ -8,10 +8,11 @@ flat-dome-700to900.npy.
 
 """
 
+import os
+import sys
 import argparse
 import numpy as np
 import pyfits as pf
-import sys
 
 import NPK.Bar as Bar
 import NPK.Standards as Stds
@@ -212,7 +213,7 @@ bs_dome.fits.gz: dome.fits
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy: dome.fits
-	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --flat
+	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --extflat
 
 flex: back $(FLEX)
 
@@ -257,14 +258,16 @@ def MF_single(objname, obsnum, file, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % file}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
     if standard is None: tp['STD'] = ''
     else: tp['STD'] = "--std %s" % (standard)
-    tp['flexname'] = "flex_bs_crr_b_%s.npy" % (file.rstrip(".fits"))
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(file)[0]
 
     first = """# %(outname)s
 %(outname)s: %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+\t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -286,14 +289,16 @@ def MF_AB(objname, obsnum, A, B):
     if obsnum == 1: tp['num'] = ''
     else: tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
-    tp['flexname'] = "flex_bs_crr_b_%s.npy" % A.rstrip('.fits')
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(A)[0]
 
-    tp['bgdnameA'] = "bgd_%s.npy" % (A.rstrip('.fits'))
-    tp['bgdnameB'] = "bgd_%s.npy" % (B.rstrip('.fits'))  
+    tp['bgdnameA'] = "bgd_%s.npy" % os.path.splitext(A)[0]
+    tp['bgdnameB'] = "bgd_%s.npy" % os.path.splitext(B)[0]
 
     return """# %(outname)s\n%(outname)s: %(A)s.gz %(B)s.gz %(flexname)s
-\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s\n\n""" %  tp, "%(outname)s " % tp
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" %  tp, "%(outname)s " % tp
 
 
 def to_makefile(objs, calibs):
