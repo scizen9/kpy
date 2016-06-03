@@ -49,6 +49,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     focpos = []
     fwhms = []
+    std_fwhm = []
     for i, f in enumerate(sexfileslist):
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
 	print fits
@@ -56,22 +57,27 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#")
+        
+        s = s[s[:,1]< 2000]
+        
         #Select bright magnitudes
         s = s[s[:,2]<np.percentile(s[:,2], 10)]
         #Select round sources (ellipticity is 1-axis_ratio)
-        s = s[s[:,2]<np.percentile(s[:,7], 10)]
+        s = s[s[:,7]<0.1]
         
         focpos.append(pos)
         fwhms.append(np.nanmedian(s[:,6]*0.394))
+        std_fwhm.append(np.std(s[:,6]*0.394))
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
+    std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
     
-    coefs = np.polyfit(focpos, fwhms, w=1/fwhms, deg=2)
+    coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
     
     x = np.linspace(np.min(focpos), np.max(focpos), 100)
     p = np.poly1d(coefs)
-    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs
+    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs,std_fwhm, p(x)
     
     
     if (plot==True):
@@ -79,7 +85,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         with open("/tmp/focus", "a") as f:
             f.write(str(focpos))
             f.write(str(fwhms))
-        plt.plot(focpos, fwhms, "o")
+        plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
         plt.plot(x, p(x), "-")
         plt.xlabel("Focus (mm)")
         plt.ylabel("FWHM (arcsec)")
