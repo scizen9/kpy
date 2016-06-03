@@ -6,15 +6,15 @@ Also can produce an ascii spectrum suitable for upload
 or input to transient classification programs.
 
 Functions
-    * :func:`checkCube`   Plot a cube
-    * :func:`checkSpec`   Plot a spectrum
+    * :func:`check_cube`   Plot a cube
+    * :func:`check_spec`   Plot a spectrum
 
 Note:
     This is used as a python script as follows::
 
-        usage: Check.py [-h] [--cube CUBE] [--lambdarms] [--savefig] [--savespec]
-                [--spec SPEC] [--corrname CORRNAME] [--redshift REDSHIFT]
-                [--smoothing SMOOTHING]
+        usage: Check.py [-h] [--cube CUBE] [--lambdarms] [--savefig]
+                [--savespec] [--spec SPEC] [--corrname CORRNAME]
+                [--redshift REDSHIFT] [--smoothing SMOOTHING]
 
         optional arguments:
           -h, --help            show this help message and exit
@@ -40,10 +40,10 @@ import scipy.signal
 from scipy.stats import sigmaclip
 
 import IO
-import NPK.Standards as SS
+import NPK.Standards as Stds
 
 
-def checkCube(cubename, showlamrms=False, savefig=False):
+def check_cube(cubename, showlamrms=False, savefig=False):
     """Plot a datacube.
 
         This function can produce a PDF file of the data cube.
@@ -65,35 +65,35 @@ def checkCube(cubename, showlamrms=False, savefig=False):
     cc, meta = np.load(cubename)
     fid_wave = meta['fiducial_wavelength']
 
-    Xs = [c.X_as for c in cc]
-    Ys = [c.Y_as for c in cc]
+    xs = [c.X_as for c in cc]
+    ys = [c.Y_as for c in cc]
     if showlamrms:
-        Ss = [0.] * len(cc)
+        ss = [0.] * len(cc)
         for i in range(len(cc)):
             if cc[i].lamrms is not None:
                 if np.isfinite(cc[i].lamrms):
-                    Ss[i] = cc[i].lamrms
+                    ss[i] = cc[i].lamrms
 
-        c, low, upp = sigmaclip(Ss)
-        Smdn = np.median(c)
-        Sstd = np.nanstd(c)
+        c, low, upp = sigmaclip(ss)
+        smdn = np.median(c)
+        sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
-              (len(cc), (len(cc) - len(c)), Smdn, Sstd))
-        smx = Smdn + 3. * Sstd
-        smn = Smdn - 3. * Sstd
+              (len(cc), (len(cc) - len(c)), smdn, sstd))
+        smx = smdn + 3. * sstd
+        smn = smdn - 3. * sstd
         if smn < 0.:
             smn = 0.
         cbtitle = "Wavelength RMS [nm]"
         outf = "cube_lambdarms.pdf"
     else:
-        Ss = [c.trace_sigma for c in cc]
+        ss = [c.trace_sigma for c in cc]
         smx = 2
         smn = 0.8
         cbtitle = "RMS trace width [pix]"
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(Xs, Ys, marker='H', linewidth=0, s=50, c=Ss, vmin=smn, vmax=smx)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
     pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(-25, 25)
     pl.ylim(-25, 25)
@@ -110,8 +110,8 @@ def checkCube(cubename, showlamrms=False, savefig=False):
         pl.show()
 
 
-def checkSpec(specname, corrname='std-correction.npy',
-              redshift=0, smoothing=0, savefig=False, savespec=False):
+def check_spec(specname, corrname='std-correction.npy',
+               redshift=0, smoothing=0, savefig=False, savespec=False):
     """Plot a spectrum.
 
     This function can produce an ascii spectrum suitable for uploading
@@ -119,9 +119,9 @@ def checkSpec(specname, corrname='std-correction.npy',
     spectrum.
 
     Args:
-        specname (str): name of spectrum numpy file, typically prefixed with "sp_"
+        specname (str): name of spectrum numpy file, usually prefixed with "sp_"
         corrname (str): name of the calibration correction numpy file
-        redshift (float): readshift for wavelength scale
+        redshift (float): redshift for wavelength scale
         smoothing (int): number of pixels to smooth over
         savefig (bool): save a pdf of the plot
         savespec (bool): save an ascii spectrum
@@ -154,7 +154,6 @@ def checkSpec(specname, corrname='std-correction.npy',
         else:
             obj = ''
     else:
-        hdr = ''
         obj = ''
 
     print "Plotting spectrum in %s" % specname
@@ -210,14 +209,14 @@ def checkSpec(specname, corrname='std-correction.npy',
     pred = specname.lstrip("sp_STD-")
     pred = pred.split("_")[0]
     pred = pred.lower().replace("+", "").replace("-", "_")
-    if pred in SS.Standards:
+    if pred in Stds.Standards:
         # Remove nm to Ang conversion (?)
         spec *= 10.
         skyspec *= 10.
         stdspec *= 10.
 
         # Get reference spectrum
-        standard = SS.Standards[pred]
+        standard = Stds.Standards[pred]
         slam = standard[:, 0]
         sflx = standard[:, 1] * 1.e-16
 
@@ -238,7 +237,7 @@ def checkSpec(specname, corrname='std-correction.npy',
         spec = spec / rat
 
     # Set wavelength range
-    OK = (lam > 3800) & (lam < maxwl)
+    ok = (lam > 3800) & (lam < maxwl)
 
     # Apply redshift
     lamz = lam / (1 + redshift)
@@ -248,36 +247,36 @@ def checkSpec(specname, corrname='std-correction.npy',
     # Plot limits
     pl.xlim(3600, maxwl + 200)
 
-    mx = np.nanmax(spec[OK])
+    mx = np.nanmax(spec[ok])
     pl.ylim(-mx / 10, mx + (mx / 20))
 
     # No smoothing
     if smoothing == 0:
-        pl.step(lamz[OK], spec[OK], linewidth=3)  # Plot data
+        pl.step(lamz[ok], spec[ok], linewidth=3)  # Plot data
     # Smoothing
     else:
         if smoothing > 5:
             order = 2
         else:
             order = 1
-        smoothed = scipy.signal.savgol_filter(spec[OK], smoothing, order)
-        pl.step(lamz[OK], smoothed, linewidth=3)  # Plot smoothed data
+        smoothed = scipy.signal.savgol_filter(spec[ok], smoothing, order)
+        pl.step(lamz[ok], smoothed, linewidth=3)  # Plot smoothed data
 
     # Legend for plot
     legend = ["obj", ]
 
     # Overplot sky spectrum
     if skyspec is not None:
-        pl.step(lamz[OK], skyspec[OK])
+        pl.step(lamz[ok], skyspec[ok])
         legend.append("sky")
 
     # Overplot standard deviation spectrum
     if stdspec is not None:
-        pl.step(lamz[OK], stdspec[OK])
+        pl.step(lamz[ok], stdspec[ok])
         legend.append("err")
 
     # Overplot reference spectrum
-    if pred in SS.Standards:
+    if pred in Stds.Standards:
         print "Overplotting %s reference spectrum" % pred
         legend.append("ref")
         pl.plot(slam, sflx)
@@ -293,7 +292,8 @@ def checkSpec(specname, corrname='std-correction.npy',
 
     # Save fig to file
     if savefig:
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + '_SEDM.pdf'
+        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+               '_SEDM.pdf'
         pl.savefig(outf)
         print "Figure saved to " + outf
     else:
@@ -304,7 +304,8 @@ def checkSpec(specname, corrname='std-correction.npy',
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + '_SEDM.txt'
+        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+               '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
         header += "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
@@ -336,8 +337,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.cube is not None:
-        checkCube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
+        check_cube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
     if args.spec is not None:
-        checkSpec(args.spec, corrname=args.corrname, redshift=args.redshift,
-                  smoothing=args.smoothing,
-                  savefig=args.savefig, savespec=args.savespec)
+        check_spec(args.spec, corrname=args.corrname, redshift=args.redshift,
+                   smoothing=args.smoothing,
+                   savefig=args.savefig, savespec=args.savespec)

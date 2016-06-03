@@ -41,7 +41,7 @@ import scipy.stats
 from numpy.polynomial.chebyshev import chebfit
 from scipy.interpolate import interp1d
 
-import NPK.Standards as SS
+import NPK.Standards as Stds
 import Wavelength
 
 
@@ -57,7 +57,7 @@ def handle_corr(filename, outname='corrected.npy'):
     erg_s_cm2_ang = dat['std-correction'] * 1e-16
     maxnm = dat['std-maxnm']
 
-    object = filename.split('-')[1].split('.')[0]
+    objname = filename.split('-')[1].split('.')[0]
 
     pl.figure(1)
     pl.clf()
@@ -70,7 +70,7 @@ def handle_corr(filename, outname='corrected.npy'):
 
         pl.xlabel("Wavelength [nm]")
         pl.ylabel("Correction [erg/s/cm cm/Ang]")
-        pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % object)
+        pl.title("ph/10 m/nm to erg/s/cm2/Ang from %s" % objname)
 
         pl.savefig("corr_" + os.path.splitext(filename)[0] + ".pdf")
 
@@ -158,15 +158,15 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         pred = pred.split("_")[0]
         legend.append(pred)
         pred = pred.lower().replace("+", "").replace("-", "_")
-        print ifile, pred, pred in SS.Standards
+        print ifile, pred, pred in Stds.Standards
         # Are we in our list of standard stars?
-        if pred not in SS.Standards:
+        if pred not in Stds.Standards:
             print("File named '%s' is reduced to '%s' and no such standard "
                   "seems to exist." % (ifile, pred))
             continue
         # Record median correction in ROI
-        ROI = (ll > 600) & (ll < 850)
-        corr_vals.append(np.median(correction[ROI]))
+        roi = (ll > 600) & (ll < 850)
+        corr_vals.append(np.median(correction[roi]))
         # Normalize each correction by the median value
         correction /= corr_vals[-1]
         corrs.append(correction)
