@@ -428,9 +428,34 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
-                    if not os.path.exists(destfil):
-                        nc, ns = docp(src, destfil, onsky=False, verbose=True)
-                        ncp += nc
+                    exptime = hdr['EXPTIME']
+                    # Check for dome exposures
+                    if 'dome' in obj:
+                        if exptime > 100. and ('Hal' in obj and 
+                                               'Xe' not in obj and
+                                               'Hg' not in obj and 
+                                               'Cd' not in obj):
+                            # Copy dome images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
+                    # Check for arcs
+                    elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
+                        if exptime > 25.:
+                            # Copy arc images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
+                    # Check for biases
+                    elif 'bias' in obj:
+                        if exptime <= 0.:
+                            # Copy bias images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
             else:
                 print "Truncated file: %s" % src
 
@@ -493,10 +518,11 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 exptime = hdr['EXPTIME']
                 # Check for dome exposures
                 if 'dome' in obj:
-                    if exptime > 100. and (
-                                    'Hal' in obj and 'Xe' not in obj and
-                                    'Hg' not in obj and 'Cd' not in obj):
-                    # Copy dome images
+                    if exptime > 100. and ('Hal' in obj and 
+                                           'Xe' not in obj and
+                                           'Hg' not in obj and 
+                                           'Cd' not in obj):
+                        # Copy dome images
                         nc, ns = docp(src, destfil, onsky=False,
                                       verbose=True)
                         ncp += nc
