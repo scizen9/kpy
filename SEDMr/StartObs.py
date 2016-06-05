@@ -708,7 +708,7 @@ def ObsLoop(rawlist=None, redd=None):
                 now = ephem.now()
                 if now >= sunrise:
                     # No new observations and sun is probably up!
-                    print("No new images for %d minutes and UT = %02d:%02d >= "
+                    print("No new images for %d minutes and UT = %02d:%02d > "
                           "%02d:%02d so sun is up!" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
@@ -717,7 +717,7 @@ def ObsLoop(rawlist=None, redd=None):
                     # Normal termination
                     ret = True
                 else:
-                    print("No new image for %d minutes but UT = %02d:%02d < "
+                    print("No new image for %d minutes but UT = %02d:%02d <= "
                           "%02d:%02d, so sun is still down, keep waiting" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
