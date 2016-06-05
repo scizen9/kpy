@@ -96,13 +96,13 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         if fit.status == 1:
             sumoff += (fit.params[1] - skyline) * fit.params[0]
             sumscale += fit.params[0]
-        pl.plot(lamgrid[roi], NFit.gaussian4(fit.params, lamgrid[roi]))
+            pl.plot(lamgrid[roi], NFit.gaussian4(fit.params, lamgrid[roi]))
+            dxnm = fit.params[1] - skyline
+        else:
+            dxnm = 0.
 
-        dxnm = fit.params[1] - skyline
-
-        print "line: %6.1f (%6.1f), dX = %3.2f nm shift" % (skyline,
-                                                            fit.params[0],
-                                                            dxnm)
+        print("line = %6.1f (%6.1f), status = %d, dX = %3.2f nm shift" %
+              (skyline, fit.params[0], fit.status, dxnm))
 
     if sumscale > 0.:
         dxnm = sumoff / sumscale
