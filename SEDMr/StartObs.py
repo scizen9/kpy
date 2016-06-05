@@ -582,7 +582,7 @@ def ObsLoop(rawlist=None, redd=None):
     oldcals = False
     # Source directory is most recent raw dir
     srcdir = rawlist[-1]
-    # Outpur directory is based on source dir
+    # Output directory is based on source dir
     outdir = os.path.join(redd, srcdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
     if not os.path.exists(outdir):
