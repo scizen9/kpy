@@ -576,12 +576,22 @@ def ObsLoop(rawlist=None, redd=None):
     p60.elevation = 1706
     sun = ephem.Sun()
 
+    # Source directory is most recent raw dir
+    srcdir = rawlist[-1]
+    utdir = int(srcdir.split('/')[-1])
+    # Get current time
+    now = ephem.now()
+    utdate = now.tuple()[0]*10000 + now.tuple()[1]*100 + now.tuple()[2]
+    # If our latest directory is today or earlier and the sun is up, exit
+    if utdir <= utdate:
+        sun.compute(p60)
+        if sun.alt > 0.:
+            print "Latest raw dir is today or earlier and sun is up."
+            return True
     # Default return value
     ret = False
     # Did we get our cals from a previous night?
     oldcals = False
-    # Source directory is most recent raw dir
-    srcdir = rawlist[-1]
     # Output directory is based on source dir
     outdir = os.path.join(redd, srcdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
