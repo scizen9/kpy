@@ -578,16 +578,6 @@ def ObsLoop(rawlist=None, redd=None):
 
     # Source directory is most recent raw dir
     srcdir = rawlist[-1]
-    utdir = int(srcdir.split('/')[-1])
-    # Get current time
-    now = ephem.now()
-    utdate = now.tuple()[0]*10000 + now.tuple()[1]*100 + now.tuple()[2]
-    # If our latest directory is today or earlier and the sun is up, exit
-    if utdir <= utdate:
-        sun.compute(p60)
-        if sun.alt > 0.:
-            print "Latest raw dir is today or earlier and sun is up."
-            return True
     # Default return value
     ret = False
     # Did we get our cals from a previous night?
@@ -739,7 +729,7 @@ def ObsLoop(rawlist=None, redd=None):
     # END: ObsLoop
 
 
-def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
+def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
@@ -749,6 +739,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     Args:
         rawd (str): raw directory, should be /scr2/sedm/raw
         redd (str): reduced directory, should be like /scr2/sedm/redux
+        wait (bool): wait for new directory, else start right away
 
     Returns:
         None
@@ -760,6 +751,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
 
     # Infinite loop
     dobs = True
+    stat = True
     # Keep track of iterations
     its = 0
     # Get all raw directories
@@ -768,13 +760,14 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     nraw = len(rawlist)
     print("Found %d raw directories in %s: putting reduced data in %s" %
           (nraw, rawd, redd))
+    if not wait:
+        stat = ObsLoop(rawlist, redd)
+        its += 1
+        print("Finished SEDM observing iteration %d in raw dir %s" %
+              (its, rawlist[-1]))
     try:
         while dobs:
-            stat = ObsLoop(rawlist, redd)
             if stat:
-                its += 1
-                print("Finished SEDM observing iteration %d in raw dir %s" %
-                      (its, rawlist[-1]))
                 print "Now we wait until we get a new raw directory"
                 waiting = True
                 while waiting:
@@ -797,6 +790,10 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
                         print("UT = %02d:%02d No new directories yet, "
                               "so keep waiting" % (gm.tm_hour, gm.tm_min))
                         sys.stdout.flush()
+            stat = ObsLoop(rawlist, redd)
+            its += 1
+            print("Finished SEDM observing iteration %d in raw dir %s" %
+                  (its, rawlist[-1]))
     # Handle a ctrl-C
     except KeyboardInterrupt:
         sys.exit("Exiting")
@@ -813,7 +810,9 @@ if __name__ == '__main__':
                         help='Input raw directory (/scr2/sedm/raw)')
     parser.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
                         help='Output reduced directory (/scr2/sedm/redux)')
+    parser.add_argument('--wait', action="store_true", default=False,
+                        help='Wait for new directory first')
 
     args = parser.parse_args()
 
-    go(rawd=args.rawdir, redd=args.reduxdir)
+    go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait)
