@@ -60,13 +60,14 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         
         s = s[s[:,1]< 2000]
         
-        #Select bright magnitudes
-        s = s[s[:,2]<np.percentile(s[:,2], 10)]
         #Select round sources (ellipticity is 1-axis_ratio)
-        s = s[s[:,7]<0.1]
-        
+        s = s[s[:,7]<np.percentile(s[:,7], 15)]
+        #Select bright magnitudes
+        s = s[s[:,2]<np.percentile(s[:,2], 15)]
+        print "number of sources", len(s)
+ 
         focpos.append(pos)
-        fwhms.append(np.nanmedian(s[:,6]*0.394))
+        fwhms.append(np.nanmean(s[:,6]*0.394))
         std_fwhm.append(np.std(s[:,6]*0.394))
     
     focpos = np.array(focpos)
@@ -82,7 +83,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     if (plot==True):
         plt.title("Best focus:%.2f"% x[np.argmin(p(x))])
-        with open("/tmp/focus", "a") as f:
+        with open("/tmp/focus", "w") as f:
             f.write(str(focpos))
             f.write(str(fwhms))
         plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
