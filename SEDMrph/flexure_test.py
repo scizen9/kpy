@@ -11,12 +11,19 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from matplotlib import pylab as plt
 import argparse
-import fits_utils
-
+import pyfits as pf
 
 
 plotdir="/Users/nadiablago/Documents/Projects/SEDM/flex"
 
+def get_par(myfits, par):
+    '''
+    Returns the header parameter from the fits.
+    '''
+    hdu = pf.open(myfits)
+    header = hdu[0].header
+    return header[str.upper(par)]
+    
 def run_flexure_test(sexfiles, plotdir=plotdir):
     
     posfiles = []
@@ -88,7 +95,7 @@ if __name__ == '__main__':
         print "Please, add the directory containing reduced data as a parameter."
     else:
         files = glob.glob(os.path.join(reduced, "ifu*fits"))
-        files_hg = [f for f in files if "Calib:  Hg" in fits_utils.get_par(f, "OBJECT")]
+        files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
         
         sexfiles = sextractor.run_sex(files_hg, mask=False)
         
