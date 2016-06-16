@@ -5,6 +5,8 @@ Created on Thu Mar  3 19:23:29 2016
 @author: nadiablago
 """
 
+import matplotlib
+matplotlib.use("Agg")
 import rcred
 import subprocess
 import glob, os, time
@@ -12,8 +14,6 @@ import argparse
 import fitsutils
 import datetime
 import zeropoint
-import matplotlib
-matplotlib.use("Agg")
 
 def reduce_all_dir(photdir, overwrite=False):
     
@@ -44,7 +44,7 @@ def reduce_on_the_fly(photdir):
     time_curr = datetime.datetime.now()
     
     #Run this loop for 12h since the start.
-    while (time_curr-time_ini).total_seconds() < 12*3600.:
+    while (time_curr-time_ini).total_seconds() < 12.*3600:
         nfilesnew = glob.glob(os.path.join(photdir, "rc*fits"))
         if len(nfilesnew) == len(nfiles):
             time.sleep(10)

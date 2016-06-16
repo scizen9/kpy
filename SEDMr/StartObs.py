@@ -428,9 +428,34 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
-                    if not os.path.exists(destfil):
-                        nc, ns = docp(src, destfil, onsky=False, verbose=True)
-                        ncp += nc
+                    exptime = hdr['EXPTIME']
+                    # Check for dome exposures
+                    if 'dome' in obj:
+                        if exptime > 100. and ('Hal' in obj and 
+                                               'Xe' not in obj and
+                                               'Hg' not in obj and 
+                                               'Cd' not in obj):
+                            # Copy dome images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
+                    # Check for arcs
+                    elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
+                        if exptime > 25.:
+                            # Copy arc images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
+                    # Check for biases
+                    elif 'bias' in obj:
+                        if exptime <= 0.:
+                            # Copy bias images
+                            if not os.path.exists(destfil):
+                                nc, ns = docp(src, destfil, onsky=False,
+                                              verbose=True)
+                                ncp += nc
             else:
                 print "Truncated file: %s" % src
 
@@ -493,10 +518,11 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 exptime = hdr['EXPTIME']
                 # Check for dome exposures
                 if 'dome' in obj:
-                    if exptime > 100. and (
-                                    'Hal' in obj and 'Xe' not in obj and
-                                    'Hg' not in obj and 'Cd' not in obj):
-                    # Copy dome images
+                    if exptime > 100. and ('Hal' in obj and 
+                                           'Xe' not in obj and
+                                           'Hg' not in obj and 
+                                           'Cd' not in obj):
+                        # Copy dome images
                         nc, ns = docp(src, destfil, onsky=False,
                                       verbose=True)
                         ncp += nc
@@ -550,13 +576,13 @@ def ObsLoop(rawlist=None, redd=None):
     p60.elevation = 1706
     sun = ephem.Sun()
 
+    # Source directory is most recent raw dir
+    srcdir = rawlist[-1]
     # Default return value
     ret = False
     # Did we get our cals from a previous night?
     oldcals = False
-    # Source directory is most recent raw dir
-    srcdir = rawlist[-1]
-    # Outpur directory is based on source dir
+    # Output directory is based on source dir
     outdir = os.path.join(redd, srcdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
     if not os.path.exists(outdir):
@@ -682,7 +708,7 @@ def ObsLoop(rawlist=None, redd=None):
                 now = ephem.now()
                 if now >= sunrise:
                     # No new observations and sun is probably up!
-                    print("No new images for %d minutes and UT = %02d:%02d >= "
+                    print("No new images for %d minutes and UT = %02d:%02d > "
                           "%02d:%02d so sun is up!" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
@@ -691,7 +717,7 @@ def ObsLoop(rawlist=None, redd=None):
                     # Normal termination
                     ret = True
                 else:
-                    print("No new image for %d minutes but UT = %02d:%02d < "
+                    print("No new image for %d minutes but UT = %02d:%02d <= "
                           "%02d:%02d, so sun is still down, keep waiting" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
@@ -703,7 +729,7 @@ def ObsLoop(rawlist=None, redd=None):
     # END: ObsLoop
 
 
-def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
+def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
@@ -713,6 +739,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     Args:
         rawd (str): raw directory, should be /scr2/sedm/raw
         redd (str): reduced directory, should be like /scr2/sedm/redux
+        wait (bool): wait for new directory, else start right away
 
     Returns:
         None
@@ -724,6 +751,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
 
     # Infinite loop
     dobs = True
+    stat = True
     # Keep track of iterations
     its = 0
     # Get all raw directories
@@ -732,13 +760,15 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
     nraw = len(rawlist)
     print("Found %d raw directories in %s: putting reduced data in %s" %
           (nraw, rawd, redd))
+    print "Latest raw directory is %s" % rawlist[-1]
+    if not wait:
+        stat = ObsLoop(rawlist, redd)
+        its += 1
+        print("Finished SEDM observing iteration %d in raw dir %s" %
+              (its, rawlist[-1]))
     try:
         while dobs:
-            stat = ObsLoop(rawlist, redd)
             if stat:
-                its += 1
-                print("Finished SEDM observing iteration %d in raw dir %s" %
-                      (its, rawlist[-1]))
                 print "Now we wait until we get a new raw directory"
                 waiting = True
                 while waiting:
@@ -761,6 +791,11 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux'):
                         print("UT = %02d:%02d No new directories yet, "
                               "so keep waiting" % (gm.tm_hour, gm.tm_min))
                         sys.stdout.flush()
+            print "Latest raw directory is %s" % rawlist[-1]
+            stat = ObsLoop(rawlist, redd)
+            its += 1
+            print("Finished SEDM observing iteration %d in raw dir %s" %
+                  (its, rawlist[-1]))
     # Handle a ctrl-C
     except KeyboardInterrupt:
         sys.exit("Exiting")
@@ -777,7 +812,9 @@ if __name__ == '__main__':
                         help='Input raw directory (/scr2/sedm/raw)')
     parser.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
                         help='Output reduced directory (/scr2/sedm/redux)')
+    parser.add_argument('--wait', action="store_true", default=False,
+                        help='Wait for new directory first')
 
     args = parser.parse_args()
 
-    go(rawd=args.rawdir, redd=args.reduxdir)
+    go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait)

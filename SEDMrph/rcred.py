@@ -745,14 +745,17 @@ if __name__ == '__main__':
                    OR
                    - The name of the directory which you want to reduce [-d].'''
 
-    #if (len(myfiles)>0):
-    create_masterbias()
-    create_masterflat()  
+    if (False): #len(myfiles)>0):
+    	create_masterbias()
+    	create_masterflat()  
     
     #Reduce them
     for f in myfiles:
         print f
         make_mask_cross(f)
         if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
-            reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite) 
+	    try:
+            	reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite) 
+	    except:
+		pass
     
