@@ -68,9 +68,6 @@ def run_flexure_test(sexfiles, plotdir=plotdir):
         c.set_label("Deviation [pixels]")
         plt.savefig(os.path.join(plotdir, "%s_vs_%s_XY.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
         plt.clf()
-        
-    
-    
 
      
 if __name__ == '__main__':
@@ -85,7 +82,7 @@ if __name__ == '__main__':
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('reduced', type=str, help='Directory containing the reduced fits for the night.')
+    parser.add_argument('raw', type=str, help='Directory containing the raw fits for the night.')
 
     args = parser.parse_args()
     
@@ -97,10 +94,11 @@ if __name__ == '__main__':
         files = glob.glob(os.path.join(reduced, "ifu*fits"))
         files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
         
-        sexfiles = sextractor.run_sex(files_hg, mask=False)
-        
-        plotdir = os.path.join(reduced, "stats")
-        if (not os.path.isdir(plotdir)):
-            os.makedirs(plotdir)
+        if (len(files_hg)>1):
+            sexfiles = sextractor.run_sex(files_hg, mask=False)
             
-        run_flexure_test(sexfiles, plotdir=plotdir)
+            plotdir = os.path.join(reduced, "stats")
+            if (not os.path.isdir(plotdir)):
+                os.makedirs(plotdir)
+                
+            run_flexure_test(sexfiles, plotdir=plotdir)
