@@ -29,17 +29,21 @@ def run_sex(flist, mask=True):
         
     newlist = []
     for f in flist:
-        f = os.path.abspath(f)
-        if (mask):
-            masked = rcred.get_masked_image(f)
-        else:
-            masked = f
-        cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], masked) 
-        subprocess.call(cmd, shell=True)
-        print cmd
-        newimage = os.path.join(sexdir, os.path.basename(f).replace(".fits", ".sex")) 
-        shutil.move("image.sex", newimage)
-        newlist.append(newimage)
+        try:
+            f = os.path.abspath(f)
+            if (mask):
+                masked = rcred.get_masked_image(f)
+            else:
+                masked = f
+            cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], masked) 
+            subprocess.call(cmd, shell=True)
+            print cmd
+            newimage = os.path.join(sexdir, os.path.basename(f).replace(".fits", ".sex")) 
+            shutil.move("image.sex", newimage)
+            newlist.append(newimage)
+        except IOError:
+            print "IOError detected reading file",f
+            pass
         
     return newlist
         
@@ -57,7 +61,6 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     std_fwhm = []
     for i, f in enumerate(sexfileslist):
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
-	print fits
         FF = pf.open(fits)
         pos= float(FF[0].header['focpos'])
 
