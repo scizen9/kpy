@@ -15,9 +15,11 @@ import rcred
 from matplotlib import pylab as plt
 
 
-def run_sex(flist):
+def run_sex(flist, mask=True):
     
     d = os.path.dirname(flist[0])
+    if d == "":
+        d = "."
     os.chdir(d)
 
     #Create the directory where the sextracted images are going to go.
@@ -28,7 +30,10 @@ def run_sex(flist):
     newlist = []
     for f in flist:
         f = os.path.abspath(f)
-        masked = rcred.get_masked_image(f)
+        if (mask):
+            masked = rcred.get_masked_image(f)
+        else:
+            masked = f
         cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], masked) 
         subprocess.call(cmd, shell=True)
         print cmd
@@ -66,7 +71,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         s = s[s[:,7]<0.1]
         
         focpos.append(pos)
-        fwhms.append(np.nanmedian(s[:,6]*0.394))
+        fwhms.append(np.nanmean(s[:,6]*0.394))
         std_fwhm.append(np.std(s[:,6]*0.394))
     
     focpos = np.array(focpos)
