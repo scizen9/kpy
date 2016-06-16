@@ -55,7 +55,9 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         1. - The best focus values as interpolated from the images.
         2. - The sigma whithin which we should look for a finer focus.
     '''
-    
+    sexfileslist = list(sexfileslist)    
+    sexfileslist.sort()
+ 
     focpos = []
     fwhms = []
     std_fwhm = []
@@ -67,16 +69,21 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         s = np.genfromtxt(f, comments="#")
         
         s = s[s[:,1]< 2000]
+
+	#Only objects with FWHM less than 20 pixels...
+        s = s[s[:,6] < 20]
         
         #Select round sources (ellipticity is 1-axis_ratio)
-        s = s[s[:,7]<np.percentile(s[:,7], 15)]
+        s = s[s[:,7]<np.percentile(s[:,7], 30)]
         #Select bright magnitudes
-        s = s[s[:,2]<np.percentile(s[:,2], 15)]
-        print "number of sources", len(s)
+        s = s[s[:,2]<np.percentile(s[:,2], 20)]
+        print f, "number of sources", len(s)
  
         focpos.append(pos)
         fwhms.append(np.nanmean(s[:,6]*0.394))
-        std_fwhm.append(np.std(s[:,6]*0.394))
+	mad = np.median(np.abs(s[:,6] - np.nanmean(s[:,6])))/0.67448975019608171 * 0.394
+        #std_fwhm.append(np.std(s[:,6]*0.394))
+        std_fwhm.append(mad)
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
@@ -86,7 +93,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     x = np.linspace(np.min(focpos), np.max(focpos), 100)
     p = np.poly1d(coefs)
-    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs,std_fwhm, p(x)
+    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs,std_fwhm
     
     
     if (plot==True):
