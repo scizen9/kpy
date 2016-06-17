@@ -37,6 +37,7 @@ def run_flexure_test(sexfiles, plotdir):
             posfiles.append(sf.replace(".sex", ".pos"))
             
         c0 = np.genfromtxt(posfiles[0])
+        flexure = []
         for f in posfiles[1:]:
             print f
             c1 = np.genfromtxt(f)
@@ -53,7 +54,10 @@ def run_flexure_test(sexfiles, plotdir):
             #Only consider it is a match if the distance is less than 10 pixels.
             matches = matches[d3d.value<10]
             d3d = d3d[d3d.value<10]
-    
+
+            #Add the flexure for plotting later.
+            flexure.append(np.median(d3d.value))
+            
             out.write("%s,%s,%.3f\n"%(os.path.basename(posfiles[0]), os.path.basename(f), np.median(d3d.value)))
             
             plt.hist(d3d, bins=50)
@@ -67,6 +71,12 @@ def run_flexure_test(sexfiles, plotdir):
             c.set_label("Deviation [pixels]")
             plt.savefig(os.path.join(plotdir, "%s_vs_%s_XY.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
             plt.clf()
+            
+        plt.plot(flexure)
+        plt.xlabel("Exposure number")
+        plt.ylabel("Median (flexure) [pixels]")
+        plt.savefig(os.path.join(plotdir, "flexure.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
+        plt.clf()
 
      
 if __name__ == '__main__':
