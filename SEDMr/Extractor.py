@@ -178,7 +178,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # report position and shape
     ellipse = (a, b, xc, yc, theta * (180. / np.pi))
     print("PSF FIT on IFU:  z,a,b,x,y,theta = %f, %f, %f, %f, %f, %f" %
-          (z, ellipse))
+          (z, a, b, xc, yc, theta*180./np.pi))
     
     leff = (lmax+lmin)/2.0
     
