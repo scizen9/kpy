@@ -11,11 +11,12 @@ import subprocess
 import numpy as np
 import pyfits as pf
 import rcred
+import datetime
 
 from matplotlib import pylab as plt
 
 
-def run_sex(flist, mask=True):
+def run_sex(flist, mask=False):
     
     d = os.path.dirname(flist[0])
     if d == "":
@@ -108,7 +109,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         if (interactive):
             plt.show()
         else:
-            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus.png"))
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
     return x[np.argmin(p(x))], coefs[0]
     
 
@@ -124,8 +125,12 @@ def analyse_image(sexfile):
 
 
     s = np.genfromtxt(sexfile, comments="#")
+
+    if (s is None or s.ndim==0 or len(s)==0):
+        return 0,0,0
+
     #Select round sources (ellipticity is 1-axis_ratio)
-    s = s[s[:,7]<0.1]
+    s = s[s[:,7]<0.25]
 
     #Select FWHM at least 1.2 arcsec and lower than 6
     s = s[ (s[:,6]*0.394>1.2)*(s[:,6]*0.394<6)]

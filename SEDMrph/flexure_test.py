@@ -4,7 +4,8 @@ Created on Wed Jun 15 20:31:17 2016
 
 @author: nadiablago
 """
-
+import matplotlib
+matplotlib.use("Agg")
 import sextractor
 import glob, os
 import numpy as np
@@ -75,7 +76,7 @@ def run_flexure_test(sexfiles, plotdir):
         plt.plot(flexure)
         plt.xlabel("Exposure number")
         plt.ylabel("Median (flexure) [pixels]")
-        plt.savefig(os.path.join(plotdir, "flexure.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
+        plt.savefig(os.path.join(plotdir, "flexure.png"))
         plt.clf()
 
      
