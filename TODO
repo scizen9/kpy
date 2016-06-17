@@ -1,13 +1,14 @@
-Plot fitted ellipse for standard star image pdfs
-Fix dependance on older version of numpy
-Create repository for just SEDM reductions
-Make independant of python distribution (Ureka, e.g.)
+Add measured readnoise derived from bias images as header keyword
 Add option to specify location and shape of extraction aperture
+Create repository for just SEDM reductions
+Make independent of python distribution (Ureka, e.g.)
+Fix dependence on older version of numpy
 Test possibility for finding peaks in ifu images
-Add the following keywords: INSTRUME, TELESCOP, OBSERVER, FILTER
-sort segments on y-value (apparently no way to do this in SExtractor)
 check variance values
+sort segments on y-value (apparently no way to do this in SExtractor)
 
+(DONE, rsw, 15-JUN-2016) Add the following keywords: INSTRUME, TELESCOP, OBSERVER, FILTER
+(DONE, jdn 30-MAY-2016) Plot fitted ellipse for standard star image pdfs
 (DONE, jdn 15-DEC-2015) add variance to single exposure extractions
 (DONE, jdn 15-DEC-2015) Add object name title to ap placing GUI
 (DONE, rsw 15-NOV-2015) Change directory structure so that dates are numeric 
