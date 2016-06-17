@@ -86,18 +86,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    reduced = args.reduced
+    raw = args.raw
     
-    if (reduced is None):
-        print "Please, add the directory containing reduced data as a parameter."
+    if (raw is None):
+        print "Please, add the directory containing raw data as a parameter."
     else:
-        files = glob.glob(os.path.join(reduced, "ifu*fits"))
+        files = glob.glob(os.path.join(raw, "ifu*fits"))
         files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
         
         if (len(files_hg)>1):
             sexfiles = sextractor.run_sex(files_hg, mask=False)
             
-            plotdir = os.path.join(reduced, "stats")
+            plotdir = os.path.join(raw, "stats")
             if (not os.path.isdir(plotdir)):
                 os.makedirs(plotdir)
                 
