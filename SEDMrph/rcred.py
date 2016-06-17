@@ -311,7 +311,7 @@ def copy_ref_calib(curdir, calib="Flat"):
         
         
 
-def solve_astrometry(img, radius=1, with_pix=True, overwrite=False):
+def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.
@@ -331,9 +331,9 @@ def solve_astrometry(img, radius=1, with_pix=True, overwrite=False):
     mask = "mask.fits"
 
     cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s \
-      -W none -B none -P none -M none -R none -S none --overwrite %s "%(ra, dec, radius, astro, img)
+      -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
-        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.425"
+        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
     print cmd
 
     subprocess.call(cmd, shell=True)
