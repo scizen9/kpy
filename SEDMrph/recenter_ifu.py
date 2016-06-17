@@ -33,7 +33,7 @@ logger = logging.getLogger('listener')
 
 
 
-def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
+def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.

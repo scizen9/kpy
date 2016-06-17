@@ -10,6 +10,7 @@ import datetime
 import coordinates_conversor
 import os, subprocess
 import numpy as np
+import logging
 
 def get_sao(radius=2000):
     
@@ -19,28 +20,41 @@ def get_sao(radius=2000):
     Palomar.lon, Palomar.lat = '243.1361', '33.3558'    
     
     '''
-    
+   
+
+    #Log into a file
+    FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+    root_dir = "/scr2/sedm/logs/"
+    now = datetime.datetime.utcnow()
+    timestamp=datetime.datetime.isoformat(now)
+    timestamp=timestamp.split("T")[0]
+    logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
+    logger = logging.getLogger('sao')
+ 
     d = datetime.datetime.now()
     utc = d.utcnow()
     
     #Get reasonably high target
-    ra = 15*((utc.hour+0.01)%24) + 15*(utc.minute/60.)
+    ra = 15*((utc.hour+10)%24) + 15*(utc.minute/60.) 
     dec = 40
     
     hra, hdec  =  coordinates_conversor.deg2hour(ra, dec)
+
+    logger.info( "Coordinates to search %s %s"%(hra,hdec))
 
     sao = get_sao_rec(hra, hdec, radius)
     while (len(sao) == 0):
         radius = radius+1000
         sao = get_sao_rec(hra, hdec, radius)
-    print "Found %d"%len(sao)
+    logger.info( "Found %d"%len(sao))
     if np.ndim(sao) > 1:
         np.random.shuffle(sao)
     
-    print "Returning ", sao[0][1], sao[0][2]
+    logger.info( "Returning %s %s"%(sao[0][1], sao[0][2]))
     
     saora, saodec  =  coordinates_conversor.hour2deg(sao[0][1], sao[0][2])
     
+
     return "SAO%s"%(sao[0][0]), saora, saodec 
 
 def get_sao_rec(hra, hdec, radius):
