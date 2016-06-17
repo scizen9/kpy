@@ -124,11 +124,15 @@ def analyse_image(sexfile):
 
 
     s = np.genfromtxt(sexfile, comments="#")
+    
+    if (len(s)==0):
+        return 0,0,0
+        
     #Select round sources (ellipticity is 1-axis_ratio)
-    s = s[s[:,7]<0.1]
+    s = s[s[:,7]<0.25]
 
-    #Select FWHM at least 1.2 arcsec and lower than 6
-    s = s[ (s[:,6]*0.394>1.2)*(s[:,6]*0.394<6)]
+    #Select FWHM at least 0.5 arcsec and lower than 6
+    s = s[ (s[:,6]*0.394>0.5)*(s[:,6]*0.394<6)]
     
     nsources = len(s)
     
