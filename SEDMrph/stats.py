@@ -11,7 +11,7 @@ import fitsutils
 import coordinates_conversor as cc
 import numpy as np
 import sextractor 
-import pyraf as pf
+import pyfits as pf
 from matplotlib import pylab as plt
 
 def compile_stats_pointing():
@@ -89,14 +89,15 @@ def get_sextractor_stats(files):
     
     files.sort()
     #sexfiles = sextractor.run_sex(files)
-    sexfiles = [os.path.join(os.path.dirname(f), "sextractor", f.replace(".fits", ".sex")) for f in files]    
+    sexfiles = [os.path.join(os.path.join(os.path.dirname(f), "sextractor"), os.path.basename(f).replace(".fits", ".sex")) for f in files]    
     
+    sexfiles.sort()
     
     with open(os.path.join( os.path.dirname(files[0]), "stats/stats.log"), "w") as out:
         for i, f in enumerate(files):
             print sexfiles[i]
             if not os.path.isfile(sexfiles[i]):
-                sf =  sextractor.run_sex([f], mask=False)
+                sf =  sextractor.run_sex([f])
             else:
                 sf = sexfiles[i]
             print f
@@ -110,6 +111,7 @@ def get_sextractor_stats(files):
             
 def plot_stats(statfile):
     s = np.genfromtxt(statfile, delimiter=",", dtype=None)
+    s.sort(order="f1")
     s = s[s["f2"]>0]
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col')
     ax1.plot(s["f1"], s["f2"], ".-")
