@@ -117,7 +117,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
                                airmass=1.0):
     """ 
-     Returns index of spectra picked by Guassian fit.
+    Returns index of spectra picked by Guassian fit.
     
     NOTE: Index is counted against the array, not seg_id
     """
@@ -148,11 +148,11 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Initialize the first guess for the Gaussian
     xo = xi[np.argmax(np.nansum(grid_vs, axis=1))]
     yo = yi[np.argmax(np.nansum(grid_vs, axis=0))]
-    sigma_x = 1.
-    sigma_y = 1.3
+    sigma_x = 1.3
+    sigma_y = 1.
     amplitude = np.nanmax(grid_vs)
-    print("initial guess: z,x,y,a,b: %f, %f, %f, %f, %f" %
-          (amplitude, xo, yo, sigma_x, sigma_y))
+    print("initial guess: z,a,b,x,y: %f, %f, %f, %f, %f" %
+          (amplitude, sigma_x, sigma_y, xo, yo))
     
     # create data
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, 
@@ -177,7 +177,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     
     # report position and shape
     ellipse = (a, b, xc, yc, theta * (180. / np.pi))
-    print "PSF FIT on IFU:  Z,a,b,X,Y,theta = ", z, ellipse
+    print("PSF FIT on IFU:  z,a,b,x,y,theta = %f, %f, %f, %f, %f, %f" %
+          (z, a, b, xc, yc, theta*180./np.pi))
     
     leff = (lmax+lmin)/2.0
     
