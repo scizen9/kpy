@@ -4,15 +4,20 @@ Created on Sat May 21 10:26:37 2016
 
 @author: nadiablago
 """
-
+import datetime
 import glob, os
 import recenter_ifu
 import fitsutils
 import coordinates_conversor as cc
 import numpy as np
 import sextractor 
-import pyraf as pf
+import pyfits as pf
+import matplotlib
+matplotlib.use("Agg")
 from matplotlib import pylab as plt
+import time_utils
+import matplotlib.dates as md
+import argparse
 
 def compile_stats_pointing():
     ra = 0
@@ -88,10 +93,8 @@ def plot_stats_pointing():
 def get_sextractor_stats(files):
     
     files.sort()
-    #sexfiles = sextractor.run_sex(files)
-    sexfiles = [os.path.join(os.path.dirname(f), "sextractor", f.replace(".fits", ".sex")) for f in files]    
-    
-    
+    sexfiles = [os.path.join(os.path.join(os.path.dirname(f), "sextractor"), os.path.basename(f).replace(".fits", ".sex")) for f in files]    
+
     with open(os.path.join( os.path.dirname(files[0]), "stats/stats.log"), "w") as out:
         for i, f in enumerate(files):
             print sexfiles[i]
@@ -103,20 +106,63 @@ def get_sextractor_stats(files):
             hd = pf.open(files[i])[0].header
             try:
                 jd = hd["JD"]
+		object = hd["OBJECT"]
                 ns, fwhm, ellipticity = sextractor.analyse_image(sf)
-                out.write("%s,%.3f,%d,%.2f,%.3f\n"%(os.path.abspath(f),jd,ns,fwhm,ellipticity))
+                out.write("%s,%s,%.3f,%d,%.2f,%.3f\n"%(os.path.abspath(f),object,jd,ns,fwhm,ellipticity))
             except:
                 pass
             
 def plot_stats(statfile):
     s = np.genfromtxt(statfile, delimiter=",", dtype=None)
-    s = s[s["f2"]>0]
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col')
-    ax1.plot(s["f1"], s["f2"], ".-")
+    s = s[s["f3"]>1]
+    s = s[~np.isnan(s["f4"])]
+
+    hours = np.array([ (datetime.datetime.strptime(time_utils.jd2utc(jd), "%Y-%m-%d %H:%M:%S.%f")) for jd in s["f2"]])
+
+    xfmt = md.DateFormatter('%H:%M')
+
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    f.set_figwidth(12) 
+    ax1.plot(hours, s["f3"], ".-")
     ax1.set_title('Number of bright sources extracted')
-    ax2.plot(s["f1"], s["f3"], ".-")
+    ax2.plot(hours, s["f4"], ".-")
     ax2.set_title('FWHM [arcsec]')
-    ax3.plot(s["f1"], s["f4"], ".-")
+    ax3.plot(hours, s["f5"], ".-")
     ax3.set_title('Ellipticity')
     #ax4.plot(x, 2 * y ** 2 - 1, color='r')
-    plt.show()
+    ax1.xaxis.set_major_formatter(xfmt)
+    ax2.xaxis.set_major_formatter(xfmt)
+    ax3.xaxis.set_major_formatter(xfmt)
+
+    labels = ax1.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+    labels = ax2.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+    labels = ax3.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+    plt.savefig(statfile.replace(".log", ".png"))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=\
+        '''
+
+        Runs astrometry.net on the image specified as a parameter and returns 
+        the offset needed to be applied in order to center the object coordinates 
+        in the reference pixel.
+            
+        ''', formatter_class=argparse.RawTextHelpFormatter)
+
+
+    parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
+
+    args = parser.parse_args()
+    
+    photdir = args.photdir
+    
+    if (photdir is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+    get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*fits")))
+    plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 
