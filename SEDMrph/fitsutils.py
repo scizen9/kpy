@@ -399,7 +399,7 @@ def update_pars(myfits, pardic):
     
     for key, value in pardic.iteritems():
         header.set(key, value)
-    hdu.writeto(myfits, clobber=True)
+        hdu.writeto(myfits, clobber=True)
     
 def has_par(myfits, par):
     '''
