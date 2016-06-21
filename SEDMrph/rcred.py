@@ -609,7 +609,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
             destfile = os.path.join(target_dir, imname + "_f_b_a_%s_%s_0.fits"%(objectname, band))
             logger.info( "Looking if file %s exists: %s"%( destfile, \
                 (os.path.isfile(destfile) ) ) )
-            existing = existing and (os.path.isfile(os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band))) )
+            existing = existing and (os.path.isfile( destfile ) )
         if existing:
             return []
 
