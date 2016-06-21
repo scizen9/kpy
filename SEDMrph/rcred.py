@@ -504,7 +504,27 @@ def get_sequential_name(target_dir, name, i=0):
         
         return newname      
 
-
+def init_header_reduced(image):
+    '''
+    IQWCS = 1 or 0 / Indicates astrometry has been solved for the field
+    IQZEROPT =  1 or 0 /indicates if the zero point was calculated for the image    
+    SKYBKG = FLOAT / Average sky background given in counts    
+    SEEPIX = FLOAT  / Seeing expressed in pixels    
+    ZPCAT = 'String' / Catalog used to calculate zero point    
+    ZEROPTU = FLOAT  / Zero point uncertainty    
+    ZEROPT  = 'FLOAT'  / Zero point by comparison to catalog
+    '''
+    
+    pardic = {"IQWCS" : 0, \ 
+                "IQZEROPT" : 0,\
+                "SKYBKG": np.nan,\
+                "SEEPIX": np.nan,\
+                "ZPCAT" : "none", \
+                "ZEROPTU" : np.nan,\
+                "ZEROPT" : np.nan}
+    fitsutils.update_pars(image, pardic)
+    
+    
 def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
     '''
     Applies Flat field and bias calibrations to the image.
@@ -521,6 +541,8 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     
     print "Reducing image ", image    
 
+    imname = os.path.basename(image).replace(".fits", "")
+    
     try:
         objectname = fitsutils.get_par(image, "NAME").replace(" ","")+"_"+fitsutils.get_par(image, "FILTER")
     except:
@@ -626,7 +648,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for i, debiased_f in enumerate(slice_names):
         b = fitsutils.get_par(debiased_f, 'filter')
         
-        deflatted = "f_b_" + astro + objectname + "_%s.fits"%b
+        deflatted = imname + "f_b_" + astro + objectname + "_%s.fits"%b
 
         #Flat to be used for that filter
         flat = os.path.join(flatdir, "Flat_%s_%s_norm.fits"%(channel, b))
