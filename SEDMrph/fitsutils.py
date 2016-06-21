@@ -390,6 +390,17 @@ def update_par(myfits, par, value):
     header.set(par, value)
     hdu.writeto(myfits, clobber=True)
     
+def update_pars(myfits, pardic):
+    '''
+    Updates the fits files with the new parameter.
+    '''
+    hdu = pf.open(myfits)
+    header = hdu[0].header
+    
+    for key, value in pardic.iteritems():
+        header.set(key, value)
+    hdu.writeto(myfits, clobber=True)
+    
 def has_par(myfits, par):
     '''
     Updates the fits files with the new parameter.
