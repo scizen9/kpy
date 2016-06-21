@@ -19,8 +19,20 @@ import shutil
 import time_utils
 import time
 import datetime
+import logging
+import sextractor
 
-
+#Log into a file
+FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+#root_dir = "/tmp/logs/"
+root_dir = "/scr2/sedm/logs/"
+now = datetime.datetime.utcnow()
+timestamp=datetime.datetime.isoformat(now)
+timestamp=timestamp.split("T")[0]
+logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+logger = logging.getLogger('rcred')
+    
+    
 def create_masterbias(biasdir=None, channel='rc'):
     '''
     Combines slow and fast readout mode biases for the specified channel.
@@ -30,7 +42,7 @@ def create_masterbias(biasdir=None, channel='rc'):
     iraf.imred(_doprint=0)
     iraf.ccdred(_doprint=0)
     
-    if (biasdir == None) or biasdir=="": biasdir = "."
+    if (biasdir is None) or biasdir=="": biasdir = "."
         
     outs = "Bias_%s_slow.fits"%channel
     outf = "Bias_%s_fast.fits"%channel
@@ -38,13 +50,13 @@ def create_masterbias(biasdir=None, channel='rc'):
     doslow = True
     dofast = True
     if (os.path.isfile(os.path.join(biasdir,outs))): 
-        print outs,"master Bias exists!"
+        logger.warn( "%s master Bias exists!"%outs)
         doslow = False
     if ( os.path.isfile(os.path.join(biasdir,outf))):
-        print outs,"master Bias exists!"
+        logger.warn("%s master Bias exists!"%outs)
         dofast = False
     if(doslow or dofast):
-        print "Starting the Master Bias creation!"
+        logger.info("Starting the Master Bias creation!")
     else:
         return
 
@@ -64,8 +76,8 @@ def create_masterbias(biasdir=None, channel='rc'):
         except:
             pass
                 
-    print "Files for bias SLOW mode: ", lslowbias
-    print "Files for bias FAST mode: ", lfastbias
+    logger.info("Files for bias SLOW mode: %s"% lslowbias)
+    logger.info( "Files for bias FAST mode: %s"% lfastbias)
     
     if len(lfastbias) > 0 and dofast:
         bfile_fast ="lbias_fast_"+channel
@@ -74,7 +86,7 @@ def create_masterbias(biasdir=None, channel='rc'):
         iraf.imstat("@"+bfile_fast, Stdout="Bias_stats_fast")
         
         st = np.genfromtxt("Bias_stats_fast", names=True, dtype=None)
-        print st
+        logger.info("%s"%st)
         
         iraf.imcombine(input = "@"+bfile_fast, \
                     output = outf, \
@@ -99,7 +111,7 @@ def create_masterbias(biasdir=None, channel='rc'):
         iraf.imstat("@"+bfile_slow, Stdout="Bias_stats_slow")
         
         st = np.genfromtxt("Bias_stats_slow", names=True, dtype=None)
-        print st
+        logger.info("%s"%st)
         
         iraf.imcombine(input = "@"+bfile_slow, \
                     output = outs, \
@@ -129,13 +141,13 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     os.chdir(flatdir)
     
     if (len(glob.glob("Flat_%s*norm.fits"%channel)) == 4):
-        print "Master Flat exists!"
+        logger.info( "Master Flat exists!")
         return 
     if (len(glob.glob("Flat_%s*norm.fits"%channel)) > 0):
-        print "Some Master Flat exist!"
+        logger.info( "Some Master Flat exist!")
         return 
     else:
-        print "Starting the Master Flat creation!"
+        logger.info( "Starting the Master Flat creation!")
 
     bias_slow = "Bias_%s_slow.fits"%channel
     bias_fast = "Bias_%s_fast.fits"%channel
@@ -170,11 +182,11 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
                 else:
                     lsflat.append(f)
         except:
-            print "Error with retrieving parameters for file", f
+            logger.error( "Error with retrieving parameters for file %s"% f)
             pass
                 
-    print "Files for slow flat", lsflat
-    print "Files for fast flat", lfflat
+    logger.info( "Files for slow flat %s"% lsflat)
+    logger.info( "Files for fast flat %s"% lfflat)
     
     fsfile ="lflat_slow_"+channel
     np.savetxt(fsfile, np.array(lsflat), fmt="%s")
@@ -201,7 +213,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     #Slices the flats.
     debiased_flats = glob.glob("b_*.fits")
     for f in debiased_flats:
-        print "Slicing file", f
+        logger.info( "Slicing file %s"% f)
         slice_rc(f)
         #Remove the un-sliced file
         os.remove(f)
@@ -213,7 +225,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         out_norm = out.replace(".fits","_norm.fits")
 
         if (os.path.isfile(out_norm)):
-            print "Master Flat for filter %s exists. Skipping..."%b
+            logger.error( "Master Flat for filter %s exists. Skipping..."%b)
             continue
         
         lfiles = []
@@ -223,10 +235,10 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
                 lfiles.append(f)
 
         if len(lfiles) == 0:
-            print "WARNING!!! Could not find suitable flats for band %s"%b
+            logger.error( "WARNING!!! Could not find suitable flats for band %s"%b)
             continue
         if len(lfiles) < 3:
-            print "WARNING!!! Could find less than 3 flats for band %s. Skipping, as it is not reliable..."%b
+            logger.error( "WARNING!!! Could find less than 3 flats for band %s. Skipping, as it is not reliable..."%b)
             continue
         ffile ="lflat_"+b
         np.savetxt(ffile, np.array(lfiles), fmt="%s")
@@ -250,7 +262,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         iraf.imarith(out, "/", st["MODE"], out_norm)
         
         #Do some cleaning
-        print 'Removing from lfiles'
+        logger.info( 'Removing from lfiles')
         for f in glob.glob('b_*_%s.fits'%b):
             os.remove(f)
 
@@ -268,6 +280,16 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
             os.makedirs(newdir)
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
 
+
+def get_median_bkg(img):
+    '''
+    Computes the median background.
+    '''
+    hdu = pf.open(img)
+    header = hdu[0].header
+    bkg = np.median(hdu[0].data[hdu[0].data > 0])
+    return bkg
+    
 def solve_edges(flat, band):
     '''
     Finds the edges of the flat, and extends the respons of the average to the edges.
@@ -319,7 +341,7 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
 
     ra = fitsutils.get_par(img, 'OBJRA')
     dec = fitsutils.get_par(img, 'OBJDEC')
-    print "Solving astrometry on field with (ra,dec)=", ra, dec
+    logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
     
     astro = "a_" + img
     
@@ -334,7 +356,7 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
       -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
-    print cmd
+    logger.info( cmd)
 
     subprocess.call(cmd, shell=True)
     
@@ -385,7 +407,6 @@ def get_masked_image(img):
     iraf.noao(_doprint=0)  
     mask = make_mask_cross(img)    
     masked = img.replace(".fits", "_masked.fits")
-    print img, mask, masked
     
     if (os.path.isfile(masked)):
         os.remove(masked)
@@ -415,7 +436,7 @@ def slice_rc(img):
     filenames = []
         
     for i, b in enumerate(corners.keys()):
-        print "Slicing for filter", b
+        logger.info( "Slicing for filter %s"% b)
         name = fname.replace(".fits", "_%s.fits"%b)
         
         #Clean first
@@ -515,13 +536,13 @@ def init_header_reduced(image):
     ZEROPT  = 'FLOAT'  / Zero point by comparison to catalog
     '''
     
-    pardic = {"IQWCS" : 0, \ 
+    pardic = {"IQWCS" : 0,\
                 "IQZEROPT" : 0,\
-                "SKYBKG": np.nan,\
-                "SEEPIX": np.nan,\
-                "ZPCAT" : "none", \
-                "ZEROPTU" : np.nan,\
-                "ZEROPT" : np.nan}
+                "SKYBKG": 0,\
+                "SEEPIX": 0,\
+                "ZPCAT" : "none",\
+                "ZEROPTU" : 0.,\
+                "ZEROPT" : 0.}
     fitsutils.update_pars(image, pardic)
     
     
@@ -539,17 +560,38 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
     '''
     
+    logger.info("Reducing image %s"% image)    
+
     print "Reducing image ", image    
 
-    imname = os.path.basename(image).replace(".fits", "")
+    #Initialize the basic parameters.
+    init_header_reduced(image)
     
+    
+    
+    imname = os.path.basename(image).replace(".fits", "")
     try:
         objectname = fitsutils.get_par(image, "NAME").replace(" ","")+"_"+fitsutils.get_par(image, "FILTER")
     except:
-        print "ERROR, image", image, " does not have a NAME or a FILTER!!!"
+        logger.error( "ERROR, image "+ image + " does not have a NAME or a FILTER!!!")
         return
-        
+
     print "For object", objectname
+    logger.info( "For object %s"% objectname)
+
+        
+    #Get basic statistics for the image
+    nsrc, fwhm, ellip = sextractor.get_image_pars(image)
+    
+    logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
+    print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
+
+    
+    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIPTICITY":ellip}
+    #Update the seeing information from sextractor
+    fitsutils.update_pars(image, dic)
+
+    
     
     #Change to image directory
     mydir = os.path.dirname(image)
@@ -564,7 +606,8 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     if (not overwrite):
         existing = True
         for band in ['u', 'g', 'r', 'i']:
-            print "Looking if file", os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band)), "exists",  (os.path.isfile(os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band))) )
+            logger.info( "Looking if file %s exists %s"%( os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band)), \
+                (os.path.isfile(os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band))) ) ) )
             existing = existing and (os.path.isfile(os.path.join(target_dir, "f_b_a_%s_%s_0.fits"%(objectname, band))) )
         if existing:
             return []
@@ -576,18 +619,20 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
     astro = ""
     if (astrometry):
-        print "Solving astometry for the whole image..."
+        logger.info( "Solving astometry for the whole image...")
         img = solve_astrometry(image)
         if (os.path.isfile(img)):
             astro="a_"
+            fitsutils.update_par(img, "IQWCS", 1)
         else:
-            print "ASTROMETRY DID NOT SOLVE ON IMAGE", image
+            logger.error( "ASTROMETRY DID NOT SOLVE ON IMAGE %s"% image)
             img = image
+
 
         
     
     #Compute BIAS
-    if (biasdir == None or biasdir==""): biasdir = "."
+    if (biasdir is None or biasdir==""): biasdir = "."
     create_masterbias(biasdir)
     
     bias_slow = os.path.join(biasdir, "Bias_%s_%s.fits"%(channel, 'slow'))
@@ -599,20 +644,20 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     iraf.ccdred(_doprint=0)
     
     #Compute flat field
-    if (flatdir == None or flatdir==""): flatdir = "."
+    if (flatdir is None or flatdir==""): flatdir = "."
     create_masterflat(flatdir, biasdir)
     
     #New names for the object.
     debiased = "b_" + img
-    print "Creating debiased file, ",debiased
+    logger.info( "Creating debiased file, %s"%debiased)
     
     if ( (fitsutils.get_par(img, "ADCSPEED")==0.1 and not os.path.isfile(bias_slow)) \
         or (fitsutils.get_par(img, "ADCSPEED")==2 and not os.path.isfile(bias_fast)) ):
-        print "Master bias not found! Tryting to copy from reference folder..."
+        logger.warn( "Master bias not found! Tryting to copy from reference folder...")
         copy_ref_calib(mydir, "Bias")
         if ( (fitsutils.get_par(img, "ADCSPEED")==0.1 and not os.path.isfile(bias_slow)) \
         or (fitsutils.get_par(img, "ADCSPEED")==2 and not os.path.isfile(bias_fast)) ):
-            print "Bias not found in reference folder"
+            logger.error( "Bias not found in reference folder")
             return
 
 
@@ -639,6 +684,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
     #Slicing the image for flats  
     slice_names = slice_rc(debiased)
+    print "Creating sliced files, ", slice_names
 
     
     #Remove un-sliced image
@@ -648,33 +694,33 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for i, debiased_f in enumerate(slice_names):
         b = fitsutils.get_par(debiased_f, 'filter')
         
-        deflatted = imname + "f_b_" + astro + objectname + "_%s.fits"%b
+        deflatted = imname + "_f_b_" + astro + objectname + "_%s.fits"%b
 
         #Flat to be used for that filter
         flat = os.path.join(flatdir, "Flat_%s_%s_norm.fits"%(channel, b))
 
         if (not os.path.isfile(flat)):
-            print "Master flat not found in", flat
+            logger.warn( "Master flat not found in %s"% flat)
             copy_ref_calib(mydir, "Flat_%s_%s_norm"%(channel, b))
             continue
         else:
-            print "Using flat",flat
+            logger.info( "Using flat %s"%flat)
             
         #Cleans the deflatted file if exists
         if (os.path.isfile(deflatted)):
             os.remove(deflatted)
 
         if (os.path.isfile(debiased_f) and os.path.isfile(flat)):
-            print "Storing de-flatted %s as %s"%(debiased_f, deflatted)
+            logger.info( "Storing de-flatted %s as %s"%(debiased_f, deflatted))
             time.sleep(1)
             iraf.imarith(debiased_f, "/", flat, deflatted)
         else:
-            print "SOMETHING IS WRONG"
+            logger.error( "SOMETHING IS WRONG. Error when dividing %s by the flat field %s!"%(debiased_f, flat))
         
         #Removes the de-biased file
         os.remove(debiased_f)
         
-        print "Updating header with original filename and flat field used."
+        logger.info( "Updating header with original filename and flat field used.")
         fitsutils.update_par(deflatted, "ORIGFILE", img)
         fitsutils.update_par(deflatted, "FLATFILE", flat)
 
@@ -682,7 +728,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
             
             
     if (cosmic):
-        print "Correcting for cosmic rays..."
+        logger.info( "Correcting for cosmic rays...")
         # Correct for cosmics each filter
         for i, deflatted in enumerate(slice_names):
             cclean = "c_" +img
@@ -694,6 +740,8 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     #Moving files to the target directory
     for name in slice_names:
         newname = get_sequential_name(target_dir, name, 0)
+        bkg = get_median_bkg(name)
+        fitsutils.update_par(name, "SKYBKG", bkg)
         shutil.move(name, newname)
         reduced_imgs.append(newname)
         

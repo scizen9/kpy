@@ -46,7 +46,11 @@ def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
         ra = fitsutils.get_par(img, 'RA')
         dec = fitsutils.get_par(img, 'DEC')
     
-    os.chdir(os.path.dirname(img))
+    
+    mydir = os.path.dirname(img)
+    if mydir=="":
+        mydir = "."
+    os.chdir(mydir)
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
     print "Solving astrometry on field with (ra,dec)=", ra, dec, "Image",img, "New image", astro
