@@ -587,7 +587,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
 
     
-    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIPTICITY":ellip}
+    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIP":ellip}
     #Update the seeing information from sextractor
     fitsutils.update_pars(image, dic)
 
