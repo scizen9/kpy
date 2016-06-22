@@ -631,7 +631,8 @@ def interpolate_zp(reduced, logfile):
     
     zpfiles = glob.glob(os.path.join(reduced, "*fits"))
     
-    zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and fitsutils.get_par(zf, "IQZEROPT")==0]
+    zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and \
+    (fitsutils.get_par(zf, "IQZEROPT")==0 or fitsutils.get_par(zf, "ZEROPT")==0)]
     
     #Load the coefficients.
     coefs = {}    
