@@ -634,7 +634,9 @@ def interpolate_zp(reduced, logfile):
     #Load the coefficients.
     coefs = {}    
     for fi in ["u", "g", "r", "i"]:
-        coefs[fi] = np.genfromtxt(os.path.join(reduced, "coefs_%s.txt"%fi))
+        coeffile = os.path.join(reduced, "coefs_%s.txt"%fi)
+        if os.apth.isfile(coeffile):
+            coefs[fi] = np.genfromtxt(coeffile)
 
     #Load the rms.
     rms = {}    
