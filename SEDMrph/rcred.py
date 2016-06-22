@@ -618,6 +618,9 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     image = os.path.basename(image)
 
         
+    #Initialize the basic parameters.
+    init_header_reduced(image)
+
     astro = ""
     if (astrometry):
         logger.info( "Solving astometry for the whole image...")
@@ -641,8 +644,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         cleanimg = clean_cosmic(os.path.join(os.path.abspath(mydir), img))
         img = cleanimg
     
-    #Initialize the basic parameters.
-    init_header_reduced(img)
     
     
     #Get basic statistics for the image
