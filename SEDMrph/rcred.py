@@ -483,7 +483,10 @@ def clean_cosmic(f):
     
     
     g = fitsutils.get_par(f, "GAIN")
-    rn = fitsutils.get_par(f, "RDNOISE")
+    if (fitsutils.has_par(f, "RDNOISE")):
+        rn = fitsutils.get_par(f, "RDNOISE")
+    else:
+        rn = 20
     array, header = cosmics.fromfits(f)
     
     try:
