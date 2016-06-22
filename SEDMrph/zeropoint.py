@@ -643,7 +643,7 @@ def interpolate_zp(reduced, logfile):
     for fi in ["u", "g", "r", "i"]:
         rmsfile = os.path.join(reduced, "rms_%s.txt"%fi)
         if os.path.isfile(rmsfile):
-        rms[fi] = np.genfromtxt(os.path.join(reduced, "rms_%s.txt"%fi))
+            rms[fi] = np.genfromtxt(os.path.join(reduced, "rms_%s.txt"%fi))
         
     for image in zpfiles:
         filt = fitsutils.get_par(image, "FILTER")
@@ -936,6 +936,7 @@ def main(reduced):
         plot_zp("zeropoint.log", plotdir)
     if (os.path.isfile("allstars_zp.log")):
         lsq_zeropoint("allstars_zp.log", plotdir)
+        interpolate_zp(reduced, "allstars_zp.log")
      
 if __name__ == '__main__':
     
