@@ -582,7 +582,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
                 
         est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
         rms =  np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
-        np.savetxt("rms_%s.txt"%b, rms)
+        np.savetxt("rms_%s.txt"%b, np.array([rms]))
         print "Filter %s RMS %s"%(b, rms)
 
         if (plot):
