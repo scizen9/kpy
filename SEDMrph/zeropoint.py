@@ -635,12 +635,14 @@ def interpolate_zp(reduced, logfile):
     coefs = {}    
     for fi in ["u", "g", "r", "i"]:
         coeffile = os.path.join(reduced, "coefs_%s.txt"%fi)
-        if os.apth.isfile(coeffile):
+        if os.path.isfile(coeffile):
             coefs[fi] = np.genfromtxt(coeffile)
 
     #Load the rms.
     rms = {}    
     for fi in ["u", "g", "r", "i"]:
+        rmsfile = os.path.join(reduced, "rms_%s.txt"%fi)
+        if os.path.isfile(rmsfile):
         rms[fi] = np.genfromtxt(os.path.join(reduced, "rms_%s.txt"%fi))
         
     for image in zpfiles:
