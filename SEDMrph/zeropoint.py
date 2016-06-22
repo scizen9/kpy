@@ -567,7 +567,10 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         coef = lsq_result[0]
         res = lsq_result[1]
         
-    	np.savetxt("coefs_%s.txt"%b, coef)
+        #Save the coefficients 
+        np.savetxt("coefs_%s.txt"%b, coef)
+        
+        #Empirical and predicted values
         emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
         pred_col = ab['color']*coef[1]
 
@@ -577,6 +580,11 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
         pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
                 
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
+        rms =  np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
+        np.savetxt("rms_%s.txt"%b, rms)
+        print "Filter %s RMS %s"%(b, rms)
+
         if (plot):
             plt.close("all")
             f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
@@ -597,20 +605,66 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             ax3.plot(ab['jd'], pred_jd, color=cols[b])
             ax3.set_xlabel("jd")   
             
-            est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
             #ax4.plot(ab['jd'], depend, "*", color=cols[b], alpha=0.4)
             #ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
             ax4.errorbar(ab['jd'], depend-est_zp, yerr=ab['insterr'], fmt="o", c=cols[b], alpha=0.4, ms=4)
             ax4.set_xlabel("jd")  
             ax4.set_ylabel("night predicted zeropoint")
             ax4.invert_yaxis()
-	    print "RMS", np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
             
-	    if (not plotdir is None):
-	    	plt.savefig(os.path.join(plotdir, "allstars_%s.png"%b))
-	    else:	
-            	plt.show()
+            if (not plotdir is None):
+                plt.savefig(os.path.join(plotdir, "allstars_%s.png"%b))
+            else:	
+                plt.show()
+
+def interpolate_zp(reduced, logfile):
+    '''
+    Uses the zeropoint coefficients derived from SDSS fields to interpolate the 
+    zeropoint for the images that are outside of SDSS field.
+    '''        
+    a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
+    a.sort(order=['jd'], axis=0)
+    
+    jdmin =  np.min(a['jd'])
+    
+    zpfiles = glob.glob("*fits")
+    
+    zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and fitsutils.get_par(zf, "IQZEROPT")==0]
+    
+    #Load the coefficients.
+    coefs = {}    
+    for fi in ["u", "g", "r", "i"]:
+        coefs[fi] = np.genfromtxt(os.path.join(reduced, "coefs_%s.txt"%fi))
+
+    #Load the rms.
+    rms = {}    
+    for fi in ["u", "g", "r", "i"]:
+        rms[fi] = np.genfromtxt(os.path.join(reduced, "rms_%s.txt"%fi))
         
+    for image in zpfiles:
+        filt = fitsutils.get_par(image, "FILTER")
+        jd = fitsutils.get_par(image, "JD") - jdmin
+        airmass = fitsutils.get_par(image, "AIRMASS")
+        
+        #If there are coefficients for that filter, load them and interpolate.
+        #Otherwise, skip this file.
+        if not coefs.has_key(filt):
+            continue
+        
+        #est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
+
+        values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3, jd**4, jd**5])
+        est_zp = coefs[filt]*values
+        
+        #Update the header with the computed zeropoint.
+        pardic = {
+                "IQZEROPT" : 0,\
+                "ZPCAT" : "SDSSinterpolated",\
+                "ZEROPTU" : rms[filt],\
+                "ZEROPT" : est_zp}
+        fitsutils.update_pars(image, pardic)
+    
+    
 def lsq_zeropoint_partial(logfile, plot=True):
     '''
     Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.
