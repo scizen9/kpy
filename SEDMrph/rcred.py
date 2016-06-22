@@ -501,7 +501,8 @@ def clean_cosmic(f):
         out = f.replace('.fits',  '_clean.fits')
     
         cosmics.tofits(out, c.cleanarray, header)
-        
+        fitsutils.update_par(out, "CRREJ", 1)
+
         #os.remove(f)
     except:
         pass
@@ -553,7 +554,8 @@ def init_header_reduced(image):
                 "SEEPIX": 0,\
                 "ZPCAT" : "none",\
                 "ZEROPTU" : 0.,\
-                "ZEROPT" : 0.}
+                "ZEROPT" : 0.,\
+                "CRREJ" : 0}
     fitsutils.update_pars(image, pardic)
     
     
@@ -652,9 +654,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
         # Correct for cosmics each filter
         cleanimg = clean_cosmic(os.path.join(os.path.abspath(mydir), img))
         img = cleanimg
-        fitsutils.update_par(img, "CRREJ", 1)
-    else:
-        fitsutils.update_par(img, "CRREJ", 0)
         
     
     #Compute BIAS
