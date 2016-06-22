@@ -12,6 +12,7 @@ import numpy as np
 import pyfits as pf
 import rcred
 import datetime
+import fitsutils
 
 from matplotlib import pylab as plt
 
@@ -37,7 +38,7 @@ def run_sex(flist, mask=False, cosmics=True):
             else:
                 out = f
                 
-            if (cosmics):
+            if (cosmics and (not fitsutils.has_par(out, "CRREJ") or fitsutils.get_par(out, "CRREJ") ==0)):
                 out = rcred.clean_cosmic(out)
 
             cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], out) 
