@@ -764,7 +764,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
         reduced_imgs.append(newname)
         
         
-    zeropoint.
     return reduced_imgs
 
                 
