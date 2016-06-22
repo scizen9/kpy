@@ -627,7 +627,7 @@ def interpolate_zp(reduced, logfile):
     
     jdmin =  np.min(a['jd'])
     
-    zpfiles = glob.glob("*fits")
+    zpfiles = glob.glob(os.path.join(reduced, "*fits"))
     
     zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and fitsutils.get_par(zf, "IQZEROPT")==0]
     
@@ -664,7 +664,7 @@ def interpolate_zp(reduced, logfile):
         pardic = {
                 "IQZEROPT" : 1,\
                 "ZPCAT" : "SDSSinterpolated",\
-                "ZEROPTU" : rms[filt],\
+                "ZEROPTU" : float(rms[filt]),\
                 "ZEROPT" : est_zp}
         fitsutils.update_pars(image, pardic)
     
