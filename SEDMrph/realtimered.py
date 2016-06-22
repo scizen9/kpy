@@ -23,10 +23,16 @@ def reduce_all_dir(photdir, overwrite=False):
         cmd = cmd + " -o"
     subprocess.call(cmd, shell=True)
     print cmd
-    
+
     # Copy the content of the reduced directory into a new directory with the date of the observations.
     dayname = os.path.basename(photdir)
     reducedname = os.path.join(photdir, "reduced")
+
+    #Reduce the data that is already in the directory.
+    cmd = "python %s/zeropoint.py  %s"%(os.environ["SEDMPH"], reducedname)    
+    subprocess.call(cmd, shell=True)
+    print cmd
+    
     if (os.path.isdir(reducedname)):
     	cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
     	subprocess.call(cmd, shell=True)
@@ -59,6 +65,7 @@ def reduce_on_the_fly(photdir):
                         continue
                 if (fitsutils.get_par(n, "IMGTYPE")=="SCIENCE"):
                     reduced = rcred.reduce_image(n)
+                    zeropoint.calibrate_zeropoint(reduced)
                     #Copy them to transient
                     for r in reduced:
                         cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(r, dayname)

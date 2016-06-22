@@ -481,7 +481,13 @@ def clean_cosmic(f):
     '''
     import cosmics
     
+    out = f.replace('.fits',  '_clean.fits')
     
+    #If it does already exist, just return the name.
+    if (os.path.isfile(out)):
+        return out
+    
+    #Otherwise, run the cosmic ray rejection based on LA Cosmic.
     g = fitsutils.get_par(f, "GAIN")
     if (fitsutils.has_par(f, "RDNOISE")):
         rn = fitsutils.get_par(f, "RDNOISE")
@@ -491,7 +497,7 @@ def clean_cosmic(f):
     
     try:
         c = cosmics.cosmicsimage(array, gain=g, readnoise=rn, sigclip = 8.0, sigfrac = 0.3, satlevel = 64000.0)
-        c.run(maxiter = 10)
+        c.run(maxiter = 5)
         out = f.replace('.fits',  '_clean.fits')
     
         cosmics.tofits(out, c.cleanarray, header)
@@ -562,6 +568,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
     3. - Compute master bias (if it does not exist) and de-bias the image.
     4. - Separate the image into 4 filters.
     5. - Compute flat field for each filter (if it does not exist) and apply flat fielding on the image.
+    6. - Compute the image zeropoint.
 
     '''
     
@@ -756,6 +763,8 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
         shutil.move(name, newname)
         reduced_imgs.append(newname)
         
+        
+    zeropoint.
     return reduced_imgs
 
                 

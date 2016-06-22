@@ -176,5 +176,5 @@ if __name__ == '__main__':
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
-    get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*fits")))
+    get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 

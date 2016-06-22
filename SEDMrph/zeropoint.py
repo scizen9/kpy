@@ -783,8 +783,17 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     fwhm_as = fwhm * 0.394
 
     app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir)
+    
+    #Compute the zeropoint for the specific image.
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det.txt", image, plot=plot, plotdir=plotdir)
     
+    #Add these values to the header.
+    pardic = {"IQZEROPT" : 1,\
+            "ZPCAT" : "SDSS",\
+            "ZEROPTU" : err,\
+            "ZEROPT" : z}
+    fitsutils.update_pars(image, pardic)
+            
     #Log the current zeropoint for this image
     logname = os.path.join(os.path.dirname(image), "zeropoint.log")
     
