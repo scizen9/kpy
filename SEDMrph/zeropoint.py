@@ -658,7 +658,7 @@ def interpolate_zp(reduced, logfile):
         #est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
 
         values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3, jd**4, jd**5])
-        est_zp = coefs[filt]*values
+        est_zp = np.sum(coefs[filt]*values)
         
         #Update the header with the computed zeropoint.
         pardic = {
