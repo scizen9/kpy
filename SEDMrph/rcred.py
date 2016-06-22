@@ -497,7 +497,7 @@ def clean_cosmic(f):
     
     try:
         c = cosmics.cosmicsimage(array, gain=g, readnoise=rn, sigclip = 8.0, sigfrac = 0.3, satlevel = 64000.0)
-        c.run(maxiter = 5)
+        c.run(maxiter = 3)
         out = f.replace('.fits',  '_clean.fits')
     
         cosmics.tofits(out, c.cleanarray, header)
