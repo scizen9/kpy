@@ -99,7 +99,12 @@ def get_sextractor_stats(files):
 
     with open(os.path.join( os.path.dirname(files[0]), "stats/stats.log"), "w") as out:
         for i, f in enumerate(files):
-            print sexfiles[i]
+	    if (fitsutils.has_par(f, "IMGTYPE")):
+            	imtype = fitsutils.get_par(f, "IMGTYPE")
+	    else:
+		imtype = "NONE"
+            if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS"):
+       		continue 
             if not os.path.isfile(sexfiles[i]):
                 sf =  sextractor.run_sex([f])
             else:
@@ -116,14 +121,18 @@ def get_sextractor_stats(files):
             
 def plot_stats(statfile):
     s = np.genfromtxt(statfile, delimiter=",", dtype=None)
-    s.sort(order="f1")
+    s.sort(order="f2")
     s = s[s["f3"]>1]
 
+    day_frac_diff = datetime.timedelta(np.ceil((datetime.datetime.now() - datetime.datetime.utcnow() ).total_seconds())/3600/24)
     hours = np.array([ (datetime.datetime.strptime(time_utils.jd2utc(jd), "%Y-%m-%d %H:%M:%S.%f")) for jd in s["f2"]])
+    hours = hours + day_frac_diff
+    day = ("%s"%hours[-1]).split()[0]
 
     xfmt = md.DateFormatter('%H:%M')
 
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    plt.suptitle("Statistics %s"%day)
     f.set_figwidth(12) 
     ax1.plot(hours, s["f3"], ".-")
     ax1.set_title('Number of bright sources extracted')
@@ -142,7 +151,7 @@ def plot_stats(statfile):
     plt.setp(labels, rotation=30, fontsize=10)
     labels = ax3.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
-    plt.savefig(statfile.replace(".log", ".png"))
+    plt.savefig(statfile.replace(".log", "%s.png"%(day)))
 
 
 if __name__ == '__main__':
@@ -161,6 +170,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     photdir = args.photdir
+    print "Parameter directory where stats are run :",photdir
     
     if (photdir is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())

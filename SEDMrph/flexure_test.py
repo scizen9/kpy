@@ -14,6 +14,8 @@ from matplotlib import pylab as plt
 import argparse
 import pyfits as pf
 import fitsutils
+import datetime
+import argparse
 
 
 def run_flexure_test(sexfiles, plotdir):
@@ -92,24 +94,27 @@ if __name__ == '__main__':
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('raw', type=str, help='Directory containing the raw fits for the night.')
+    parser.add_argument('-d', dest="raw", type=str, help='Directory containing the raw fits for the night.', default=None)
 
     args = parser.parse_args()
     
     raw = args.raw
     
     if (raw is None):
-        print "Please, add the directory containing raw data as a parameter."
-    else:
-        files = glob.glob(os.path.join(raw, "ifu*fits"))
-        #files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
-        files_hg = [f for f in files if fitsutils.has_par(f, "OBJECT") and "Calib:  Hg" in fitsutils.get_par(f, "OBJECT")]
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        raw = os.path.join("/scr2/sedm/phot/", timestamp)
+    
+    files = glob.glob(os.path.join(raw, "ifu*fits"))
+    #files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
+    files_hg = [f for f in files if fitsutils.has_par(f, "OBJECT") and "Calib:  Hg" in fitsutils.get_par(f, "OBJECT")]
  
-        if (len(files_hg)>1):
-            sexfiles = sextractor.run_sex(files_hg, mask=False)
+    if (len(files_hg)>1):
+	files_hg.sort()
+        sexfiles = sextractor.run_sex(files_hg, mask=False)
             
-            plotdir = os.path.join(raw, "stats")
-            if (not os.path.isdir(plotdir)):
-                os.makedirs(plotdir)
+        plotdir = os.path.join(raw, "stats")
+        if (not os.path.isdir(plotdir)):
+            os.makedirs(plotdir)
                 
-            run_flexure_test(sexfiles, plotdir=plotdir)
+        run_flexure_test(sexfiles, plotdir=plotdir)

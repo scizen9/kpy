@@ -475,7 +475,7 @@ def is_on_target(image):
         fitsutils.update_par(image, "ONTARGET", 0)
         
     
-def clean_cosmic(f, name):
+def clean_cosmic(f):
     '''
     From lacosmic.
     '''
@@ -493,7 +493,7 @@ def clean_cosmic(f, name):
     
         cosmics.tofits(out, c.cleanarray, header)
         
-        os.remove(f)
+        #os.remove(f)
     except:
         pass
     
@@ -546,7 +546,7 @@ def init_header_reduced(image):
     fitsutils.update_pars(image, pardic)
     
     
-def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
+def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
     '''
     Applies Flat field and bias calibrations to the image.
     
