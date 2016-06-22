@@ -662,7 +662,7 @@ def interpolate_zp(reduced, logfile):
         
         #Update the header with the computed zeropoint.
         pardic = {
-                "IQZEROPT" : 0,\
+                "IQZEROPT" : 1,\
                 "ZPCAT" : "SDSSinterpolated",\
                 "ZEROPTU" : rms[filt],\
                 "ZEROPT" : est_zp}
