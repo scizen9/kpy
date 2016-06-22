@@ -497,6 +497,8 @@ def clean_cosmic(f):
     except:
         pass
     
+    return out
+    
 
     
                 
@@ -553,10 +555,10 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
     Steps:
     
     1. - Solve astrometry on the entire image.
-    2. - Compute master bias (if it does not exist) and de-bias the image.
-    3. - Separate the image into 4 filters.
-    4. - Compute flat field for each filter (if it does not exist) and apply flat fielding on the image.
-    5. - Computes cosmic ray rejectionon the entire image.
+    2. - Computes cosmic ray rejectionon the entire image.
+    3. - Compute master bias (if it does not exist) and de-bias the image.
+    4. - Separate the image into 4 filters.
+    5. - Compute flat field for each filter (if it does not exist) and apply flat fielding on the image.
 
     '''
     
@@ -617,7 +619,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
     #Rename to the image name only
     image = os.path.basename(image)
 
-
+        
     astro = ""
     if (astrometry):
         logger.info( "Solving astometry for the whole image...")
@@ -629,7 +631,20 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
             logger.error( "ASTROMETRY DID NOT SOLVE ON IMAGE %s"% image)
             img = image
 
+    #Update noise parameters needed for cosmic reection
+    if (fitsutils.get_par(img, "ADCSPEED")==2):
+        fitsutils.update_par(img, "RDNOISE", 20.)
+    else:
+        fitsutils.update_par(img, "RDNOISE", 4.)
 
+    if (cosmic):
+        logger.info( "Correcting for cosmic rays...")
+        # Correct for cosmics each filter
+        cleanimg = clean_cosmic(os.path.join(os.path.abspath(mydir), img))
+        img = cleanimg
+        fitsutils.update_par(img, "CRREJ", 1)
+    else:
+        fitsutils.update_par(img, "CRREJ", 0)
         
     
     #Compute BIAS
@@ -722,19 +737,11 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True
         os.remove(debiased_f)
         
         logger.info( "Updating header with original filename and flat field used.")
-        fitsutils.update_par(deflatted, "ORIGFILE", img)
+        fitsutils.update_par(deflatted, "ORIGFILE", os.path.basename(image))
         fitsutils.update_par(deflatted, "FLATFILE", flat)
 
         slice_names[i] = deflatted
             
-            
-    if (cosmic):
-        logger.info( "Correcting for cosmic rays...")
-        # Correct for cosmics each filter
-        for i, deflatted in enumerate(slice_names):
-            cclean = "c_" +img
-            clean_cosmic(os.path.join(os.path.abspath(mydir), deflatted), cclean)
-            slice_names[i] = cclean
                 
             
     reduced_imgs = []   
