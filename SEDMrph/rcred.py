@@ -559,7 +559,7 @@ def init_header_reduced(image):
     fitsutils.update_pars(image, pardic)
     
     
-def reduce_image(image, flatdir=None, biasdir=None, cosmic=True, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
+def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
     '''
     Applies Flat field and bias calibrations to the image.
     
