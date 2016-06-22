@@ -627,6 +627,8 @@ def interpolate_zp(reduced, logfile):
     
     jdmin =  np.min(a['jd'])
     
+    jdmax = np.max(a['jd']) - jdmin
+    
     zpfiles = glob.glob(os.path.join(reduced, "*fits"))
     
     zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and fitsutils.get_par(zf, "IQZEROPT")==0]
@@ -647,7 +649,9 @@ def interpolate_zp(reduced, logfile):
         
     for image in zpfiles:
         filt = fitsutils.get_par(image, "FILTER")
-        jd = fitsutils.get_par(image, "JD") - jdmin
+        
+        #To not extrapolate outside of the valid interval.
+        jd = np.minimum(jdmax, fitsutils.get_par(image, "JD") - jdmin)
         airmass = fitsutils.get_par(image, "AIRMASS")
         
         #If there are coefficients for that filter, load them and interpolate.
