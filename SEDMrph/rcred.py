@@ -578,9 +578,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
     print "Reducing image ", image    
 
-    #Initialize the basic parameters.
-    init_header_reduced(image)
-    
     
     
     imname = os.path.basename(image).replace(".fits", "")
@@ -593,17 +590,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     print "For object", objectname
     logger.info( "For object %s"% objectname)
 
-        
-    #Get basic statistics for the image
-    nsrc, fwhm, ellip = sextractor.get_image_pars(image)
-    
-    logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
-    print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
-
-    
-    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIP":ellip}
-    #Update the seeing information from sextractor
-    fitsutils.update_pars(image, dic)
 
     
     
@@ -654,7 +640,22 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         # Correct for cosmics each filter
         cleanimg = clean_cosmic(os.path.join(os.path.abspath(mydir), img))
         img = cleanimg
-        
+    
+    #Initialize the basic parameters.
+    init_header_reduced(img)
+    
+    
+    #Get basic statistics for the image
+    nsrc, fwhm, ellip = sextractor.get_image_pars(img)
+    
+    logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
+    print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
+
+    
+    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIP":ellip}
+    #Update the seeing information from sextractor
+    fitsutils.update_pars(img, dic)
+    
     
     #Compute BIAS
     if (biasdir is None or biasdir==""): biasdir = "."
