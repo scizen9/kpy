@@ -16,7 +16,7 @@ import datetime
 from matplotlib import pylab as plt
 
 
-def run_sex(flist, mask=False):
+def run_sex(flist, mask=False, cosmics=True):
     
     d = os.path.dirname(flist[0])
     if d == "":
@@ -33,10 +33,14 @@ def run_sex(flist, mask=False):
         try:
             f = os.path.abspath(f)
             if (mask):
-                masked = rcred.get_masked_image(f)
+                out = rcred.get_masked_image(f)
             else:
-                masked = f
-            cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], masked) 
+                out = f
+                
+            if (cosmics):
+                out = rcred.clean_cosmic(out)
+
+            cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], out) 
             subprocess.call(cmd, shell=True)
             print cmd
             newimage = os.path.join(sexdir, os.path.basename(f).replace(".fits", ".sex")) 
