@@ -29,6 +29,10 @@ ref_stars_file_sdss = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_
 ref_stars_file_2mass = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_2mass.csv"
 ref_stars_file_johnson = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_johnson.csv"
 
+import warnings
+
+def fxn():
+    warnings.warn("deprecated", DeprecationWarning)
 
 
 def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir="."):
@@ -215,7 +219,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     plt.savefig(os.path.join(plotdir, image + "plot.png"))
     plt.clf()
 
-def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=2, box=20):
+def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=2, box=4):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -224,6 +228,9 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
     # The special keyword _doprint=0 turns off displaying the tasks 
     # when loading a package. 
     
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fxn()
     if (not plot_only):
         iraf.noao(_doprint=0)
         iraf.digiphot(_doprint=0)
@@ -270,7 +277,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
     
     #print "Saving coodinates for the object in pixels",pra,pdec
     
-    np.savetxt("/tmp/coords.dat", np.array([[ra, dec]]), fmt="%.4f %.4f")
+    #np.savetxt("/tmp/coords.dat", np.array([[ra, dec]]), fmt="%.6f %.6f")
     
     zmin, zmax = zscale.zscale(impf[0].data)
        
@@ -306,7 +313,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         graphics = "stdgraph" ,\
         display = "stdimage" ,\
         icommands = "" ,\
-        wcsin = wcsin,
+        wcsin = "logical",
         wcsout = "logical",
         gcommands = "") 
 
@@ -325,9 +332,9 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
             m = np.array([ma])
             
     
-        if (fitsutils.has_par(image, "ZP")):
+        if (fitsutils.has_par(image, "ZEROPT")):
             band = fitsutils.get_par(image, "filter")
-            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZP"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZPERR")**2), fwhm_value
+            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2), fwhm_value
         else:
             band = fitsutils.get_par(image, "filter")
             print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] , ma['fiterr'][0], fwhm_value
@@ -340,12 +347,18 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         plt.savefig(image+".png")
         plt.clf()
         
-        im = plt.imshow(impf[0].data.T[X-50:X+50,Y-50:Y+50].T, vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
-        c1 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=sky_rad)
-        c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
+    	zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
+        im = plt.imshow(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50], vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
+        c1 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=aperture_rad, label="Initial position")
+        c11 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=sky_rad)
+        c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=aperture_rad, label="Adjusted centroid")
+        c22 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
         plt.gca().add_artist(c1)
+        plt.gca().add_artist(c11)
         plt.gca().add_artist(c2)
+        plt.gca().add_artist(c22)
         plt.colorbar(im)
+        plt.legend()
         plt.title("MIN: %.0f MAX: %.0f"%(np.nanmin(impf[0].data.T[X-50:X+50,Y-50:Y+50]), np.nanmax(impf[0].data.T[X-50:X+50,Y-50:Y+50])))
         plt.savefig(image+"_zoom.png")
         plt.clf()
