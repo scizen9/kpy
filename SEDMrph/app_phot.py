@@ -219,7 +219,27 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     plt.savefig(os.path.join(plotdir, image + "plot.png"))
     plt.clf()
 
-def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=2, box=4):
+def get_xy_coords(image, ra, dec):
+    '''
+    Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-rd2xy -w %s -r %.5d -d %.5d"%(image, ra, dec)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    output = output.split("->")[1]
+    
+    coords = []
+    for s in output.split(","):
+        coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
+        
+    return coords
+    
+def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwhm=2, box=4):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -254,6 +274,11 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         #print pra, pdec, shape
         return
     
+    
+    #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
+    pra, pdec = get_xy_coords(image, ra, dec)
+        
+        
     out_name = image +  ".seq.mag"
     clean_name = image + ".objapp.mag"
     
@@ -265,6 +290,14 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
     
+    
+    #Obtain the fwhm in pixels
+    if wcsin == "logical":   
+        if (fitsutils.has_par(image, 'SEEPIX')):
+            fwhm_value = fitsutils.get_par(image, 'SEEPIX')
+        else:
+            fwhm_value = fwhm_value / 0.394
+    
     #print "FWHM", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
     sky_rad= math.ceil(float(fwhm_value)*4)
@@ -273,11 +306,9 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
 
     
     
-    coords = "/tmp/coords.dat"
-    
-    #print "Saving coodinates for the object in pixels",pra,pdec
-    
-    #np.savetxt("/tmp/coords.dat", np.array([[ra, dec]]), fmt="%.6f %.6f")
+    print "Saving coodinates for the object in pixels",pra,pdec
+    coords = "/tmp/coords.dat"    
+    np.savetxt("/tmp/coords.dat", np.array([[pra, pdec]]), fmt="%.4f %.4f")
     
     zmin, zmax = zscale.zscale(impf[0].data)
        
@@ -347,8 +378,8 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         plt.savefig(image+".png")
         plt.clf()
         
-    	zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
-        im = plt.imshow(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50], vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
+        zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
+        im = plt.imshow(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50].T, vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
         c1 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=aperture_rad, label="Initial position")
         c11 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=sky_rad)
         c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=aperture_rad, label="Adjusted centroid")
