@@ -443,7 +443,9 @@ def add_to_zp_cal(ref_stars, image, logname):
     coldic = {'u':'g', 'g':'r', 'r':'i', 'i':'r', 'z':'i', 'U':'B', 'B':'V', 'V':'R', 'R':'I', 'I':'R'}
 
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
-    my = np.genfromtxt(image+".app.mag", comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
+
+    my = np.genfromtxt(imapp+".app.mag", comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
         my = np.array([my])
