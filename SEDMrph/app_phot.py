@@ -162,6 +162,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
             if ( k < len(m)):
                 ax = plt.subplot2grid((dimX,dimY),(i, j))
                 y1, y2, x1, x2 = m[k]["X"]-cutrad, m[k]["X"]+cutrad, m[k]["Y"]-cutrad, m[k]["Y"]+cutrad
+                y1, y2, x1, x2 = int(y1), int(y2), int(x1), int(x2)
                 try:
                     zmin, zmax = zscale.zscale(img[x1:x2,y1:y2], nsamples=1000, contrast=0.25)
                 except:
@@ -342,13 +343,29 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     
         if (fitsutils.has_par(image, "ZEROPT")):
             band = fitsutils.get_par(image, "filter")
+            mag =  ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT")
+            magerr = np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2)  
+	
+            if np.isnan(mag):
+		mag, magerr = 0, 0
+            fitsutils.update_par(image, "APPMAG",mag) 
+            fitsutils.update_par(image, "APPMAGER", magerr) 
             print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2), fwhm_value
         else:
+            mag =  ma['fit_mag'][0] 
+            magerr = ma['fiterr'][0]  
+	
+            if np.isnan(mag):
+		mag, magerr = 0, 0
             band = fitsutils.get_par(image, "filter")
+            fitsutils.update_par(image, "APPMAG", mag )
+            fitsutils.update_par(image, "APPMAGER", magerr)
             print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] , ma['fiterr'][0], fwhm_value
                  
-        X = ma["X"][0]
-        Y = ma["Y"][0]
+        X = int(ma["X"][0])
+        Y = int(ma["Y"][0])
+        pra = int(pra)
+	pdec = int(pdec)
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)
@@ -401,5 +418,6 @@ if __name__ == '__main__':
     
 
     for f in glob.glob("*.fits"):
-        #print f
-        get_app_phot_target(f, box=5)
+        if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
+		#print f
+        	get_app_phot_target(f, box=5)

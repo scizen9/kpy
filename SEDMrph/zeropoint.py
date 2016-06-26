@@ -112,12 +112,14 @@ def find_fwhm(imfile, xpos, ypos, plot=True):
     out = np.zeros(len(xpos), dtype=[('detected', np.bool), ('fwhm', np.float), ('e', np.float)])
     
     for i, (x_i,y_i) in enumerate(zip(xpos, ypos)):
-        hrad = math.ceil(rad/2)
+
+        x_i = int(x_i)
+	y_i = int(y_i)
+        hrad = int(math.ceil(rad/2.))
         sub = img[x_i-hrad:x_i+hrad, y_i-hrad:y_i+hrad]
         x = np.linspace(0, len(sub), len(sub))
         y = np.linspace(0, len(sub), len(sub))
         X, Y = np.meshgrid(x, y)
-        print x.shape, sub.shape
     
         #(xdata_tuple, amplitude, xo, yo, def_fwhm, def_fwhm, theta, offset):
         def_x = np.argmax(np.sum(sub, axis=0))
@@ -146,7 +148,7 @@ def find_fwhm(imfile, xpos, ypos, plot=True):
             fwhm_y = 0     
         
         
-        print i, detected, 'Amplitude %.3f\t'%amplitude, 'BG %.3f\t'%background, "BG_stats %.3f\t"%np.percentile(sub, 50), "FWHM_x,FWHM_y=(%.3f, %.3f)"%(fwhm_x, fwhm_y)
+        logger.info("%s %s Amplitude %.3f\t BG %.3f\t BG_stats %.3f\t  FWHM_x,FWHM_y=(%.3f, %.3f)"%(i, detected, amplitude, background, np.percentile(sub, 50), fwhm_x, fwhm_y))
         
         out[i] = (detected, np.average([fwhm_x, fwhm_y]), np.minimum(fwhm_x, fwhm_y) / np.maximum(fwhm_x, fwhm_y))
         
@@ -199,7 +201,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     ra0, dec0 = wcs.wcs_pix2sky(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
 
     sr = 2*np.abs(dec-dec0)
-    print ra,dec, sr
+    logger.info("%.4f %.4f %.4f"%( ra,dec, sr))
     
     if not refstars is None:
         shutil.copy(refstars, "/tmp/tmp_sdss.cat")
@@ -216,7 +218,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         #SEDM FoV is 6.5 arcmin, due to uncertainties in the position, 4 arcmin radius assumed.
         # Download USNO-B1 catalog for the position
         catalog_url = 'http://www.nofs.navy.mil/cgi-bin/vo_cone.cgi?CAT=USNO-B1&RA=%.5f&DEC=%.5f&SR=%.4f&VERB=1' % (ra, dec, sr)
-        print "Downloading USNO-B1 catalog..."
+        logger.info( "Downloading USNO-B1 catalog...")
         urllib.urlretrieve(catalog_url, '/tmp/tmp.cat')
         
         # Read RA, Dec and magnitude from XML format USNO catalog
@@ -257,8 +259,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         maxmag = 22.0
         catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6\
         &radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%(ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
-        print "Downloading SDSS catalog..."
-        print catalog_url
+        logger.info( "Downloading SDSS catalog...")
+        logger.info( "%s"%catalog_url )
         urllib.urlretrieve(catalog_url, '/tmp/tmp_sdss.cat')
         catalog = np.genfromtxt("/tmp/tmp_sdss.cat", delimiter=",", names=True)
 
@@ -278,10 +280,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             else:
                 print "Unknown band!!", band
         except IOError:
-            print "Problems with SDSS image", band
+            logger.error( "Problems with SDSS image %s"% band)
             return False
         except ValueError:
-            print "Problems with the catalogue for the image"
+            logger.error( "Problems with the catalogue for the image")
             return False
 
     #Convert ra, dec position of all stars to pixels.
@@ -301,7 +303,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     #Select only stars isolated in a radius of ~12 arcsec.
     mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
     if (len(mask2)==0):
-	print "No stars left", mask, mask2
+	logger.error("No good stars left")
 	return False   
     #Select only stars that are within the proper magnitude range
     mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 15) 
@@ -352,7 +354,6 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             z['x'] = s[:,0]
             z['y'] = s[:,1]
                     
-            print "NAMES",catalog.dtype.names
             header='x y '
             for n  in catalog.dtype.names:
                 if n in ["objid", "ra", "dec", "u", "g", "r", "i", "z", "Err_u", "Err_g", "Err_r", "Err_i", "Err_z"]:
@@ -364,19 +365,19 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 fmt +=  " %.5f"
     
             np.savetxt('/tmp/sdss_cat.txt', z, fmt=fmt, header = header)
-            print "Saved to", '/tmp/sdss_cat.txt'
+            logger.info( "Saved catalogue stars to %s"% '/tmp/sdss_cat.txt')
             
             #Find FWHM for this image            
             out = find_fwhm(imfile, star_pix[:,1][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], plot=debug)
             mask_valid_fwhm = (out['detected']) * (out['e']>0.7) * ~np.isnan(out['fwhm']* (out['fwhm'] < 30))            
 
             if (np.count_nonzero(mask_valid_fwhm) < 3):
-                print "ERROR with FWHM!! Too few points for a valid estimation. ", np.count_nonzero(mask_valid_fwhm), ") points"
+                logger.error( "ERROR with FWHM!! Too few points for a valid estimation. %d"% np.count_nonzero(mask_valid_fwhm)+ ") points")
                 return False
 
             outd = out[mask_valid_fwhm]
 
-            print 'Average FWHM',np.median(outd['fwhm']), 'arcsec', np.median(outd['fwhm'])*pix2ang, 'pixels'
+            logger.info( 'Average FWHM %.3f arcsec, %.3f pixels'%(np.median(outd['fwhm']),  np.median(outd['fwhm'])*pix2ang))
             
             fwhm = np.median(outd['fwhm'])
             fitsutils.update_par(imfile,'FWHM',fwhm)
@@ -395,11 +396,11 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     img = img - np.nanmin(img)
     zmin, zmax = zscale.zscale(img)
         
-    print "Found %d stars in %s. "%(len(cat_dec), survey), \
-            "%d of them within the FoV. "%len(cat_ra[mask]),\
-            "%d of them are isolated."%len(cat_ra[mask][mask2]),\
-            "%d of them with suitable magnitudes. "%len(cat_ra[mask][mask2][mask3]),\
-            "%d of them with detected stars."%np.count_nonzero(mask_valid_fwhm) 
+    logger.info( "Found %d stars in %s. "%(len(cat_dec), survey)+\
+	     "%d of them within the FoV. "%len(cat_ra[mask]) +\
+            "%d of them are isolated."%len(cat_ra[mask][mask2])+\
+            "%d of them with suitable magnitudes. "%len(cat_ra[mask][mask2][mask3]) +\
+            "%d of them with detected stars."%np.count_nonzero(mask_valid_fwhm)) 
     
     
     if (plot):
@@ -425,7 +426,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         
         plt.legend(loc="best", frameon=False, framealpha=0.9)
         plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png')))
-        print "Saved stars to ",imfile.replace('.fits', '.seqstars.png')
+        logger.info( "Saved stars to %s"%imfile.replace('.fits', '.seqstars.png'))
         plt.clf()
         
     return True
@@ -445,7 +446,7 @@ def add_to_zp_cal(ref_stars, image, logname):
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
 
-    my = np.genfromtxt(imapp+".app.mag", comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
         my = np.array([my])
@@ -571,7 +572,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         mask = mask_col_outlier * mask_airmass_outlier * mask_col_jd
         
         ab = ab[~mask]
-        M = np.zeros((len(ab), 8))
+        M = np.zeros((len(ab), 6))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
@@ -579,8 +580,6 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         M[:,3] = ab['jd'] 
         M[:,4] = ab['jd']**2
         M[:,5] = ab['jd']**3
-        M[:,6] = ab['jd']**4
-        M[:,7] = ab['jd']**5
         
         #print M
         
@@ -594,16 +593,16 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         np.savetxt("coefs_%s.txt"%b, coef)
         
         #Empirical and predicted values
-        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
+        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 )
         pred_col = ab['color']*coef[1]
 
-        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
+        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3)
         pred_airmass = (ab['airmass']-1.3)*coef[2]
         
         emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
-        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
+        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 
                 
-        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 
         rms =  np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
         np.savetxt("rms_%s.txt"%b, np.array([rms]))
         print "Filter %s RMS %s"%(b, rms)
@@ -630,7 +629,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             
             #ax4.plot(ab['jd'], depend, "*", color=cols[b], alpha=0.4)
             #ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
-            ax4.errorbar(ab['jd'], depend-est_zp, yerr=ab['insterr'], fmt="o", c=cols[b], alpha=0.4, ms=4)
+            ax4.errorbar(ab['jd'], depend-est_zp, yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
             ax4.set_xlabel("jd")  
             ax4.set_ylabel("night predicted zeropoint")
             ax4.invert_yaxis()
@@ -685,7 +684,7 @@ def interpolate_zp(reduced, logfile):
         
         #est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
 
-        values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3, jd**4, jd**5])
+        values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3])
         est_zp = np.sum(coefs[filt]*values)
         
         #Update the header with the computed zeropoint.
