@@ -50,9 +50,17 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         iraf.digiphot(_doprint=0)
         iraf.apphot(_doprint=0)
         iraf.unlearn("apphot")
+
+    imdir = os.path.dirname(image)
+    imname = os.path.basename(image)
+    plotdir = os.path.join(imdir, "photometry")
     
-    out_name = image +  ".seq.mag"
-    clean_name = image + ".app.mag"
+    if not os.path.isdir(plotdir):
+        os.makedirs(plotdir)
+        
+    out_name = os.path.join(plotdir, imname +  ".seq.mag")
+    clean_name = os.path.join(plotdir, imname +  ".objapp.mag")
+
     
     # Read values from .ec file
     ecfile= image+".ec"
@@ -122,52 +130,13 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         wcsin = wcsin,
         wcsout = "logical",
         gcommands = "") 
-
-        '''iraf.noao.digiphot.apphot.phot(image = image,\
-            skyfile = "",\
-            coords  = coords,\
-            output  = out_name,\
-           plotfil = "",\
-           datapar = "",\
-           centerp = "",\
-           fitskyp = "",\
-           photpar = "",\
-           interac = "no",\
-           radplot = "no",\
-           icomman = "",\
-           gcomman = "",\
-           wcsin = wcsin,
-           wcsout = "logical",
-           fwhmpsf = float(fwhm_value),\
-           datamin = 0   ,\
-           datamax = 63500,\
-           ccdread =  "INDEF",\
-           gain    =  "INDEF",\
-           readnoi =  0,\
-           epadu   =  2.0,\
-           exposur = "EXPTIME",\
-           airmass = "AIRMASS",\
-           filter  = "FILTER",\
-           obstime = "DATE-OBS",\
-           calgori = "centroid",\
-           salgori = "mode",\
-           cbox    = 25.,\
-           annulus = 30,\
-           dannulu = 10,\
-           zmag = 0.,\
-           aperture = str(aperture_rad)
-          # apert = str(aperture_rad),\
-           #scale  =                   1.,\
-           #emissio=                  "yes",\
-           #sigma  =                "INDEF"           
-           )'''
         
          
         #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-        iraf.txdump(out_name, "id,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
         
     
-    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     if (ma.size > 0):    
         m = ma[~np.isnan(ma["fit_mag"])]
     else:
