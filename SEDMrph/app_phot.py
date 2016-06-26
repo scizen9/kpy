@@ -228,9 +228,10 @@ def get_xy_coords(image, ra, dec):
     '''
     import re
     import subprocess
-    cmd = "wcs-rd2xy -w %s -r %.5d -d %.5d"%(image, ra, dec)
+    cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     output = proc.stdout.read()    
+    print output 
     output = output.split("->")[1]
     
     coords = []
@@ -299,8 +300,8 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
             fwhm_value = fwhm_value / 0.394
     
     #print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
-    sky_rad= math.ceil(float(fwhm_value)*4)
+    aperture_rad = math.ceil(float(fwhm_value)*1.5)      # Set aperture radius to three times the PSF radius
+    sky_rad= math.ceil(float(fwhm_value)*5)
     
     #print aperture_rad, sky_rad
 

@@ -94,7 +94,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         #Select round sources (ellipticity is 1-axis_ratio)
         s = s[s[:,8]<np.percentile(s[:,8], 30)]
         #Select bright magnitudes
-        s = s[s[:,5]<np.percentile(s[:,5], 20)]
+        s = s[s[:,4]<np.percentile(s[:,4], 20)]
         print f, "number of sources", len(s)
  
         focpos.append(pos)
@@ -191,8 +191,9 @@ def analyse_image(sexfile):
     s = s[s[:,4]<np.percentile(s[:,4], 20)]
        
     fwhm = np.nanmedian(s[:,7]*0.394)
+    bkg = np.nanmedian(s[:,9])
     
-    return nsources, fwhm, ellipticity
+    return nsources, fwhm, ellipticity, bkg
         
 def get_focus(lfiles, plot=True):
     '''
@@ -210,5 +211,5 @@ def get_image_pars(image):
     sexfiles = run_sex([image])
     pars = analyse_image(sexfiles[0])
     
-    return pars
+    return pars[0], pars[1], pars[2]
     

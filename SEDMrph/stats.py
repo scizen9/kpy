@@ -74,9 +74,9 @@ def plot_stats_pointing():
     di = d[d["filter"]=="i"]
     du = d[d["filter"]=="u"]
     
-    filters = ["ACQ"]#, "r", "g", "i", "u" ]    
+    filters = ["ACQ", "r", "g", "i", "u" ]    
     
-    dar = np.array([d1])#r, dg, di, du, d1])
+    dar = np.array([dr, dg, di, du, d1])
     for i in np.arange(len(filters)):
         plt.figure(i+1)
         plt.scatter(dar[i]["dra"], dar[i]["ddec"], c=dar[i]["jd"]-np.min(d["jd"]))
@@ -97,6 +97,9 @@ def get_sextractor_stats(files):
     sexfiles.sort()
     
 
+    if not os.path.isdir(os.path.join( os.path.dirname(files[0]), "stats")):
+        os.makedirs(os.path.join(os.path.dirname(files[0]), "stats"))
+
     with open(os.path.join( os.path.dirname(files[0]), "stats/stats.log"), "w") as out:
         for i, f in enumerate(files):
 	    if (fitsutils.has_par(f, "IMGTYPE")):
@@ -114,8 +117,8 @@ def get_sextractor_stats(files):
             try:
                 jd = hd["JD"]
 		object = hd["OBJECT"]
-                ns, fwhm, ellipticity = sextractor.analyse_image(sf)
-                out.write("%s,%s,%.3f,%d,%.2f,%.3f\n"%(os.path.abspath(f),object,jd,ns,fwhm,ellipticity))
+                ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
+                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f\n"%(os.path.abspath(f),object,jd,ns,fwhm,ellipticity,bkg))
             except:
                 pass
             
@@ -140,10 +143,13 @@ def plot_stats(statfile):
     ax2.set_title('FWHM [arcsec]')
     ax3.plot(hours, s["f5"], ".-")
     ax3.set_title('Ellipticity')
-    #ax4.plot(x, 2 * y ** 2 - 1, color='r')
+    ax4.plot(hours, s["f6"], ".-")
+    ax4.set_title('Background')
+
     ax1.xaxis.set_major_formatter(xfmt)
     ax2.xaxis.set_major_formatter(xfmt)
     ax3.xaxis.set_major_formatter(xfmt)
+    ax4.xaxis.set_major_formatter(xfmt)
 
     labels = ax1.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
@@ -151,6 +157,9 @@ def plot_stats(statfile):
     plt.setp(labels, rotation=30, fontsize=10)
     labels = ax3.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
+    labels = ax4.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+
     plt.savefig(statfile.replace(".log", "%s.png"%(day)))
 
 
@@ -176,5 +185,6 @@ if __name__ == '__main__':
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+    print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 

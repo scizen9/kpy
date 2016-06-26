@@ -30,18 +30,23 @@ def run_flexure_test(sexfiles, plotdir):
             c = np.genfromtxt(sf)
             
             # We want bright sources.
-            c = c[c[:,2]<-10]
+            c = c[c[:,4]< -9]
             
             # We want round-shaped sources.
-            c = c[c[:,7]<0.6]
+            c = c[c[:,8]<0.6]
             
             #Save the positions in a separate file with only X Y.
             np.savetxt(sf.replace(".sex", ".pos"), c[:,0:2])
             posfiles.append(sf.replace(".sex", ".pos"))
             
         c0 = np.genfromtxt(posfiles[0])
+	i = 1
+	while len(c0) ==0 and i<len(posfiles):
+	    c0 = np.genfromtxt(posfiles[i])
+	    i = i+1
+	    
         flexure = []
-        for f in posfiles[1:]:
+        for f in posfiles[i:]:
             print f
             c1 = np.genfromtxt(f)
         
