@@ -23,7 +23,18 @@ import os, shutil
 import transformations
 from astropy import stats
 import argparse
-from scipy.interpolate import interp1d
+import logging
+import datetime
+
+#Log into a file
+FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+#root_dir = "/tmp/logs/"
+root_dir = "/scr2/sedm/logs/"
+now = datetime.datetime.utcnow()
+timestamp=datetime.datetime.isoformat(now)
+timestamp=timestamp.split("T")[0]
+logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+logger = logging.getLogger('zeropoint')
 
 def are_isolated(rav, decv, r):
     '''
@@ -735,12 +746,13 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     
     '''
     
-    print 'Finding the optimum ZP fit...'
+    logger.info( 'Finding the optimum ZP fit...')
     
-    print ref_stars
+    logger.info("Reference stars used: %s"% ref_stars)
     
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
-    my = np.genfromtxt(image+".app.mag", comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
+    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("image","|S20"),   ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
         my = np.array([my])
@@ -757,7 +769,7 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     my = my[mask_valid1]
     
     if len(my) == 0:
-        print "Warning, no reliable measurements for file", image
+        logger.warn( "Warning, no reliable measurements for file %s. Returning 0,0,0."% image)
         return 0, 0, 0
         
     my["fiterr"][np.isnan( my["fiterr"])] = 100
@@ -765,13 +777,13 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     ids = np.arange(N)+1
     ids = ids[mask_valid1]
     
-    print my["fit_mag"]
-
     coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.1, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
     p = np.poly1d(coefs)
     
-    print coefs
-    
+    logger.info("Coefficients for 1 deg polynomial fit to the zeropoint: %s"% coefs)
+    logger.info("%s - %s = %.3f, %.3f"%(band, col_band, p[0], p[1]))
+
+
     pred = p(r[band]-r[col_band])
     measured = r[band]- my["fit_mag"]
     mad = stats.funcs.median_absolute_deviation(pred-measured)
@@ -779,16 +791,14 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     
     if len(r) > 4:
         mask = np.abs(pred-measured)/mad < 15
-    
-        print mad, np.abs(pred-measured),  np.abs(pred-measured)/mad, mask
-        
+            
         r = r[mask]
         my = my[mask]
         ids = ids[mask]
         
         coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.1, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
         
-        print coefs
+        logger.info("Coefficients for 1 deg polynomial fit to the zeropoint: %s. After outlier rejection."% coefs)
         
         p = np.poly1d(coefs)
     
@@ -810,7 +820,7 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
 
         plt.clf()
     
-    print band, "-", col_band, p[0], p[1]
+    logger.info("%s - %s = %.3f, %.3f"%(band, col_band, p[0], p[1]))
     
     pred = p(r[band]-r[col_band])
     measured = r[band]- my["fit_mag"]
@@ -824,6 +834,9 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
 
 
 def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=None):
+    '''
+    Calibrates the zeropoint using SDSS catalogue.    
+    '''
     
     filt = fitsutils.get_par(image, 'filter')
     exptime = fitsutils.get_par(image, "exptime")
@@ -840,15 +853,15 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     airmass = fitsutils.get_par(image, "AIRMASS")
     band = fitsutils.get_par(image, "FILTER")
     
-    print "Starting calibration of ZP for image", image,"for object", objname, "with filter", band
+    logger.info( "Starting calibration of ZP for image %s for object %s with filter %s."%(image, objname, band))
 
     if (exptime < 10):
-        print "ERROR. Exposure time too short for this image to see anything..."
+        logger.error( "ERROR. Exposure time too short for image (%s) to see anything..."%image)
         return 
 
-    extracted = extract_star_sequence(image, filt, plot=plot, survey='sdss', debug=debug, refstars=refstars, plotdir=plotdir)
+    extracted = extract_star_sequence(os.path.abspath(image), filt, plot=plot, survey='sdss', debug=debug, refstars=refstars, plotdir=plotdir)
     if (not extracted):
-        print "Field not in SDSS or error when retrieving the catalogue... Skipping."
+        logger.warn( "Field not in SDSS or error when retrieving the catalogue... Skipping. Image %s not zeropoint calibrated."%image)
         return 
 
     #If extraction worked, we can get the FWHM        
@@ -898,7 +911,7 @@ def plot_zp(zpfile, plotdir=None):
         for i in range(len(a[a['filter']==fi])):
             plt.errorbar( (a[a['filter']==fi]['date'][i]-np.min(a[a['filter']==fi]['date'], axis=0))*24., \
             a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i])
-        print "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint']))
+        logger.info( "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint'])))
 
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
@@ -923,7 +936,7 @@ def plot_zp_airmass(zpfile):
     for fi in ['u', 'g', 'r', 'i']:
         for i in range(len(a[a['filter']==fi])):
             plt.errorbar( a[a['filter']==fi]['airmass'][i], a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i])
-        print "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint']))
+        logger.info( "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint'])))
 
     plt.gca().invert_yaxis()
     plt.xlabel("Airmass")
@@ -944,7 +957,7 @@ def main(reduced):
     
 
     for f in glob.glob("*.fits"):
-        print f
+        logger.info("Starting calibration of zeropoint for %s"% f)
         if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
     if (os.path.isfile("zeropoint.log")):
