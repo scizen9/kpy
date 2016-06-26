@@ -23,6 +23,7 @@ import glob
 import argparse
 import coordinates_conversor as cc
 import pywcs
+import matplotlib.lines as mlines
 
 ref_stars_file = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_ps1.csv"
 ref_stars_file_sdss = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_sdss.csv"
@@ -279,9 +280,15 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
     pra, pdec = get_xy_coords(image, ra, dec)
         
+    imdir = os.path.dirname(image)
+    imname = os.path.basename(image)
+    plotdir = os.path.join(imdir, "photometry")
+    
+    if not os.path.isdir(plotdir):
+        os.makedirs(plotdir)
         
-    out_name = image +  ".seq.mag"
-    clean_name = image + ".objapp.mag"
+    out_name = os.path.join(plotdir, imname +  ".seq.mag")
+    clean_name = os.path.join(plotdir, imname +  ".objapp.mag")
     
     
     fwhm_value = fwhm
@@ -316,7 +323,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
     plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
     if (plot_only): 
-        plt.savefig(image+".png")
+        plt.savefig(os.path.join(plotdir, image+".png"))
         plt.clf()
     
     else:
@@ -376,7 +383,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)
-        plt.savefig(image+".png")
+        plt.savefig(os.path.join(plotdir, image+".png"))
         plt.clf()
         
         zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
@@ -390,9 +397,17 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
         plt.gca().add_artist(c2)
         plt.gca().add_artist(c22)
         plt.colorbar(im)
-        plt.legend()
+        
+        myhandles = []
+        markers = ["o", "o"]
+        labels = ["Initial position", "Adjusted centroid"]
+        cols = ["k", "orange"]
+        for i in np.arange(len(markers)):
+                myhandles.append(mlines.Line2D([], [], mec=cols[i], mfc="none", marker=markers[i], ls="None", markersize=10, label=labels[i]))
+        plt.legend(handles=myhandles, loc="lower left", labelspacing=0.3, fontsize=11, numpoints=1, frameon=False, ncol=5, bbox_to_anchor=(0.0, 0.00), fancybox=False, shadow=True)
+
         plt.title("MIN: %.0f MAX: %.0f"%(np.nanmin(impf[0].data.T[X-50:X+50,Y-50:Y+50]), np.nanmax(impf[0].data.T[X-50:X+50,Y-50:Y+50])))
-        plt.savefig(image+"_zoom.png")
+        plt.savefig(os.path.join(plotdir, image+"_zoom.png"))
         plt.clf()
 
  
@@ -418,4 +433,4 @@ if __name__ == '__main__':
 
     for f in glob.glob("*.fits"):
         #print f
-        get_app_phot_target(f, box=30)
+        get_app_phot_target(f, box=5)

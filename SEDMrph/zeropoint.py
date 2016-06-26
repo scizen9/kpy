@@ -4,6 +4,8 @@ Created on Thu Dec  3 14:57:05 2015
 
 @author: nadiablago
 """
+import matplotlib
+matplotlib.use("Agg")
 import zscale
 import sys, urllib
 import pyfits as pf
@@ -13,7 +15,6 @@ import math, glob
 import pywcs 
 from astropy.io.votable import parse_single_table
 import coordinates_conversor
-import matplotlib
 import app_phot
 from numpy.lib import recfunctions as rfn
 import scipy.optimize as opt
