@@ -516,6 +516,15 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
 
     for b in set(a['filter']):
         ab = a[a['filter']==b]
+        
+        #Filter extreme colours which may bias the coefficient.
+        mincol = np.median(ab["color"]) - 2*np.std(ab["color"])
+        maxcol = np.median(ab["color"]) + 2*np.std(ab["color"])
+        
+        ab = ab[ (ab["color"]>mincol) * (ab["color"]<maxcol) ]        
+        
+        
+        #Find the coefficients.
         M = np.zeros((len(ab), 4))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
@@ -576,7 +585,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         pred_col = ab['color']*coef[1]
 
         emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5)
-        pred_airmass = (ab['airmass']-1.3)*coef[1]
+        pred_airmass = (ab['airmass']-1.3)*coef[2]
         
         emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
         pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
@@ -596,7 +605,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             print np.median(ab['color'])*coef[1]
             ax2.plot(ab['airmass'], emp_airmass, "o", color=cols[b], ms=4, alpha=0.4)
             ax2.plot(ab['airmass'], pred_airmass , color=cols[b])
-            ax2.set_xlabel("airmass-1.3")
+            ax2.set_xlabel("airmass")
 
             #arr = np.array([ab['jd'], pred_jd]).T
             #print arr, arr.shape, arr.dtype
