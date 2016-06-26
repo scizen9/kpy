@@ -59,7 +59,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         os.makedirs(plotdir)
         
     out_name = os.path.join(plotdir, imname +  ".seq.mag")
-    clean_name = os.path.join(plotdir, imname +  ".objapp.mag")
+    clean_name = os.path.join(plotdir, imname +  ".app.mag")
 
     
     # Read values from .ec file
