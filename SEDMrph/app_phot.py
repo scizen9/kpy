@@ -23,12 +23,17 @@ import glob
 import argparse
 import coordinates_conversor as cc
 import pywcs
+import matplotlib.lines as mlines
 
 ref_stars_file = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_ps1.csv"
 ref_stars_file_sdss = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_sdss.csv"
 ref_stars_file_2mass = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_2mass.csv"
 ref_stars_file_johnson = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_johnson.csv"
 
+import warnings
+
+def fxn():
+    warnings.warn("deprecated", DeprecationWarning)
 
 
 def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir="."):
@@ -45,9 +50,17 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         iraf.digiphot(_doprint=0)
         iraf.apphot(_doprint=0)
         iraf.unlearn("apphot")
+
+    imdir = os.path.dirname(image)
+    imname = os.path.basename(image)
+    plotdir = os.path.join(imdir, "photometry")
     
-    out_name = image +  ".seq.mag"
-    clean_name = image + ".app.mag"
+    if not os.path.isdir(plotdir):
+        os.makedirs(plotdir)
+        
+    out_name = os.path.join(plotdir, imname +  ".seq.mag")
+    clean_name = os.path.join(plotdir, imname +  ".app.mag")
+
     
     # Read values from .ec file
     ecfile= image+".ec"
@@ -117,52 +130,13 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         wcsin = wcsin,
         wcsout = "logical",
         gcommands = "") 
-
-        '''iraf.noao.digiphot.apphot.phot(image = image,\
-            skyfile = "",\
-            coords  = coords,\
-            output  = out_name,\
-           plotfil = "",\
-           datapar = "",\
-           centerp = "",\
-           fitskyp = "",\
-           photpar = "",\
-           interac = "no",\
-           radplot = "no",\
-           icomman = "",\
-           gcomman = "",\
-           wcsin = wcsin,
-           wcsout = "logical",
-           fwhmpsf = float(fwhm_value),\
-           datamin = 0   ,\
-           datamax = 63500,\
-           ccdread =  "INDEF",\
-           gain    =  "INDEF",\
-           readnoi =  0,\
-           epadu   =  2.0,\
-           exposur = "EXPTIME",\
-           airmass = "AIRMASS",\
-           filter  = "FILTER",\
-           obstime = "DATE-OBS",\
-           calgori = "centroid",\
-           salgori = "mode",\
-           cbox    = 25.,\
-           annulus = 30,\
-           dannulu = 10,\
-           zmag = 0.,\
-           aperture = str(aperture_rad)
-          # apert = str(aperture_rad),\
-           #scale  =                   1.,\
-           #emissio=                  "yes",\
-           #sigma  =                "INDEF"           
-           )'''
         
          
         #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-        iraf.txdump(out_name, "id,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
         
     
-    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     if (ma.size > 0):    
         m = ma[~np.isnan(ma["fit_mag"])]
     else:
@@ -188,6 +162,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
             if ( k < len(m)):
                 ax = plt.subplot2grid((dimX,dimY),(i, j))
                 y1, y2, x1, x2 = m[k]["X"]-cutrad, m[k]["X"]+cutrad, m[k]["Y"]-cutrad, m[k]["Y"]+cutrad
+                y1, y2, x1, x2 = int(y1), int(y2), int(x1), int(x2)
                 try:
                     zmin, zmax = zscale.zscale(img[x1:x2,y1:y2], nsamples=1000, contrast=0.25)
                 except:
@@ -215,7 +190,28 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     plt.savefig(os.path.join(plotdir, image + "plot.png"))
     plt.clf()
 
-def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=2, box=20):
+def get_xy_coords(image, ra, dec):
+    '''
+    Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    print output 
+    output = output.split("->")[1]
+    
+    coords = []
+    for s in output.split(","):
+        coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
+        
+    return coords
+    
+def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwhm=2, box=4):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -224,6 +220,9 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
     # The special keyword _doprint=0 turns off displaying the tasks 
     # when loading a package. 
     
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fxn()
     if (not plot_only):
         iraf.noao(_doprint=0)
         iraf.digiphot(_doprint=0)
@@ -247,8 +246,19 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         #print pra, pdec, shape
         return
     
-    out_name = image +  ".seq.mag"
-    clean_name = image + ".objapp.mag"
+    
+    #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
+    pra, pdec = get_xy_coords(image, ra, dec)
+        
+    imdir = os.path.dirname(image)
+    imname = os.path.basename(image)
+    plotdir = os.path.join(imdir, "photometry")
+    
+    if not os.path.isdir(plotdir):
+        os.makedirs(plotdir)
+        
+    out_name = os.path.join(plotdir, imname +  ".seq.mag")
+    clean_name = os.path.join(plotdir, imname +  ".objapp.mag")
     
     
     fwhm_value = fwhm
@@ -258,26 +268,32 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
     
+    
+    #Obtain the fwhm in pixels
+    if wcsin == "logical":   
+        if (fitsutils.has_par(image, 'SEEPIX')):
+            fwhm_value = fitsutils.get_par(image, 'SEEPIX')
+        else:
+            fwhm_value = fwhm_value / 0.394
+    
     #print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
-    sky_rad= math.ceil(float(fwhm_value)*4)
+    aperture_rad = math.ceil(float(fwhm_value)*1.5)      # Set aperture radius to three times the PSF radius
+    sky_rad= math.ceil(float(fwhm_value)*5)
     
     #print aperture_rad, sky_rad
 
     
     
-    coords = "/tmp/coords.dat"
-    
-    #print "Saving coodinates for the object in pixels",pra,pdec
-    
-    np.savetxt("/tmp/coords.dat", np.array([[ra, dec]]), fmt="%.4f %.4f")
+    print "Saving coodinates for the object in pixels",pra,pdec
+    coords = "/tmp/coords.dat"    
+    np.savetxt("/tmp/coords.dat", np.array([[pra, pdec]]), fmt="%.4f %.4f")
     
     zmin, zmax = zscale.zscale(impf[0].data)
        
     im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
     plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
     if (plot_only): 
-        plt.savefig(image+".png")
+        plt.savefig(os.path.join(plotdir, image+".png"))
         plt.clf()
     
     else:
@@ -306,16 +322,16 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
         graphics = "stdgraph" ,\
         display = "stdimage" ,\
         icommands = "" ,\
-        wcsin = wcsin,
+        wcsin = "logical",
         wcsout = "logical",
         gcommands = "") 
 
 
         #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-        iraf.txdump(out_name, "id,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
         
     
-        ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+        ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
         if (ma.size > 0):  
             if (ma.size==1):
                 ma = np.array([ma])
@@ -325,29 +341,59 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="world", fwhm=
             m = np.array([ma])
             
     
-        if (fitsutils.has_par(image, "ZP")):
+        if (fitsutils.has_par(image, "ZEROPT")):
             band = fitsutils.get_par(image, "filter")
-            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZP"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZPERR")**2), fwhm_value
+            mag =  ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT")
+            magerr = np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2)  
+	
+            if np.isnan(mag):
+		mag, magerr = 0, 0
+            fitsutils.update_par(image, "APPMAG",mag) 
+            fitsutils.update_par(image, "APPMAGER", magerr) 
+            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2), fwhm_value
         else:
+            mag =  ma['fit_mag'][0] 
+            magerr = ma['fiterr'][0]  
+	
+            if np.isnan(mag):
+		mag, magerr = 0, 0
             band = fitsutils.get_par(image, "filter")
+            fitsutils.update_par(image, "APPMAG", mag )
+            fitsutils.update_par(image, "APPMAGER", magerr)
             print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] , ma['fiterr'][0], fwhm_value
                  
-        X = ma["X"][0]
-        Y = ma["Y"][0]
+        X = int(ma["X"][0])
+        Y = int(ma["Y"][0])
+        pra = int(pra)
+	pdec = int(pdec)
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)
-        plt.savefig(image+".png")
+        plt.savefig(os.path.join(plotdir, image+".png"))
         plt.clf()
         
-        im = plt.imshow(impf[0].data.T[X-50:X+50,Y-50:Y+50].T, vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
-        c1 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=sky_rad)
-        c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
+        zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
+        im = plt.imshow(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50].T, vmin=zmin, vmax=zmax, interpolation="none", origin="bottom", extent=(-50,50,-50,50))
+        c1 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=aperture_rad, label="Initial position")
+        c11 = plt.Circle( (pra-X, pdec-Y), edgecolor="k", facecolor="none", radius=sky_rad)
+        c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=aperture_rad, label="Adjusted centroid")
+        c22 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
         plt.gca().add_artist(c1)
+        plt.gca().add_artist(c11)
         plt.gca().add_artist(c2)
+        plt.gca().add_artist(c22)
         plt.colorbar(im)
+        
+        myhandles = []
+        markers = ["o", "o"]
+        labels = ["Initial position", "Adjusted centroid"]
+        cols = ["k", "orange"]
+        for i in np.arange(len(markers)):
+                myhandles.append(mlines.Line2D([], [], mec=cols[i], mfc="none", marker=markers[i], ls="None", markersize=10, label=labels[i]))
+        plt.legend(handles=myhandles, loc="lower left", labelspacing=0.3, fontsize=11, numpoints=1, frameon=False, ncol=5, bbox_to_anchor=(0.0, 0.00), fancybox=False, shadow=True)
+
         plt.title("MIN: %.0f MAX: %.0f"%(np.nanmin(impf[0].data.T[X-50:X+50,Y-50:Y+50]), np.nanmax(impf[0].data.T[X-50:X+50,Y-50:Y+50])))
-        plt.savefig(image+"_zoom.png")
+        plt.savefig(os.path.join(plotdir, image+"_zoom.png"))
         plt.clf()
 
  
@@ -372,5 +418,6 @@ if __name__ == '__main__':
     
 
     for f in glob.glob("*.fits"):
-        #print f
-        get_app_phot_target(f, box=30)
+        if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
+		#print f
+        	get_app_phot_target(f, box=5)

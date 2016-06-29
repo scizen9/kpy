@@ -21,6 +21,7 @@ import time
 import datetime
 import logging
 import sextractor
+import zeropoint
 
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
@@ -497,7 +498,7 @@ def clean_cosmic(f):
     
     try:
         c = cosmics.cosmicsimage(array, gain=g, readnoise=rn, sigclip = 8.0, sigfrac = 0.3, satlevel = 64000.0)
-        c.run(maxiter = 5)
+        c.run(maxiter = 3)
         out = f.replace('.fits',  '_clean.fits')
     
         cosmics.tofits(out, c.cleanarray, header)
@@ -754,7 +755,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         slice_names[i] = deflatted
             
                 
-            
     reduced_imgs = []   
     #Moving files to the target directory
     for name in slice_names:
@@ -764,6 +764,9 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         shutil.move(name, newname)
         reduced_imgs.append(newname)
         
+    #Compute the zeropoints
+    for image in reduced_imgs:
+        zeropoint.calibrate_zeropoint(image)
         
     return reduced_imgs
 

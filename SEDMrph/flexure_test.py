@@ -16,7 +16,17 @@ import pyfits as pf
 import fitsutils
 import datetime
 import argparse
+import logging
 
+#Log into a file
+FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+root_dir = "/scr2/sedm/logs/"
+now = datetime.datetime.utcnow()
+timestamp=datetime.datetime.isoformat(now)
+timestamp=timestamp.split("T")[0]
+logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
+logger = logging.getLogger('flexure')
+    
 
 def run_flexure_test(sexfiles, plotdir):
     '''
@@ -25,23 +35,29 @@ def run_flexure_test(sexfiles, plotdir):
     sexfiles.sort()
     posfiles = []
     
+    logger.info("Running flexure test with %s files."%sexfiles)
     with open(os.path.join(plotdir, "flexure.log"), "w") as out:
         for sf in sexfiles:
             c = np.genfromtxt(sf)
             
             # We want bright sources.
-            c = c[c[:,2]<-10]
+            c = c[c[:,4]< -9]
             
             # We want round-shaped sources.
-            c = c[c[:,7]<0.6]
+            c = c[c[:,8]<0.6]
             
             #Save the positions in a separate file with only X Y.
             np.savetxt(sf.replace(".sex", ".pos"), c[:,0:2])
             posfiles.append(sf.replace(".sex", ".pos"))
             
         c0 = np.genfromtxt(posfiles[0])
+	i = 1
+	while len(c0) ==0 and i<len(posfiles):
+	    c0 = np.genfromtxt(posfiles[i])
+	    i = i+1
+	    
         flexure = []
-        for f in posfiles[1:]:
+        for f in posfiles[i:]:
             print f
             c1 = np.genfromtxt(f)
         
@@ -108,7 +124,8 @@ if __name__ == '__main__':
     files = glob.glob(os.path.join(raw, "ifu*fits"))
     #files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
     files_hg = [f for f in files if fitsutils.has_par(f, "OBJECT") and "Calib:  Hg" in fitsutils.get_par(f, "OBJECT")]
- 
+    
+    logger.info("Found the following Hg files: %s"%files_hg)
     if (len(files_hg)>1):
 	files_hg.sort()
         sexfiles = sextractor.run_sex(files_hg, mask=False)

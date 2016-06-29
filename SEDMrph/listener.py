@@ -148,9 +148,9 @@ def start_listening_loop():
                 break
         #Exit and restart the listener if the program is running for more than 12 hours and 
         #it is later than 10AM, so we don't disrupt the night scheduler.
-        if (datetime.datetime.utcnow()-now).total_seconds() > 12*3600. and (datetime.datetime.utcnow()).hour>17:
+        '''if (datetime.datetime.utcnow()-now).total_seconds() > 12*3600. and (datetime.datetime.utcnow()).hour>17:
             logger.info( "Programe is running for more than 12h and now is later than 10AM. Restarting")
-            sys.exit(0)
+            sys.exit(0)'''
             
 if __name__ == '__main__':
     '''
