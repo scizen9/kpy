@@ -67,10 +67,12 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
         Note: if airmass=1, then the list is equivalent of [ pos ]
 
     """
-    print "LamEff %.1f nm, Airmass %.3f" % (leff, airmass)
+    print "LamEff %.1f microns, Airmass %.3f" % (leff, airmass)
 
+    # Compute the AD for two pieces of the spectrum:
+    # from 0.38 microns to leff and from leff to 0.95 microns
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
-    red_ad = NPK.Util.atm_disper(leff, 0.95, airmass)
+    red_ad = NPK.Util.atm_disper(0.95, leff, airmass)
     print 'Blue AD is %1.1f", Red AD is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
                                                                 prlltc.degree)
 
@@ -78,7 +80,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     dy = np.cos(prlltc.radian)
 
     delta = 0.1
-    bpos = np.array(pos) - np.array([dx, dy]) * blue_ad * delta
+    bpos = np.array(pos) - np.array([dx, dy]) * blue_ad # * delta
 
     positions = []
     nstep = np.int(np.round((blue_ad - red_ad)/delta))
@@ -180,10 +182,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     print("PSF FIT on IFU:  z,a,b,x,y,theta = %f, %f, %f, %f, %f, %f" %
           (z, a, b, xc, yc, theta*180./np.pi))
     
-    leff = (lmax+lmin)/2.0
+    leffmic = (lmax+lmin)/2000.0    # convert to microns
     
     if prlltc is not None:
-        positions = atm_dispersion_positions(prlltc, pos, leff, airmass)
+        positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
     else:
         positions = [pos]
     
@@ -237,9 +239,10 @@ def identify_spectra_gui(spectra, radius=2., lmin=650., lmax=700., prlltc=None,
     print "Final radius (arcsec) = %4.1f" % radius
     ellipse = (a, b, xc, yc, 0.)
 
-    leff = (lmax+lmin)/2.0
+    leffmic = (lmax+lmin)/2000.0    # Convert to microns
+
     if prlltc is not None:
-        positions = atm_dispersion_positions(prlltc, pos, leff, airmass)
+        positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
     else:
         positions = [pos]
 
@@ -398,7 +401,7 @@ def c_to_nm(coefficients, pix, offset=0.):
 
 
 def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
-                   corrfile=None, dnm=0., onto=None):
+                   corrfile=None, dnm=0., onto=None, sky=False):
     """Interp spectra onto common grid
 
     Args:
@@ -410,6 +413,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         outname:
         dnm: Offset (usually for flexure) in nm
         onto:
+        sky:
     """
 
     l_grid = onto
@@ -418,6 +422,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     # for ix,spectrum in enumerate(all_spectra):
     for ix in six:
         spectrum = all_spectra[ix]
+
+        if sky and all_spectra[ix].is_obj:
+            continue
 
         l, s = spectrum.get_counts(the_spec='specw')
         pix = np.arange(*spectrum.xrange)
@@ -824,14 +831,18 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                                    lmin=lmin, lmax=lmax,
                                    airmass=meta['airmass'])
     radius_used = ellipse[0] * 0.5
+    for ix in sixa:
+        ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
     kixa = identify_sky_spectra(ex, posa, inner=radius_used*1.1)
+    for ix in kixa:
+        ex[ix].is_sky = True
 
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
-    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf")
+    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
     vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -842,8 +853,9 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         xsa.append(ex[ix].X_as)
         ysa.append(ex[ix].Y_as)
     for ix in kixa:
-        xsk.append(ex[ix].X_as)
-        ysk.append(ex[ix].Y_as)
+        if not ex[ix].is_obj:
+            xsk.append(ex[ix].X_as)
+            ysk.append(ex[ix].Y_as)
 
     pl.figure()
     pl.clf()
@@ -1067,15 +1079,20 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
                                  prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax,
                                  airmass=meta['airmass'])
-        radius_used = ellipse[0] * 0.5
+        radius_used = ellipse[0]
         # Use an annulus for sky spaxels for Science Objects
         kixa = identify_bgd_spectra(ex, posa, inner=radius_used*1.1)
+
+    for ix in sixa:
+        ex[ix].is_obj = True
+    for ix in kixa:
+        ex[ix].is_sky = True
 
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
-    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf")
+    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
     vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1086,8 +1103,9 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
         xsa.append(ex[ix].X_as)
         ysa.append(ex[ix].Y_as)
     for ix in kixa:
-        xsk.append(ex[ix].X_as)
-        ysk.append(ex[ix].Y_as)
+        if not ex[ix].is_obj:
+            xsk.append(ex[ix].X_as)
+            ysk.append(ex[ix].Y_as)
 
     pl.figure()
     pl.clf()
@@ -1287,6 +1305,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              lmin=lmin, lmax=lmax, objname=objname,
                              airmass=meta['airmass'])
     radius_used_a = ellipse[0]
+    for ix in sixa:
+        ex[ix].is_obj = True
     print "\nMark negative (blue) target next"
     sixb, posb, adc_b, ellipseb = \
         identify_spectra_gui(ex, radius=radius_used_a,
@@ -1294,17 +1314,25 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              lmin=lmin, lmax=lmax, objname=objname,
                              airmass=meta['airmass'])
     radius_used_b = ellipseb[0]
+    for ix in sixb:
+        ex[ix].is_obj = True
 
     to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
              ellipse=ellipse, ellipseb=ellipseb)
 
     kixa = identify_bgd_spectra(ex, posa, inner=radius_used_a*1.1)
+    for ix in kixa:
+        ex[ix].is_sky = True
     kixb = identify_bgd_spectra(ex, posb, inner=radius_used_b*1.1)
+    for ix in kixb:
+        ex[ix].is_sky = True
 
     resa = interp_spectra(ex, sixa, sign=1, outname=outname+"_A.pdf")
     resb = interp_spectra(ex, sixb, sign=-1, outname=outname+"_B.pdf")
-    skya = interp_spectra(ex, kixa, sign=1, outname=outname+"_skyA.pdf")
-    skyb = interp_spectra(ex, kixb, sign=-1, outname=outname+"_skyB.pdf")
+    skya = interp_spectra(ex, kixa, sign=1, outname=outname+"_skyA.pdf",
+                          sky=True)
+    skyb = interp_spectra(ex, kixb, sign=-1, outname=outname+"_skyB.pdf",
+                          sky=True)
     vara = interp_spectra(ex_var, sixa, sign=1, outname=outname+"_A_var.pdf")
     varb = interp_spectra(ex_var, sixb, sign=1, outname=outname+"_B_var.pdf")
 
@@ -1324,11 +1352,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         xsb.append(ex[ix].X_as)
         ysb.append(ex[ix].Y_as)
     for ix in kixa:
-        xka.append(ex[ix].X_as)
-        yka.append(ex[ix].Y_as)
+        if not ex[ix].is_obj:
+            xka.append(ex[ix].X_as)
+            yka.append(ex[ix].Y_as)
     for ix in kixb:
-        xkb.append(ex[ix].X_as)
-        ykb.append(ex[ix].Y_as)
+        if not ex[ix].is_obj:
+            xkb.append(ex[ix].X_as)
+            ykb.append(ex[ix].Y_as)
 
     pl.figure()
     pl.clf()
