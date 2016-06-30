@@ -62,7 +62,7 @@ def run_flexure_test(sexfiles, plotdir):
             print f
             c1 = np.genfromtxt(f)
             #Format of the file: ifu20160630_00_08_38
-            t = datetime.datetime.strptime(os.path.basename(f), 'ifu%Y%m%d_%H_%M_%S.fits') 
+            t = datetime.datetime.strptime(os.path.basename(f), 'ifu%Y%m%d_%H_%M_%S.pos') 
             dateflex.append(t)
             
             c = SkyCoord(x=c0[:,0], y=c0[:,1], z=np.zeros(len(c0)), unit='m', representation='cartesian')
