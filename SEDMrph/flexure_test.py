@@ -18,9 +18,10 @@ import datetime
 import argparse
 import logging
 
+
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-root_dir = "/scr2/sedm/logs/"
+root_dir = "/tmp/"
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
 timestamp=timestamp.split("T")[0]
@@ -57,13 +58,9 @@ def run_flexure_test(sexfiles, plotdir):
 	    i = i+1
 	    
         flexure = []
-        dateflex = []
         for f in posfiles[i:]:
             print f
             c1 = np.genfromtxt(f)
-            #Format of the file: ifu20160630_00_08_38
-            t = datetime.datetime.strptime(os.path.basename(f), 'ifu%Y%m%d_%H_%M_%S.pos') 
-            dateflex.append(t)
             
             c = SkyCoord(x=c0[:,0], y=c0[:,1], z=np.zeros(len(c0)), unit='m', representation='cartesian')
             catalog = SkyCoord(x=c1[:,0], y=c1[:,1], z=np.zeros(len(c1)), unit='m', representation='cartesian')#SkyCoord(x=c1[:0]*u.pixel, y=c1[:,1]*u.pixel, z=np.zeros(len(c0))*u.pixel, representation='cartesian')  
@@ -94,12 +91,35 @@ def run_flexure_test(sexfiles, plotdir):
             c.set_label("Deviation [pixels]")
             plt.savefig(os.path.join(plotdir, "%s_vs_%s_XY.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
             plt.clf()
-            
-        plt.plot(dateflex, flexure)
-        plt.xlabel("Exposure number")
-        plt.ylabel("Median (flexure) [pixels]")
-        plt.savefig(os.path.join(plotdir, "flexure.png"))
-        plt.clf()
+    
+    plot_flexure(os.path.join(plotdir, "flexure.log"), plotdir)
+        
+def plot_flexure(flexfile, plotdir):
+    import matplotlib.dates as md
+
+
+    xfmt = md.DateFormatter('%d %b %H h')
+
+    flexure = np.genfromtxt(flexfile, dtype=None, delimiter=",")
+    
+    dateflex = []
+    for fl in flexure:
+        #Format of the file: ifu20160630_00_08_38
+        t = datetime.datetime.strptime(fl["f1"], 'ifu%Y%m%d_%H_%M_%S.pos') 
+        dateflex.append(t)
+        
+    plt.plot(dateflex, flexure["f2"], "o-")
+    plt.xlabel("Date")
+    plt.ylabel("Median (flexure) [pixels]")
+    plt.gca().xaxis.set_major_formatter(xfmt)
+    labels = plt.gca().get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+    
+    curdate = datetime.datetime.strftime(dateflex[-1], "%Y%m%d")
+    
+    plt.savefig(os.path.join(plotdir, "flexure_%s.png"%curdate), bbox_inches='tight')
+
+    plt.clf()
 
      
 if __name__ == '__main__':
