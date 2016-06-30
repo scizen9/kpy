@@ -57,10 +57,14 @@ def run_flexure_test(sexfiles, plotdir):
 	    i = i+1
 	    
         flexure = []
+        dateflex = []
         for f in posfiles[i:]:
             print f
             c1 = np.genfromtxt(f)
-        
+            #Format of the file: ifu20160630_00_08_38
+            t = datetime.datetime.strptime(os.path.basename(f), 'ifu%Y%m%d_%H_%M_%S.fits') 
+            dateflex.append(t)
+            
             c = SkyCoord(x=c0[:,0], y=c0[:,1], z=np.zeros(len(c0)), unit='m', representation='cartesian')
             catalog = SkyCoord(x=c1[:,0], y=c1[:,1], z=np.zeros(len(c1)), unit='m', representation='cartesian')#SkyCoord(x=c1[:0]*u.pixel, y=c1[:,1]*u.pixel, z=np.zeros(len(c0))*u.pixel, representation='cartesian')  
         
@@ -91,7 +95,7 @@ def run_flexure_test(sexfiles, plotdir):
             plt.savefig(os.path.join(plotdir, "%s_vs_%s_XY.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
             plt.clf()
             
-        plt.plot(flexure)
+        plt.plot(dateflex, flexure)
         plt.xlabel("Exposure number")
         plt.ylabel("Median (flexure) [pixels]")
         plt.savefig(os.path.join(plotdir, "flexure.png"))
@@ -120,9 +124,20 @@ if __name__ == '__main__':
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
         raw = os.path.join("/scr2/sedm/phot/", timestamp)
-    
+
+    #Get the files from the same day directory.        
     files = glob.glob(os.path.join(raw, "ifu*fits"))
     #files_hg = [f for f in files if "Calib:  Hg" in get_par(f, "OBJECT")]
+
+    #Get the files from one day before directory to see the differences between days.
+    daybefore = datetime.datetime.isoformat(datetime.datetime.utcnow()-datetime.timedelta(1)) 
+    daybefore = daybefore.split("T")[0].replace("-","")
+    daybefore = os.path.join("/scr2/sedm/phot/", daybefore)
+    
+    if(os.path.isdir(daybefore)):
+        filesold = glob.glob(os.path.join(daybefore, "ifu*fits"))
+        files.extend(filesold)
+        
     files_hg = [f for f in files if fitsutils.has_par(f, "OBJECT") and "Calib:  Hg" in fitsutils.get_par(f, "OBJECT")]
     
     logger.info("Found the following Hg files: %s"%files_hg)
