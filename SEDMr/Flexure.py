@@ -82,6 +82,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
 
     sumoff = 0.
     sumscale = 0.
+    legend = ["Sky"]
     for skyline in skylines:
         roi = (lamgrid > skyline-skywidth) & (lamgrid < skyline+skywidth)
         ffun = NFit.mpfit_residuals(NFit.gaussian4)
@@ -94,10 +95,12 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
              'limits': [0, 0]}]
         fit = NFit.mpfit_do(ffun, lamgrid[roi], skyspec[roi], parinfo)
         if fit.status == 1:
-            sumoff += (fit.params[1] - skyline) * fit.params[0]
+            off = fit.params[1] - skyline
+            sumoff += off * fit.params[0]
             sumscale += fit.params[0]
             pl.plot(lamgrid[roi], NFit.gaussian4(fit.params, lamgrid[roi]))
             dxnm = fit.params[1] - skyline
+            legend.append("%.1f, %d, %.2f" % (skyline, fit.status, off))
         else:
             dxnm = 0.
 
@@ -112,6 +115,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     print "dX = %3.2f nm shift" % dxnm
 
     pl.title("dX = %3.2f nm shift, dY = %3.2f px shift" % (dxnm, drow))
+    pl.legend(legend)
 
     pl.savefig(outfile + ".pdf")
 
