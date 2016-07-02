@@ -648,6 +648,7 @@ def interpolate_zp(reduced, logfile):
     a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
     a.sort(order=['jd'], axis=0)
     a = a[a['inst']!=0]
+    a = a[a['insterr']>0]
     
     jdmin =  np.min(a['jd'])
     
