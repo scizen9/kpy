@@ -523,6 +523,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
     '''
     a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
     a.sort(order=['jd'], axis=0)
+    a = a[a['inst']!=0]
     
     a['jd'] = a['jd'] - np.min(a['jd'])
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
@@ -646,6 +647,7 @@ def interpolate_zp(reduced, logfile):
     '''        
     a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
     a.sort(order=['jd'], axis=0)
+    a = a[a['inst']!=0]
     
     jdmin =  np.min(a['jd'])
     
@@ -943,6 +945,20 @@ def plot_zp_airmass(zpfile):
     plt.xlabel("Airmass")
     plt.ylabel("ZP [mag]")
     plt.show()
+
+
+def reset_zp(directory):
+    '''
+    Resets the zeropoint keyword to if the result is interpolated.
+    '''    
+    
+    files = glob.glob(directory+"/*fits")
+    
+    for f in files:
+        if (fitsutils.get_par(f, "ZPCAT")=="SDSSinterpolated"):
+            fitsutils.update_par(f, "IQZEROPT", 0)
+            fitsutils.update_par(f, "ZEROPT", 0)
+            fitsutils.update_par(f, "ZEROPTU", 0)
     
     
 def main(reduced):
