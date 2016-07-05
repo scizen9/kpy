@@ -106,7 +106,7 @@ def get_sextractor_stats(files):
             	imtype = fitsutils.get_par(f, "IMGTYPE")
 	    else:
 		imtype = "NONE"
-            if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS"):
+            if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
        		continue 
             if not os.path.isfile(sexfiles[i]):
                 sf =  sextractor.run_sex([f])

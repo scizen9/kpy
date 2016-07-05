@@ -187,7 +187,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
                 plt.text(-cutrad, -cutrad, "%.2f$\pm$%.2f"%(m[k]["fit_mag"], m[k]["fiterr"]), color="b")
             k = k+1
     
-    plt.savefig(os.path.join(plotdir, image + "plot.png"))
+    plt.savefig(os.path.join(plotdir, imname + "plot.png"))
     plt.clf()
 
 def get_xy_coords(image, ra, dec):
@@ -293,7 +293,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
     plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
     if (plot_only): 
-        plt.savefig(os.path.join(plotdir, image+".png"))
+        plt.savefig(os.path.join(plotdir, imname+".png"))
         plt.clf()
     
     else:
@@ -369,7 +369,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)
-        plt.savefig(os.path.join(plotdir, image+".png"))
+        plt.savefig(os.path.join(plotdir, imname+".png"))
         plt.clf()
         
         zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
@@ -393,7 +393,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
         plt.legend(handles=myhandles, loc="lower left", labelspacing=0.3, fontsize=11, numpoints=1, frameon=False, ncol=5, bbox_to_anchor=(0.0, 0.00), fancybox=False, shadow=True)
 
         plt.title("MIN: %.0f MAX: %.0f"%(np.nanmin(impf[0].data.T[X-50:X+50,Y-50:Y+50]), np.nanmax(impf[0].data.T[X-50:X+50,Y-50:Y+50])))
-        plt.savefig(os.path.join(plotdir, image+"_zoom.png"))
+        plt.savefig(os.path.join(plotdir, imname+"_zoom.png"))
         plt.clf()
 
  
