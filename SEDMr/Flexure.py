@@ -100,7 +100,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
             sumscale += fit.params[0]
             pl.plot(lamgrid[roi], NFit.gaussian4(fit.params, lamgrid[roi]))
             dxnm = fit.params[1] - skyline
-            legend.append("%.1f, %d, %.2f" % (skyline, fit.status, off))
+            legend.append("%.1f, %.2f" % (skyline, off))
         else:
             dxnm = 0.
 

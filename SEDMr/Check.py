@@ -83,6 +83,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         smn = smdn - 3. * sstd
         if smn < 0.:
             smn = 0.
+        smn = 0.
+        smx = 1.2
         cbtitle = "Wavelength RMS [nm]"
         outf = "cube_lambdarms.pdf"
     else:
@@ -93,7 +95,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=0., vmax=1.20)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
     pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(-25, 25)
     pl.ylim(-25, 25)
