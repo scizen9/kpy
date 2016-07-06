@@ -220,7 +220,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 
 def identify_spectra_gui(spectra, radius=2., lmin=650., lmax=700., prlltc=None,
-                         objname=None, airmass=1.0):
+                         objname=None, airmass=1.0, nosky=False):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
@@ -229,14 +229,16 @@ def identify_spectra_gui(spectra, radius=2., lmin=650., lmax=700., prlltc=None,
     print "\nStarting with a %s arcsec radius" % radius
     kt = SedSpec.Spectra(spectra)
     g = GUI.PositionPicker(kt, bgd_sub=True, radius_as=radius,
-                           lmin=lmin, lmax=lmax, objname=objname)
+                           lmin=lmin, lmax=lmax, objname=objname, nosky=nosky)
     pos = g.picked
     radius = g.radius_as
+    nosky = g.nosky
     a = radius
     b = a
     xc = g.xc
     yc = g.yc
     print "Final radius (arcsec) = %4.1f" % radius
+
     ellipse = (a, b, xc, yc, 0.)
 
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
@@ -253,7 +255,7 @@ def identify_spectra_gui(spectra, radius=2., lmin=650., lmax=700., prlltc=None,
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
 
-    return kt.good_positions[kix], pos, positions, ellipse
+    return kt.good_positions[kix], pos, positions, ellipse, nosky
 
 
 def identify_sky_spectra(spectra, pos, inner=3., lmin=650., lmax=700.):
@@ -937,6 +939,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['object_spaxel_ids'] = sixa
     res[0]['sky_spaxel_ids'] = kixa
     res[0]['sky_spectra'] = skya[0]['spectra']
+    res[0]['sky_subtraction'] = True
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1073,12 +1076,12 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
         kixa = identify_sky_spectra(ex, posa, inner=radius_used*1.1)
     # A single-frame Science Object
     else:
-        sixa, posa, adcpos, ellipse = \
+        sixa, posa, adcpos, ellipse, nosky = \
             identify_spectra_gui(ex, radius=radius,
                                  objname=objname,
                                  prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax,
-                                 airmass=meta['airmass'])
+                                 airmass=meta['airmass'], nosky=nosky)
         radius_used = ellipse[0]
         # Use an annulus for sky spaxels for Science Objects
         kixa = identify_bgd_spectra(ex, posa, inner=radius_used*1.1)
@@ -1153,9 +1156,11 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
     if nosky:
         # Account for airmass and aperture
         res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(sixa)
+        print "Sky subtraction off"
     else:
         # Account for sky, airmass and aperture
         res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
+        print "Sky subtraction on"
 
     # Store new metadata
     res[0]['exptime'] = meta['exptime']
@@ -1171,6 +1176,7 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
     res[0]['object_spaxel_ids'] = sixa
     res[0]['sky_spaxel_ids'] = kixa
     res[0]['sky_spectra'] = skya[0]['spectra']
+    res[0]['sky_subtraction'] = False if nosky else True
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1299,20 +1305,20 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     objname = header['OBJECT'].split()[0]
 
     print "\nMark positive (red) target first"
-    sixa, posa, adc_a, ellipse = \
+    sixa, posa, adc_a, ellipse, nosky = \
         identify_spectra_gui(ex, radius=radius,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              lmin=lmin, lmax=lmax, objname=objname,
-                             airmass=meta['airmass'])
+                             airmass=meta['airmass'], nosky=nosky)
     radius_used_a = ellipse[0]
     for ix in sixa:
         ex[ix].is_obj = True
     print "\nMark negative (blue) target next"
-    sixb, posb, adc_b, ellipseb = \
+    sixb, posb, adc_b, ellipseb, nosky = \
         identify_spectra_gui(ex, radius=radius_used_a,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              lmin=lmin, lmax=lmax, objname=objname,
-                             airmass=meta['airmass'])
+                             airmass=meta['airmass'], nosky=nosky)
     radius_used_b = ellipseb[0]
     for ix in sixb:
         ex[ix].is_obj = True
@@ -1383,8 +1389,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
-    pl.scatter(xsa, ysa, color='blue', marker='H', s=50, linewidth=0)
-    pl.scatter(xsb, ysb, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
+    pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
     pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
     pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
     pl.savefig("XYs_%s.pdf" % outname)
@@ -1428,12 +1434,14 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
           (np.median(extcorra), np.median(extcorrb)))
     # If requested merely sum in aperture, otherwise subtract sky
     if nosky:
+        print "Sky subtraction off"
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=FutureWarning)
             res[0]['ph_10m_nm'] = \
                 np.nansum([f1(ll) * extcorra, f2(ll) * extcorrb], axis=0) * \
                          (len(sixa) + len(sixb))
     else:
+        print "Sky subtraction on"
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=FutureWarning)
             res[0]['ph_10m_nm'] = \
@@ -1457,6 +1465,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     res[0]['sky_spaxel_ids_A'] = skya
     res[0]['object_spaxel_ids_B'] = sixb
     res[0]['sky_spaxel_ids_B'] = skyb
+    res[0]['sky_subtraction'] = False if nosky else True
 
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)

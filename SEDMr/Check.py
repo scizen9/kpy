@@ -187,6 +187,11 @@ def check_spec(specname, corrname='std-correction.npy',
     else:
         user = ''
 
+    if 'sky_subtraction' in ss:
+        skysub = ss['sky_subtraction']
+    else:
+        skysub = True
+
     try:
         utc = meta['utc']
         parts = utc.split(":")
@@ -198,8 +203,8 @@ def check_spec(specname, corrname='std-correction.npy',
         utc = ''
 
     # Annotate plots
-    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" %
-             (specname, ec, et))
+    pl.title("%s\n(airmass: %1.2f | Exptime: %i | Skysub: %s)" %
+             (specname, ec, et, "On" if skysub else "Off"))
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
