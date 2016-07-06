@@ -315,7 +315,8 @@ def check_spec(specname, corrname='std-correction.npy',
                '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
-        header += "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
+        header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)
+        header += "\nSKYSUB: %s" % ("On" if skysub else "Off")
         header += "\nAIRMASS: %1.2f" % ec
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
