@@ -908,27 +908,27 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Process standard star objects
     print "STANDARD"
     # Extract reference data
-    wav = standard[:, 0] / 10.0   # Convert to nm
-    # need a better dwav from data itself
-    dwav = 2.0
+    wav = standard[:, 0]
     flux = standard[:, 1]
     # Flux in photons/s/cm^2/A
-    flpho = 5.0341125e-9 * flux * wav * 10. * dwav
+    flpho = 5.0341125e-9 * flux * wav
+    # convert wav to nm
+    wav /= 10.
     fun = interp1d(wav, flpho, bounds_error=False, fill_value=np.nan)
     # Effective area
-    earea = res[0]['ph_10m_nm'] / (fun(res[0]['nm']) * 600.) / 10.
+    earea = (res[0]['ph_10m_nm'] / 600.) / (fun(res[0]['nm']) * 10.)
     # Efficiency assuming P60 area = 18,000 cm^2 with 90% reflectance
     eff = earea * 0.9 / 18000.
     # Calculate/Interpolate correction onto object wavelengths
     fun = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
     # Divide reference spectrum by observed to get correction
-    correction0 = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+    correction0 = fun(res[0]['nm']) / res[0]['ph_10m_nm']
     # Filter for resolution
     flxf = filters.gaussian_filter(flux, 19.)
     # Calculate/Interpolate filtered correction
     fun = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
     # Divide reference spectrum by observed to get correction
-    correction = fun(res[0]['nm'])/res[0]['ph_10m_nm']
+    correction = fun(res[0]['nm']) / res[0]['ph_10m_nm']
     # Use unfiltered for H-beta region
     roi = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
     correction[roi] = correction0[roi]
