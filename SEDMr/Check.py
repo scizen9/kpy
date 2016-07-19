@@ -83,6 +83,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         smn = smdn - 3. * sstd
         if smn < 0.:
             smn = 0.
+        smn = 0.
+        smx = 1.2
         cbtitle = "Wavelength RMS [nm]"
         outf = "cube_lambdarms.pdf"
     else:
@@ -93,7 +95,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=0., vmax=1.20)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
     pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(-25, 25)
     pl.ylim(-25, 25)
@@ -185,6 +187,11 @@ def check_spec(specname, corrname='std-correction.npy',
     else:
         user = ''
 
+    if 'sky_subtraction' in ss:
+        skysub = ss['sky_subtraction']
+    else:
+        skysub = True
+
     try:
         utc = meta['utc']
         parts = utc.split(":")
@@ -196,8 +203,8 @@ def check_spec(specname, corrname='std-correction.npy',
         utc = ''
 
     # Annotate plots
-    pl.title("%s\n(airmass: %1.2f | Exptime: %i)" %
-             (specname, ec, et))
+    pl.title("%s\n(airmass: %1.2f | Exptime: %i | Skysub: %s)" %
+             (specname, ec, et, "On" if skysub else "Off"))
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
@@ -308,7 +315,8 @@ def check_spec(specname, corrname='std-correction.npy',
                '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
-        header += "\nOBSUTC: %s\nEXPTIME %i" % (utc, et)
+        header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)
+        header += "\nSKYSUB: %s" % ("On" if skysub else "Off")
         header += "\nAIRMASS: %1.2f" % ec
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)

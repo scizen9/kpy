@@ -1,3 +1,4 @@
+Make 'spy' program platform independant (/User vs /home)
 Add measured readnoise derived from bias images as header keyword
 Add option to specify location and shape of extraction aperture
 Create repository for just SEDM reductions

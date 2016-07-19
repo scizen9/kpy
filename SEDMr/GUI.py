@@ -12,9 +12,10 @@ from numpy.polynomial.chebyshev import chebval
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, radius_as=3, **kwargs):
+    def __init__(self, ax, radius_as=3, nosky=False, **kwargs):
         self.ax = ax
         self.radius_as = radius_as
+        self.nosky = nosky
 
         radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
                              ax.transData.transform((0, 0)))[0])
@@ -38,6 +39,11 @@ class MouseCross(object):
             self.radius_as -= 0.2
         elif event.key == "x":
             self.radius_as += 0.2
+        elif event.key == "y":
+            if self.nosky:
+                self.nosky = False
+            else:
+                self.nosky = True
 
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
                              self.ax.transData.transform((0, 0)))[0])
@@ -45,6 +51,11 @@ class MouseCross(object):
         self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False,
                                   marker=r'$\bigodot$', markersize=radius_pix * 2, color='red')
         self.line.set_visible(True)
+
+        if self.nosky:
+            print "Sky subtraction off"
+        else:
+            print "Sky subtraction on"
 
         pl.draw()
 
@@ -62,9 +73,10 @@ class PositionPicker(object):
     bgd_sub = False
     xc = None
     yc = None
+    nosky = None
 
     def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
-                 lmax=650):
+                 lmax=650, nosky=False):
         """ Create spectum picking gui.
 
         Args:
@@ -77,6 +89,7 @@ class PositionPicker(object):
         self.lmax = lmax
         self.objname = objname
         self.bgd_sub = bgd_sub
+        self.nosky = nosky
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -121,11 +134,13 @@ class PositionPicker(object):
 
         c = Cursor(self.figure.gca(), useblit=True)
 
-        cross = MouseCross(self.figure.gca(), radius_as=self.radius_as)
+        cross = MouseCross(self.figure.gca(), radius_as=self.radius_as,
+                           nosky=self.nosky)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
         self.radius_as = cross.radius_as
+        self.nosky = cross.nosky
 
     def __call__(self, event):
         """Event call handler for Picker gui."""
