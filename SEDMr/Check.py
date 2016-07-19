@@ -192,6 +192,11 @@ def check_spec(specname, corrname='std-correction.npy',
     else:
         skysub = True
 
+    if 'quality' in ss:
+        qual = ss['quality']
+    else:
+        qual = 0
+
     try:
         utc = meta['utc']
         parts = utc.split(":")
@@ -203,8 +208,13 @@ def check_spec(specname, corrname='std-correction.npy',
         utc = ''
 
     # Annotate plots
-    pl.title("%s\n(airmass: %1.2f | Exptime: %i | Skysub: %s)" %
-             (specname, ec, et, "On" if skysub else "Off"))
+    if qual > 0:
+        tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
+             (specname, ec, et, "On" if skysub else "Off", qual)
+    else:
+        tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s)" % \
+             (specname, ec, et, "On" if skysub else "Off")
+    pl.title(tlab)
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
@@ -312,11 +322,12 @@ def check_spec(specname, corrname='std-correction.npy',
         fl = spec[roi]
         srt = wl.argsort().argsort()
         outf = specname[(specname.find('_') + 1):specname.find('.')] + \
-               '_SEDM.txt'
+            '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
         header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)
         header += "\nSKYSUB: %s" % ("On" if skysub else "Off")
+        header += "\nQUALITY: %d" % qual
         header += "\nAIRMASS: %1.2f" % ec
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)

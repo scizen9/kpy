@@ -12,15 +12,20 @@ from numpy.polynomial.chebyshev import chebval
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, radius_as=3, nosky=False, **kwargs):
+    def __init__(self, ax, radius_as=3, nosky=False, qual=0, **kwargs):
         self.ax = ax
         self.radius_as = radius_as
         self.nosky = nosky
+        self.quality = qual
 
         radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
                              ax.transData.transform((0, 0)))[0])
         print "%s arcsec is %s pix" % (radius_as, radius_pix)
-        print "x - expand ap, z - shrink ap"
+        print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
+        print "1 - good quality"
+        print "2 - acceptable quality"
+        print "3 - poor quality"
+        print "4 - no object visible"
         self.line, = self.ax.plot([0], [0], visible=False,
                                   marker=r'$\bigodot$', markersize=radius_pix * 2, color='red', **kwargs)
 
@@ -44,6 +49,14 @@ class MouseCross(object):
                 self.nosky = False
             else:
                 self.nosky = True
+        elif event.key == "1":
+            self.quality = 1
+        elif event.key == "2":
+            self.quality = 2
+        elif event.key == "3":
+            self.quality = 3
+        elif event.key == "4":
+            self.quality = 4
 
         radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
                              self.ax.transData.transform((0, 0)))[0])
@@ -53,9 +66,9 @@ class MouseCross(object):
         self.line.set_visible(True)
 
         if self.nosky:
-            print "Sky subtraction off"
+            print "Sky subtraction off, Quality = %d" % self.quality
         else:
-            print "Sky subtraction on"
+            print "Sky subtraction on, Quality = %d" % self.quality
 
         pl.draw()
 
@@ -75,8 +88,8 @@ class PositionPicker(object):
     yc = None
     nosky = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
-                 lmax=650, nosky=False):
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3,
+                 objname=None, lmin=600, lmax=650, nosky=False, quality=0):
         """ Create spectum picking gui.
 
         Args:
@@ -90,6 +103,7 @@ class PositionPicker(object):
         self.objname = objname
         self.bgd_sub = bgd_sub
         self.nosky = nosky
+        self.quality = quality
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -135,12 +149,13 @@ class PositionPicker(object):
         c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), radius_as=self.radius_as,
-                           nosky=self.nosky)
+                           nosky=self.nosky, qual=self.quality)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
         self.radius_as = cross.radius_as
         self.nosky = cross.nosky
+        self.quality = cross.quality
 
     def __call__(self, event):
         """Event call handler for Picker gui."""
