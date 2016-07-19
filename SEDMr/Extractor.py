@@ -715,7 +715,8 @@ def handle_flat(flfile, fine, outname=None):
 
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
-               flat_corrections=None, lmin=650., lmax=700.):
+               flat_corrections=None, lmin=650., lmax=700.,
+               refl=0.9, area=18000.):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
@@ -728,6 +729,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
             correcting the extraction
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
+        refl (float): Telescope reflectance factor (assuming .90 for P60)
+        area (float): Telescope area (assuming 18000. cm^2 for P60)
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -917,8 +920,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     fun = interp1d(wav, flpho, bounds_error=False, fill_value=np.nan)
     # Effective area
     earea = (res[0]['ph_10m_nm'] / 600.) / (fun(res[0]['nm']) * 10.)
-    # Efficiency assuming P60 area = 18,000 cm^2 with 90% reflectance
-    eff = earea * 0.9 / 18000.
+    # Efficiency assuming given reflectance (refl) and area in cm^2
+    eff = earea * refl / area
     # Calculate/Interpolate correction onto object wavelengths
     fun = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
     # Divide reference spectrum by observed to get correction
@@ -935,6 +938,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Store correction and max calibrated wavelength
     res[0]['std-correction'] = correction
     res[0]['std-maxnm'] = np.max(wav)
+    res[0]['reflectance'] = refl
+    res[0]['area'] = area
     res[0]['ea'] = earea
     res[0]['efficiency'] = eff
 
