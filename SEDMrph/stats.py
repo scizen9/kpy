@@ -116,9 +116,9 @@ def get_sextractor_stats(files):
             hd = pf.open(files[i])[0].header
             try:
                 jd = hd["JD"]
-		object = hd["OBJECT"]
+                obj = hd["OBJECT"]
                 ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
-                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f\n"%(os.path.abspath(f),object,jd,ns,fwhm,ellipticity,bkg))
+                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg))
             except:
                 pass
             
