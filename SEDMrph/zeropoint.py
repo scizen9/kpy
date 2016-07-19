@@ -446,7 +446,7 @@ def add_to_zp_cal(ref_stars, image, logname):
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
 
-    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("filename","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
         my = np.array([my])
