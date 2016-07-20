@@ -333,6 +333,24 @@ def check_spec(specname, corrname='std-correction.npy',
                    header=header)
         print "Saved to " + outf
 
+    if 'efficiency' in ss:
+        pl.clf()
+        tlab = "%s\n(Air: %1.2f | Expt: %i | Refl %d%% | Area %d cm^s)" % \
+               (specname, ec, et, ss['reflectance']*100., ss['area'])
+        pl.title(tlab)
+        pl.xlabel("Wavelength [Ang]")
+        pl.ylabel("SEDM efficiency (%)")
+        pl.plot(ss['nm'], ss['efficiency']*100.)
+        pl.grid(True)
+        pl.ioff()
+        if savefig:
+            outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+               '_SEDM_eff.pdf'
+            pl.savefig(outf)
+            print "Figure saved to " + outf
+        else:
+            pl.show()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
