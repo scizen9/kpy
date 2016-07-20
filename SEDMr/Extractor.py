@@ -1115,7 +1115,7 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
                                  prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax,
                                  airmass=meta['airmass'], nosky=nosky,
-                                 quality=0)
+                                 quality=1)
         radius_used = ellipse[0]
         # Use an annulus for sky spaxels for Science Objects
         kixa = identify_bgd_spectra(ex, posa, inner=radius_used*1.1)
@@ -1343,7 +1343,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              lmin=lmin, lmax=lmax, objname=objname,
                              airmass=meta['airmass'], nosky=nosky,
-                             quality=0)
+                             quality=1)
     radius_used_a = ellipse[0]
     for ix in sixa:
         ex[ix].is_obj = True
