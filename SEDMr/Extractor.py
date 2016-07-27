@@ -400,6 +400,8 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
     tlab = meta['outname']
+    if 'airmass' in meta:
+        tlab += ", Airmass: %.3f" % meta['airmass']
     if quality > 0:
         tlab += ", Qual: %d" % quality
     pl.title(tlab)
@@ -893,7 +895,10 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     pl.ylabel("Y [as]")
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
-    pl.title("%d selected spaxels for %s" % (len(xsa), objname))
+    tlab = "%d selected spaxels for %s" % (len(xsa), objname)
+    if 'airmass' in meta:
+        tlab += "\nAirmass: %.3f" % meta['airmass']
+    pl.title(tlab)
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
     print "Wrote XYs_%s.pdf" % outname
@@ -1115,7 +1120,7 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
                                  prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                  lmin=lmin, lmax=lmax,
                                  airmass=meta['airmass'], nosky=nosky,
-                                 quality=1)
+                                 quality=0)
         radius_used = ellipse[0]
         # Use an annulus for sky spaxels for Science Objects
         kixa = identify_bgd_spectra(ex, posa, inner=radius_used*1.1)
@@ -1161,7 +1166,12 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
     pl.ylabel("Y [as]")
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
-    pl.title("%d selected spaxels for %s" % (len(xsa), objname))
+    tlab = "%d selected spaxels for %s" % (len(xsa), objname)
+    if 'airmass' in meta:
+        tlab += "\nAirmass: %.3f" % meta['airmass']
+    if quality > 0:
+        tlab += ", Qual: %d" % quality
+    pl.title(tlab)
     pl.savefig("XYs_%s.pdf" % outname)
     print "Wrote XYs_%s.pdf" % outname
     pl.close()
@@ -1343,7 +1353,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              lmin=lmin, lmax=lmax, objname=objname,
                              airmass=meta['airmass'], nosky=nosky,
-                             quality=1)
+                             quality=0)
     radius_used_a = ellipse[0]
     for ix in sixa:
         ex[ix].is_obj = True
@@ -1424,6 +1434,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
     pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Y [as]")
+    tlab = meta['outname']
+    if 'airmass' in meta:
+        tlab += ", Airmass: %.3f" % meta['airmass']
+    if quality > 0:
+        tlab += ", Qual: %d" % quality
+    pl.title(tlab)
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
     pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
