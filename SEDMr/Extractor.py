@@ -1131,7 +1131,8 @@ def handle_single(imfile, fine, outname=None, standard=None, offset=None,
         ex[ix].is_sky = True
 
     # Make an image of the spaxels for the record
-    to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse)
+    to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
+             quality=quality)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
