@@ -157,7 +157,6 @@ def assoc_hg_with_flats_helper(idx):
     tracefun = np.poly1d(spec_pos['coeff_ys'])
     minx = spec_pos['xs'][0]
 
-
     to_return = {}
 
     with warnings.catch_warnings():

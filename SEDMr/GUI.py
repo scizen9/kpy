@@ -27,7 +27,9 @@ class MouseCross(object):
         print "3 - poor quality"
         print "4 - no object visible"
         self.line, = self.ax.plot([0], [0], visible=False,
-                                  marker=r'$\bigodot$', markersize=radius_pix * 2, color='red', **kwargs)
+                                  marker=r'$\bigodot$',
+                                  markersize=radius_pix * 2, color='red',
+                                  **kwargs)
 
     def show_cross(self, event):
         if event.inaxes == self.ax:
@@ -87,9 +89,12 @@ class PositionPicker(object):
     xc = None
     yc = None
     nosky = None
+    scaled = None
 
     def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3,
-                 objname=None, lmin=600, lmax=650, nosky=False, quality=0):
+                 objname=None, scaled=False,
+                 lmin=600, lmax=650, cmin=-300, cmax=300,
+                 nosky=False, quality=0):
         """ Create spectum picking gui.
 
         Args:
@@ -98,19 +103,21 @@ class PositionPicker(object):
 
         self.spectra = spectra
         self.pointsize = pointsize
+        self.scaled = scaled
         self.lmin = lmin
         self.lmax = lmax
+        self.cmin = cmin
+        self.cmax = cmax
         self.objname = objname
         self.bgd_sub = bgd_sub
         self.nosky = nosky
+        self.radius_as = radius_as
         self.quality = quality
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
             self.Vs -= np.median(self.Vs)
-
-        self.radius_as = radius_as
 
         pl.ioff()
         pl.title("%s Image from %s to %s nm" % (self.objname, self.lmin, self.lmax))
@@ -122,20 +129,25 @@ class PositionPicker(object):
 
     def draw_cube(self):
 
-        # get middle value
-        if self.bgd_sub:
-            Vmid = 0.
+        if self.scaled:
+            dVmin = self.cmin
+            dVmax = self.cmax
         else:
-            Vmid = np.median(self.Vs)
+            # get middle value
+            if self.bgd_sub:
+                Vmid = 0.
+            else:
+                Vmid = np.median(self.Vs)
 
-        # get standard deviation
-        Vstd = np.nanstd(self.Vs)
-        if 0 < Vstd < 100:
-            dVmin = Vmid - 3.0 * Vstd
-            dVmax = Vmid + 3.0 * Vstd
-        else:
-            dVmin = -300
-            dVmax = 300
+            # get standard deviation
+            Vstd = np.nanstd(self.Vs)
+            if 0 < Vstd < 100:
+                dVmin = Vmid - 3.0 * Vstd
+                dVmax = Vmid + 3.0 * Vstd
+            else:
+                dVmin = -300
+                dVmax = 300
+
         # plot (may want to use cmap=pl.cm.Spectral)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
                    vmin=dVmin, vmax=dVmax)
@@ -166,6 +178,117 @@ class PositionPicker(object):
             self.xc = event.xdata
             self.yc = event.ydata
             pl.close(self.figure)
+
+
+class ScaleCube(object):
+    """ This class is used to scale a data cube """
+
+    spectra = None
+    Xs = None
+    Ys = None
+    Vs = None
+    pointsize = None
+    bgd_sub = False
+    lmin = None
+    lmax = None
+    cmin = None
+    cmax = None
+
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False,
+                 objname=None, lmin=600, lmax=650):
+        """ Create scaling gui.
+
+        Args:
+            spectra: SEDMr.Spectra object
+        """
+
+        print "First scale cube:"
+        print "Press keys to change limits:"
+        print "> - to increase upper limit by 10"
+        print "< - to decrease upper limit by 10"
+        print ". - to increase lower limit by 10"
+        print ", - to decrease lower limit by 10"
+        print "x - exit"
+        print "q - to abandon scaling"
+
+        self.spectra = spectra
+        self.pointsize = pointsize
+        self.lmin = lmin
+        self.lmax = lmax
+        self.objname = objname
+        self.bgd_sub = bgd_sub
+        self.scaled = False
+
+        self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
+
+        # get middle value
+        if self.bgd_sub:
+            Vmid = 0.
+        else:
+            Vmid = np.median(self.Vs)
+
+        # get standard deviation
+        Vstd = np.nanstd(self.Vs)
+        if 0 < Vstd < 100:
+            self.cmin = Vmid - 3.0 * Vstd
+            self.cmax = Vmid + 3.0 * Vstd
+        else:
+            self.cmin = -300
+            self.cmax = 300
+
+        if bgd_sub:
+            self.Vs -= np.median(self.Vs)
+
+        pl.ioff()
+
+        self.figure = pl.figure(1)
+
+        self.figure.canvas.mpl_connect("key_press_event", self)
+
+        self.draw_cube()
+
+    def draw_cube(self):
+
+        pl.title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
+                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+
+        # plot (may want to use cmap=pl.cm.Spectral)
+        pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
+                   vmin=self.cmin, vmax=self.cmax)
+
+        pl.ylim(-20, 20)
+        pl.xlim(-22, 20)
+        pl.xlabel("-RA offset [asec]")
+        pl.ylabel("Dec offset [asec]")
+        pl.colorbar()
+        pl.show()
+
+    def __call__(self, event):
+        """Event call handler for scaling gui."""
+
+        if event.key == 'x':
+            self.scaled = True
+            print "Cmin, Cmax: %f, %f" % (self.cmin, self.cmax)
+            pl.close(self.figure)
+        if event.key == 'q':
+            print "Abandoning scaling"
+            pl.close(self.figure)
+        elif event.key == '>':
+            self.cmax += 10.
+            pl.clf()
+            self.draw_cube()
+        elif event.key == '<':
+            self.cmax -= 10.
+            pl.clf()
+            self.draw_cube()
+        elif event.key == '.':
+            self.cmin += 10.
+            pl.clf()
+            self.draw_cube()
+        elif event.key == ',':
+            self.cmin -= 10.
+            pl.clf()
+            self.draw_cube()
 
 
 class WaveFixer(object):
