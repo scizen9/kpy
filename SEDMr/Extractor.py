@@ -219,7 +219,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
     return positions[dist < 1]
 
 
-def identify_spectra_gui(spectra, radius=2., scaled=False,
+def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
                          objname=None, airmass=1.0, nosky=False, quality=0):
     """ Returns index of spectra picked in GUI.
@@ -230,7 +230,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False,
     print "\nStarting with a %s arcsec radius" % radius
     kt = SedSpec.Spectra(spectra)
     if not scaled:
-        s = GUI.ScaleCube(kt, bgd_sub=True, lmin=lmin, lmax=lmax,
+        s = GUI.ScaleCube(kt, bgd_sub=bgd_sub, lmin=lmin, lmax=lmax,
                           objname=objname)
         scaled = s.scaled
 
@@ -238,7 +238,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False,
             cmin = s.cmin
             cmax = s.cmax
 
-    g = GUI.PositionPicker(kt, bgd_sub=True, radius_as=radius, scaled=scaled,
+    g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, radius_as=radius, scaled=scaled,
                            lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
                            objname=objname, nosky=nosky, quality=quality)
     pos = g.picked
@@ -347,7 +347,8 @@ def identify_bgd_spectra(spectra, pos, inner=3.):
 
 
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
-             ellipse=None, ellipseb=None, quality=0):
+             ellipse=None, ellipseb=None, quality=0,
+             lmin=650., lmax=700., cmin=None, cmax=None):
     """ Convert spectra list into image_[outname].pdf
 
     Args:
@@ -367,7 +368,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
             continue
         ix = np.arange(*x.xrange)
         ll = chebval(ix, x.lamcoeff)
-        ok = (ll > 650) & (ll < 700)
+        ok = (ll > lmin) & (ll < lmax)
         if ok.any():
             xs.append(x.X_as)
             ys.append(x.Y_as)
@@ -379,12 +380,17 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     vcln = reject_outliers(np.array(vs, dtype=np.float), m=3.)
     vstd = np.nanstd(vcln)
     vmid = np.median(vcln)
-    if posb is None:
-        vmin = vmid - vstd
-        vmax = vmid + 8.*vstd
+    if cmin is None or cmax is None:
+        if posb is None:
+            vmin = vmid - vstd
+            vmax = vmid + 8.*vstd
+        else:
+            vmin = vmid - 8.*vstd
+            vmax = vmid + 8.*vstd
     else:
-        vmin = vmid - 8.*vstd
-        vmax = vmid + 8.*vstd
+        vmin = cmin
+        vmax = cmax
+
     pl.clf()
     pl.ylim(-20, 20)
     pl.xlim(-22, 20)
@@ -876,7 +882,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         ex[ix].is_sky = True
 
     # Make an image of the spaxels for the record
-    to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse)
+    to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
+             lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
@@ -1121,7 +1128,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
     # A single-frame Science Object
     sixa, posa, adcpos, ellipse, stats = \
         identify_spectra_gui(ex, radius=radius,
-                             objname=objname,
+                             objname=objname, bgd_sub=False,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              lmin=lmin, lmax=lmax,
                              airmass=meta['airmass'], nosky=nosky,
@@ -1137,7 +1144,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-             quality=stats["quality"])
+             quality=stats["quality"], lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
@@ -1384,7 +1391,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         ex[ix].is_obj = True
 
     to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
-             ellipse=ellipse, ellipseb=ellipseb, quality=stats["quality"])
+             ellipse=ellipse, ellipseb=ellipseb,
+             quality=stats["quality"], lmin=lmin, lmax=lmax,
+             cmin=stats["cmin"],
+             cmax=stats["cmax"])
 
     kixa = identify_bgd_spectra(ex, posa, inner=radius_used_a*1.1)
     for ix in kixa:

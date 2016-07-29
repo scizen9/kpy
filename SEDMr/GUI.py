@@ -202,8 +202,7 @@ class ScaleCube(object):
             spectra: SEDMr.Spectra object
         """
 
-        print "First scale cube:"
-        print "Press keys to change limits:"
+        print "First scale cube using keys to change limits:"
         if bgd_sub:
             print "> - increase upper/lower spread by 200"
             print "< - decrease upper/lower spread by 200"
@@ -222,6 +221,8 @@ class ScaleCube(object):
         self.objname = objname
         self.bgd_sub = bgd_sub
         self.scaled = False
+        self.scat = None
+        self.cb = None
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -260,26 +261,30 @@ class ScaleCube(object):
                  (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
 
         # plot (may want to use cmap=pl.cm.Spectral)
-        pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
-                   vmin=self.cmin, vmax=self.cmax)
+        self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
+                               linewidth=0, vmin=self.cmin, vmax=self.cmax)
 
         pl.ylim(-20, 20)
         pl.xlim(-22, 20)
         pl.xlabel("-RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
-        pl.colorbar()
+        self.cb = self.figure.colorbar(self.scat)
         pl.show()
 
     def update_cube(self):
 
         ax = self.figure.gca()
-        ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
-                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+        ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f Irr"
+                     % (self.objname, self.lmin, self.lmax,
+                        self.cmin, self.cmax))
 
-        ax.scatter(self.Xs, self.Ys, c=self.Vs, 
-                            s=self.pointsize, linewidth=0,
-                            vmin=self.cmin, vmax=self.cmax)
-        #ax.colorbar()
+        self.scat.remove()
+
+        self.scat = ax.scatter(self.Xs, self.Ys, c=self.Vs,
+                          s=self.pointsize, linewidth=0,
+                          vmin=self.cmin, vmax=self.cmax)
+        self.cb.set_clim(self.cmin, self.cmax)
+        self.cb.update_normal(self.scat)
         self.figure.canvas.draw()
 
     def __call__(self, event):
@@ -287,11 +292,11 @@ class ScaleCube(object):
 
         if event.key == 'x':
             self.scaled = True
-            print "Cmin, Cmax: %f, %f" % (self.cmin, self.cmax)
+            print "Scaling between %f and %f" % (self.cmin, self.cmax)
             pl.close(self.figure)
         if event.key == 'q':
             self.scaled = False
-            print "Abandoning scaling"
+            print "Using default scaling"
             pl.close(self.figure)
         elif event.key == '>':
             if self.bgd_sub:
@@ -301,11 +306,12 @@ class ScaleCube(object):
                 self.cmax += 100.
             self.update_cube()
         elif event.key == '<':
-            if self.bgd_sub:
+            if self.bgd_sub and self.cmax > 100. and self.cmin < -100.:
                 self.cmax -= 100.
                 self.cmin += 100.
             else:
-                self.cmax -= 100.
+                if self.cmax > 100.:
+                    self.cmax -= 100.
             self.update_cube()
         elif event.key == '.':
             if not self.bgd_sub:
