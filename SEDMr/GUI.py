@@ -204,10 +204,14 @@ class ScaleCube(object):
 
         print "First scale cube:"
         print "Press keys to change limits:"
-        print "> - to increase upper limit by 10"
-        print "< - to decrease upper limit by 10"
-        print ". - to increase lower limit by 10"
-        print ", - to decrease lower limit by 10"
+        if bgd_sub:
+            print "> - increase upper/lower spread by 200"
+            print "< - decrease upper/lower spread by 200"
+        else:
+            print "> - to increase upper limit by 100"
+            print "< - to decrease upper limit by 100"
+            print ". - to increase lower limit by 100"
+            print ", - to decrease lower limit by 100"
         print "x - exit"
         print "q - to abandon scaling"
 
@@ -220,6 +224,9 @@ class ScaleCube(object):
         self.scaled = False
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
+
+        if bgd_sub:
+            self.Vs -= np.median(self.Vs)
 
         # get middle value
         if self.bgd_sub:
@@ -263,6 +270,18 @@ class ScaleCube(object):
         pl.colorbar()
         pl.show()
 
+    def update_cube(self):
+
+        ax = self.figure.gca()
+        ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
+                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+
+        ax.scatter(self.Xs, self.Ys, c=self.Vs, 
+                            s=self.pointsize, linewidth=0,
+                            vmin=self.cmin, vmax=self.cmax)
+        #ax.colorbar()
+        self.figure.canvas.draw()
+
     def __call__(self, event):
         """Event call handler for scaling gui."""
 
@@ -271,24 +290,31 @@ class ScaleCube(object):
             print "Cmin, Cmax: %f, %f" % (self.cmin, self.cmax)
             pl.close(self.figure)
         if event.key == 'q':
+            self.scaled = False
             print "Abandoning scaling"
             pl.close(self.figure)
         elif event.key == '>':
-            self.cmax += 10.
-            pl.clf()
-            self.draw_cube()
+            if self.bgd_sub:
+                self.cmax += 100.
+                self.cmin -= 100.
+            else:
+                self.cmax += 100.
+            self.update_cube()
         elif event.key == '<':
-            self.cmax -= 10.
-            pl.clf()
-            self.draw_cube()
+            if self.bgd_sub:
+                self.cmax -= 100.
+                self.cmin += 100.
+            else:
+                self.cmax -= 100.
+            self.update_cube()
         elif event.key == '.':
-            self.cmin += 10.
-            pl.clf()
-            self.draw_cube()
+            if not self.bgd_sub:
+                self.cmin += 100.
+                self.update_cube()
         elif event.key == ',':
-            self.cmin -= 10.
-            pl.clf()
-            self.draw_cube()
+            if not self.bgd_sub:
+                self.cmin -= 100.
+                self.update_cube()
 
 
 class WaveFixer(object):
