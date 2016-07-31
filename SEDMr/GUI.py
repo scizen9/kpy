@@ -281,8 +281,8 @@ class ScaleCube(object):
         self.scat.remove()
 
         self.scat = ax.scatter(self.Xs, self.Ys, c=self.Vs,
-                          s=self.pointsize, linewidth=0,
-                          vmin=self.cmin, vmax=self.cmax)
+                               s=self.pointsize, linewidth=0,
+                               vmin=self.cmin, vmax=self.cmax)
         self.cb.set_clim(self.cmin, self.cmax)
         self.cb.update_normal(self.scat)
         self.figure.canvas.draw()
@@ -306,9 +306,13 @@ class ScaleCube(object):
                 self.cmax += 100.
             self.update_cube()
         elif event.key == '<':
-            if self.bgd_sub and self.cmax > 100. and self.cmin < -100.:
-                self.cmax -= 100.
-                self.cmin += 100.
+            if self.bgd_sub:
+                if self.cmax > 100. and self.cmin < -100.:
+                    self.cmax -= 100.
+                    self.cmin += 100.
+                elif self.cmax > 10. and self.cmin < -10.:
+                    self.cmax -= 10.
+                    self.cmin += 10.
             else:
                 if self.cmax > 100.:
                     self.cmax -= 100.
