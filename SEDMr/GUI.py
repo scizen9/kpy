@@ -300,8 +300,12 @@ class ScaleCube(object):
             pl.close(self.figure)
         elif event.key == '>':
             if self.bgd_sub:
-                self.cmax += 100.
-                self.cmin -= 100.
+                if self.cmax > 100. and self.cmin < -100.:
+                    self.cmax += 100.
+                    self.cmin -= 100.
+                else:
+                    self.cmax += 10.
+                    self.cmin -= 10.
             else:
                 self.cmax += 100.
             self.update_cube()
