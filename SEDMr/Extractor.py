@@ -1,6 +1,7 @@
 
 import argparse
 import os
+import glob
 import numpy as np
 import pylab as pl
 import pyfits as pf
@@ -213,22 +214,39 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
     positions = np.arange(len(xy))
     x = xy[:, 0]
     y = xy[:, 1]
-    dist = ((x-h) * np.cos(theta) + (y - k) * np.sin(theta)) ** 2 / (a ** 2) + \
-           ((x-h) * np.sin(theta) - (y - k) * np.cos(theta)) ** 2 / (b ** 2)
+    dist = ((x-h) * np.cos(theta) + (y-k) * np.sin(theta)) ** 2 / (a ** 2) + \
+           ((x-h) * np.sin(theta) - (y-k) * np.cos(theta)) ** 2 / (b ** 2)
     
     return positions[dist < 1]
 
 
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
-                         objname=None, airmass=1.0, nosky=False, quality=0):
+                         objname=None, airmass=1.0, nosky=False, quality=0,
+                         message=None):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
     """
 
-    print "\nStarting with a %s arcsec radius" % radius
+    # Set ellipse parameters
+    elfl = glob.glob("ell_STD-*.npy")
+    if len(elfl) > 0:
+        inell = np.load(elfl[0])
+        inell[1] = radius*(inell[1]/inell[0])
+        inell[0] = radius
+        inell[2] = 0.
+        inell[3] = 0.
+        print "Loaded ellipse parameters from %s" % elfl[0]
+    else:
+        inell = (radius, radius*(3./5.), 0., 0., 20.5)
+        print "Using default ellipse parameters"
+    print "\nStarting with a %s arcsec semimajor axis" % radius
+
+    # Get spectral extractions
     kt = SedSpec.Spectra(spectra)
+
+    # Scale cube
     if not scaled:
         s = GUI.ScaleCube(kt, bgd_sub=bgd_sub, lmin=lmin, lmax=lmax,
                           objname=objname)
@@ -238,25 +256,25 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
             cmin = s.cmin
             cmax = s.cmax
 
-    g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, radius_as=radius, scaled=scaled,
+    # Print message if needed
+    if message is not None:
+        print message
+
+    # Get positions
+    g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
                            lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
                            objname=objname, nosky=nosky, quality=quality)
     pos = g.picked
-    radius = g.radius_as
-    nosky = g.nosky
-    a = radius
-    b = a
-    xc = g.xc
-    yc = g.yc
     quality = g.quality
-    print "Final radius (arcsec) = %4.1f" % radius
+    nosky = g.nosky
+    ellipse = g.ellipse
+
+    print "Final semimajor axis (arcsec) = %4.1f" % ellipse[0]
     print "Quality (0-4, good-bad) = %d" % quality
     if nosky:
         print "Sky subtraction off"
     else:
         print "Sky subtraction on"
-
-    ellipse = (a, b, xc, yc, 0.)
 
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
 
@@ -267,7 +285,10 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
 
     all_kix = []
     for the_pos in positions:
-        all_kix.append(kt.KT.query_ball_point(the_pos, radius))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   ellipse[2], ellipse[3],
+                                                   ellipse[0], ellipse[1],
+                                                   -ellipse[4]*(np.pi/180.))))
 
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
@@ -278,14 +299,27 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     return kt.good_positions[kix], pos, positions, ellipse, stats
 
 
-def identify_sky_spectra(spectra, pos, inner=3., lmin=650., lmax=700.):
+def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
     kt = SedSpec.Spectra(spectra)
 
-    outer = inner + 3.
+    # outer = inner + 3.
 
     skys = kt.good_positions.tolist()
-    objs = kt.good_positions[kt.KT.query_ball_point(pos, r=outer)]
+
+    a = ellipse[0]*1.25
+    b = a * (ellipse[1] / ellipse[0])
+    xc = ellipse[2]
+    yc = ellipse[3]
+    theta = ellipse[4] * (np.pi / 180.)
+
+    all_kix = []
+    for the_pos in pos:
+        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
+                                                   -theta)))
+    all_kix = list(itertools.chain(*all_kix))
+    kix = list(set(all_kix))
+    objs = kt.good_positions[kix]
 
     for o in objs:
         if o in skys:
@@ -331,13 +365,34 @@ def identify_sky_spectra(spectra, pos, inner=3., lmin=650., lmax=700.):
     return skys
 
 
-def identify_bgd_spectra(spectra, pos, inner=3.):
+def identify_bgd_spectra(spectra, pos, ellipse=None):
     kt = SedSpec.Spectra(spectra)
 
-    outer = inner + 3.
+    a = ellipse[0]
+    b = ellipse[1]
+    sky_a = ellipse[0] + 3.
+    sky_b = sky_a * (b/a)
+    xc = ellipse[2]
+    yc = ellipse[3]
+    theta = ellipse[4] * (np.pi / 180.)
 
-    objs = kt.good_positions[kt.KT.query_ball_point(pos, r=inner)]
-    skys = kt.good_positions[kt.KT.query_ball_point(pos, r=outer)].tolist()
+    all_kix = []
+    for the_pos in pos:
+        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc,
+                                                   a, b,
+                                                   -theta)))
+    all_kix = list(itertools.chain(*all_kix))
+    kix = list(set(all_kix))
+    objs = kt.good_positions[kix]
+
+    all_kix = []
+    for the_pos in pos:
+        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc,
+                                                   sky_a, sky_b,
+                                                   -theta)))
+    all_kix = list(itertools.chain(*all_kix))
+    kix = list(set(all_kix))
+    skys = kt.good_positions[kix].tolist()
 
     for o in objs:
         if o in skys:
@@ -874,10 +929,13 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                                    lmin=lmin, lmax=lmax,
                                    airmass=meta['airmass'])
     radius_used = ellipse[0] * 0.5
+    # Save std star ellipse
+    np.save("ell_" + outname, ellipse)
+    print "Wrote ell_%s.npy" % outname
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
-    kixa = identify_sky_spectra(ex, posa, inner=radius_used*1.1)
+    kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
     for ix in kixa:
         ex[ix].is_sky = True
 
@@ -1125,17 +1183,22 @@ def handle_single(imfile, fine, outname=None, offset=None,
     # Get the object name of record
     objname = meta['header']['OBJECT'].split()[0]
 
+    message = "\nMark positive (red) target"
+
     # A single-frame Science Object
     sixa, posa, adcpos, ellipse, stats = \
         identify_spectra_gui(ex, radius=radius,
-                             objname=objname, bgd_sub=False,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                             scaled=False,
                              lmin=lmin, lmax=lmax,
-                             airmass=meta['airmass'], nosky=nosky,
-                             quality=0)
+                             objname=objname, airmass=meta['airmass'],
+                             nosky=nosky,
+                             quality=0,
+                             message=message)
+
     radius_used = ellipse[0]
     # Use an annulus for sky spaxels for Science Objects
-    kixa = identify_bgd_spectra(ex, posa, inner=radius_used*1.1)
+    kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
 
     for ix in sixa:
         ex[ix].is_obj = True
@@ -1360,23 +1423,23 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
     objname = header['OBJECT'].split()[0]
 
-    print "\nMark positive (red) target first"
-    cmin = -300
-    cmax = 300
+    message = "\nMark positive (red) target first"
+
     sixa, posa, adc_a, ellipse, stats = \
         identify_spectra_gui(ex, radius=radius,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
                              scaled=False,
                              lmin=lmin, lmax=lmax,
-                             cmin=cmin, cmax=cmax,
                              objname=objname, airmass=meta['airmass'],
                              nosky=nosky,
-                             quality=0)
+                             quality=0,
+                             message=message)
     radius_used_a = ellipse[0]
     for ix in sixa:
         ex[ix].is_obj = True
 
-    print "\nMark negative (blue) target next"
+    message = "\nMark negative (blue) target next"
+
     sixb, posb, adc_b, ellipseb, stats = \
         identify_spectra_gui(ex, radius=radius_used_a,
                              prlltc=Angle(meta['PRLLTC'], unit='deg'),
@@ -1385,7 +1448,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              cmin=stats["cmin"], cmax=stats["cmax"],
                              objname=objname, airmass=meta['airmass'],
                              nosky=stats["nosky"],
-                             quality=stats["quality"])
+                             quality=stats["quality"],
+                             message=message)
     radius_used_b = ellipseb[0]
     for ix in sixb:
         ex[ix].is_obj = True
@@ -1396,12 +1460,16 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
              cmin=stats["cmin"],
              cmax=stats["cmax"])
 
-    kixa = identify_bgd_spectra(ex, posa, inner=radius_used_a*1.1)
+    kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
     for ix in kixa:
         ex[ix].is_sky = True
-    kixb = identify_bgd_spectra(ex, posb, inner=radius_used_b*1.1)
+        if ex[ix].is_obj:
+            kixa.remove(ix)
+    kixb = identify_bgd_spectra(ex, posb, ellipse=ellipseb)
     for ix in kixb:
         ex[ix].is_sky = True
+        if ex[ix].is_obj:
+            kixb.remove(ix)
 
     resa = interp_spectra(ex, sixa, sign=1, outname=outname+"_A.pdf")
     resb = interp_spectra(ex, sixb, sign=-1, outname=outname+"_B.pdf")
@@ -1538,9 +1606,9 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     res[0]['N_spaxB'] = len(sixb)
     res[0]['meta'] = meta
     res[0]['object_spaxel_ids_A'] = sixa
-    res[0]['sky_spaxel_ids_A'] = skya
+    res[0]['sky_spaxel_ids_A'] = kixa
     res[0]['object_spaxel_ids_B'] = sixb
-    res[0]['sky_spaxel_ids_B'] = skyb
+    res[0]['sky_spaxel_ids_B'] = kixb
     res[0]['sky_subtraction'] = False if nosky else True
     res[0]['quality'] = stats["quality"]
 
@@ -1569,7 +1637,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     parser.add_argument('--Aoffset', type=str, 
                         help='Name of "A" flexure offset correction file')
     parser.add_argument('--radius_as', type=float, 
-                        help='Extraction radius in arcseconds', default=3)
+                        help='Extraction radius in arcseconds', default=5)
     parser.add_argument('--flat_correction', type=str, 
                         help='Name of flat field .npy file', default=None)
     parser.add_argument('--nosky', action="store_true", default=False, 

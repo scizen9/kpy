@@ -33,6 +33,8 @@ import pyfits as pf
 import argparse
 import ephem
 
+from astropy.time import Time
+
 
 def cal_ready(caldir='./'):
     """Check for all required calibration files in calibration directory.
@@ -402,12 +404,21 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
     """
 
     # Get current and previous dates
-    sdate = dirlist[-1].split('/')[-1]
+    # current source dir
+    cdate = dirlist[-1].split('/')[-1]
+    # convert to JD
+    ctime = Time(cdate[0:4]+'-'+cdate[4:6]+'-'+cdate[6:])
+    cjd = ctime.jd
+    #
+    # previous source dir
     pdate = dirlist[-2].split('/')[-1]
+    # convert to JD
+    ptime = Time(pdate[0:4]+'-'+pdate[4:6]+'-'+pdate[6:])
+    pjd = ptime.jd
     # Record how many images copied
     ncp = 0
     # If there is a previous night, get those files
-    if (int(sdate) - int(pdate)) == 1:
+    if (int(cjd) - int(pjd)) <= 1:
         # Set the previous night as the source directory
         srcdir = dirlist[-2]
         # Get list of previous night's raw cal files
