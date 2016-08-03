@@ -9,32 +9,54 @@ import scipy.spatial
 from numpy.polynomial.chebyshev import chebval
 
 
+def get_ellipse_xys(ell):
+    a = ell[0]
+    b = ell[1]
+
+    pts = np.zeros((361, 2))
+    beta = -ell[4] * np.pi / 180.
+    sin_beta = np.sin(beta)
+    cos_beta = np.cos(beta)
+    alpha = np.radians(np.r_[0.:360.:1j * 361])
+
+    sin_alpha = np.sin(alpha)
+    cos_alpha = np.cos(alpha)
+
+    pts[:, 0] = ell[2] + (a * cos_alpha * cos_beta - b * sin_alpha * sin_beta)
+    pts[:, 1] = ell[3] + (a * cos_alpha * sin_beta + b * sin_alpha * cos_beta)
+
+    return pts
+
+
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, radius_as=3, nosky=False, qual=0, **kwargs):
+    def __init__(self, ax, ellipse=None, nosky=False, qual=0, **kwargs):
         self.ax = ax
-        self.radius_as = radius_as
+        self.radius_as = ellipse[0]
         self.nosky = nosky
         self.quality = qual
+        self.ellipse = ellipse
 
-        radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
-                             ax.transData.transform((0, 0)))[0])
-        print "%s arcsec is %s pix" % (radius_as, radius_pix)
+        print "semimajor axis is %s arcsec" % self.radius_as
         print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
         print "1 - good quality"
         print "2 - acceptable quality"
         print "3 - poor quality"
         print "4 - no object visible"
-        self.line, = self.ax.plot([0], [0], visible=False,
-                                  marker=r'$\bigodot$',
-                                  markersize=radius_pix * 2, color='red',
+        marker = get_ellipse_xys(self.ellipse)
+        self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                  visible=True, color='red', linewidth=2.,
                                   **kwargs)
 
     def show_cross(self, event):
         if event.inaxes == self.ax:
-            self.line.set_data([event.xdata], [event.ydata])
-            self.line.set_visible(True)
+            self.line.set_visible(False)
+            self.ellipse = (self.ellipse[0], self.ellipse[1],
+                            event.xdata, event.ydata, self.ellipse[4])
+            marker = get_ellipse_xys(self.ellipse)
+            self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                      visible=True, color='red', linewidth=2.)
         else:
             self.line.set_visible(False)
 
@@ -60,11 +82,14 @@ class MouseCross(object):
         elif event.key == "4":
             self.quality = 4
 
-        radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
-                             self.ax.transData.transform((0, 0)))[0])
-        print "%s arcsec is %s pix" % (self.radius_as, radius_pix)
-        self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False,
-                                  marker=r'$\bigodot$', markersize=radius_pix * 2, color='red')
+        print "semimajor axis is %s arcsec" % self.radius_as
+
+        self.ellipse = (self.radius_as,
+                        self.radius_as * (self.ellipse[1]/self.ellipse[0]),
+                        event.xdata, event.ydata, self.ellipse[4])
+        marker = get_ellipse_xys(self.ellipse)
+        self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                  visible=True, color='red', linewidth=2.)
         self.line.set_visible(True)
 
         if self.nosky:
@@ -90,8 +115,9 @@ class PositionPicker(object):
     yc = None
     nosky = None
     scaled = None
+    ellipse = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3,
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, ellipse=None,
                  objname=None, scaled=False,
                  lmin=600, lmax=650, cmin=-300, cmax=300,
                  nosky=False, quality=0):
@@ -111,8 +137,9 @@ class PositionPicker(object):
         self.objname = objname
         self.bgd_sub = bgd_sub
         self.nosky = nosky
-        self.radius_as = radius_as
+        self.radius_as = ellipse[0]
         self.quality = quality
+        self.ellipse = ellipse
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -160,7 +187,7 @@ class PositionPicker(object):
 
         c = Cursor(self.figure.gca(), useblit=True)
 
-        cross = MouseCross(self.figure.gca(), radius_as=self.radius_as,
+        cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
                            nosky=self.nosky, qual=self.quality)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
@@ -168,6 +195,7 @@ class PositionPicker(object):
         self.radius_as = cross.radius_as
         self.nosky = cross.nosky
         self.quality = cross.quality
+        self.ellipse = cross.ellipse
 
     def __call__(self, event):
         """Event call handler for Picker gui."""
