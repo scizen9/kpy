@@ -31,19 +31,15 @@ def get_ellipse_xys(ell):
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, ellipse=None, nosky=False, qual=0, **kwargs):
+    def __init__(self, ax, ellipse=None, nosky=False, **kwargs):
         self.ax = ax
         self.radius_as = ellipse[0]
         self.nosky = nosky
-        self.quality = qual
         self.ellipse = ellipse
 
         print "semimajor axis is %s arcsec" % self.radius_as
         print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
-        print "1 - good quality"
-        print "2 - acceptable quality"
-        print "3 - poor quality"
-        print "4 - no object visible"
+
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
                                   visible=True, color='red', linewidth=2.,
@@ -73,14 +69,6 @@ class MouseCross(object):
                 self.nosky = False
             else:
                 self.nosky = True
-        elif event.key == "1":
-            self.quality = 1
-        elif event.key == "2":
-            self.quality = 2
-        elif event.key == "3":
-            self.quality = 3
-        elif event.key == "4":
-            self.quality = 4
 
         print "semimajor axis is %s arcsec" % self.radius_as
 
@@ -93,9 +81,9 @@ class MouseCross(object):
         self.line.set_visible(True)
 
         if self.nosky:
-            print "Sky subtraction off, Quality = %d" % self.quality
+            print "Sky subtraction off"
         else:
-            print "Sky subtraction on, Quality = %d" % self.quality
+            print "Sky subtraction on"
 
         pl.draw()
 
@@ -119,8 +107,7 @@ class PositionPicker(object):
 
     def __init__(self, spectra=None, pointsize=55, bgd_sub=False, ellipse=None,
                  objname=None, scaled=False,
-                 lmin=600, lmax=650, cmin=-300, cmax=300,
-                 nosky=False, quality=0):
+                 lmin=600, lmax=650, cmin=-300, cmax=300, nosky=False):
         """ Create spectum picking gui.
 
         Args:
@@ -138,7 +125,6 @@ class PositionPicker(object):
         self.bgd_sub = bgd_sub
         self.nosky = nosky
         self.radius_as = ellipse[0]
-        self.quality = quality
         self.ellipse = ellipse
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
@@ -147,7 +133,9 @@ class PositionPicker(object):
             self.Vs -= np.median(self.Vs)
 
         pl.ioff()
-        pl.title("%s Image from %s to %s nm" % (self.objname, self.lmin, self.lmax))
+        pl.title("%s Image from %s to %s nm" % (self.objname,
+                                                self.lmin,
+                                                self.lmax))
         self.figure = pl.figure(1)
 
         self.figure.canvas.mpl_connect("button_press_event", self)
@@ -188,13 +176,12 @@ class PositionPicker(object):
         c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
-                           nosky=self.nosky, qual=self.quality)
+                           nosky=self.nosky)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
         self.radius_as = cross.radius_as
         self.nosky = cross.nosky
-        self.quality = cross.quality
         self.ellipse = cross.ellipse
 
     def __call__(self, event):
