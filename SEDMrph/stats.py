@@ -143,13 +143,14 @@ def plot_stats(statfile):
 
     f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
     plt.suptitle("Statistics %s"%day)
-    f.set_figwidth(16) 
+    f.set_figwidth(16)
+    f.set_height(20)
     ax1.plot(datestat, s["f3"], ".-")
     ax1.set_title('Number of bright sources extracted')
     
     for im in set(s["f9"]):
         mask = s["f9"]==im
-        ax2.plot(datestat[mask], s["f4"][mask], ".-", color=colors[im])
+        ax2.plot(datestat[mask], s["f4"][mask], ".", color=colors[im])
     ax2.set_title('FWHM [arcsec]')
     ax3.plot(datestat, s["f5"], ".-")
     ax3.set_title('Ellipticity')
@@ -179,6 +180,16 @@ def plot_stats(statfile):
     plt.setp(labels, rotation=30, fontsize=10)
     labels = ax6.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
+
+    myhandles = []
+    import matplotlib.lines as mlines
+    
+    for i, c in enumerate(colors.keys()):
+        myhandles.append(mlines.Line2D([], [], color=colors[c], marker=".", ls="None", label=c))
+
+    
+    plt.legend(handles=myhandles, labelspacing=0.3, loc="upper left", fontsize=11, numpoints=1, frameon=False, ncol=1, bbox_to_anchor=(0.0, 1.00), fancybox=False, shadow=True)
+    
 
 
     plt.savefig(statfile.replace(".log", "%s.png"%(day)))
