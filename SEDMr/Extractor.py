@@ -222,8 +222,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
-                         objname=None, airmass=1.0, nosky=False, quality=0,
-                         message=None):
+                         objname=None, airmass=1.0, nosky=False, message=None):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
@@ -263,14 +262,12 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     # Get positions
     g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
                            lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
-                           objname=objname, nosky=nosky, quality=quality)
+                           objname=objname, nosky=nosky)
     pos = g.picked
-    quality = g.quality
     nosky = g.nosky
     ellipse = g.ellipse
 
     print "Final semimajor axis (arcsec) = %4.1f" % ellipse[0]
-    print "Quality (0-4, good-bad) = %d" % quality
     if nosky:
         print "Sky subtraction off"
     else:
@@ -293,8 +290,9 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
 
-    stats = {"nosky": nosky, "quality": quality, "scaled": scaled,
-             "lmin": lmin, "lmax": lmax, "cmin": cmin, "cmax": cmax}
+    stats = {"nosky": nosky, "scaled": scaled,
+             "lmin": lmin, "lmax": lmax,
+             "cmin": cmin, "cmax": cmax}
 
     return kt.good_positions[kix], pos, positions, ellipse, stats
 
@@ -476,7 +474,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
-    if quality > 0:
+    if 1 <= quality <= 4:
         tlab += ", Qual: %d" % quality
     pl.title(tlab)
     pl.colorbar()
@@ -1193,10 +1191,9 @@ def handle_single(imfile, fine, outname=None, offset=None,
                              lmin=lmin, lmax=lmax,
                              objname=objname, airmass=meta['airmass'],
                              nosky=nosky,
-                             quality=0,
                              message=message)
-
     radius_used = ellipse[0]
+
     # Use an annulus for sky spaxels for Science Objects
     kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
 
@@ -1205,9 +1202,18 @@ def handle_single(imfile, fine, outname=None, offset=None,
     for ix in kixa:
         ex[ix].is_sky = True
 
+    # Get quality of observation
+    print("Enter quality of observation:\n1 - good\n2 - acceptable"
+          "\n3 - poor\n4 - no object visible")
+    quality = int(raw_input(": "))
+    while quality < 1 or quality > 4:
+        print "must be in range from 1-4, try again"
+        quality = int(raw_input(": "))
+    print "Quality = %d, now making outputs..." % quality
+
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-             quality=stats["quality"], lmin=lmin, lmax=lmax)
+             quality=quality, lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
@@ -1245,8 +1251,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
-    if stats["quality"] > 0:
-        tlab += ", Qual: %d" % stats["quality"]
+    if 1 <= quality <= 4:
+        tlab += ", Qual: %d" % quality
     pl.title(tlab)
     pl.savefig("XYs_%s.pdf" % outname)
     print "Wrote XYs_%s.pdf" % outname
@@ -1295,7 +1301,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
     res[0]['sky_spaxel_ids'] = kixa
     res[0]['sky_spectra'] = skya[0]['spectra']
     res[0]['sky_subtraction'] = False if nosky else True
-    res[0]['quality'] = stats["quality"]
+    res[0]['quality'] = quality
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1432,7 +1438,6 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              lmin=lmin, lmax=lmax,
                              objname=objname, airmass=meta['airmass'],
                              nosky=nosky,
-                             quality=0,
                              message=message)
     radius_used_a = ellipse[0]
     for ix in sixa:
@@ -1448,15 +1453,22 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                              cmin=stats["cmin"], cmax=stats["cmax"],
                              objname=objname, airmass=meta['airmass'],
                              nosky=stats["nosky"],
-                             quality=stats["quality"],
                              message=message)
-    radius_used_b = ellipseb[0]
     for ix in sixb:
         ex[ix].is_obj = True
 
+    # Get quality of observation
+    print("Enter quality of observation:\n1 - good\n2 - acceptable"
+          "\n3 - poor\n4 - no object visible")
+    quality = int(raw_input(": "))
+    while quality < 1 or quality > 4:
+        print "must be in range from 1-4, try again"
+        quality = int(raw_input(": "))
+    print "Quality = %d, now making outputs..." % quality
+
     to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
              ellipse=ellipse, ellipseb=ellipseb,
-             quality=stats["quality"], lmin=lmin, lmax=lmax,
+             quality=quality, lmin=lmin, lmax=lmax,
              cmin=stats["cmin"],
              cmax=stats["cmax"])
 
@@ -1530,8 +1542,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
-    if stats["quality"] > 0:
-        tlab += ", Qual: %d" % stats["quality"]
+    if 1 <= quality <= 4:
+        tlab += ", Qual: %d" % quality
     pl.title(tlab)
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
@@ -1610,7 +1622,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     res[0]['object_spaxel_ids_B'] = sixb
     res[0]['sky_spaxel_ids_B'] = kixb
     res[0]['sky_subtraction'] = False if nosky else True
-    res[0]['quality'] = stats["quality"]
+    res[0]['quality'] = quality
 
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1637,7 +1649,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     parser.add_argument('--Aoffset', type=str, 
                         help='Name of "A" flexure offset correction file')
     parser.add_argument('--radius_as', type=float, 
-                        help='Extraction radius in arcseconds', default=5)
+                        help='Extraction radius in arcseconds', default=4)
     parser.add_argument('--flat_correction', type=str, 
                         help='Name of flat field .npy file', default=None)
     parser.add_argument('--nosky', action="store_true", default=False, 
