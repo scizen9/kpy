@@ -137,7 +137,7 @@ def plot_stats(statfile):
     datestat = datestat + day_frac_diff
     
     #We add 5h to the UTC date, so it alwasy keeps the date of the end of the night.
-    day = ("%s"%datestat[-1]+datetime.timedelta(5./24)).split()[0]
+    day = ("%s"%(datestat[-1]+datetime.timedelta(5./24))).split()[0]
 
     xfmt = md.DateFormatter('%H:%M')
 
