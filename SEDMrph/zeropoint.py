@@ -26,15 +26,22 @@ import argparse
 import logging
 import datetime
 
-#Log into a file
+
+
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-#root_dir = "/tmp/logs/"
-root_dir = "/scr2/sedm/logs/"
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
 timestamp=timestamp.split("T")[0]
-logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
-logger = logging.getLogger('zeropoint')
+
+try:
+	#Log into a file
+	#root_dir = "/tmp/logs/"
+	root_dir = "/scr2/sedm/logs/"
+	logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+	logger = logging.getLogger('zeropoint')
+except:
+        logging.basicConfig(format=FORMAT, filename=os.path.join("/tmp", "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+	logger= logging.getLogger("zeropoint")
 
 def are_isolated(rav, decv, r):
     '''
@@ -369,10 +376,11 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             
             #Find FWHM for this image            
             out = find_fwhm(imfile, star_pix[:,1][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], plot=debug)
-            mask_valid_fwhm = (out['detected']) * (out['e']>0.7) * ~np.isnan(out['fwhm']* (out['fwhm'] < 30))            
+            mask_valid_fwhm = (out['detected']) * (out['e']>0.6) * ~np.isnan(out['fwhm']* (out['fwhm'] < 30))            
 
-            if (np.count_nonzero(mask_valid_fwhm) < 3):
+            if ((np.count_nonzero(mask_valid_fwhm) < 3) and (fitsutils.get_par(imfile, "FILTER")!="u")) or ( (np.count_nonzero(mask_valid_fwhm) < 2) and (fitsutils.get_par(imfile, "FILTER")=="u")):
                 logger.error( "ERROR with FWHM!! Too few points for a valid estimation. %d"% np.count_nonzero(mask_valid_fwhm)+ ") points")
+                logger.error( "%s %s"%(out["detected"], out["fwhm"]))
                 return False
 
             outd = out[mask_valid_fwhm]
