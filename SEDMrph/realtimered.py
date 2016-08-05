@@ -5,6 +5,8 @@ Created on Thu Mar  3 19:23:29 2016
 @author: nadiablago
 """
 
+import matplotlib
+matplotlib.use("Agg")
 import rcred
 import subprocess
 import glob, os, time
@@ -12,8 +14,18 @@ import argparse
 import fitsutils
 import datetime
 import zeropoint
-import matplotlib
-matplotlib.use("Agg")
+import logging
+
+#Log into a file
+FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+#root_dir = "/tmp/logs/"
+root_dir = "/scr2/sedm/logs/"
+now = datetime.datetime.utcnow()
+timestamp=datetime.datetime.isoformat(now)
+timestamp=timestamp.split("T")[0]
+logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+logger = logging.getLogger('realtimered')
+
 
 def reduce_all_dir(photdir, overwrite=False):
     
@@ -22,11 +34,17 @@ def reduce_all_dir(photdir, overwrite=False):
     if (overwrite):
         cmd = cmd + " -o"
     subprocess.call(cmd, shell=True)
-    print cmd
-    
+    logger.info("Reduce all dir: %s"%cmd)
+
     # Copy the content of the reduced directory into a new directory with the date of the observations.
     dayname = os.path.basename(photdir)
     reducedname = os.path.join(photdir, "reduced")
+
+    #Reduce the data that is already in the directory.
+    cmd = "python %s/zeropoint.py  %s"%(os.environ["SEDMPH"], reducedname)    
+    subprocess.call(cmd, shell=True)
+    logger.info("zeropoint for all dir: %s"%cmd)
+    
     if (os.path.isdir(reducedname)):
     	cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
     	subprocess.call(cmd, shell=True)
@@ -34,9 +52,11 @@ def reduce_all_dir(photdir, overwrite=False):
 	os.makedirs(reducedname)
     
 def reduce_on_the_fly(photdir):
-
+    '''
+    Waits for new images to appear in the directory to trigger their incremental reduction as well.
+    '''
     #Get the current the number of files
-    nfiles = glob.glob(os.path.join(photdir, "rc*fits"))
+    nfiles = glob.glob(os.path.join(photdir, "rc*[0-9].fits"))
     
     dayname = os.path.basename(photdir)
     
@@ -44,8 +64,8 @@ def reduce_on_the_fly(photdir):
     time_curr = datetime.datetime.now()
     
     #Run this loop for 12h since the start.
-    while (time_curr-time_ini).total_seconds() < 12*3600.:
-        nfilesnew = glob.glob(os.path.join(photdir, "rc*fits"))
+    while (time_curr-time_ini).total_seconds() < 12.*3600:
+        nfilesnew = glob.glob(os.path.join(photdir, "rc*[0-9].fits"))
         if len(nfilesnew) == len(nfiles):
             time.sleep(10)
         else:
@@ -59,11 +79,12 @@ def reduce_on_the_fly(photdir):
                         continue
                 if (fitsutils.get_par(n, "IMGTYPE")=="SCIENCE"):
                     reduced = rcred.reduce_image(n)
+                    zeropoint.calibrate_zeropoint(reduced)
                     #Copy them to transient
                     for r in reduced:
                         cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(r, dayname)
                         subprocess.call(cmd, shell=True)
-                        print "Successfully copied the image", cmd
+                        loger.info( "Successfully copied the image: %s"% cmd)
         time_curr = datetime.datetime.now()
         nfiles = nfilesnew  
         

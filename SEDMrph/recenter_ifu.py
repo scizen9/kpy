@@ -33,7 +33,7 @@ logger = logging.getLogger('listener')
 
 
 
-def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
+def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.
@@ -45,8 +45,12 @@ def solve_astrometry(img, radius=1.0, with_pix=True, first_call=True, tweak=3):
     except:
         ra = fitsutils.get_par(img, 'RA')
         dec = fitsutils.get_par(img, 'DEC')
+
+    mydir = os.path.dirname(img)
+    if mydir=="":
+        mydir = "."
+    os.chdir(mydir)
     
-    os.chdir(os.path.dirname(img))
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
     print "Solving astrometry on field with (ra,dec)=", ra, dec, "Image",img, "New image", astro

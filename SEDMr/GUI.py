@@ -9,24 +9,50 @@ import scipy.spatial
 from numpy.polynomial.chebyshev import chebval
 
 
+def get_ellipse_xys(ell):
+    a = ell[0]
+    b = ell[1]
+
+    pts = np.zeros((361, 2))
+    beta = -ell[4] * np.pi / 180.
+    sin_beta = np.sin(beta)
+    cos_beta = np.cos(beta)
+    alpha = np.radians(np.r_[0.:360.:1j * 361])
+
+    sin_alpha = np.sin(alpha)
+    cos_alpha = np.cos(alpha)
+
+    pts[:, 0] = ell[2] + (a * cos_alpha * cos_beta - b * sin_alpha * sin_beta)
+    pts[:, 1] = ell[3] + (a * cos_alpha * sin_beta + b * sin_alpha * cos_beta)
+
+    return pts
+
+
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, radius_as=3, **kwargs):
+    def __init__(self, ax, ellipse=None, nosky=False, **kwargs):
         self.ax = ax
-        self.radius_as = radius_as
+        self.radius_as = ellipse[0]
+        self.nosky = nosky
+        self.ellipse = ellipse
 
-        radius_pix = np.abs((ax.transData.transform((radius_as, 0)) -
-                             ax.transData.transform((0, 0)))[0])
-        print "%s arcsec is %s pix" % (radius_as, radius_pix)
-        print "x - expand ap, z - shrink ap"
-        self.line, = self.ax.plot([0], [0], visible=False,
-                                  marker=r'$\bigodot$', markersize=radius_pix * 2, color='red', **kwargs)
+        print "semimajor axis is %s arcsec" % self.radius_as
+        print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
+
+        marker = get_ellipse_xys(self.ellipse)
+        self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                  visible=True, color='red', linewidth=2.,
+                                  **kwargs)
 
     def show_cross(self, event):
         if event.inaxes == self.ax:
-            self.line.set_data([event.xdata], [event.ydata])
-            self.line.set_visible(True)
+            self.line.set_visible(False)
+            self.ellipse = (self.ellipse[0], self.ellipse[1],
+                            event.xdata, event.ydata, self.ellipse[4])
+            marker = get_ellipse_xys(self.ellipse)
+            self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                      visible=True, color='red', linewidth=2.)
         else:
             self.line.set_visible(False)
 
@@ -38,13 +64,26 @@ class MouseCross(object):
             self.radius_as -= 0.2
         elif event.key == "x":
             self.radius_as += 0.2
+        elif event.key == "y":
+            if self.nosky:
+                self.nosky = False
+            else:
+                self.nosky = True
 
-        radius_pix = np.abs((self.ax.transData.transform((self.radius_as, 0)) -
-                             self.ax.transData.transform((0, 0)))[0])
-        print "%s arcsec is %s pix" % (self.radius_as, radius_pix)
-        self.line, = self.ax.plot([event.xdata], [event.ydata], visible=False,
-                                  marker=r'$\bigodot$', markersize=radius_pix * 2, color='red')
+        print "semimajor axis is %s arcsec" % self.radius_as
+
+        self.ellipse = (self.radius_as,
+                        self.radius_as * (self.ellipse[1]/self.ellipse[0]),
+                        event.xdata, event.ydata, self.ellipse[4])
+        marker = get_ellipse_xys(self.ellipse)
+        self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
+                                  visible=True, color='red', linewidth=2.)
         self.line.set_visible(True)
+
+        if self.nosky:
+            print "Sky subtraction off"
+        else:
+            print "Sky subtraction on"
 
         pl.draw()
 
@@ -62,9 +101,13 @@ class PositionPicker(object):
     bgd_sub = False
     xc = None
     yc = None
+    nosky = None
+    scaled = None
+    ellipse = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, radius_as=3, objname=None, lmin=600,
-                 lmax=650):
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, ellipse=None,
+                 objname=None, scaled=False,
+                 lmin=600, lmax=650, cmin=-300, cmax=300, nosky=False):
         """ Create spectum picking gui.
 
         Args:
@@ -73,20 +116,26 @@ class PositionPicker(object):
 
         self.spectra = spectra
         self.pointsize = pointsize
+        self.scaled = scaled
         self.lmin = lmin
         self.lmax = lmax
+        self.cmin = cmin
+        self.cmax = cmax
         self.objname = objname
         self.bgd_sub = bgd_sub
+        self.nosky = nosky
+        self.radius_as = ellipse[0]
+        self.ellipse = ellipse
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
             self.Vs -= np.median(self.Vs)
 
-        self.radius_as = radius_as
-
         pl.ioff()
-        pl.title("%s Image from %s to %s nm" % (self.objname, self.lmin, self.lmax))
+        pl.title("%s Image from %s to %s nm" % (self.objname,
+                                                self.lmin,
+                                                self.lmax))
         self.figure = pl.figure(1)
 
         self.figure.canvas.mpl_connect("button_press_event", self)
@@ -95,20 +144,25 @@ class PositionPicker(object):
 
     def draw_cube(self):
 
-        # get middle value
-        if self.bgd_sub:
-            Vmid = 0.
+        if self.scaled:
+            dVmin = self.cmin
+            dVmax = self.cmax
         else:
-            Vmid = np.median(self.Vs)
+            # get middle value
+            if self.bgd_sub:
+                Vmid = 0.
+            else:
+                Vmid = np.median(self.Vs)
 
-        # get standard deviation
-        Vstd = np.nanstd(self.Vs)
-        if 0 < Vstd < 100:
-            dVmin = Vmid - 3.0 * Vstd
-            dVmax = Vmid + 3.0 * Vstd
-        else:
-            dVmin = -300
-            dVmax = 300
+            # get standard deviation
+            Vstd = np.nanstd(self.Vs)
+            if 0 < Vstd < 100:
+                dVmin = Vmid - 3.0 * Vstd
+                dVmax = Vmid + 3.0 * Vstd
+            else:
+                dVmin = -300
+                dVmax = 300
+
         # plot (may want to use cmap=pl.cm.Spectral)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
                    vmin=dVmin, vmax=dVmax)
@@ -121,11 +175,14 @@ class PositionPicker(object):
 
         c = Cursor(self.figure.gca(), useblit=True)
 
-        cross = MouseCross(self.figure.gca(), radius_as=self.radius_as)
+        cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
+                           nosky=self.nosky)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
         self.radius_as = cross.radius_as
+        self.nosky = cross.nosky
+        self.ellipse = cross.ellipse
 
     def __call__(self, event):
         """Event call handler for Picker gui."""
@@ -136,6 +193,157 @@ class PositionPicker(object):
             self.xc = event.xdata
             self.yc = event.ydata
             pl.close(self.figure)
+
+
+class ScaleCube(object):
+    """ This class is used to scale a data cube """
+
+    spectra = None
+    Xs = None
+    Ys = None
+    Vs = None
+    pointsize = None
+    bgd_sub = False
+    lmin = None
+    lmax = None
+    cmin = None
+    cmax = None
+
+    def __init__(self, spectra=None, pointsize=55, bgd_sub=False,
+                 objname=None, lmin=600, lmax=650):
+        """ Create scaling gui.
+
+        Args:
+            spectra: SEDMr.Spectra object
+        """
+
+        print "First scale cube using keys to change limits:"
+        if bgd_sub:
+            print "> - increase upper/lower spread by 200"
+            print "< - decrease upper/lower spread by 200"
+        else:
+            print "> - to increase upper limit by 100"
+            print "< - to decrease upper limit by 100"
+            print ". - to increase lower limit by 100"
+            print ", - to decrease lower limit by 100"
+        print "x - exit"
+        print "q - to abandon scaling"
+
+        self.spectra = spectra
+        self.pointsize = pointsize
+        self.lmin = lmin
+        self.lmax = lmax
+        self.objname = objname
+        self.bgd_sub = bgd_sub
+        self.scaled = False
+        self.scat = None
+        self.cb = None
+
+        self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
+
+        if bgd_sub:
+            self.Vs -= np.median(self.Vs)
+
+        # get middle value
+        if self.bgd_sub:
+            Vmid = 0.
+        else:
+            Vmid = np.median(self.Vs)
+
+        # get standard deviation
+        Vstd = np.nanstd(self.Vs)
+        if 0 < Vstd < 100:
+            self.cmin = Vmid - 3.0 * Vstd
+            self.cmax = Vmid + 3.0 * Vstd
+        else:
+            self.cmin = -300
+            self.cmax = 300
+
+        if bgd_sub:
+            self.Vs -= np.median(self.Vs)
+
+        pl.ioff()
+
+        self.figure = pl.figure(1)
+
+        self.figure.canvas.mpl_connect("key_press_event", self)
+
+        self.draw_cube()
+
+    def draw_cube(self):
+
+        pl.title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
+                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+
+        # plot (may want to use cmap=pl.cm.Spectral)
+        self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
+                               linewidth=0, vmin=self.cmin, vmax=self.cmax)
+
+        pl.ylim(-20, 20)
+        pl.xlim(-22, 20)
+        pl.xlabel("-RA offset [asec]")
+        pl.ylabel("Dec offset [asec]")
+        self.cb = self.figure.colorbar(self.scat)
+        pl.show()
+
+    def update_cube(self):
+
+        ax = self.figure.gca()
+        ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f Irr"
+                     % (self.objname, self.lmin, self.lmax,
+                        self.cmin, self.cmax))
+
+        self.scat.remove()
+
+        self.scat = ax.scatter(self.Xs, self.Ys, c=self.Vs,
+                               s=self.pointsize, linewidth=0,
+                               vmin=self.cmin, vmax=self.cmax)
+        self.cb.set_clim(self.cmin, self.cmax)
+        self.cb.update_normal(self.scat)
+        self.figure.canvas.draw()
+
+    def __call__(self, event):
+        """Event call handler for scaling gui."""
+
+        if event.key == 'x':
+            self.scaled = True
+            print "Scaling between %f and %f" % (self.cmin, self.cmax)
+            pl.close(self.figure)
+        if event.key == 'q':
+            self.scaled = False
+            print "Using default scaling"
+            pl.close(self.figure)
+        elif event.key == '>':
+            if self.bgd_sub:
+                if self.cmax > 100. and self.cmin < -100.:
+                    self.cmax += 100.
+                    self.cmin -= 100.
+                else:
+                    self.cmax += 10.
+                    self.cmin -= 10.
+            else:
+                self.cmax += 100.
+            self.update_cube()
+        elif event.key == '<':
+            if self.bgd_sub:
+                if self.cmax > 100. and self.cmin < -100.:
+                    self.cmax -= 100.
+                    self.cmin += 100.
+                elif self.cmax > 10. and self.cmin < -10.:
+                    self.cmax -= 10.
+                    self.cmin += 10.
+            else:
+                if self.cmax > 100.:
+                    self.cmax -= 100.
+            self.update_cube()
+        elif event.key == '.':
+            if not self.bgd_sub:
+                self.cmin += 100.
+                self.update_cube()
+        elif event.key == ',':
+            if not self.bgd_sub:
+                self.cmin -= 100.
+                self.update_cube()
 
 
 class WaveFixer(object):

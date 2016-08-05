@@ -34,15 +34,17 @@ def start_listening_loop():
     timestamp=timestamp.split("T")[0]
     logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
     logger = logging.getLogger('listener')
-    
     #bind socket
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     try:
         s.bind((ip,port))
-    except socket.error:
+    except socket.error as e:
+    	#If there is already a listener there, it will generate an error.
+	#In this case we just return.
         return
     s.listen(10)
     
+    logger.info( "Starting a new listener. Hello World!")
     
     #create continous while loop to listen for request
     #Exit the loop at 11:00AM, as the new day will start.
@@ -52,12 +54,9 @@ def start_listening_loop():
         cmd = "touch /tmp/sedm_listener_alive"
         subprocess.call(cmd, shell=True)
 
+        logger.info( "Entered the listening loop.")
         while True:
             
-            #Exit and restart a new listener if the program is running for more than 12 hours and 
-            #it is later than 10AM, so we don't disrupt the night scheduler.
-            if (datetime.datetime.utcnow()-now).total_seconds() > 12*3600. and (datetime.datetime.utcnow()).hour>17:
-                sys.exit(0)
             cmd = "touch /tmp/sedm_listener_alive"
             subprocess.call(cmd, shell=True)
             data = connection.recv(2048)
@@ -147,6 +146,11 @@ def start_listening_loop():
                     connection.sendall("%d,%s,%s\n"%(-1,0,0))
             else:
                 break
+        #Exit and restart the listener if the program is running for more than 12 hours and 
+        #it is later than 10AM, so we don't disrupt the night scheduler.
+        '''if (datetime.datetime.utcnow()-now).total_seconds() > 12*3600. and (datetime.datetime.utcnow()).hour>17:
+            logger.info( "Programe is running for more than 12h and now is later than 10AM. Restarting")
+            sys.exit(0)'''
             
 if __name__ == '__main__':
     '''
@@ -158,7 +162,7 @@ if __name__ == '__main__':
     modified = datetime.datetime.strptime(time.ctime(os.path.getmtime("/tmp/sedm_listener_alive")), "%a %b  %d %H:%M:%S %Y") 
     now = datetime.datetime.now()
     
-    if ( (now - modified).seconds > 60):
+    if ( (now - modified).seconds > 30):
         start_listening_loop()
 
                 
