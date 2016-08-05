@@ -117,39 +117,55 @@ def get_sextractor_stats(files):
             try:
                 jd = hd["JD"]
                 obj = hd["OBJECT"]
+                airmass = hd["AIRMASS"]
+                in_temp = hd["IN_AIR"]
                 ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
-                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg))
+                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype))
             except:
                 pass
             
 def plot_stats(statfile):
+    
+    colors = {"ACQUISITION":"b", "SCIENCE":"r", "FOCUS":"g", "GUIDER":"k"}
+    
     s = np.genfromtxt(statfile, delimiter=",", dtype=None)
     s.sort(order="f2")
     s = s[s["f3"]>1]
 
     day_frac_diff = datetime.timedelta(np.ceil((datetime.datetime.now() - datetime.datetime.utcnow() ).total_seconds())/3600/24)
-    hours = np.array([ (datetime.datetime.strptime(time_utils.jd2utc(jd), "%Y-%m-%d %H:%M:%S.%f")) for jd in s["f2"]])
-    hours = hours + day_frac_diff
-    day = ("%s"%hours[-1]).split()[0]
+    datestat = np.array([ (datetime.datetime.strptime(time_utils.jd2utc(jd), "%Y-%m-%d %H:%M:%S.%f")) for jd in s["f2"]])
+    datestat = datestat + day_frac_diff
+    
+    #We add 5h to the UTC date, so it alwasy keeps the date of the end of the night.
+    day = ("%s"%datestat[-1]+datetime.timedelta(5./24)).split()[0]
 
     xfmt = md.DateFormatter('%H:%M')
 
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
     plt.suptitle("Statistics %s"%day)
-    f.set_figwidth(12) 
-    ax1.plot(hours, s["f3"], ".-")
+    f.set_figwidth(16) 
+    ax1.plot(datestat, s["f3"], ".-")
     ax1.set_title('Number of bright sources extracted')
-    ax2.plot(hours, s["f4"], ".-")
+    
+    for im in set(s["f9"]):
+        mask = s["f9"]==im
+        ax2.plot(datestat[mask], s["f4"][mask], ".-", color=colors[im])
     ax2.set_title('FWHM [arcsec]')
-    ax3.plot(hours, s["f5"], ".-")
+    ax3.plot(datestat, s["f5"], ".-")
     ax3.set_title('Ellipticity')
-    ax4.plot(hours, s["f6"], ".-")
+    ax4.plot(datestat, s["f6"], ".-")
     ax4.set_title('Background')
-
+    ax5.plot(datestat, s["f7"], ".-")
+    ax5.set_title('Airmass')
+    ax6.plot(datestat, s["f8"], ".-")
+    ax6.set_title('Inside temperature')
+    
     ax1.xaxis.set_major_formatter(xfmt)
     ax2.xaxis.set_major_formatter(xfmt)
     ax3.xaxis.set_major_formatter(xfmt)
     ax4.xaxis.set_major_formatter(xfmt)
+    ax5.xaxis.set_major_formatter(xfmt)
+    ax6.xaxis.set_major_formatter(xfmt)
 
     labels = ax1.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
@@ -159,6 +175,11 @@ def plot_stats(statfile):
     plt.setp(labels, rotation=30, fontsize=10)
     labels = ax4.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
+    labels = ax5.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+    labels = ax6.get_xticklabels()
+    plt.setp(labels, rotation=30, fontsize=10)
+
 
     plt.savefig(statfile.replace(".log", "%s.png"%(day)))
 
