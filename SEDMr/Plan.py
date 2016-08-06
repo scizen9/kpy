@@ -148,6 +148,7 @@ EXTPAIR =  $(PY) $(PYC)/Extractor.py
 FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
+REPORT = $(PY) $(PYC)/DrpReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
@@ -239,6 +240,9 @@ cleanstds:
 	rm -f std-correction.npy Standard_Correction.pdf
 
 newstds: cleanstds stds
+
+report:
+    $(REPORT) | mail -s "SEDM DRP Report" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
