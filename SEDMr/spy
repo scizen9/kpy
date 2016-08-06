@@ -1,10 +1,10 @@
 #!/bin/csh -f
 
-alias ur_setup 'eval `/Users/neill/.ureka/ur_setup -csh \!*`'
-alias ur_forget 'eval `/Users/neill/.ureka/ur_forget -csh \!*`'
+alias ur_setup 'eval `$HOME/.ureka/ur_setup -csh \!*`'
+alias ur_forget 'eval `$HOME/.ureka/ur_forget -csh \!*`'
 
 
-setenv SEDMPATH /Users/neill/kpy
+setenv SEDMPATH $HOME/kpy
 
 if ! $?PYTHONPATH then
     setenv PYTHONPATH ${SEDMPATH}

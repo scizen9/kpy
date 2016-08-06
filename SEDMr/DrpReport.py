@@ -13,7 +13,7 @@ def report():
     print "\nSEDM DRP run in %s\nFound %d sp_*.npy files\n" % \
           (os.getcwd(), len(flist))
     totexpt = 0.
-    print "Object                     Obs  Exptime Qual Skysb"
+    print "Object                     Obs Method  Exptime Qual Skysb"
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
@@ -29,11 +29,15 @@ def report():
         if '_obs' in f:
             obs = f.split('_')[2].split('.')[0]
         else:
-            obs = "A/B"
+            obs = "obs0"
+        if 'object_spaxel_ids_A' in sp:
+            meth = "A / B"
+        else:
+            meth = "Single"
 
         if 'exptime' in sp:
             expt = sp['exptime']
-            if "A/B" in obs:
+            if "A / B" in meth:
                 expt *= 2.
         else:
             expt = 0.
@@ -41,8 +45,8 @@ def report():
 
         objname = f.split('_')[1].split('.')[0]
 
-        print "%-25s %4s   %6.1f %4d %5s" % (objname, obs, expt, qual,
-                                           ("on" if skysub else "off"))
+        print "%-25s %4s %6s   %6.1f %4d %5s" % (objname, obs, meth, expt, qual,
+                                                 ("on" if skysub else "off"))
     print "\nTotal science exposure time = %.1f s" % totexpt
 
 if __name__ == '__main__':
