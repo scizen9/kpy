@@ -160,6 +160,9 @@ CRRS = $(addprefix crr_,$(BIAS))
 BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
 
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
+
 crr_b_% : b_%
 	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
 		--sigclip 8.0 --fsmode convolve --psfmodel gaussy --psffwhm=2 \\
@@ -242,7 +245,7 @@ cleanstds:
 newstds: cleanstds stds
 
 report:
-	$(REPORT) | mail -s "SEDM DRP Report" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
+	$(REPORT) | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
