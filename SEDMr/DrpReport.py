@@ -29,7 +29,7 @@ def report():
         if '_obs' in f:
             obs = f.split('_')[2].split('.')[0]
         else:
-            obs = "obs0"
+            obs = "-"
         if 'object_spaxel_ids_A' in sp:
             meth = "A / B"
         else:
