@@ -81,7 +81,7 @@ def run_flexure_test(sexfiles, plotdir):
             
             out.write("%s,%s,%.3f\n"%(os.path.basename(posfiles[0]), os.path.basename(f), np.median(d3d.value)))
             
-            plt.hist(d3d, bins=50)
+            '''plt.hist(d3d, bins=50)
             plt.xlabel("Deviation [pixels]")
             plt.title("Median deviation: %.3f"%np.median(d3d.value))
             plt.savefig(os.path.join(plotdir, "%s_vs_%s.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
@@ -91,7 +91,7 @@ def run_flexure_test(sexfiles, plotdir):
             c = plt.colorbar()
             c.set_label("Deviation [pixels]")
             plt.savefig(os.path.join(plotdir, "%s_vs_%s_XY.png"%(os.path.basename(posfiles[0]), os.path.basename(f))))
-            plt.clf()
+            plt.clf()'''
     
     plot_flexure(os.path.join(plotdir, "flexure.log"), plotdir)
         

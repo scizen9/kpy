@@ -18,6 +18,8 @@ from matplotlib import pylab as plt
 import time_utils
 import matplotlib.dates as md
 import argparse
+import subprocess
+
 
 def compile_stats_pointing():
     ra = 0
@@ -119,8 +121,10 @@ def get_sextractor_stats(files):
                 obj = hd["OBJECT"]
                 airmass = hd["AIRMASS"]
                 in_temp = hd["IN_AIR"]
+                out_temp = hd["OUT_AIR"]
+                in_hum = hd["IN_HUM"]
                 ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
-                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype))
+                out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s,%.2f,%.2f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype,out_temp,in_hum))
             except:
                 pass
             
@@ -144,22 +148,24 @@ def plot_stats(statfile):
     f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
     plt.suptitle("Statistics %s"%day)
     f.set_figwidth(16)
-    f.set_height(20)
+    f.set_figheight(12)
     ax1.plot(datestat, s["f3"], ".-")
     ax1.set_title('Number of bright sources extracted')
     
     for im in set(s["f9"]):
         mask = s["f9"]==im
-        ax2.plot(datestat[mask], s["f4"][mask], ".", color=colors[im])
+        ax2.plot(datestat[mask], s["f4"][mask], ".", color=colors[im], label=im)
     ax2.set_title('FWHM [arcsec]')
-    ax3.plot(datestat, s["f5"], ".-")
-    ax3.set_title('Ellipticity')
-    ax4.plot(datestat, s["f6"], ".-")
-    ax4.set_title('Background')
-    ax5.plot(datestat, s["f7"], ".-")
-    ax5.set_title('Airmass')
-    ax6.plot(datestat, s["f8"], ".-")
-    ax6.set_title('Inside temperature')
+    ax3.plot(datestat, s["f6"], ".-")
+    ax3.set_title('Background')
+    ax4.plot(datestat, s["f7"], ".-")
+    ax4.set_title('Airmass')
+    ax5.plot(datestat, s["f8"], ".-", label="Inside")
+    ax5.plot(datestat, s["f10"], ".-", label="Outside")
+    #ax5.plot(datestat, s["f11"], ".-")
+    ax5.set_title('Temperature')
+    ax6.plot(datestat, s["f5"], ".-")
+    ax6.set_title('Ellipticity')
     
     ax1.xaxis.set_major_formatter(xfmt)
     ax2.xaxis.set_major_formatter(xfmt)
@@ -181,18 +187,11 @@ def plot_stats(statfile):
     labels = ax6.get_xticklabels()
     plt.setp(labels, rotation=30, fontsize=10)
 
-    myhandles = []
-    import matplotlib.lines as mlines
-    
-    for i, c in enumerate(colors.keys()):
-        myhandles.append(mlines.Line2D([], [], color=colors[c], marker=".", ls="None", label=c))
+    ax2.legend(labelspacing=0.3, loc="upper right", fontsize=11, numpoints=1, frameon=False, ncol=1, fancybox=False, shadow=True, bbox_to_anchor=(1., 1.))
 
+    ax5.legend(labelspacing=0.3, loc="upper left", fontsize=11, numpoints=1, frameon=False, ncol=1, fancybox=False, shadow=True, bbox_to_anchor=(0., 1.))
     
-    plt.legend(handles=myhandles, labelspacing=0.3, loc="upper left", fontsize=11, numpoints=1, frameon=False, ncol=1, bbox_to_anchor=(0.0, 1.00), fancybox=False, shadow=True)
-    
-
-
-    plt.savefig(statfile.replace(".log", "%s.png"%(day)))
+    plt.savefig(statfile.replace(".log", "%s.png"%(day)), bbox="tight")
 
 
 if __name__ == '__main__':
@@ -220,3 +219,9 @@ if __name__ == '__main__':
     print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 
+    cmd = "rcp -r /scr2/sedm/phot/%d/stats/ nblago@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%d/"%(timestamp, timestamp)
+    try:
+	subprocess.call(cmd, shell=True)
+    except:
+	pass
+
