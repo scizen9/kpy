@@ -242,7 +242,7 @@ cleanstds:
 newstds: cleanstds stds
 
 report:
-    $(REPORT) | mail -s "SEDM DRP Report" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
+	$(REPORT) | mail -s "SEDM DRP Report" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
