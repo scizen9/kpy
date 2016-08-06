@@ -35,13 +35,16 @@ else
             python $SEDMPATH/SEDMr/SpecArith.py $argv[2-]
             breaksw
         case "extract":
-            python $SEDMPATH/SEDMr/Extracter.py $argv[2-]
+            python $SEDMPATH/SEDMr/Extractor.py $argv[2-]
             breaksw
         case "plan":
             python $SEDMPATH/SEDMr/Plan.py ifu*fits
             breaksw
         case "plan2":
             python $SEDMPATH/SEDMr/Plan2.py ifu*fits
+            breaksw
+        case "report":
+            python $SEDMPATH/SEDMr/DrpReport.py
             breaksw
         default
             python $*
