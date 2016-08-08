@@ -42,13 +42,15 @@ def report():
                 expt *= 2.
         else:
             expt = 0.
-        totexpt += expt
+        # Don't count missing objects
+        if qual < 4:
+            totexpt += expt
 
         objname = f.split('_')[1].split('.')[0]
 
         print "%-25s %4s %6s   %6.1f %4d %5s" % (objname, obs, meth, expt, qual,
                                                  ("on" if skysub else "off"))
-    print "\nTotal science exposure time = %.1f s" % totexpt
+    print "\nTotal quality (1-3) science exposure time = %.1f s" % totexpt
 
 if __name__ == '__main__':
     report()
