@@ -245,7 +245,7 @@ cleanstds:
 newstds: cleanstds stds
 
 report:
-	$(REPORT) | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
+	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
