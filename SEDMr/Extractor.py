@@ -641,7 +641,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     return result
 
 
-def imarith(operand1, op, operand2, result, doairmass=False):
+def imarith(operand1, op, operand2, result, doairmass=False, doexptime=False):
     from pyraf import iraf
     iraf.images()
 
@@ -666,6 +666,17 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         of = pf.open(result)
         of[0].header['airmass1'] = am1
         of[0].header['airmass2'] = am2
+        of.writeto(result, clobber=True)
+    if doexptime:
+        # Adjust FITS header
+        with pf.open(operand1) as f:
+            ex1 = f[0].header['exptime']
+        with pf.open(operand2) as f:
+            ex2 = f[0].header['exptime']
+
+        of = pf.open(result)
+        of[0].header['exptime1'] = ex1
+        of[0].header['exptime2'] = ex2
         of.writeto(result, clobber=True)
 
 
@@ -1205,7 +1216,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
     # Get quality of observation
     print("Enter quality of observation:\n1 - good\n2 - acceptable"
           "\n3 - poor\n4 - no object visible")
-    quality = int(raw_input(": "))
+    try:
+        quality = int(raw_input(": "))
+    except:
+        print "Try again"
+        quality = int(raw_input(": "))
     while quality < 1 or quality > 4:
         print "must be in range from 1-4, try again"
         quality = int(raw_input(": "))
@@ -1460,7 +1475,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     # Get quality of observation
     print("Enter quality of observation:\n1 - good\n2 - acceptable"
           "\n3 - poor\n4 - no object visible")
-    quality = int(raw_input(": "))
+    try:
+        quality = int(raw_input(": "))
+    except:
+        print "Try again"
+        quality = int(raw_input(": "))
     while quality < 1 or quality > 4:
         print "must be in range from 1-4, try again"
         quality = int(raw_input(": "))

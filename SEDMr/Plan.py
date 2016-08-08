@@ -10,6 +10,7 @@ import NPK.Standards as Stds
 
 
 def extract_info(infiles):
+
     headers = []
 
     print "-- Ingesting headers --"
@@ -43,7 +44,7 @@ def identify_observations(headers):
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
     """
-    JD = 0
+    JD = 0.
 
     objcnt = {}
     objs = {}
@@ -148,6 +149,7 @@ EXTPAIR =  $(PY) $(PYC)/Extractor.py
 FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
+REPORT = $(PY) $(PYC)/DrpReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
@@ -158,6 +160,9 @@ BIAS = $(addprefix b_,$(SRCS))
 CRRS = $(addprefix crr_,$(BIAS))
 BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
+
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 
 crr_b_% : b_%
 	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
@@ -173,7 +178,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
 
-.PHONY: cleanstds newstds
+.PHONY: cleanstds newstds report finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -239,6 +244,12 @@ cleanstds:
 	rm -f std-correction.npy Standard_Correction.pdf
 
 newstds: cleanstds stds
+
+report:
+	$(REPORT) | tee report.txt
+
+finalreport:
+	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
@@ -318,7 +329,7 @@ def MF_AB(objname, obsnum, A, B):
 
     return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
-\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s " % tp
+\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):
@@ -407,7 +418,7 @@ def to_makefile(objs, calibs):
 
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
-    science = "\n\nscience: %s\n" % sci
+    science = "\n\nscience: %s report\n" % sci
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
     f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) +

@@ -179,6 +179,7 @@ def check_spec(specname, corrname='std-correction.npy',
 
     print "Max Angstroms: %7.1f" % maxwl
 
+    # If it has airmass2 then must be A/B pair
     if 'airmass2' in meta:
         et *= 2
 
