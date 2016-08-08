@@ -123,8 +123,11 @@ def start_listening_loop():
                     stats = np.genfromtxt(statsfile, dtype=None, delimiter=",")
                     if len(stats) > 3:
                         connection.sendall("%d,%.2f\n"%(0, np.median(stats["f4"][-4:])))
+                        logger.info( "Sent (%d,%.2f)"%(0, np.median(stats["f4"][-4:])) )
                     else:
                         connection.sendall("%d,%.2f\n"%(0, np.median(stats["f4"])))
+                        logger.info( "Sent (%d,%.2f)"%(0, np.median(stats["f4"])) )
+
                 else:
                     logger.error("Stats file %s does not exists!"%statsfile)
                     connection.sendall("%d,%.2f\n"%(-1, 0))
