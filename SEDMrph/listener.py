@@ -16,6 +16,7 @@ import sao
 import subprocess
 import datetime
 import logging
+import numpy as np
 
 def start_listening_loop():
     '''
@@ -29,11 +30,13 @@ def start_listening_loop():
     #Log into a file
     FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
     root_dir = "/scr2/sedm/logs/"
+
     now = datetime.datetime.utcnow()
     timestamp=datetime.datetime.isoformat(now)
     timestamp=timestamp.split("T")[0]
     logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
     logger = logging.getLogger('listener')
+            
     #bind socket
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     try:
@@ -54,8 +57,14 @@ def start_listening_loop():
         cmd = "touch /tmp/sedm_listener_alive"
         subprocess.call(cmd, shell=True)
 
-        logger.info( "Entered the listening loop.")
         while True:
+
+            now = datetime.datetime.utcnow()
+            timestamp=datetime.datetime.isoformat(now)
+            timestamp=timestamp.split("T")[0]
+            logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
+            logger = logging.getLogger('listener')
+    
             
             cmd = "touch /tmp/sedm_listener_alive"
             subprocess.call(cmd, shell=True)
@@ -105,6 +114,21 @@ def start_listening_loop():
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
                     connection.sendall("%d,%d,%d,%.3f\n"%(-1, 0, 0, 0))
+                    
+            elif "FWHM" in command:
+                logger.info( "Finding the FWHM for the last 3 images.")
+                mydir = timestamp.replace("-","")
+                statsfile = os.path.join("/scr2/sedm/phot/%s/stats"%mydir, "stats.log")
+                if (os.path.isfile(statsfile)):
+                    stats = np.genfromtxt(statsfile, dtype=None, delimiter=",")
+                    if len(stats) > 3:
+                        connection.sendall("%d,%.2f\n"%(0, np.median(stats["f4"][-4:])))
+                    else:
+                        connection.sendall("%d,%.2f\n"%(0, np.median(stats["f4"])))
+                else:
+                    logger.error("Stats file %s does not exists!"%statsfile)
+                    connection.sendall("%d,%.2f\n"%(-1, 0))
+
 
             elif "OFFSET" in command:
                 try:
