@@ -177,7 +177,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
 
-.PHONY: cleanstds newstds report
+.PHONY: cleanstds newstds report finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -244,7 +244,7 @@ cleanstds:
 
 newstds: cleanstds stds
 
-report: report.txt
+report:
 	$(REPORT) | tee report.txt
 
 finalreport:

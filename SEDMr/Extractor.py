@@ -1216,7 +1216,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
     # Get quality of observation
     print("Enter quality of observation:\n1 - good\n2 - acceptable"
           "\n3 - poor\n4 - no object visible")
-    quality = int(raw_input(": "))
+    try:
+        quality = int(raw_input(": "))
+    except:
+        print "Try again"
+        quality = int(raw_input(": "))
     while quality < 1 or quality > 4:
         print "must be in range from 1-4, try again"
         quality = int(raw_input(": "))
@@ -1471,7 +1475,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
     # Get quality of observation
     print("Enter quality of observation:\n1 - good\n2 - acceptable"
           "\n3 - poor\n4 - no object visible")
-    quality = int(raw_input(": "))
+    try:
+        quality = int(raw_input(": "))
+    except:
+        print "Try again"
+        quality = int(raw_input(": "))
     while quality < 1 or quality > 4:
         print "must be in range from 1-4, try again"
         quality = int(raw_input(": "))
