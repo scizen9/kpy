@@ -177,7 +177,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
 
-.PHONY: cleanstds newstds
+.PHONY: cleanstds newstds report
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -414,7 +414,7 @@ def to_makefile(objs, calibs):
 
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
-    science = "\n\nscience: %s\n" % sci
+    science = "\n\nscience: %s report\n" % sci
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
     f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) +
