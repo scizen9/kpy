@@ -10,8 +10,7 @@ flat-dome-700to900.npy.
 
 import os
 import sys
-import argparse
-import numpy as np
+
 import pyfits as pf
 
 import NPK.Bar as Bar
@@ -24,20 +23,23 @@ def extract_info(infiles):
 
     print "-- Ingesting headers --"
     update_rate = len(infiles) / (Bar.setup() - 1)
-    if update_rate <= 0: update_rate = 1
-    for ix, file in enumerate(infiles):
-        if ix % update_rate == 0: Bar.update()
-        FF = pf.open(file)
-        FF[0].header['filename'] = file
+    if update_rate <= 0:
+        update_rate = 1
+    for ix, ifile in enumerate(infiles):
+        if ix % update_rate == 0:
+            Bar.update()
+        FF = pf.open(ifile)
+        FF[0].header['filename'] = ifile
         if 'JD' not in FF[0].header:
-            #print "Skipping %s" % file
+            # print "Skipping %s" % ifile
             continue
         headers.append(FF[0].header)
         FF.close()
-    
+
     Bar.done()
-    
+
     return sorted(headers, key=lambda x: x['JD'])
+
 
 def identify_observations(headers):
     """Return a list of object name, observation number, and list of files.
@@ -50,13 +52,12 @@ def identify_observations(headers):
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
     """
-    JD = 0
+    JD = 0.
 
     objcnt = {}
     objs = {}
     calibs = {}
 
-    curr = ""
     for header in headers:
         if header['JD'] < JD:
             raise Exception("Headers not sorted by JD")
@@ -67,7 +68,8 @@ def identify_observations(headers):
         name = header['NAME']
         exptime = header['exptime']
         adcspeed = header['ADCSPEED']
-        if "test" in obj: continue
+        if "test" in obj:
+            continue
         if "Calib" in obj or "bias" in obj:
 
             def appendToCalibs(Str):
@@ -86,7 +88,7 @@ def identify_observations(headers):
                         suffix = ""
 
                     if "bias" in Str and exptime != 0.:
-                        print("Mis-labeled bias with exptime > 0: %9.1f" % 
+                        print("Mis-labeled bias with exptime > 0: %9.1f" %
                                     exptime)
                     else:
                         calibs[Str] = calibs.get(Str, [])
@@ -100,18 +102,23 @@ def identify_observations(headers):
             appendToCalibs("Ne")
             appendToCalibs("twilight")
 
-        if "Focus:" in obj: continue
-        if "dark" in obj: continue
-        if "Calib" in obj: continue
-        if "STOW" in name: continue
-        if obj.rstrip() == "": continue
-        name= name.replace(" ", "_")
-        name= name.replace(")", "_")
-        name= name.replace("(", "_")
-        name= name.replace("[", "_")
-        name= name.replace("]", "_")
-        name= name.replace("/", "_")
-        name= name.replace(":", "_")
+        if "Focus:" in obj:
+            continue
+        if "dark" in obj:
+            continue
+        if "Calib" in obj:
+            continue
+        if "STOW" in name:
+            continue
+        if obj.rstrip() == "":
+            continue
+        name = name.replace(" ", "_")
+        name = name.replace(")", "_")
+        name = name.replace("(", "_")
+        name = name.replace("[", "_")
+        name = name.replace("]", "_")
+        name = name.replace("/", "_")
+        name = name.replace(":", "_")
 
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
@@ -125,16 +132,16 @@ def identify_observations(headers):
             objs[name][cnt].append(fname)
 
     print "\n-- Calibrations --"
-    for k,v in calibs.iteritems():
+    for k, v in calibs.iteritems():
         print "%15s : %2.0i" % (k, len(v))
 
     print "\n-- Standard Star Sets --"
-    for k,v in objs.iteritems():
+    for k, v in objs.iteritems():
         if "STD-" in k:
             print "%20s : %2.0i" % (k, len(v))
 
     print "\n-- Science Object Sets --"
-    for k,v in objs.iteritems():
+    for k, v in objs.iteritems():
         if "STD-" not in k:
             print "%20s : %2.0i" % (k, len(v))
 
@@ -240,8 +247,9 @@ finalreport:
 
 """
 
+
 def MF_imcombine(objname, files, dependencies=""):
-    
+
     filelist = " ".join(["%s " % file for file in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
@@ -257,7 +265,7 @@ def MF_imcombine(objname, files, dependencies=""):
     if "bias" not in objname and "dome" not in objname:
         second += "\n%s.npy : %s.fits\n\t$(EXTSINGLE) cube.npy --A %s.fits --outname %s.npy --flat_correction flat-dome-700to900.npy --nosky\n" % (objname, objname, objname, objname)
 
-    return  first+second+"\n"
+    return first+second+"\n"
 
 
 def MF_single(objname, obsnum, file, standard=None):
@@ -286,10 +294,11 @@ cube_%(outname)s.fits: %(outname)s
 \t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" %  tp
     fn = "%(outname)s" % tp
 
-    if standard is None: return first+"\n", fn
-    else: return first+second+"\n", fn 
+    if standard is None:
+        return first+"\n", fn
+    else:
+        return first+second+"\n", fn
 
-    
 
 def MF_AB(objname, obsnum, A, B):
     """Create the MF entry for an A-B observation"""
@@ -312,23 +321,23 @@ def MF_AB(objname, obsnum, A, B):
 
 
 def to_makefile(objs, calibs):
-    
+
     MF = ""
 
     all = ""
     stds = ""
     stds_dep = ""
     sci = ""
-    
+
     flexures = ""
 
     for calibname, files in calibs.iteritems():
-        
+
         if "bias" not in calibname:
             pass
         MF += MF_imcombine(calibname, files)
         all += "%s.fits " % calibname
-    
+
     flatfiles = []
     for objname, observations in objs.iteritems():
 
@@ -348,8 +357,8 @@ def to_makefile(objs, calibs):
                     standard = pred
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m,a = MF_single(objname, "%i_%i" % (obsnum, ix), 
-                            obsfile, 
+                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                            obsfile,
                             standard=standard)
                         MF += m
                         # don't need these in all: dependants of target "stds"
@@ -360,28 +369,28 @@ def to_makefile(objs, calibs):
                     standard = None
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m,a = MF_single(objname, "%i_%i" % (obsnum, ix), 
-                            obsfile, 
+                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                            obsfile,
                             standard=standard)
                         MF += m
                         sci += a + " "
                 continue
 
             # Handle science targets
-            #print "****", objname, obsnum, obsfiles
+            # print "****", objname, obsnum, obsfiles
             if len(obsfiles) == 2:
-                m,a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
+                m, a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
 
                 MF += m
                 all += a + " "
-                
+
                 if not objname.startswith("STD-"):
                     sci += a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
 
-                    m,a = MF_single(objname, "%i_%i" % (obsnum,obsfilenum), 
+                    m, a = MF_single(objname, "%i_%i" % (obsnum,obsfilenum),
                         obsfile)
 
                     if standard is not None:
@@ -389,7 +398,7 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
-                    
+
                     if not objname.startswith("STD-") and not objname.startswith("STOW"):
                         sci += a + " "
     stds += " "
@@ -405,6 +414,7 @@ def to_makefile(objs, calibs):
             "\n" + MF + "\n" + flexures)
     f.close()
 
+
 def make_plan(headers):
     """Convert headers to a makefile, assuming headers sorted by JD."""
 
@@ -417,6 +427,6 @@ if __name__ == '__main__':
     files = sys.argv[1:]
     to_process = extract_info(files)
 
-    objs = make_plan(to_process)
+    make_plan(to_process)
 
 

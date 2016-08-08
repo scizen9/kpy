@@ -10,6 +10,7 @@ import NPK.Standards as Stds
 
 
 def extract_info(infiles):
+
     headers = []
 
     print "-- Ingesting headers --"
@@ -43,7 +44,7 @@ def identify_observations(headers):
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
     """
-    JD = 0
+    JD = 0.
 
     objcnt = {}
     objs = {}
@@ -328,7 +329,7 @@ def MF_AB(objname, obsnum, A, B):
 
     return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
-\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s " % tp
+\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):
