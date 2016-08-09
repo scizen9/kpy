@@ -1214,8 +1214,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
         ex[ix].is_sky = True
 
     # Get quality of observation
-    print("Enter quality of observation:\n1 - good\n2 - acceptable"
-          "\n3 - poor\n4 - no object visible")
+    print "Enter quality of observation:"
+    print "1 - good       (no problems)"
+    print "2 - acceptable (minor problem)"
+    print "3 - poor       (major problem)"
+    print "4 - no object visible"
     try:
         quality = int(raw_input(": "))
     except:
@@ -1473,8 +1476,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         ex[ix].is_obj = True
 
     # Get quality of observation
-    print("Enter quality of observation:\n1 - good\n2 - acceptable"
-          "\n3 - poor\n4 - no object visible")
+    print "Enter quality of observation:"
+    print "1 - good       (no problems)"
+    print "2 - acceptable (minor problem)"
+    print "3 - poor       (major problem)"
+    print "4 - no object visible"
     try:
         quality = int(raw_input(": "))
     except:
