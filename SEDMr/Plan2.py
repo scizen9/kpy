@@ -150,18 +150,18 @@ def identify_observations(headers):
 
 make_preamble = """
 PY = ~/spy
-PYC = ~/kpy/SEDM
-EXTSINGLE =  $(PY) $(PYC)r/Extractor.py 
-ATM =  $(PY) $(PYC)r/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)r/Extractor.py 
-FLEXCMD = $(PY) $(PYC)r/Flexure.py
-IMCOMBINE = $(PY) $(PYC)r/Imcombine.py
-PLOT = $(PY) $(PYC)r/Check.py
+PYC = ~/kpy/SEDMr
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py
+ATM =  $(PY) $(PYC)/AtmCorr.py
+EXTPAIR =  $(PY) $(PYC)/Extractor.py
+FLEXCMD = $(PY) $(PYC)/Flexure.py
+IMCOMBINE = $(PY) $(PYC)/Imcombine.py
+PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 
 BSUB = $(PY) $(PYC)/Bias.py
-BGDSUB =  $(PY) $(PYC)r/SubtractBackground.py
-CRRSUB =  $(PY) $(PYC)r/CosmicX.py
+BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
+CRRSUB =  $(PY) $(PYC)/CosmicX.py
 
 SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
@@ -206,16 +206,16 @@ $(BACK):
     
 
 seg_dome.fits: dome.fits
-	$(PY) $(PYC)r/SexLamps.py dome.fits
+	$(PY) $(PYC)/SexLamps.py dome.fits
 
 seg_Hg.fits: Hg.fits
-	$(PY) $(PYC)r/SexSpectra.py Hg.fits
+	$(PY) $(PYC)/SexSpectra.py Hg.fits
 
 dome.fits_segments.npy: seg_dome.fits
-	$(PY) $(PYC)r/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
+	$(PY) $(PYC)/FindSpectra.py seg_dome.fits dome.fits dome.fits_segments --order 1
 
 rough.npy: dome.fits_segments.npy seg_Hg.fits
-	$(PY) $(PYC)r/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough 
+	$(PY) $(PYC)/Wavelength.py rough --hgfits Hg.fits --hgcat cat_Hg.fits.txt --dome dome.fits_segments.npy --outname rough
 
 bs_twilight.fits.gz: twilight.fits
 	$(BGDSUB) fine.npy twilight.fits --gausswidth=100
@@ -224,7 +224,7 @@ bs_dome.fits.gz: dome.fits
 	$(BGDSUB) fine.npy dome.fits --gausswidth=100
 
 dome.npy: dome.fits
-	$(PY) $(PYC)r/Extractor.py cube.npy --A dome.fits --outname dome --extflat
+	$(PY) $(PYC)/Extractor.py cube.npy --A dome.fits --outname dome --extflat
 
 flex: back $(FLEX)
 
@@ -288,7 +288,7 @@ def MF_single(objname, obsnum, file, standard=None):
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 cube_%(outname)s.fits: %(outname)s
-\t$(PY) $(PYC)r/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+\t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 """ % tp
     second = """corr_%(outname)s: %(outname)s
 \t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" %  tp

@@ -561,6 +561,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     pl.clf()
     pl.step(l_grid, medspec)
     yl = pl.ylim()
+    pl.xlim(300., 1200.)
     pl.xlabel('Wavelength [nm]')
     pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
     pl.title("%s Raw Spectrum" % outname.split('.')[0])
@@ -1214,8 +1215,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
         ex[ix].is_sky = True
 
     # Get quality of observation
-    print("Enter quality of observation:\n1 - good\n2 - acceptable"
-          "\n3 - poor\n4 - no object visible")
+    print "Enter quality of observation:"
+    print "1 - good       (no problems)"
+    print "2 - acceptable (minor problem)"
+    print "3 - poor       (major problem)"
+    print "4 - no object visible"
     try:
         quality = int(raw_input(": "))
     except:
@@ -1473,8 +1477,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         ex[ix].is_obj = True
 
     # Get quality of observation
-    print("Enter quality of observation:\n1 - good\n2 - acceptable"
-          "\n3 - poor\n4 - no object visible")
+    print "Enter quality of observation:"
+    print "1 - good       (no problems)"
+    print "2 - acceptable (minor problem)"
+    print "3 - poor       (major problem)"
+    print "4 - no object visible"
     try:
         quality = int(raw_input(": "))
     except:
