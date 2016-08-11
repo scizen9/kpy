@@ -548,7 +548,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         
         #Find the coefficients.
-        M = np.zeros((len(ab), 4))
+        '''M = np.zeros((len(ab), 4))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
@@ -580,7 +580,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         mask = mask_col_outlier * mask_airmass_outlier * mask_col_jd
         
-        ab = ab[~mask]
+        ab = ab[~mask]'''
         M = np.zeros((len(ab), 6))
         M[:,0] = 1      
         #M[:,1] = ab['inst']

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#:4-*- coding: utf-8 -*-
 """
 Created on Sat May 21 10:26:37 2016
 
@@ -210,18 +210,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     photdir = args.photdir
-    print "Parameter directory where stats are run :",photdir
+    print "Parameter directory where stats are run : %s."%photdir
     
     if (photdir is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+	print "New directory %s"%photdir
     print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 
-    cmd = "rcp -r /scr2/sedm/phot/%d/stats/ nblago@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%d/"%(timestamp, timestamp)
+    cmd = "rcp -r /scr2/sedm/phot/%s/stats/ nblago@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/"%(timestamp, timestamp)
+    print cmd
     try:
 	subprocess.call(cmd, shell=True)
-    except:
+    except IOError:
 	pass
 

@@ -79,7 +79,10 @@ def reduce_on_the_fly(photdir):
                         continue
                 if (fitsutils.get_par(n, "IMGTYPE")=="SCIENCE"):
                     reduced = rcred.reduce_image(n)
-                    zeropoint.calibrate_zeropoint(reduced)
+                    try:
+                        zeropoint.calibrate_zeropoint(reduced)
+                    except:
+                        loger.error("Could not calibrate zeropoint for image %s"%reduced)
                     #Copy them to transient
                     for r in reduced:
                         cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(r, dayname)

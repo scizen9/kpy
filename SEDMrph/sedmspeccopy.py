@@ -8,7 +8,7 @@ import datetime
 import glob, os
 import argparse
 import subprocess
-
+import re
 
 
 
@@ -42,12 +42,25 @@ if __name__ == '__main__':
     
     for f in sedmfiles:
         
-        newname = os.path.basename(f).split("_")[0].replace("PTF", "")
-        newname += "_%s_P60_v1.ascii"%timestamp
-        cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/marshals/transient/ptf/spectra/sedm_to_upload/%s"%(f, newname)
-        print cmd
-        try:
-            subprocess.call(cmd, shell=True)
-        except:
-            print "Error copying the file"
-            pass
+        qual = -1
+        #retrieve the quality of the spectra.
+        with open(f, "r") as sf:
+            a = sf.readlines()
+            
+            qual = [ai for ai in a if "QUALITY" in ai]
+            
+            if len(qual) > 0:
+                match = re.search(r'\(?([0-9]+)\)?', qual[0])
+                qual = int(match.group(1))
+
+        #Only write the spectra that have good qualities.
+        if (qual < 3):
+            newname = os.path.basename(f).split("_")[0].replace("PTF", "")
+            newname += "_%s_P60_v1.ascii"%timestamp
+            cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/marshals/transient/ptf/spectra/sedm_to_upload/%s"%(f, newname)
+            print cmd
+            try:
+                subprocess.call(cmd, shell=True)
+            except:
+                print "Error copying the file"
+                pass
