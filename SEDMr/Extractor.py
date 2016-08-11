@@ -561,6 +561,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     pl.clf()
     pl.step(l_grid, medspec)
     yl = pl.ylim()
+    pl.xlim(300., 1200.)
     pl.xlabel('Wavelength [nm]')
     pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
     pl.title("%s Raw Spectrum" % outname.split('.')[0])
