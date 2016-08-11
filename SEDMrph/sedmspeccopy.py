@@ -36,14 +36,14 @@ if __name__ == '__main__':
         photdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
 
     os.chdir(photdir)
-    
+    print os.getcwd()
     sedmfiles = glob.glob("PTF*.txt")
     print "Copying", sedmfiles
     
     for f in sedmfiles:
         
         newname = os.path.basename(f).split("_")[0].replace("PTF", "")
-        newname += "_%d_P60_v1.ascii"%timestamp
+        newname += "_%s_P60_v1.ascii"%timestamp
         cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/marshals/transient/ptf/spectra/sedm_to_upload/%s"%(f, newname)
         print cmd
         try:
