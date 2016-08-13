@@ -8,15 +8,13 @@ import pyfits as pf
 import zscale
 import pywcs
 import numpy as np
-import matplotlib
-from matplotlib import pylab as plt
-from scipy import ndimage
 import aplpy
 import coordinates_conversor
-import fitsmanip
 import fitsutils
-import time_utils
-
+import datetime
+import os
+import glob
+import argparse
     
 def finder(myfile,searchrad=0.2/60.):
     
@@ -61,5 +59,36 @@ def finder(myfile,searchrad=0.2/60.):
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
     gc.add_label(0.05, 0.84, 'Filter: SDSS r', relative=True, color="white", horizontalalignment="left")
     
-    gc.save(myfile.replace(".fits", '_%s_finder.jpg'%(name)))
+    findername = myfile.replace(".fits", '_%s_finder.jpg'%(name))
+    gc.save(findername)
     
+    return findername
+    
+
+if __name__=="__main__":  
+    parser = argparse.ArgumentParser(description=\
+    '''
+
+    Creates a finder chart for every acquisition image in the folder specified as a parameter.
+    As a final step, it copies the acquisition image to the "agn" machine to visualize it.
+        
+    ''', formatter_class=argparse.RawTextHelpFormatter)
+    
+    parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
+
+    args = parser.parse_args()
+    
+    photdir = args.photdir
+    
+    if (photdir is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+    
+    os.chwd(photdir)
+    
+    for f in glob.glob("a_*fits"):
+        if fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" and "STD" not in fitsutils.get_par(f, "OBJECT"):
+            findername = finder(f)
+            if(os.path.isfile(findername)):
+                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/redux/%s/."%(findername, timestamp)
