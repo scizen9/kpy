@@ -15,6 +15,7 @@ import datetime
 import os
 import glob
 import argparse
+import subprocess
     
 def finder(myfile,searchrad=0.2/60.):
     
@@ -30,10 +31,10 @@ def finder(myfile,searchrad=0.2/60.):
     corner_pix = wcs.wcs_sky2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
     dx = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
     
-    imgslice = img[target_pix[0]-2*dx:target_pix[0]+2*dx, target_pix[1]-2*dx:target_pix[1]+2*dx]
+    imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
     #zmin, zmax = zscale.zscale()
     zmin = np.percentile(imgslice.flatten(), 5)
-    zmax = np.percentile(imgslice.flatten(), 99.9)
+    zmax = np.percentile(imgslice.flatten(), 99)
     
     gc = aplpy.FITSFigure(myfile, figsize=(10,9), north=True)
     gc.show_grayscale(vmin=zmin, vmax=zmax)
@@ -41,8 +42,15 @@ def finder(myfile,searchrad=0.2/60.):
     gc.scalebar.set_label('10 arcsec')
     gc.scalebar.set_color('white')
     gc.recenter(ra, dec, searchrad)
-    gc.show_markers(ra,dec+searchrad/20.,edgecolor='red',facecolor='none',marker="|",s=250, lw=4)
-    gc.show_markers(ra-(searchrad/20.)/np.cos(np.deg2rad(dec)),dec,edgecolor='red',facecolor='none',marker="_",s=250, lw=4)
+    gc.show_markers(ra,dec+searchrad/20.,edgecolor='red',facecolor='none',marker="|",s=250, lw=10)
+    gc.show_markers(ra-(searchrad/20.)/np.cos(np.deg2rad(dec)),dec,edgecolor='red',facecolor='none',marker="_",s=250, lw=10)
+
+    ras = np.array([ra , ra])
+    decs = np.array([dec, dec])
+    dxs = np.array([0, searchrad/10 / np.cos(np.deg2rad(dec))])
+    dys = np.array([searchrad/10, 0])
+
+    gc.show_arrows(ras, decs, dxs, dys, edgecolor="red", facecolor="red", head_width=0)
 
     ras = np.array([ra+searchrad*0.7/ np.cos(np.deg2rad(dec)), ra+searchrad*0.7/ np.cos(np.deg2rad(dec))])
     decs = np.array([dec-searchrad*0.9, dec-searchrad*0.9])
@@ -59,7 +67,7 @@ def finder(myfile,searchrad=0.2/60.):
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
     gc.add_label(0.05, 0.84, 'Filter: SDSS r', relative=True, color="white", horizontalalignment="left")
     
-    findername = myfile.replace(".fits", '_%s_finder.jpg'%(name))
+    findername = '%s_finder.jpg'%(name)
     gc.save(findername)
     
     return findername
@@ -80,15 +88,25 @@ if __name__=="__main__":
     
     photdir = args.photdir
     
+    
     if (photdir is None):
-        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
-        timestamp = timestamp.split("T")[0].replace("-","")
+    	timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+    	timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+    else:
+	timestamp = os.path.basename(os.path.abspath(photdir))
+    os.chdir(photdir)
     
-    os.chwd(photdir)
-    
-    for f in glob.glob("a_*fits"):
+    #We only generate onle finder with the first image.
+    files = glob.glob("a_*fits")
+    files.sort()
+    for f in files:
         if fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" and "STD" not in fitsutils.get_par(f, "OBJECT"):
+	    findername = '%s_finder.jpg'%(fitsutils.get_par(f, "OBJECT"))
+	    if(os.path.isfile(findername)):
+		continue
             findername = finder(f)
             if(os.path.isfile(findername)):
-                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/redux/%s/."%(findername, timestamp)
+                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/."%(findername, timestamp)
+		print cmd
+		subprocess.call(cmd, shell=True)
