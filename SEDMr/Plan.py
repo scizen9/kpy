@@ -150,6 +150,7 @@ FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
+PTFREPORT = $(PY) $(PYC)/DrpPtfReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
@@ -247,6 +248,9 @@ newstds: cleanstds stds
 
 report:
 	$(REPORT) | tee report.txt
+
+ptfreport:
+	$(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" nblago@caltech.edu
 
 finalreport:
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu

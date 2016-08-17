@@ -4,6 +4,8 @@ Created on Tue Jul 14 15:01:50 2015
 
 @author: nadiablago
 """
+import matplotlib
+matplotlib.use("Agg")
 import pyfits as pf
 import zscale
 import pywcs
@@ -103,10 +105,14 @@ if __name__=="__main__":
     for f in files:
         if fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" and "STD" not in fitsutils.get_par(f, "OBJECT"):
 	    findername = '%s_finder.jpg'%(fitsutils.get_par(f, "OBJECT"))
-	    if(os.path.isfile(findername)):
-		continue
-            findername = finder(f)
+	    if(not os.path.isfile(findername)):
+            	findername = finder(f)
             if(os.path.isfile(findername)):
                 cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/."%(findername, timestamp)
 		print cmd
 		subprocess.call(cmd, shell=True)
+
+    cmd = "rcp /tmp/finders.php sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/."%(timestamp)
+    print cmd
+    subprocess.call(cmd, shell=True)
+
