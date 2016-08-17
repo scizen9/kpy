@@ -23,8 +23,6 @@ def report():
 
 	if not 'PTF' in objname:
 	    continue
-	else:
-	    objects.append(objname.replace("PTF", ""))
         if '_A_' in f or '_B_' in f:
             continue
 
@@ -33,6 +31,8 @@ def report():
             qual = sp['quality']
 	    if qual >= 3:
 		continue
+	    else:
+		objects.append(objname.replace("PTF", ""))
         else:
             qual = 0
         if 'sky_subtraction' in sp:
@@ -64,6 +64,7 @@ def report():
         print "%-25s %4s %6s   %6.1f %4d %5s" % (objname, obs, meth, expt, qual,
                                                  ("on" if skysub else "off"))
 
+    print "\n"
     print "Spectra are available in the marhsal:"
     for o in objects:
 	print "http://ptf.caltech.edu/cgi-bin/ptf/transient/view_source.cgi?name=%s"%(o)
