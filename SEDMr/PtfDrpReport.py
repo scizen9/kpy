@@ -16,7 +16,7 @@ def report():
     print "Object                     Obs Method  Exptime Qual Skysb"
 
 
-    obs = []
+    objects = []
 
     for f in flist:
         objname = f.split('_')[1].split('.')[0]
@@ -24,7 +24,7 @@ def report():
 	if not 'PTF' in objname:
 	    continue
 	else:
-	    obs.append(objname.replace("PTF", ""))
+	    objects.append(objname.replace("PTF", ""))
         if '_A_' in f or '_B_' in f:
             continue
 
@@ -65,7 +65,7 @@ def report():
                                                  ("on" if skysub else "off"))
 
     print "Spectra are available in the marhsal:"
-    for o in obs:
+    for o in objects:
 	print "http://ptf.caltech.edu/cgi-bin/ptf/transient/view_source.cgi?name=%s"%(o)
 
 if __name__ == '__main__':
