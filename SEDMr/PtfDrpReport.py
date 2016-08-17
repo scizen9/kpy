@@ -11,7 +11,6 @@ def report():
              if "_A_" not in f and "_B_" not in f]
     flist.sort(key=os.path.getmtime)
     print "\nReport generated on %s" % time.strftime("%c")
-          (os.getcwd(), len(flist))
     totexpt = 0.
     lostexp = 0.
     print "Object                     Obs Method  Exptime Qual Skysb"

@@ -150,7 +150,7 @@ FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
-PTFREPORT = $(PY) $(PYC)/DrpPtfReport.py
+PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
