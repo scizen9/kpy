@@ -65,7 +65,7 @@ def report():
                                                  ("on" if skysub else "off"))
 
     print "\n"
-    print "Spectra are available in the marhsal:"
+    print "Spectra are available in the marshal:"
     for o in objects:
 	print "http://ptf.caltech.edu/cgi-bin/ptf/transient/view_source.cgi?name=%s"%(o)
 
