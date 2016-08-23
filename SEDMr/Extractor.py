@@ -466,7 +466,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if posb is not None:
         pl.axvline(posb[0], color='black', linewidth=.5)
         pl.axhline(posb[1], color='black', linewidth=.5)
-    print "scaling between %d and %d" % (vmin, vmax)
+    print "scaling output image between %d and %d" % (vmin, vmax)
     pl.scatter(xs, ys, c=vs, s=50, marker='H', linewidth=0,
                vmin=vmin, vmax=vmax)
 

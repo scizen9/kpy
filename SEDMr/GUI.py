@@ -164,7 +164,7 @@ class PositionPicker(object):
                 dVmax = 300
 
         # plot (may want to use cmap=pl.cm.Spectral)
-        print "scaling between %d and %d" % (dVmin, dVmax)
+        print "scaling image display between %d and %d" % (dVmin, dVmax)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
                    vmin=dVmin, vmax=dVmax)
 
