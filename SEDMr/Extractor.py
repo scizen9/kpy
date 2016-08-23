@@ -405,7 +405,19 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     """ Convert spectra list into image_[outname].pdf
 
     Args:
-        quality (int):
+        spectra (array of extraction): see Extraction.py
+        meta (dict): dictionary of meta-data
+        outname (string): output filename
+        posa (tuple): x,y position of A aperture (asec)
+        posb (tuple): x,y position of B aperture (asec)
+        adcpos (tuple): position offsets due to atmospheric dispersion (asec)
+        ellipse (tuple): ellipse parameters for A aperture
+        ellipseb (tuple): ellipse parameters for B aperture
+        quality (int): from 1 (good) to 4 (no object)
+        lmin (float): minimum wavelength in nm to sum over
+        lmax (float): maximum wavelength in nm to sum over
+        cmin (float): cube intensity minimum for scaling
+        cmax (float): cube intensity maximum for scaling
     """
 
     xs = []
@@ -454,6 +466,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if posb is not None:
         pl.axvline(posb[0], color='black', linewidth=.5)
         pl.axhline(posb[1], color='black', linewidth=.5)
+    print "scaling between %d and %d" % (vmin, vmax)
     pl.scatter(xs, ys, c=vs, s=50, marker='H', linewidth=0,
                vmin=vmin, vmax=vmax)
 

@@ -5,37 +5,42 @@ Created on Thu Aug 11 11:23:00 2016
 @author: nblago
 """
 import datetime
-import glob, os
+import glob
+import os
 import argparse
 import subprocess
 import re
 
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
+    parser = argparse.ArgumentParser(description=
         '''
 
-        Runs astrometry.net on the image specified as a parameter and returns 
-        the offset needed to be applied in order to center the object coordinates 
-        in the reference pixel.
+        Copies the output ascii spectra to the iPTF marshal
+
+        Checks to be sure spectra have quality > 3 and only
+        copies spectra for objects with "PTF" prefix.
+
+        Specify input directory with -d, or --specdir parameters.
+        If none specified, use current date directory in /scr2/sedmdrp/redux/
             
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
-
-    parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
+    parser.add_argument('-d', '--specdir', type=str, dest="specdir",
+                        help='Directory with output PTF*_SEDM.txt files.',
+                        default=None)
 
     args = parser.parse_args()
     
-    photdir = args.photdir
-    print "Parameter directory where stats are run :",photdir
+    specdir = args.specdir
+    print "Directory where reduced spectra reside: ", specdir
     
-    if (photdir is None):
-        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
-        timestamp = timestamp.split("T")[0].replace("-","")
-        photdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
+    if specdir is None:
+        timestamp = datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-", "")
+        specdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
 
-    os.chdir(photdir)
+    os.chdir(specdir)
     print os.getcwd()
     sedmfiles = glob.glob("PTF*.txt")
     print "Copying", sedmfiles
@@ -43,7 +48,7 @@ if __name__ == '__main__':
     for f in sedmfiles:
         
         qual = -1
-        #retrieve the quality of the spectra.
+        # retrieve the quality of the spectra.
         with open(f, "r") as sf:
             a = sf.readlines()
             
@@ -53,11 +58,13 @@ if __name__ == '__main__':
                 match = re.search(r'\(?([0-9]+)\)?', qual[0])
                 qual = int(match.group(1))
 
-        #Only write the spectra that have good qualities.
-        if (qual < 3):
+        # Only write the spectra that have good qualities.
+        if qual < 3:
             newname = os.path.basename(f).split("_")[0].replace("PTF", "")
-            newname += "_%s_P60_v1.ascii"%timestamp
-            cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/marshals/transient/ptf/spectra/sedm_to_upload/%s"%(f, newname)
+            newname += "_%s_P60_v1.ascii" % timestamp
+            cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/" \
+                  "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
+                                                                        newname)
             print cmd
             try:
                 subprocess.call(cmd, shell=True)
