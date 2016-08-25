@@ -10,8 +10,49 @@ import argparse
 import subprocess
 import re
 
+def parse_and_fill(spec, snidoutput):
+    '''
+    Receive the SEDM file and the output from snid. It parses the output from snid, fills a dictionary with the results
+    and fills some of the comments in the original file, so that these could be used in the marshal.
+    '''
+    
+    pars = {"zmed":-1, "zmederr":-1, "agem": -1, "agemerr": -1, "Ia":0, "Ib":0, "Ic":0, "II":0, "NotSN":0}
+    
+    with open(snidoutput, "r") as snid:
+        
+        lines = snid.readlines()
+        pars["zmed"] = float(lines[35].split(" ")[1])
+        pars["zmed"] = float(lines[35].split(" ")[2])
+        pars["agem"] = float(lines[36].split(" ")[1])
+        pars["agemerr"] = float(lines[36].split(" ")[2])
+    
+def run_snid(specdir):
 
+    for f in glob.glob(os.path.join(specdir, "*.txt")):
 
+        #retrieve the quality of the spectra.
+        with open(f, "r") as sf:
+            a = sf.readlines()
+            
+            clas = [ai for ai in a if "TYPE" in ai]
+            
+            #If the file has been classified, move to the next
+            if len(clas) > 0:
+                continue
+            
+        #Else, we run the classification with snid
+        cmd = "snid wmin=4500 wmax=9500 skyclip=1 medlen=20 aband=1 rlapmin=4 plot=0 %s"%f                
+        print cmd
+        try:
+            subprocess.call(cmd, shell=True)
+        except:
+            print "Error running snid"
+            continue
+        
+        snidoutput = f.replace(".txt", "_snid.output")
+        parse_and_fill(f, snidoutput)
+            
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
         '''

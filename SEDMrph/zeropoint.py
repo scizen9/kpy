@@ -433,7 +433,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 plt.text(selected[i,0]+10, selected[i,1]+10, i+1)
         
         plt.legend(loc="best", frameon=False, framealpha=0.9)
-        plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png')))
+        plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png').replace('.new', '.seqstars.png')))
         logger.info( "Saved stars to %s"%imfile.replace('.fits', '.seqstars.png'))
         plt.clf()
         
@@ -828,7 +828,7 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
         plt.title("Best fit ZP:"+str( p[0])+ " colour term " + str(p[1]))
         plt.xlabel("{:} - {:}".format(band, col_band))
         plt.ylabel("ZP")
-        plt.savefig( os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png")))
+        plt.savefig( os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png").replace('.new', ".zp.png")))
 
         plt.clf()
     
@@ -861,8 +861,11 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     else:
         date=0
         
+    if fitsutils.has_par(image, "AIRMASS"): 
+        airmass = fitsutils.get_par(image, "AIRMASS")
+    else:
+        airmass = 1.3
     objname = fitsutils.get_par(image, "OBJECT")
-    airmass = fitsutils.get_par(image, "AIRMASS")
     band = fitsutils.get_par(image, "FILTER")
     
     logger.info( "Starting calibration of ZP for image %s for object %s with filter %s."%(image, objname, band))
