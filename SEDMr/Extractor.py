@@ -323,6 +323,11 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
         if o in skys:
             skys.remove(o)
 
+    if len(skys) > 0:
+        print "Number of starting pure sky spaxels is %d" % len(skys)
+    else:
+        print "ERROR: no sky spaxels in this image"
+
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
 
@@ -405,7 +410,19 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     """ Convert spectra list into image_[outname].pdf
 
     Args:
-        quality (int):
+        spectra (array of extraction): see Extraction.py
+        meta (dict): dictionary of meta-data
+        outname (string): output filename
+        posa (tuple): x,y position of A aperture (asec)
+        posb (tuple): x,y position of B aperture (asec)
+        adcpos (tuple): position offsets due to atmospheric dispersion (asec)
+        ellipse (tuple): ellipse parameters for A aperture
+        ellipseb (tuple): ellipse parameters for B aperture
+        quality (int): from 1 (good) to 4 (no object)
+        lmin (float): minimum wavelength in nm to sum over
+        lmax (float): maximum wavelength in nm to sum over
+        cmin (float): cube intensity minimum for scaling
+        cmax (float): cube intensity maximum for scaling
     """
 
     xs = []
@@ -454,6 +471,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if posb is not None:
         pl.axvline(posb[0], color='black', linewidth=.5)
         pl.axhline(posb[1], color='black', linewidth=.5)
+    print "scaling output image between %d and %d" % (vmin, vmax)
     pl.scatter(xs, ys, c=vs, s=50, marker='H', linewidth=0,
                vmin=vmin, vmax=vmax)
 
@@ -939,13 +957,13 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                                    lmin=lmin, lmax=lmax,
                                    airmass=meta['airmass'])
     radius_used = ellipse[0] * 0.5
-    # Save std star ellipse
-    np.save("ell_" + outname, ellipse)
-    print "Wrote ell_%s.npy" % outname
+
+    # Mark object spaxels
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
     kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+    # Mark sky spaxels
     for ix in kixa:
         ex[ix].is_sky = True
 
@@ -956,6 +974,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     resa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
     vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
+
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
     ysa = []
@@ -1078,6 +1097,9 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Save the final spectrum
     np.save("sp_" + outname, res)
     print "Wrote sp_"+outname+".npy"
+    # Save std star ellipse
+    np.save("ell_" + outname, ellipse)
+    print "Wrote ell_%s.npy" % outname
 
 
 def handle_single(imfile, fine, outname=None, offset=None,
