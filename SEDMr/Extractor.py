@@ -1244,14 +1244,17 @@ def handle_single(imfile, fine, outname=None, offset=None,
         print "2 - acceptable (minor problem)"
         print "3 - poor       (major problem)"
         print "4 - no object visible"
-        try:
-            quality = int(raw_input(": "))
-        except:
-            print "Try again"
-            quality = int(raw_input(": "))
-        while quality < 1 or quality > 4:
-            print "must be in range from 1-4, try again"
-            quality = int(raw_input(": "))
+        q = 'x'
+        quality = -1
+        prom = ": "
+        while not q.isdigit() or quality < 1 or quality > 4:
+            q = raw_input(prom)
+            if q.isdigit():
+                quality = int(q)
+                if quality < 1 or quality > 4:
+                    prom = "Try again: "
+            else:
+                prom = "Try again: "
         print "Quality = %d, now making outputs..." % quality
 
         # Make an image of the spaxels for the record
@@ -1512,14 +1515,17 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         print "2 - acceptable (minor problem)"
         print "3 - poor       (major problem)"
         print "4 - no object visible"
-        try:
-            quality = int(raw_input(": "))
-        except:
-            print "Try again"
-            quality = int(raw_input(": "))
-        while quality < 1 or quality > 4:
-            print "must be in range from 1-4, try again"
-            quality = int(raw_input(": "))
+        q = 'x'
+        quality = -1
+        prom = ": "
+        while not q.isdigit() or quality < 1 or quality > 4:
+            q = raw_input(prom)
+            if q.isdigit():
+                quality = int(q)
+                if quality < 1 or quality > 4:
+                    prom = "Try again: "
+            else:
+                prom = "Try again: "
         print "Quality = %d, now making outputs..." % quality
 
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
