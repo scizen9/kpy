@@ -143,9 +143,9 @@ def identify_observations(headers):
 make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDMr
-EXTSINGLE =  $(PY) $(PYC)/Extractor.py 
-ATM =  $(PY) $(PYC)/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)/Extractor.py 
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py
+ATM =  $(PY) $(PYC)/AtmCorr.py
+EXTPAIR =  $(PY) $(PYC)/Extractor.py
 FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
@@ -259,6 +259,7 @@ finalreport: ptfreport
 
 
 def MF_imcombine(objname, files, dependencies=""):
+
     filelist = " ".join(["%s " % ifile for ifile in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
@@ -343,6 +344,7 @@ sp_%(outname)s: %(outname)s
 
 
 def to_makefile(objs, calibs):
+
     MF = ""
 
     all = ""
@@ -444,6 +446,7 @@ def make_plan(headers):
 
 
 if __name__ == '__main__':
+
     files = sys.argv[1:]
     to_process = extract_info(files)
 
