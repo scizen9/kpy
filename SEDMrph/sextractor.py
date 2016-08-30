@@ -17,7 +17,7 @@ import fitsutils
 from matplotlib import pylab as plt
 
 
-def run_sex(flist, mask=False, cosmics=False):
+def run_sex(flist, mask=False, cosmics=False, overwrite=True):
     
     d = os.path.dirname(flist[0])
     if d == "":
@@ -31,25 +31,30 @@ def run_sex(flist, mask=False, cosmics=False):
         
     newlist = []
     for f in flist:
-        try:
-            f = os.path.abspath(f)
-            if (mask):
-                out = rcred.get_masked_image(f)
-            else:
-                out = f
-                
-            if (cosmics and (not fitsutils.has_par(out, "CRREJ") or fitsutils.get_par(out, "CRREJ") ==0)):
-                out = rcred.clean_cosmic(out)
+        newimage = os.path.join(sexdir, os.path.basename(f).replace(".fits", ".sex")) 
 
-            cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], out) 
-            subprocess.call(cmd, shell=True)
-            print cmd
-            newimage = os.path.join(sexdir, os.path.basename(f).replace(".fits", ".sex")) 
-            shutil.move("image.sex", newimage)
+        if (os.path.isfile(newimage) and not overwrite):
             newlist.append(newimage)
-        except IOError:
-            print "IOError detected reading file",f
-            pass
+            print "Sextracted image %s already exists."%newimage
+        else:
+            try:
+                f = os.path.abspath(f)
+                if (mask):
+                    out = rcred.get_masked_image(f)
+                else:
+                    out = f
+                    
+                if (cosmics and (not fitsutils.has_par(out, "CRREJ") or fitsutils.get_par(out, "CRREJ") ==0)):
+                    out = rcred.clean_cosmic(out)
+    
+                cmd="sex -c %s/config/daofind.sex %s"%(os.environ["SEDMPH"], out) 
+                subprocess.call(cmd, shell=True)
+                print cmd
+                shutil.move("image.sex", newimage)
+                newlist.append(newimage)
+            except IOError:
+                print "IOError detected reading file",f
+                pass
         
     return newlist
         

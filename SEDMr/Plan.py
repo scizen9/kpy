@@ -143,9 +143,9 @@ def identify_observations(headers):
 make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDMr
-EXTSINGLE =  $(PY) $(PYC)/Extractor.py 
-ATM =  $(PY) $(PYC)/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)/Extractor.py 
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py
+ATM =  $(PY) $(PYC)/AtmCorr.py
+EXTPAIR =  $(PY) $(PYC)/Extractor.py
 FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
@@ -179,7 +179,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
 
-.PHONY: cleanstds newstds report finalreport
+.PHONY: cleanstds newstds report ptfreport finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -259,6 +259,7 @@ finalreport: ptfreport
 
 
 def MF_imcombine(objname, files, dependencies=""):
+
     filelist = " ".join(["%s " % ifile for ifile in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
@@ -299,6 +300,9 @@ def MF_single(objname, obsnum, ifile, standard=None):
     first = """# %(outname)s
 %(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+
+sp_%(outname)s: %(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 cube_%(outname)s.fits: %(outname)s
@@ -333,10 +337,14 @@ def MF_AB(objname, obsnum, A, B):
 
     return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+
+sp_%(outname)s: %(outname)s
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):
+
     MF = ""
 
     all = ""
@@ -400,7 +408,7 @@ def to_makefile(objs, calibs):
                 all += a + " "
 
                 if not objname.startswith("STD-"):
-                    sci += a + " "
+                    sci += "sp_" + a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -415,7 +423,7 @@ def to_makefile(objs, calibs):
                     all += a + " "
 
                     if not objname.startswith("STD-") and not objname.startswith("STOW"):
-                        sci += a + " "
+                        sci += "sp_" + a + " "
     stds += " "
 
     preamble = make_preamble
@@ -438,6 +446,7 @@ def make_plan(headers):
 
 
 if __name__ == '__main__':
+
     files = sys.argv[1:]
     to_process = extract_info(files)
 

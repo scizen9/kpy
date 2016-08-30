@@ -9,6 +9,7 @@ Functions
     * :func:`cpsci`        copies new science images files into redux directory
     * :func:`proc_stds`    processes standard star observations
     * :func:`proc_bias_crrs`  processes biases and CR rejection
+    * :func:`proc_bkg_flex`   processes bkg sub and flex calculation
     * :func:`docp`            low level copy routine
     * :func:`cal_proc_ready`  check if all required raw cal images are present
     * :func:`cal_ready`       check if all required cal files are present
@@ -275,6 +276,32 @@ def proc_stds(ncp):
     return ret
 
 
+def proc_bkg_flex(copied):
+    """Process bkg subtractions and flexure calculations.
+
+        Args:
+            copied (list): list of ifu*.fits files copied
+
+        Returns:
+            bool: True if processing was successful, otherwise False
+
+    """
+
+    # Default return value
+    ret = True
+    # subtract bkg
+    startTime = time.time()
+    for c in copied:
+        retcode = os.system("make flex_bs_crr_b_%s.npy" % c)
+        if retcode != 0:
+            print("Error subtracting bkg from %s" % c)
+            ret = False
+
+    procTime = int(time.time() - startTime)
+    print ("%d files bkg subtracted in %d s" % (len(copied), procTime))
+    return ret
+
+
 def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     """Copies new science ifu image files from srcdir to destdir.
 
@@ -305,6 +332,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
+    copied = []
     # Get list of source files
     srcfiles = sorted(glob.glob(os.path.join(srcdir, 'ifu*.fits')))
     # Loop over source files
@@ -325,6 +353,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
+            copied.append(fn)
             # Record copies
             ncp += nc
             nstd += ns
@@ -334,6 +363,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     if ncp > 0:
         if not proc_bias_crrs(ncp, oldcals=oldcals):
             print "Error processing bias/crrs"
+        if not proc_bkg_flex(copied):
+            print "Error processing bkg/flex"
         # Process any standard stars
         if nstd > 0:
             if not proc_stds(nstd):

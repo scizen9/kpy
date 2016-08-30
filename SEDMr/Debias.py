@@ -105,14 +105,16 @@ if __name__ == '__main__':
         FF[0].data = remove(FF)
 
         outname = add_prefix(ifile)
-        FF[0].header['BIASSUB'] = ('Subtracted', 'Ovrscn + bias handled by Debias.py')
+        FF[0].header['BIASSUB'] = ('Subtracted',
+                                   'Ovrscn + bias handled by Debias.py')
         FF[0].header['BIASSUB2'] = (bfname, 'Bias file used')
         try: 
             GAIN = FF[0].header['GAIN']
             FF[0].header['GAIN'] = (1.0, 'GAIN Adjusted (was %s)' % GAIN)
         except: 
             GAIN = 1.8  # Guess the gain
-            FF[0].header['GAIN'] = (1.0, 'GAIN Adjusted (was guessed %s)' % GAIN)
+            FF[0].header['GAIN'] = (1.0,
+                                    'GAIN Adjusted (was guessed %s)' % GAIN)
         FF[0].header['BUNIT'] = 'electron'
         FF.writeto(outname)
 
