@@ -22,6 +22,7 @@ import datetime
 import logging
 import sextractor
 import zeropoint
+from astropy.io import fits
 
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
@@ -281,7 +282,130 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
             os.makedirs(newdir)
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
 
+def mask_stars(image, sexfile, plot=False, overwrite=False):
+    ''' 
+    Finds the stars in the sextrated file and creates a mask file.
+    '''
+       
+    maskdir = os.path.join(os.path.abspath(os.path.dirname(image)), "masks")
 
+    if not os.path.isdir(maskdir):
+        os.makedirs(maskdir)
+        
+    maskname = os.path.join(maskdir, os.path.basename(image).replace(".fits", ".im.fits"))
+
+    if (os.path.isfile(maskname) and not overwrite):
+        return maskname
+
+    print "Creating mask %s"%maskname
+    
+    hdulist = fits.open(image)
+    header = hdulist[0].header
+    data = np.ones_like(hdulist[0].data)
+    
+    stars = np.genfromtxt(sexfile)
+    fwhm = stars[:,7]
+    mag = stars[:,4]
+    flags = np.array(stars[:, 10], dtype=np.int)
+
+    starmask = ( mag < np.percentile(mag, 90)) | (np.bitwise_and(flags, np.repeat(0x004, len(flags)) )>1)
+    stars = stars[ starmask]
+
+    fwhm = stars[:,7]
+
+    x = stars[:,0]
+    y = stars[:,1]
+    
+    lenx = data.shape[0]
+    leny = data.shape[1]
+    X, Y = np.meshgrid( np.arange(leny), np.arange(lenx))
+    
+    for i in range(len(stars)):
+        data[ np.sqrt((X-x[i])**2 + (Y-y[i])**2)< fwhm[i]*5] = 0
+            
+            
+    if (plot):
+        print image
+        plt.imshow(np.log10(np.abs(hdulist[0].data)), alpha=0.9)
+        plt.imshow(data, alpha=0.5)
+        plt.show()
+
+    hdu = fits.PrimaryHDU(data)
+    hdu.header = header
+    newhdulist = fits.HDUList([hdu])
+    newhdulist.writeto(maskname)
+
+    return maskname
+    
+def create_superflat(imdir, filters=["u", "g", "r", "i"]):
+    #Locate images for each filter
+    imlist = glob.glob("rc*fits")
+    
+  
+    #Run sextractor to locate bright sources
+  
+    sexfiles = sextractor.run_sex(imlist, overwrite=False)
+    maskfiles = []
+    
+    for i, im in enumerate(imlist): 
+        #Create a mask and store it int he mask directory
+        maskfile = mask_stars(im, sexfiles[i])        
+        maskfiles.append(maskfile)
+        fitsutils.update_par(im, "BPM", os.path.relpath(maskfile))
+        
+    
+        
+    for filt in filters:
+        fimlist = [im for im in imlist if fitsutils.get_par(im, "FILTER") == filt]
+        fmasklist = [im for im in maskfiles if fitsutils.get_par(im, "FILTER") == filt]
+        
+        if len(fimlist) == 0:
+            continue
+        
+        fsfile ="lflat_%s"%filt
+        msfile = "lmask_%s"%filt
+        np.savetxt(fsfile, np.array(fimlist), fmt="%s")
+        np.savetxt(msfile, np.array(fmasklist), fmt="%s")
+        
+        
+        '''masklist = []
+        
+        for m in fmasklist:
+            hdulist = fits.open(m)
+            data = hdulist[0].data
+            masklist.append(data)
+            
+            
+        masklist = np.array(masklist)
+        
+        hdu = fits.PrimaryHDU(masklist)
+        hdulist = fits.HDUList([hdu])
+        hdulist.writeto("mastermask_%s.fits"%filt)'''           
+                
+        # Running IRAF
+        iraf.noao(_doprint=0)
+        iraf.imred(_doprint=0)
+        iraf.ccdred(_doprint=0)
+        
+        iraf.imarith("@"+fsfile, "*", "@"+msfile, "m_@"+fsfile)
+
+
+        #Combine flats
+        iraf.imcombine(input = "m_@"+fsfile, \
+                        output = "superflat_%s.fits"%filt, \
+                        combine = "median",\
+                        scale = "mode", \
+                        masktype="badvalue",\
+                        maskvalue = 0)
+                        
+        iraf.imstat("superflat_%s.fits"%filt, fields="image,npix,mean,stddev,min,max,mode", Stdout="Flat_stats")
+        time.sleep(0.1)
+        st = np.genfromtxt("Flat_stats", names=True, dtype=None)
+        #Normalize flats
+        iraf.imarith("superflat_%s.fits"%filt, "/", st["MODE"], "superflat_%s_norm.fits"%filt)
+                        
+
+    
 def get_median_bkg(img):
     '''
     Computes the median background.
