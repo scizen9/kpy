@@ -292,7 +292,8 @@ def proc_bkg_flex(copied):
     # subtract bkg
     startTime = time.time()
     for c in copied:
-        retcode = os.system("make flex_bs_crr_b_%s.npy" % c)
+        f = c.split('.')[0]
+        retcode = os.system("make flex_bs_crr_b_%s.npy" % f)
         if retcode != 0:
             print("Error subtracting bkg from %s" % c)
             ret = False
