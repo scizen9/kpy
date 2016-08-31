@@ -143,6 +143,7 @@ def identify_observations(headers):
 make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDMr
+PYP = ~/kpy/SEDMph
 EXTSINGLE =  $(PY) $(PYC)/Extractor.py
 ATM =  $(PY) $(PYC)/AtmCorr.py
 EXTPAIR =  $(PY) $(PYC)/Extractor.py
@@ -150,6 +151,7 @@ FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
+SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
 PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -196,7 +198,7 @@ $(CRRS):
 
 $(BACK): 
 	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@)) --gausswidth=100
-    
+
 
 seg_dome.fits: dome.fits
 	$(PY) $(PYC)/SexLamps.py dome.fits
@@ -249,8 +251,11 @@ newstds: cleanstds stds
 report:
 	$(REPORT) | tee report.txt
 
-ptfreport:
-	$(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" iptftransient@astro.caltech.edu
+upload:
+	$(SPCCPY) --specdir $(dir $(mkfile_path))
+
+ptfreport: upload
+    $(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" iptftransient@astro.caltech.edu
 
 finalreport: ptfreport
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
@@ -351,6 +356,7 @@ def to_makefile(objs, calibs):
     stds = ""
     stds_dep = ""
     sci = ""
+    oth = ""
 
     flexures = ""
 
@@ -396,11 +402,10 @@ def to_makefile(objs, calibs):
                                          obsfile,
                                          standard=standard)
                         MF += m
-                        sci += a + " "
+                        oth += "sp_" + a + " "
                 continue
 
             # Handle science targets
-            # print "****", objname, obsnum, obsfiles
             if len(obsfiles) == 2:
                 m, a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
 
@@ -408,7 +413,10 @@ def to_makefile(objs, calibs):
                 all += a + " "
 
                 if not objname.startswith("STD-"):
-                    sci += "sp_" + a + " "
+                    if objname.startswith("PTF"):
+                        sci += "sp_" + a + " "
+                    else:
+                        oth += "sp_" + a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -422,8 +430,11 @@ def to_makefile(objs, calibs):
                     MF += m
                     all += a + " "
 
-                    if not objname.startswith("STD-") and not objname.startswith("STOW"):
-                        sci += "sp_" + a + " "
+                    if not objname.startswith("STD-"):
+                        if objname.startswith("PTF"):
+                            sci += "sp_" + a + " "
+                        else:
+                            oth += "sp_" + a + " "
     stds += " "
 
     preamble = make_preamble
@@ -431,9 +442,11 @@ def to_makefile(objs, calibs):
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
     science = "\n\nscience: %s report\n" % sci
+    other = "\n\nother: %s report\n" % oth
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
-    f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) +
+    f.write(preamble + corr + "\nall: stds %s%s%s%s" % (all, clean,
+                                                        science, other) +
             "\n" + MF + "\n" + flexures)
     f.close()
 

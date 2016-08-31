@@ -174,7 +174,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
             # Copy with preserving metadata (date, etc.)
             shutil.copy2(src, dest)
             if 'STD-' in obj:
