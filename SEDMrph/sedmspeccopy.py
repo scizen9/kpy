@@ -81,6 +81,8 @@ if __name__ == '__main__':
         timestamp = datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-", "")
         specdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
+    else:
+        timestamp = specdir.split("/")[-1]
 
     os.chdir(specdir)
     print os.getcwd()

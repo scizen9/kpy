@@ -151,7 +151,7 @@ def identify_observations(headers):
 make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDMr
-PYP = ~/kpy/SEDMph
+PYP = ~/kpy/SEDMrph
 EXTSINGLE =  $(PY) $(PYC)/Extractor.py
 ATM =  $(PY) $(PYC)/AtmCorr.py
 EXTPAIR =  $(PY) $(PYC)/Extractor.py
