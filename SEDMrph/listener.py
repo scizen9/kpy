@@ -33,7 +33,7 @@ _logpath = parser.get('paths', 'logpath')
 _photpath = parser.get('paths', 'photpath')
 
 _host = parser.get('listener', 'host')
-_port = parser.get('listener', 'port')
+_port = parser.getint('listener', 'port')
 _alivefile = parser.get('listener', 'alivefile')
 
 
@@ -78,17 +78,17 @@ def start_listening_loop():
 
         while True:
 
+            subprocess.call(cmd, shell=True)
+            
+            data = connection.recv(2048)
+            logger.info( "Incoming command: %s " % data)
+            
             now = datetime.datetime.utcnow()
             timestamp=datetime.datetime.isoformat(now)
             timestamp=timestamp.split("T")[0]
             logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
             logger = logging.getLogger('listener')
     
-            
-            subprocess.call(cmd, shell=True)
-            data = connection.recv(2048)
-            logger.info( "Incoming command: %s " % data)
-            
             command = data.split(",")[0]
             
             if "FOCUS" in command:
