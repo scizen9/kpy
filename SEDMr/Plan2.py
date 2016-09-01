@@ -267,6 +267,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
     if standard is None:
@@ -283,7 +284,7 @@ sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
-redo_%(outname)s:
+redo_%(name)s:
 \ttouch %(outname)s
 \t@echo ready to re-make sp_%(outname)s
 
@@ -308,6 +309,7 @@ def MF_standard(objname, obsnum, ifile, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
     if standard is None:
@@ -328,7 +330,7 @@ sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 %(specplot)s
 
-redo_%(outname)s:
+redo_%(name)s:
 \ttouch %(outname)s
 \t@echo ready to re-make sp_%(outname)s
 
@@ -355,6 +357,7 @@ def MF_AB(objname, obsnum, A, B):
     else:
         tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(A)[0]
@@ -369,7 +372,7 @@ sp_%(outname)s: %(outname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
-redo_%(outname)s:
+redo_%(name)s:
 \ttouch %(outname)s
 \t@echo ready to re-make sp_%(outname)s\n\n""" % tp, "%(outname)s" % tp
 
