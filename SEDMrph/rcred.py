@@ -954,13 +954,16 @@ if __name__ == '__main__':
         mydir = os.path.abspath(photdir)
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
-            if (fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE")=="SCIENCE"):
-                myfiles.append(f)
+            try:
+            	if (fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE")=="SCIENCE"):
+                	myfiles.append(f)
+            except:
+            	print "problems opening file %s"%f
     else:
-        print '''ERROR! You should specify one of the following:\n
-                   - A filelist name with the images you want to reduce [-l]
-                   OR
-                   - The name of the directory which you want to reduce [-d].'''
+	print '''ERROR! You should specify one of the following:\n
+        - A filelist name with the images you want to reduce [-l]
+        OR
+        - The name of the directory which you want to reduce [-d].'''
 
     if (False): #len(myfiles)>0):
     	create_masterbias()
