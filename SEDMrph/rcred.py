@@ -11,7 +11,9 @@ try:
     from pyraf import iraf 
 except:
     pass
-import pyfits as pf
+from astropy.io import fits
+from astropy import wcs
+
 from matplotlib import pylab as plt
 import subprocess
 import argparse
@@ -34,6 +36,25 @@ timestamp=timestamp.split("T")[0]
 logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
 logger = logging.getLogger('rcred')
     
+def get_xy_coords(image, ra, dec):
+    '''
+    Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    output = output.split("->")[1]
+    
+    coords = []
+    for s in output.split(","):
+        coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
+        
+    return coords
     
 def create_masterbias(biasdir=None, channel='rc'):
     '''
@@ -232,7 +253,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         
         lfiles = []
         for f in glob.glob('b_*_%s.fits'%b):
-            d = pf.open(f)[0].data
+            d = fits.open(f)[0].data
             if np.percentile(d, 90)>4000 and np.percentile(d, 90)<40000:
                 lfiles.append(f)
 
@@ -410,7 +431,7 @@ def get_median_bkg(img):
     '''
     Computes the median background.
     '''
-    hdu = pf.open(img)
+    hdu = fits.open(img)
     header = hdu[0].header
     bkg = np.median(hdu[0].data[hdu[0].data > 0])
     return bkg
@@ -464,11 +485,13 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
     radius: radius of uncertainty on astrometric position in image.
     '''
 
+    img = os.path.abspath(img)
+    
     ra = fitsutils.get_par(img, 'OBJRA')
     dec = fitsutils.get_par(img, 'OBJDEC')
-    logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
+    #logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
     
-    astro = "a_" + img
+    astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
     #If astrometry exists, we don't run it again.
     if (os.path.isfile(astro) and not overwrite):
@@ -481,7 +504,7 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
       -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
-    logger.info( cmd)
+    #logger.info( cmd)
 
     subprocess.call(cmd, shell=True)
     
@@ -505,7 +528,7 @@ def make_mask_cross(img):
     if (os.path.isfile(maskname)):
         return maskname
         
-    f = pf.open(img)
+    f = fits.open(img)
     data = f[0].data
     
     corners = {
@@ -582,22 +605,26 @@ def is_on_target(image):
     Add as a parameter whether the image is on target or not.
     
     '''
-    import pywcs
     import coordinates_conversor as cc
+    
     
     ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
 
-    impf = pf.open(image)
-    wcs = pywcs.WCS(impf[0].header)
-    #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
-    pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+    impf = fits.open(image)
+    w = wcs.WCS(impf[0].header)
+    
+    filt = fitsutils.get_par(image, "FILTER")
+    #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+    pra, pdec = get_xy_coords(ra,dec)
 
     shape = impf[0].data.shape
     
     if (pra > 0)  and (pra < shape[0]) and (pdec > 0) and (pdec < shape[1]):
         fitsutils.update_par(image, "ONTARGET", 1)
+        return True
     else:
         fitsutils.update_par(image, "ONTARGET", 0)
+        return False
         
     
 def clean_cosmic(f):
@@ -641,7 +668,7 @@ def get_overscan_bias_rc(img):
     '''
     Bias from overscan region.
     '''
-    f = pf.open(img)
+    f = fits.open(img)
     bias = np.nanmedian(f[0].data[990-100:990+100,970-100:970+100].flatten())
     
     return bias
@@ -829,7 +856,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         fitsutils.update_par(debiased, "RDNOISE", 4.)
 
     #Set negative counts to zero
-    hdu = pf.open(debiased)
+    hdu = fits.open(debiased)
     header = hdu[0].header
     hdu[0].data[hdu[0].data<0] = 0
     hdu.writeto(debiased, clobber=True)

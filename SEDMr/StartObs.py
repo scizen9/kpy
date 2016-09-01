@@ -174,7 +174,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
             # Copy with preserving metadata (date, etc.)
             shutil.copy2(src, dest)
             if 'STD-' in obj:
@@ -292,7 +292,8 @@ def proc_bkg_flex(copied):
     # subtract bkg
     startTime = time.time()
     for c in copied:
-        retcode = os.system("make flex_bs_crr_b_%s.npy" % c)
+        f = c.split('.')[0]
+        retcode = os.system("make flex_bs_crr_b_%s.npy" % f)
         if retcode != 0:
             print("Error subtracting bkg from %s" % c)
             ret = False
