@@ -615,7 +615,7 @@ def is_on_target(image):
     
     filt = fitsutils.get_par(image, "FILTER")
     #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
-    pra, pdec = get_xy_coords(ra,dec)
+    pra, pdec = get_xy_coords(image, ra,dec)
 
     shape = impf[0].data.shape
     

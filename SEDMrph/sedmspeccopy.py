@@ -81,7 +81,9 @@ if __name__ == '__main__':
         timestamp = datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-", "")
         specdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
-
+    else:
+	specdir = os.path.abspath(specdir)
+	timestamp = os.path.basename(specdir)
     os.chdir(specdir)
     print os.getcwd()
     sedmfiles = glob.glob("PTF*.txt")
@@ -104,7 +106,7 @@ if __name__ == '__main__':
         if qual < 3:
             newname = os.path.basename(f).split("_")[0].replace("PTF", "")
             newname += "_%s_P60_v1.ascii" % timestamp
-            cmd = "rcp %s sedm@yupana.caltech.edu:/scr/apache/htdocs/" \
+            cmd = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
                                                                         newname)
             print cmd
