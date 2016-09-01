@@ -326,7 +326,7 @@ def MF_standard(objname, obsnum, ifile, standard=None):
 
 sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
-$(specplot)s
+%(specplot)s
 
 redo_%(outname)s:
 \ttouch %(outname)s
