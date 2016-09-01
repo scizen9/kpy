@@ -228,7 +228,7 @@ upload:
 	$(SPCCPY) --specdir $(dir $(mkfile_path))
 
 ptfreport: upload
-    $(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" iptftransient@astro.caltech.edu
+	$(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" iptftransient@astro.caltech.edu
 
 finalreport: ptfreport
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
