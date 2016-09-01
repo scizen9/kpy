@@ -89,6 +89,8 @@ if __name__ == '__main__':
     sedmfiles = glob.glob("PTF*.txt")
     print "Copying", sedmfiles
     
+    versions = {}
+    
     for f in sedmfiles:
         
         qual = -1
@@ -105,7 +107,15 @@ if __name__ == '__main__':
         # Only write the spectra that have good qualities.
         if qual < 3:
             newname = os.path.basename(f).split("_")[0].replace("PTF", "")
-            newname += "_%s_P60_v1.ascii" % timestamp
+            
+            version = 1
+            if not versions.has_key(newname ):
+                versions[newname] = 1
+            else:
+                versions[newname] = versions[newname]+1
+                version = versions[newname]
+                
+            newname += "_%s_P60_v%d.ascii" % (timestamp, version)
             cmd = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
                                                                         newname)
