@@ -300,6 +300,51 @@ cube_%(outname)s.fits: %(outname)s
         return first + second + "\n", fn
 
 
+def MF_standard(objname, obsnum, ifile, standard=None):
+    """Create the MF entry for a standard star observation. """
+
+    # print objname, obsnum, ifile
+
+    tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
+    tp['num'] = '_obs%s' % obsnum
+    tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
+
+    if standard is None:
+        tp['STD'] = ''
+        tp['specplot'] = ''
+    else:
+        tp['STD'] = "--std %s" % standard
+        tp['specplot'] = "\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
+
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
+
+    first = """# %(outname)s
+%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+%(specplot)s
+
+sp_%(outname)s: %(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+$(specplot)s
+
+redo_%(outname)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s
+
+cube_%(outname)s.fits: %(outname)s
+\t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+""" % tp
+    second = """corr_%(outname)s: %(outname)s
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" % tp
+    fn = "%(outname)s" % tp
+
+    if standard is None:
+        return first + "\n", fn
+    else:
+        return first + second + "\n", fn
+
+
 def MF_AB(objname, obsnum, A, B):
     """Create the MF entry for an A-B observation"""
 
@@ -367,7 +412,7 @@ def to_makefile(objs, calibs):
                     standard = pred
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                        m, a = MF_standard(objname, "%i_%i" % (obsnum, ix),
                                          obsfile,
                                          standard=standard)
                         MF += m
