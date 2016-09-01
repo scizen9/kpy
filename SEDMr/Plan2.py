@@ -283,6 +283,10 @@ sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
+redo_%(outname)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s
+
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 """ % tp
@@ -318,7 +322,11 @@ def MF_AB(objname, obsnum, A, B):
 
 sp_%(outname)s: %(outname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
-\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s" % tp
+\t$(PLOT) --spec %(specnam)s --savespec --savefig
+
+redo_%(outname)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):
