@@ -1223,7 +1223,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         sixa, posa, adcpos, ellipse, stats = \
             identify_spectra_gui(ex, radius=radius,
                                  prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                 scaled=False,
+                                 scaled=False, bgd_sub=False,
                                  lmin=lmin, lmax=lmax,
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=nosky,
