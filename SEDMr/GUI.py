@@ -245,23 +245,22 @@ class ScaleCube(object):
         if bgd_sub:
             self.Vs -= np.median(self.Vs)
 
+        # get standard deviation
+        Vstd = np.nanstd(self.Vs)
+
         # get middle value
         if self.bgd_sub:
             Vmid = 0.
+            if 0 < Vstd < 100:
+                self.cmin = Vmid - 3.0 * Vstd
+                self.cmax = Vmid + 3.0 * Vstd
+            else:
+                self.cmin = -300
+                self.cmax = 300
         else:
             Vmid = np.median(self.Vs)
-
-        # get standard deviation
-        Vstd = np.nanstd(self.Vs)
-        if 0 < Vstd < 100:
             self.cmin = Vmid - 3.0 * Vstd
             self.cmax = Vmid + 3.0 * Vstd
-        else:
-            self.cmin = -300
-            self.cmax = 300
-
-        if bgd_sub:
-            self.Vs -= np.median(self.Vs)
 
         pl.ioff()
 

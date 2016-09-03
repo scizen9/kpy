@@ -666,7 +666,7 @@ def ObsLoop(rawlist=None, redd=None):
                                                sunset.tuple()[4]))
                 else:
                     print("UT = %02d:%02d >= sunset (%02d:%02d) + 1hr, "
-                          "time get a cal set" % (now.tuple()[3],
+                          "time to get a cal set" % (now.tuple()[3],
                                                   now.tuple()[4],
                                                   sunset.tuple()[3],
                                                   sunset.tuple()[4]))
@@ -674,7 +674,6 @@ def ObsLoop(rawlist=None, redd=None):
             else:
                 # Get new listing
                 retcode = os.system("~/spy what ifu*.fits > what.list")
-
 
         # Process calibrations if we are using them
         if cal_proc_ready(outdir, mintest=True):
