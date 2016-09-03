@@ -237,7 +237,10 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     debiased_flats = glob.glob("b_*.fits")
     for f in debiased_flats:
         logger.info( "Slicing file %s"% f)
-        slice_rc(f)
+        try:
+            slice_rc(f)
+        except:
+            logger.error("Error when slicing file... deleting the unsliced one...")
         #Remove the un-sliced file
         os.remove(f)
         
@@ -731,7 +734,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     print "Reducing image ", image    
 
     
-    
+    image = os.path.abspath(image)
     imname = os.path.basename(image).replace(".fits", "")
     try:
         objectname = fitsutils.get_par(image, "NAME").replace(" ","")+"_"+fitsutils.get_par(image, "FILTER")
@@ -765,9 +768,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         if existing:
             return []
 
-
-    #Rename to the image name only
-    image = os.path.basename(image)
 
         
     #Initialize the basic parameters.
@@ -827,7 +827,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     create_masterflat(flatdir, biasdir)
     
     #New names for the object.
-    debiased = "b_" + img
+    debiased = os.path.join(os.path.dirname(img), "b_" + os.path.basename(img))
     logger.info( "Creating debiased file, %s"%debiased)
     
     if ( (fitsutils.get_par(img, "ADCSPEED")==0.1 and not os.path.isfile(bias_slow)) \
@@ -873,7 +873,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for i, debiased_f in enumerate(slice_names):
         b = fitsutils.get_par(debiased_f, 'filter')
         
-        deflatted = imname + "_f_b_" + astro + objectname + "_%s.fits"%b
+        deflatted = os.path.join(os.path.dirname(image), target_dir, imname + "_f_b_" + astro + objectname + "_%s.fits"%b)
 
         #Flat to be used for that filter
         flat = os.path.join(flatdir, "Flat_%s_%s_norm.fits"%(channel, b))
@@ -906,20 +906,18 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         slice_names[i] = deflatted
             
                 
-    reduced_imgs = []   
     #Moving files to the target directory
-    for name in slice_names:
-        newname = get_sequential_name(target_dir, name, 0)
-        bkg = get_median_bkg(name)
-        fitsutils.update_par(name, "SKYBKG", bkg)
-        shutil.move(name, newname)
-        reduced_imgs.append(newname)
+    for image in slice_names:
+        bkg = get_median_bkg(image)
+        fitsutils.update_par(image, "SKYBKG", bkg)
+        #shutil.move(name, newname)
+
         
     #Compute the zeropoints
-    for image in reduced_imgs:
+    for image in slice_names:
         zeropoint.calibrate_zeropoint(image)
         
-    return reduced_imgs
+    return slice_names
 
                 
 if __name__ == '__main__':
