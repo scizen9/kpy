@@ -23,9 +23,25 @@ import fit_utils
 import datetime
 import logging
 
+
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+vim  = parser.get('paths', 'photpath')
+
+
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-root_dir = "/scr2/sedm/logs/"
+root_dir = _logpath
 timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
 timestamp=timestamp.split("T")[0]
 logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
@@ -153,7 +169,7 @@ def get_offset_center_failed_astro(f, plot=False, interactive=True):
     return 1, ddec, dra
             
     
-def get_offset_center(f, plot=True, interactive=False):
+def get_offset_center(f, plot=False, interactive=False):
     '''
     Given a fits image, returns the offset in Ra, DEC, that needs to be applied for the telescope tp go
     from the current pointing position, to the coodinates of the object specified in the fits file.
@@ -216,7 +232,7 @@ def mad(arr):
     med = np.median(arr)
     return np.median(np.abs(arr - med))
     
-def get_offsets_A_B(f, plot=True, interactive=False):
+def get_offsets_A_B(f, plot=False, interactive=False):
     '''
     Returns the offsets for A and B, so that when offseting, the images do not overlap.  
     Example fits:/scr2/nblago/Projects/SEDM/data/finders/f_b_a_rPTF15fks_r.fits
@@ -369,7 +385,7 @@ def get_offsets_A_B(f, plot=True, interactive=False):
 
     return 0, offsets[np.argmax(prod)], -2*offsets[np.argmax(prod)]
     
-def main(infile, isAB, astro=True, plot=True):
+def main(infile, isAB, astro=True, plot=False):
     '''
     Computes the coffsets for the acquisition image.
     Returns:
