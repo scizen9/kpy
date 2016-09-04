@@ -82,12 +82,12 @@ def reduce_on_the_fly(photdir):
                     try:
                         zeropoint.calibrate_zeropoint(reduced)
                     except:
-                        loger.error("Could not calibrate zeropoint for image %s"%reduced)
+                        logger.error("Could not calibrate zeropoint for image %s"%reduced)
                     #Copy them to transient
                     for r in reduced:
                         cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(r, dayname)
                         subprocess.call(cmd, shell=True)
-                        loger.info( "Successfully copied the image: %s"% cmd)
+                        logger.info( "Successfully copied the image: %s"% cmd)
         time_curr = datetime.datetime.now()
         nfiles = nfilesnew  
         
