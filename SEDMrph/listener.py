@@ -35,7 +35,7 @@ _photpath = parser.get('paths', 'photpath')
 _host = parser.get('listener', 'host')
 _port = parser.getint('listener', 'port')
 _alivefile = parser.get('listener', 'alivefile')
-
+_rsa = parser.get('listener', 'rsa')
 
 def start_listening_loop():
     '''
@@ -162,7 +162,7 @@ def start_listening_loop():
                     endpath = "%s/%s/%s"%(_photpath, date, astrofile)
                     if (not os.path.isdir(os.path.dirname(endpath))):
                         os.makedirs(os.path.dirname(endpath))
-                    os.system('scp -i /home/sedm/.ssh/guider_rsa developer@p200-guider.palomar.caltech.edu:%s %s'%(image, endpath))
+                    os.system('scp %s developer@p200-guider.palomar.caltech.edu:%s %s'%(_rsa, image, endpath))
                     astro = False
                     #Only run astrometry if image is unavailable.                
                     if (not os.path.isfile(endpath)):
