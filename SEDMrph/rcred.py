@@ -944,6 +944,8 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--photdir', type=str, help='Directory containing the science fits for the night.', default=None)
     parser.add_argument('-c', '--clean', action="store_true", help='Clean the reduced images?', default=False)
     parser.add_argument('-o', '--overwrite', action="store_true", help='re-reduce and overwrite the reduced images?', default=False)
+    parser.add_argument('-p', '--copy', action="store_true", help='copy the reduced folder to transient', default=False)
+
     parser.add_argument('--cosmic', action="store_true", default=False, help='Whether cosmic rays should be removed.')
 
     args = parser.parse_args()
@@ -953,6 +955,7 @@ if __name__ == '__main__':
     cosmic = args.cosmic
     clean =  args.clean
     overwrite = args.overwrite
+    copy = args.copy
     
     myfiles = []
 
@@ -1003,4 +1006,11 @@ if __name__ == '__main__':
             	reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite) 
 	    except:
 		pass
+
+    dayname = os.path.basename(os.path.abspath(photdir))
+    reducedname = os.path.join(photdir, "reduced")
+    if (copy):
+    	cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
+    	subprocess.call(cmd, shell=True)
+
     

@@ -12,6 +12,22 @@ import os, subprocess
 import numpy as np
 import logging
 
+
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
+
 def get_sao(radius=2000):
     
     '''
@@ -24,7 +40,7 @@ def get_sao(radius=2000):
 
     #Log into a file
     FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-    root_dir = "/scr2/sedm/logs/"
+    root_dir = _logpath
     now = datetime.datetime.utcnow()
     timestamp=datetime.datetime.isoformat(now)
     timestamp=timestamp.split("T")[0]
@@ -75,7 +91,5 @@ def get_sao_rec(hra, hdec, radius):
         sao = np.array([])
     
     return sao
-#return saostars[]
-#p = Popen(cmd.split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-#es = p.communicate()
+
 
