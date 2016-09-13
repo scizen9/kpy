@@ -977,6 +977,7 @@ if __name__ == '__main__':
         os.chdir(mydir)
         
         myfiles = np.genfromtxt(filelist, dtype=None)
+        myfiles = [os.path.abspath(f) for f in myfiles]
         
     elif (not photdir is None ):
         mydir = os.path.abspath(photdir)
@@ -998,19 +999,27 @@ if __name__ == '__main__':
     	create_masterflat()  
     
     #Reduce them
+    reducedfiles = []
     for f in myfiles:
         print f
         make_mask_cross(f)
         if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
-	    try:
-            	reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite) 
-	    except:
-		pass
+            try:
+                reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
+                reducedfiles.append(reduced)
+            except:
+                pass
 
-    dayname = os.path.basename(os.path.abspath(photdir))
-    reducedname = os.path.join(photdir, "reduced")
-    if (copy):
-    	cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
-    	subprocess.call(cmd, shell=True)
+    #If copy is requested, then we copy the whole folder or just the missing files to transient.
+    
+    dayname = os.path.basename(os.path.dirname(os.path.abspath(myfiles[0])))
+    reducedname = os.path.join(os.path.dirname(os.path.abspath(myfiles[0])), "reduced")
+    if (not photdir is None and copy):
+        cmd = "rcp -r %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s"%(reducedname, dayname)
+        subprocess.call(cmd, shell=True)
+    elif (not filelist is None and copy):
+        for f in reducedfiles:
+            cmd = "rcp %s grbuser@transient.caltech.edu:/scr3/mansi/ptf/p60phot/fremling_pipeline/sedm/reduced/%s/."%(f, dayname)
+            subprocess.call(cmd, shell=True)
 
     
