@@ -1006,7 +1006,7 @@ if __name__ == '__main__':
         if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
             try:
                 reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
-                reducedfiles.append(reduced)
+                reducedfiles.extend(reduced)
             except:
                 pass
 
