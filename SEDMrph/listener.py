@@ -182,6 +182,14 @@ def start_listening_loop():
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
                     connection.sendall("%d,%s,%s\n"%(-1,0,0))
+            elif "PING" in command:
+                try:
+                    logger.info( "Received a PING command. Responding...")
+                    connection.sendall("PONG\n")
+                    logger.info("PONG sent.\n")
+                except Exception as e:
+                    logger.error(str(sys.exc_info()[0]))
+                    logger.error(e)
             else:
                 break
         #Exit and restart the listener if the program is running for more than 12 hours and 
