@@ -27,21 +27,39 @@ import logging
 import datetime
 
 
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
 
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
+creationdate = timestamp
 timestamp=timestamp.split("T")[0]
 
 try:
-	#Log into a file
-	#root_dir = "/tmp/logs/"
-	root_dir = "/scr2/sedm/logs/"
-	logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
-	logger = logging.getLogger('zeropoint')
+    #Log into a file
+    root_dir = _logpath
+    logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger = logging.getLogger('zeropoint')
 except:
-        logging.basicConfig(format=FORMAT, filename=os.path.join("/tmp", "rcred_{0}.log".format(timestamp)), level=logging.INFO)
-	logger= logging.getLogger("zeropoint")
+    logging.basicConfig(format=FORMAT, filename=os.path.join("/tmp", "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger= logging.getLogger("zeropoint")
+    
+
+
+
 
 def are_isolated(rav, decv, r):
     '''
@@ -183,6 +201,13 @@ def find_fwhm(imfile, xpos, ypos, plot=True):
             
     return out
     
+def clean_tmp_files():
+    
+    files = ["/tmp/tmp_sdss_%s.cat"%creationdate, '/tmp/tmp_%s.cat'%creationdate, '/tmp/tmp_apass_%s.cat'%creationdate, '/tmp/tmp_sdss_%s.cat'%creationdate, '/tmp/sdss_cat_det_%s.txt'%creationdate]
+    
+    for f in files:
+        if os.path.isfile(f):
+            os.remove(f)
     
 def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, refstars=None, plotdir="."):
     '''
@@ -213,8 +238,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     logger.info("%.4f %.4f %.4f"%( ra,dec, sr))
     
     if not refstars is None:
-        shutil.copy(refstars, "/tmp/tmp_sdss.cat")
-        catalog = np.genfromtxt("/tmp/tmp_sdss.cat", names=True, dtype=None, delimiter=",")
+        shutil.copy(refstars, "/tmp/tmp_sdss_%s.cat"%creationdate)
+        catalog = np.genfromtxt("/tmp/tmp_sdss_%s.cat"%creationdate, names=True, dtype=None, delimiter=",")
         cat_ra = catalog["ra"]
         cat_dec = catalog["dec"]
         try:
@@ -228,10 +253,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         # Download USNO-B1 catalog for the position
         catalog_url = 'http://www.nofs.navy.mil/cgi-bin/vo_cone.cgi?CAT=USNO-B1&RA=%.5f&DEC=%.5f&SR=%.4f&VERB=1' % (ra, dec, sr)
         logger.info( "Downloading USNO-B1 catalog...")
-        urllib.urlretrieve(catalog_url, '/tmp/tmp.cat')
+        urllib.urlretrieve(catalog_url, '/tmp/tmp_%s.cat'%creationdate)
         
         # Read RA, Dec and magnitude from XML format USNO catalog
-        catalog = parse_single_table("/tmp/tmp.cat")
+        catalog = parse_single_table('/tmp/tmp_%s.cat'%creationdate)
         cat_ra = catalog.array['RA'].data
         cat_dec = catalog.array['DEC'].data
         cat_R1mag = catalog.array['R1'].data
@@ -255,8 +280,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         # Download USNO-B1 catalog for the position
         catalog_url = 'https://www.aavso.org/cgi-bin/apass_download.pl?ra=%.5f&dec=%.5f&radius=%.4f8&outtype=1' % (ra, dec, sr)
         print "Downloading APASS catalog..."
-        urllib.urlretrieve(catalog_url, '/tmp/tmp_apass.cat')
-        catalog = np.genfromtxt("/tmp/tmp_apass.cat", delimiter=",", names=True)
+        urllib.urlretrieve(catalog_url, '/tmp/tmp_apass_%s.cat'%creationdate)
+        catalog = np.genfromtxt('/tmp/tmp_apass_%s.cat'%creationdate, delimiter=",", names=True)
         if (np.ndim(catalog)==0):
 		return False
         cat_ra = catalog['radeg']
@@ -266,12 +291,12 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     elif (survey=='sdss'):
         minmag = 15
         maxmag = 22.0
-        catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6\
-        &radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%(ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
+        catalog_url='http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6&radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%\
+            (ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
         logger.info( "Downloading SDSS catalog...")
         logger.info( "%s"%catalog_url )
-        urllib.urlretrieve(catalog_url, '/tmp/tmp_sdss.cat')
-        catalog = np.genfromtxt("/tmp/tmp_sdss.cat", delimiter=",", names=True)
+        urllib.urlretrieve(catalog_url, '/tmp/tmp_sdss_%s.cat'%creationdate)
+        catalog = np.genfromtxt("/tmp/tmp_sdss_%s.cat"%creationdate, delimiter=",", names=True)
 
 	if (np.ndim(catalog)==0):
 	    return False
@@ -283,9 +308,9 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 mag = np.array(catalog[band], ndmin=1)
             elif(band in ["U", "B", "V", "R", "I", "Z"]):
                 print "Johnson filter detected."
-                john = transformations.sdss2johnson("/tmp/tmp_sdss.cat", savefile="/tmp/tmp_sdss.cat")
+                john = transformations.sdss2johnson('/tmp/tmp_sdss_%s.cat'%creationdate, savefile='/tmp/tmp_sdss_%s.cat'%creationdate)
                 mag = john[band]
-                catalog = np.genfromtxt("/tmp/tmp_sdss.cat", dtype=None, names=True, delimiter=",")
+                catalog = np.genfromtxt('/tmp/tmp_sdss_%s.cat'%creationdate, dtype=None, names=True, delimiter=",")
             else:
                 print "Unknown band!!", band
         except IOError:
@@ -377,8 +402,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             for i in range(len(z[0])-1):
                 fmt +=  " %.5f"
     
-            np.savetxt('/tmp/sdss_cat.txt', z, fmt=fmt, header = header)
-            logger.info( "Saved catalogue stars to %s"% '/tmp/sdss_cat.txt')
+            np.savetxt('/tmp/sdss_cat_%s.txt'%creationdate, z, fmt=fmt, header = header)
+            logger.info( "Saved catalogue stars to %s"% ('/tmp/sdss_cat_%s.txt'%creationdate))
             
             #Find FWHM for this image            
             out = find_fwhm(imfile, star_pix[:,1][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], plot=debug)
@@ -400,9 +425,9 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 header='x y objid ra dec u g r i z du dg dr di dz'
             elif band in 'UBVRI':
                 header='x y objid ra dec U B V R I dU dB dV dR dI'
-            np.savetxt('/tmp/sdss_cat_det.txt', z[mask_valid_fwhm], fmt=fmt, \
+            np.savetxt('/tmp/sdss_cat_det_%s.txt'%creationdate, z[mask_valid_fwhm], fmt=fmt, \
             header=header)
-            print "Saved to", '/tmp/sdss_cat_det.txt'
+            print "Saved to", '/tmp/sdss_cat_det_%s.txt'%creationdate
             
             
         
@@ -992,10 +1017,10 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
     fwhm = fitsutils.get_par(image, "fwhm")
     fwhm_as = fwhm * 0.394
 
-    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir, box=20)
+    app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=20)
     
     #Compute the zeropoint for the specific image.
-    z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det.txt", image, plot=plot, plotdir=plotdir)
+    z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det_%s.txt"%creationdate, image, plot=plot, plotdir=plotdir)
     
     #Add these values to the header.
     pardic = {"IQZEROPT" : 1,\
@@ -1010,7 +1035,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
     #Add the data to a later stage zeropoint calibrtion with all-sky data.
     zplogname = os.path.join(os.path.dirname(image), "allstars_zp.log")
     
-    add_to_zp_cal("/tmp/sdss_cat_det.txt", image, zplogname)
+    add_to_zp_cal("/tmp/sdss_cat_det_%s.txt"%creationdate, image, zplogname)
 
 
     if (not os.path.isfile(logname)):
@@ -1018,6 +1043,8 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
                 f.write("#filename,exptime,filter,date,airmass,fwhm_pix,fwhm_as,zeropoint,color,err\n")
     with open( logname, "a") as f:
         f.write("%s,%.1f,%s,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%(image,exptime,filt,date,airmass,fwhm,fwhm_as,z,c,err))
+        
+    clean_tmp_files()
         
 def plot_zp(zpfile, plotdir=None):
     import datetime
@@ -1103,6 +1130,8 @@ def main(reduced):
     if (os.path.isfile("allstars_zp.log")):
         lsq_zeropoint("allstars_zp.log", plotdir)
         interpolate_zp(reduced, "allstars_zp.log")
+        
+    clean_tmp_files()
      
 if __name__ == '__main__':
     
