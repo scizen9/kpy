@@ -9,6 +9,7 @@ Functions
     * :func:`cpsci`        copies new science images files into redux directory
     * :func:`proc_stds`    processes standard star observations
     * :func:`proc_bias_crrs`  processes biases and CR rejection
+    * :func:`proc_bkg_flex`   processes bkg sub and flex calculation
     * :func:`docp`            low level copy routine
     * :func:`cal_proc_ready`  check if all required raw cal images are present
     * :func:`cal_ready`       check if all required cal files are present
@@ -173,7 +174,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
             # Copy with preserving metadata (date, etc.)
             shutil.copy2(src, dest)
             if 'STD-' in obj:
@@ -275,6 +276,33 @@ def proc_stds(ncp):
     return ret
 
 
+def proc_bkg_flex(copied):
+    """Process bkg subtractions and flexure calculations.
+
+        Args:
+            copied (list): list of ifu*.fits files copied
+
+        Returns:
+            bool: True if processing was successful, otherwise False
+
+    """
+
+    # Default return value
+    ret = True
+    # subtract bkg
+    startTime = time.time()
+    for c in copied:
+        f = c.split('.')[0]
+        retcode = os.system("make flex_bs_crr_b_%s.npy" % f)
+        if retcode != 0:
+            print("Error subtracting bkg from %s" % c)
+            ret = False
+
+    procTime = int(time.time() - startTime)
+    print ("%d files bkg subtracted in %d s" % (len(copied), procTime))
+    return ret
+
+
 def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     """Copies new science ifu image files from srcdir to destdir.
 
@@ -305,6 +333,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
+    copied = []
     # Get list of source files
     srcfiles = sorted(glob.glob(os.path.join(srcdir, 'ifu*.fits')))
     # Loop over source files
@@ -325,6 +354,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
+            copied.append(fn)
             # Record copies
             ncp += nc
             nstd += ns
@@ -334,6 +364,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     if ncp > 0:
         if not proc_bias_crrs(ncp, oldcals=oldcals):
             print "Error processing bias/crrs"
+        if not proc_bkg_flex(copied):
+            print "Error processing bkg/flex"
         # Process any standard stars
         if nstd > 0:
             if not proc_stds(nstd):
@@ -634,7 +666,7 @@ def ObsLoop(rawlist=None, redd=None):
                                                sunset.tuple()[4]))
                 else:
                     print("UT = %02d:%02d >= sunset (%02d:%02d) + 1hr, "
-                          "time get a cal set" % (now.tuple()[3],
+                          "time to get a cal set" % (now.tuple()[3],
                                                   now.tuple()[4],
                                                   sunset.tuple()[3],
                                                   sunset.tuple()[4]))
@@ -642,7 +674,6 @@ def ObsLoop(rawlist=None, redd=None):
             else:
                 # Get new listing
                 retcode = os.system("~/spy what ifu*.fits > what.list")
-
 
         # Process calibrations if we are using them
         if cal_proc_ready(outdir, mintest=True):

@@ -197,7 +197,9 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     '''
     
     survey = str.lower(survey)
-    
+    minmag = 15
+    maxmag = 21.0
+        
     f = pf.open(imfile)
     wcs = pywcs.WCS(f[0].header)
 
@@ -312,8 +314,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     if (len(mask2)==0):
 	logger.error("No good stars left")
 	return False   
+ 
+ 
     #Select only stars that are within the proper magnitude range
-    mask3 = (mag[mask][mask2] < 20.) * (mag[mask][mask2] > 15) 
+    mask3 = (mag[mask][mask2] < maxmag) * (mag[mask][mask2] > minmag) 
     
     mask3 = mask3 * (star_pix[:,0][mask][mask2]>rad) * (star_pix[:,0][mask][mask2]<img.shape[1]-rad)*(star_pix[:,1][mask][mask2]>rad) * (star_pix[:,1][mask][mask2]<img.shape[0]-rad)
 
@@ -357,13 +361,15 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             catalog = catalog[mask][mask2][mask3]
             s = star_pix[mask][mask2][mask3]
 
+            print "left %d stars"%(len(catalog)), catalog.dtype.names
+
             z = np.zeros(len(s), dtype=[('x','f8'), ('y', 'f8')])
             z['x'] = s[:,0]
             z['y'] = s[:,1]
                     
             header='x y '
             for n  in catalog.dtype.names:
-                if n in ["objid", "ra", "dec", "u", "g", "r", "i", "z", "Err_u", "Err_g", "Err_r", "Err_i", "Err_z"]:
+                if n in ["objid", "ra", "dec", "u", "g", "r", "i", "z", "Err_u", "Err_g", "Err_r", "Err_i", "Err_z"] or n in ['id', 'ra', 'dec', 'U', 'B', 'V', 'R', 'I', 'dU', 'dB', 'dV', 'dR', 'dI']:
                     z = rfn.append_fields(z, names=n, data=catalog[n], usemask=False)
                     header += n.replace("Err_", "d") + " "
                
@@ -387,8 +393,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
 
             logger.info( 'Average FWHM %.3f arcsec, %.3f pixels'%(np.median(outd['fwhm']),  np.median(outd['fwhm'])*pix2ang))
             
-            fwhm = np.median(outd['fwhm'])
-            fitsutils.update_par(imfile,'FWHM',fwhm)
+            fwhm = np.percentile(outd['fwhm'], 40)
+            fitsutils.update_par(imfile,'FWHM', np.round(fwhm, 3))
 
             if (band in 'ugriz'):
                 header='x y objid ra dec u g r i z du dg dr di dz'
@@ -433,7 +439,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 plt.text(selected[i,0]+10, selected[i,1]+10, i+1)
         
         plt.legend(loc="best", frameon=False, framealpha=0.9)
-        plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png')))
+        plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png').replace('.new', '.seqstars.png')))
         logger.info( "Saved stars to %s"%imfile.replace('.fits', '.seqstars.png'))
         plt.clf()
         
@@ -453,7 +459,11 @@ def add_to_zp_cal(ref_stars, image, logname):
 
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
+    #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
 
+    '''try:
+        my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    except:'''
     my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("filename","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
@@ -472,7 +482,12 @@ def add_to_zp_cal(ref_stars, image, logname):
 
     col_band = coldic[band]
     exptime = fitsutils.get_par(image, "exptime")
-    airmass = fitsutils.get_par(image, "AIRMASS")
+    airmass = 1.3
+    name = "object"
+    if (fitsutils.has_par(image, "NAME")):
+        name = fitsutils.get_par(image, "NAME")
+    if (fitsutils.has_par(image, "AIRMASS")):
+        airmass = fitsutils.get_par(image, "AIRMASS")
     if (fitsutils.has_par(image, "JD")):
         date = fitsutils.get_par(image, "JD")
     elif (fitsutils.has_par(image, "MJD")):
@@ -484,11 +499,11 @@ def add_to_zp_cal(ref_stars, image, logname):
     
     if (not os.path.isfile(logname)):
             with open( logname, "a") as f:
-                f.write("#filename,filter,std,stderr,inst,insterr,jd,airmass,color,exptime\n")
+                f.write("#object,filename,filter,std,stderr,inst,insterr,jd,airmass,color,exptime\n")
     with open( logname, "a") as f:
         for i in range(N):
-            f.write("%s,%s,%.3f,%.3f,%3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%
-            (image, band, r[i][band], r[i]["d"+band], my[i]['fit_mag'], my[i]['fiterr'], date, airmass, r[i][band]-r[i][col_band],exptime))
+            f.write("%s,%s,%s,%.3f,%.3f,%3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%
+            (name, image, band, r[i][band], r[i]["d"+band], my[i]['fit_mag'], my[i]['fiterr'], date, airmass, r[i][band]-r[i][col_band],exptime))
 
 def lsq_test():
 
@@ -523,7 +538,78 @@ def lsq_test():
     ax2.set_xlabel("Y")
     
     plt.show()
-        
+       
+       
+def calibrate_zp_fourshot(logfile, plot=True):
+    '''
+    The field of view is quite small, therefore, all rc shots are used to calibrate the zeropoint.
+    This routine retrieves all the stars taken with the same filter when pointing to the science object.
+    '''
+
+    a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
+    a.sort(order=['jd'], axis=0)
+    a = a[a['inst']!=0]
+
+    plotdir = os.path.join(os.path.dirname(os.path.abspath(logfile)), "photometry")
+
+    for name in set(a['object']):    
+        for b in set(a['filter']):
+            aib = a[(a["filter"]==b)*(a["object"]==name)*(np.abs(a["color"])<1)]
+            
+            if len(aib) < 3:
+                print "Less than 3 stars found with %s %s"%(name,b)
+                continue
+            
+            #First fit for the linear and detect the deviations
+            coefs, residuals, rank, singular_values, rcond = np.polyfit(aib["std"], aib["inst"], w=1./np.maximum(0.3, np.sqrt(aib["stderr"]**2 + aib["insterr"]**2)), deg=1, full=True)
+            p = np.poly1d(coefs)
+            
+            if (plot):
+                plt.figure()
+                plt.title("%s Filter %s"%(name, b))
+                plt.errorbar(aib["std"], aib["inst"], yerr=np.sqrt(aib["stderr"]**2 + aib["insterr"]**2), fmt="o")
+                plt.plot(aib["std"], p(aib["std"]))
+                
+            diff = np.abs(aib["inst"] - p(aib["std"]))
+            mad = stats.funcs.median_absolute_deviation(diff)
+            aib = aib[diff<mad*5]
+            
+            if (plot):
+                plt.errorbar(aib["std"], aib["inst"], yerr=np.sqrt(aib["stderr"]**2 + aib["insterr"]**2), fmt="o")
+                plt.plot(aib["std"], p(aib["std"]))
+                plt.savefig(os.path.join(plotdir, "zp_mag_mag_%s_%s.png"%(name, b)))
+                plt.close()
+            
+
+            #Then fit for the colour
+            coefs, residuals, rank, singular_values, rcond = np.polyfit(aib["color"], aib["std"] - aib["inst"], w=1./np.maximum(0.15, np.sqrt(aib["stderr"]**2 + aib["insterr"]**2)), deg=1, full=True)
+            p = np.poly1d(coefs)
+            
+            color, zp = coefs
+            
+            mad = stats.funcs.median_absolute_deviation(p(aib["color"]) - (aib["std"] - aib["inst"]))
+             
+            print coefs, residuals, mad
+            
+            for f in aib["filename"]:
+                #Add these values to the header.
+                pardic = {"IQZEROPT" : 1,\
+                        "ZPCAT" : "SDSS4shot",\
+                        "ZEROPTU" : float("%.3f"%mad),\
+                        "ZEROPT" : float("%.3f"%zp),\
+                        "ZP": float("%.3f"%zp),\
+                        "ZPERR": float("%.3f"%mad)}
+                fitsutils.update_pars(f, pardic)
+
+            if (plot):
+                plt.figure()
+                plt.title("%s Filter %s"%(name, b))
+                plt.errorbar(aib["color"], aib["std"] - aib["inst"], yerr=np.sqrt(aib["stderr"]**2 + aib["insterr"]**2), fmt="o")
+                plt.plot(aib["color"], p(aib["color"]))
+                plt.savefig(os.path.join(plotdir, "zp_col_mag_%s_%s.png"%(name, b)))
+                plt.close()
+    return
+    
 def lsq_zeropoint(logfile, plotdir=None, plot=True):
     '''
     Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.
@@ -746,7 +832,7 @@ def lsq_zeropoint_partial(logfile, plot=True):
     if (plot):
         plt.show()
         
-def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
+def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     '''
     Finds the zeropoint by comparig the magnitude of the stars measured in the image,
     vs. the magnitude of the stars from the reference catalogue.
@@ -764,8 +850,14 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
-    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("image","|S20"),   ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
 
+    my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("image","|S20"),   ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    '''try:
+    except:
+        my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    '''
+    
     if (my.size < 2):
         my = np.array([my])
     if (r.size < 2):
@@ -800,15 +892,16 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     measured = r[band]- my["fit_mag"]
     mad = stats.funcs.median_absolute_deviation(pred-measured)
     
+    print "MAD1",  mad
     
     if len(r) > 4:
-        mask = np.abs(pred-measured)/mad < 15
+        mask = np.abs(pred-measured)/mad < 3
             
         r = r[mask]
         my = my[mask]
         ids = ids[mask]
         
-        coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.1, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
+        coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.2, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
         
         logger.info("Coefficients for 1 deg polynomial fit to the zeropoint: %s. After outlier rejection."% coefs)
         
@@ -817,6 +910,8 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
         pred = p(r[band]-r[col_band])
         measured = r[band]- my["fit_mag"]
         mad = stats.funcs.median_absolute_deviation(pred-measured)
+        print "MAD2",  mad
+
         
     if (plot):
         print "Plotting..."
@@ -825,10 +920,10 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
             plt.text(r[band][i]-r[col_band][i] + 0.01, r[band][i] - my["fit_mag"][i]+ 0.01, str(myid))
         x = np.linspace(np.min(r[band]-r[col_band]), np.max(r[band]-r[col_band]), 100)
         plt.plot(x, p(x))
-        plt.title("Best fit ZP:"+str( p[0])+ " colour term " + str(p[1]))
+        plt.title("Best fit ZP: %.2f colour term: %.2f MAD: %.2f"%(p[0], p[1], mad))
         plt.xlabel("{:} - {:}".format(band, col_band))
         plt.ylabel("ZP")
-        plt.savefig( os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png")))
+        plt.savefig( os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png").replace('.new', ".zp.png")))
 
         plt.clf()
     
@@ -837,19 +932,25 @@ def find_zeropoint_noid(ref_stars, image, plot=False, plotdir="."):
     pred = p(r[band]-r[col_band])
     measured = r[band]- my["fit_mag"]
 
-    fitsutils.update_par(image, "ZP", p[0])
-    fitsutils.update_par(image, "COLTERM", p[1])
-    fitsutils.update_par(image, "ZPerr", np.std(pred - measured))
+    fitsutils.update_par(image, "ZP", np.round(p[0], 3))
+    fitsutils.update_par(image, "COLTERM", np.round(p[1], 3))
+    fitsutils.update_par(image, "ZPERR", np.round(mad, 3)) #np.std(pred - measured))
 
 
-    return p[0], p[1], np.std(pred - measured)
+    return np.round(p[0], 3), np.round(p[1], 3), np.round(mad, 3)
 
 
-def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=None):
+def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=None):
     '''
     Calibrates the zeropoint using SDSS catalogue.    
     '''
     
+    
+    if plot and plotdir is None:
+        plotdir = os.path.join(os.path.dirname(image), "photometry")
+        if not os.path.isdir(plotdir):
+            os.makedirs(plotdir)
+        
     filt = fitsutils.get_par(image, 'filter')
     exptime = fitsutils.get_par(image, "exptime")
     if fitsutils.has_par(image, "JD"):
@@ -861,8 +962,11 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     else:
         date=0
         
+    if fitsutils.has_par(image, "AIRMASS"): 
+        airmass = fitsutils.get_par(image, "AIRMASS")
+    else:
+        airmass = 1.3
     objname = fitsutils.get_par(image, "OBJECT")
-    airmass = fitsutils.get_par(image, "AIRMASS")
     band = fitsutils.get_par(image, "FILTER")
     
     logger.info( "Starting calibration of ZP for image %s for object %s with filter %s."%(image, objname, band))
@@ -874,13 +978,21 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     extracted = extract_star_sequence(os.path.abspath(image), filt, plot=plot, survey='sdss', debug=debug, refstars=refstars, plotdir=plotdir)
     if (not extracted):
         logger.warn( "Field not in SDSS or error when retrieving the catalogue... Skipping. Image %s not zeropoint calibrated."%image)
+            #Add these values to the header.
+        pardic = {"IQZEROPT" : 0,\
+            "ZPCAT" : "None",\
+            "ZEROPTU" : 0,\
+            "ZEROPT" : 0, \
+            "ZP":0,\
+            "ZPERR":0}
+        fitsutils.update_pars(image, pardic)
         return 
 
     #If extraction worked, we can get the FWHM        
     fwhm = fitsutils.get_par(image, "fwhm")
     fwhm_as = fwhm * 0.394
 
-    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir)
+    app_phot.get_app_phot("/tmp/sdss_cat_det.txt", image, wcsin='logic', plotdir=plotdir, box=20)
     
     #Compute the zeropoint for the specific image.
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det.txt", image, plot=plot, plotdir=plotdir)
@@ -888,8 +1000,8 @@ def calibrate_zeropoint(image, plot=True, plotdir=".", debug=False, refstars=Non
     #Add these values to the header.
     pardic = {"IQZEROPT" : 1,\
             "ZPCAT" : "SDSS",\
-            "ZEROPTU" : err,\
-            "ZEROPT" : z}
+            "ZEROPTU" : np.round(err, 3),\
+            "ZEROPT" : np.round(z, 3)}
     fitsutils.update_pars(image, pardic)
             
     #Log the current zeropoint for this image
@@ -982,9 +1094,9 @@ def main(reduced):
         os.makedirs(plotdir)
     
 
-    for f in glob.glob("*.fits"):
+    for f in glob.glob("*.fits|*.new"):
         logger.info("Starting calibration of zeropoint for %s"% f)
-        if (fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
+        if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
     if (os.path.isfile("zeropoint.log")):
         plot_zp("zeropoint.log", plotdir)

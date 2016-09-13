@@ -1,5 +1,4 @@
 import numpy as np
-import glob
 import pyfits as pf
 import scipy.ndimage.filters as FI
 # Bias Subtraction
@@ -13,8 +12,9 @@ def full_frame(dat):
 
     return np.tile(smooth, (2048,1))
 
+
 def remove(fits_obj):
-    '''Return the bias-subtracted version of the fits object'''
+    """Return the bias-subtracted version of the fits object"""
 
     dat = fits_obj[0].data
     try: GAIN = fits_obj[0].header['GAIN']
@@ -25,8 +25,9 @@ def remove(fits_obj):
 
     return (dat - bias_img.T) * GAIN
 
+
 def add_prefix(fname):
-    '''/path/to/file --> /path/to/b_file'''
+    """/path/to/file --> /path/to/b_file"""
 
     sp = fname.split("/")
     sp[-1] = 'b_' + sp[-1]
@@ -54,14 +55,16 @@ if __name__ == '__main__':
         FF[0].data = remove(FF)
 
         outname = add_prefix(file)
-        FF[0].header['BIASSUB'] = ('Subtracted', 'Ovrscn + bias handled by Bias.py')
+        FF[0].header['BIASSUB'] = ('Subtracted',
+                                   'Ovrscn + bias handled by Bias.py')
         FF[0].header['BIASSUB2'] = (bfname , 'Bias file used')
         try: 
             GAIN = FF[0].header['GAIN']
             FF[0].header['GAIN'] = (1.0, 'GAIN Adjusted (was %s)' % GAIN)
         except: 
             GAIN=1.8 # Guess the gain 
-            FF[0].header['GAIN'] = (1.0, 'GAIN Adjusted (was guessed %s)' % GAIN)
-        FF[0].header['BUNIT'] = ('electron')
+            FF[0].header['GAIN'] = (1.0,
+                                    'GAIN Adjusted (was guessed %s)' % GAIN)
+        FF[0].header['BUNIT'] = 'electron'
         FF.writeto(outname)
 

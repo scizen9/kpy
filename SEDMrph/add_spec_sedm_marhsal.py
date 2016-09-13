@@ -6,7 +6,9 @@ import pg
 import ptfmarshal as ptf
 import numpy as np
 import argparse
-
+import shutil
+import re
+import sys
 
 def dbconnect():
     """
@@ -122,15 +124,50 @@ if __name__ == '__main__':
 
 
     parser.add_argument('-f', '--sedmfile', type=str, dest="specfile", help='SEDMfile in ascii format.', default=None)
+    parser.add_argument('-c', '--copytodest', action='store_true', dest="copy", default=True, help='Whether to copy this file to its marshal destination.')
+    parser.add_argument('-o', '--overwrite', action='store_true', dest="overwrite", default=False, help='Whether to overwrite the current file with a newer version.')
+
 
     args = parser.parse_args()
     
     sedmfile = args.specfile
+    copy = args.copy
+    overwrite = args.overwrite
+    
     print "Uploading SEDM file :", sedmfile
     
+    
+    #We copy the file to its final marshal destination.
+    #True by default.
+    if (copy):
+        sedmfiledest = os.path.join("/scr/apache/htdocs/marshals/transient/ptf/spectra/data", os.path.basename(sedmfile))
+        
+        #If the file does not exist in destination, we copy it
+        if (not os.path.isfile(sedmfiledest)):
+            print "File %s does not exist in destination as %s. Moving it there and updating the marshal."%(sedmfile, sedmfiledest)
+            shutil.move(sedmfile, sedmfiledest)
+        #If the file does exist
+        else:
+            #If it is said to overwrite, we create a new version.
+            if (overwrite):
+                #Retrieve the current version and sum one
+                match = re.search(r'_v\(?([0-9]+)\)?', os.path.basename(sedmfile))
+                version = int(match.group(1))
+                sedmfiledest = os.path.join(os.path.dirname(sedmfiledest), os.path.basename(sedmfile).replace("_v%d."%version, "_v%d."%(version+1)))
+                print "Moving file %s to %s"%(sedmfile, sedmfiledest)
+                shutil.move(sedmfile, sedmfiledest)
+            #If the file already exists and we don't overwrite, we just delete it from the reception folter.
+            #Generally this means that the spectrum is already in the marshal.
+            else:
+                print "File %s already exists in destination as %s. No overwrite selected. Skipping."%(sedmfile, sedmfiledest)
+                os.remove(sedmfile)
+                sys.exit(0)                
+    else:
+        sedmfiledest = sedmfile
+        
     try:
         db = dbconnect()
-        upload_sedm(sedmfile, db)
+        upload_sedm(sedmfiledest, db)
     except IOError:
         print "Exception when uploading the file to the DB"
 	pass

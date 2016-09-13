@@ -143,13 +143,16 @@ def identify_observations(headers):
 make_preamble = """
 PY = ~/spy
 PYC = ~/kpy/SEDMr
-EXTSINGLE =  $(PY) $(PYC)/Extractor.py 
-ATM =  $(PY) $(PYC)/AtmCorr.py 
-EXTPAIR =  $(PY) $(PYC)/Extractor.py 
+PYP = ~/kpy/SEDMrph
+EXTSINGLE =  $(PY) $(PYC)/Extractor.py
+ATM =  $(PY) $(PYC)/AtmCorr.py
+EXTPAIR =  $(PY) $(PYC)/Extractor.py
 FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
+SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
+PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
@@ -178,7 +181,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig
 
-.PHONY: cleanstds newstds report finalreport
+.PHONY: cleanstds newstds report ptfreport finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
 bgd: $(BGD) bias
@@ -195,7 +198,7 @@ $(CRRS):
 
 $(BACK): 
 	$(BGDSUB) fine.npy $(subst .gz,,$(subst bs_,,$@)) --gausswidth=100
-    
+
 
 seg_dome.fits: dome.fits
 	$(PY) $(PYC)/SexLamps.py dome.fits
@@ -248,13 +251,20 @@ newstds: cleanstds stds
 report:
 	$(REPORT) | tee report.txt
 
-finalreport:
+upload:
+	$(SPCCPY) --specdir $(dir $(mkfile_path))
+
+ptfreport: upload
+	$(PTFREPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" iptftransient@astro.caltech.edu
+
+finalreport: ptfreport
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """
 
 
 def MF_imcombine(objname, files, dependencies=""):
+
     filelist = " ".join(["%s " % ifile for ifile in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
@@ -284,6 +294,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
     if standard is None:
@@ -295,7 +306,60 @@ def MF_single(objname, obsnum, ifile, standard=None):
     first = """# %(outname)s
 %(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+
+sp_%(outname)s: %(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
+
+redo_%(name)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s
+
+cube_%(outname)s.fits: %(outname)s
+\t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+""" % tp
+    second = """corr_%(outname)s: %(outname)s
+\t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" % tp
+    fn = "%(outname)s" % tp
+
+    if standard is None:
+        return first + "\n", fn
+    else:
+        return first + second + "\n", fn
+
+
+def MF_standard(objname, obsnum, ifile, standard=None):
+    """Create the MF entry for a standard star observation. """
+
+    # print objname, obsnum, ifile
+
+    tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
+    tp['num'] = '_obs%s' % obsnum
+    tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
+    tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
+
+    if standard is None:
+        tp['STD'] = ''
+        tp['specplot'] = ''
+    else:
+        tp['STD'] = "--std %s" % standard
+        tp['specplot'] = "\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
+
+    tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
+
+    first = """# %(outname)s
+%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+%(specplot)s
+
+sp_%(outname)s: %(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+%(specplot)s
+
+redo_%(name)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -320,6 +384,7 @@ def MF_AB(objname, obsnum, A, B):
     else:
         tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
     # we only use the flexure from the A image
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(A)[0]
@@ -329,16 +394,25 @@ def MF_AB(objname, obsnum, A, B):
 
     return """# %(outname)s\n%(outname)s: cube.npy %(A)s.gz %(B)s.gz %(flexname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
-\t$(PLOT) --spec %(specnam)s --savespec --savefig\n\n""" % tp, "%(outname)s" % tp
+
+sp_%(outname)s: %(outname)s
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+\t$(PLOT) --spec %(specnam)s --savespec --savefig
+
+redo_%(name)s:
+\ttouch %(outname)s
+\t@echo ready to re-make sp_%(outname)s\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):
+
     MF = ""
 
     all = ""
     stds = ""
     stds_dep = ""
     sci = ""
+    oth = ""
 
     flexures = ""
 
@@ -368,7 +442,7 @@ def to_makefile(objs, calibs):
                     standard = pred
 
                     for ix, obsfile in enumerate(obsfiles):
-                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
+                        m, a = MF_standard(objname, "%i_%i" % (obsnum, ix),
                                          obsfile,
                                          standard=standard)
                         MF += m
@@ -384,11 +458,10 @@ def to_makefile(objs, calibs):
                                          obsfile,
                                          standard=standard)
                         MF += m
-                        sci += a + " "
+                        oth += "sp_" + a + " "
                 continue
 
             # Handle science targets
-            # print "****", objname, obsnum, obsfiles
             if len(obsfiles) == 2:
                 m, a = MF_AB(objname, obsnum, obsfiles[0], obsfiles[1])
 
@@ -396,7 +469,10 @@ def to_makefile(objs, calibs):
                 all += a + " "
 
                 if not objname.startswith("STD-"):
-                    sci += a + " "
+                    if objname.startswith("PTF"):
+                        sci += "sp_" + a + " "
+                    else:
+                        oth += "sp_" + a + " "
             else:
                 for obsfilenum, obsfile in enumerate(obsfiles):
                     standard = None
@@ -410,8 +486,11 @@ def to_makefile(objs, calibs):
                     MF += m
                     all += a + " "
 
-                    if not objname.startswith("STD-") and not objname.startswith("STOW"):
-                        sci += a + " "
+                    if not objname.startswith("STD-"):
+                        if objname.startswith("PTF"):
+                            sci += "sp_" + a + " "
+                        else:
+                            oth += "sp_" + a + " "
     stds += " "
 
     preamble = make_preamble
@@ -419,9 +498,11 @@ def to_makefile(objs, calibs):
     f = open("Makefile", "w")
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
     science = "\n\nscience: %s report\n" % sci
+    other = "\n\nother: %s report\n" % oth
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
-    f.write(preamble + corr + "\nall: stds %s%s%s" % (all, clean, science) +
+    f.write(preamble + corr + "\nall: stds %s%s%s%s" % (all, clean,
+                                                        science, other) +
             "\n" + MF + "\n" + flexures)
     f.close()
 
@@ -434,6 +515,7 @@ def make_plan(headers):
 
 
 if __name__ == '__main__':
+
     files = sys.argv[1:]
     to_process = extract_info(files)
 

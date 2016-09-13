@@ -18,18 +18,37 @@ import datetime
 import logging
 import numpy as np
 
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
+_host = parser.get('listener', 'host')
+_port = parser.getint('listener', 'port')
+_alivefile = parser.get('listener', 'alivefile')
+
+
 def start_listening_loop():
     '''
     Start accepting connections from pylos.
     '''
         
     #Set address
-    ip = "pharos.caltech.edu"
-    port = 5006
+    ip = _host
+    port = _port
     
     #Log into a file
     FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-    root_dir = "/scr2/sedm/logs/"
+    root_dir = _logpath
 
     now = datetime.datetime.utcnow()
     timestamp=datetime.datetime.isoformat(now)
@@ -54,23 +73,22 @@ def start_listening_loop():
     while True:
         connection,caddress = s.accept()
         time.sleep(1)
-        cmd = "touch /tmp/sedm_listener_alive"
+        cmd = "touch %s"%_alivefile
         subprocess.call(cmd, shell=True)
 
         while True:
 
+            subprocess.call(cmd, shell=True)
+            
+            data = connection.recv(2048)
+            logger.info( "Incoming command: %s " % data)
+            
             now = datetime.datetime.utcnow()
             timestamp=datetime.datetime.isoformat(now)
             timestamp=timestamp.split("T")[0]
             logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "listener_{0}.log".format(timestamp)), level=logging.INFO)
             logger = logging.getLogger('listener')
     
-            
-            cmd = "touch /tmp/sedm_listener_alive"
-            subprocess.call(cmd, shell=True)
-            data = connection.recv(2048)
-            logger.info( "Incoming command: %s " % data)
-            
             command = data.split(",")[0]
             
             if "FOCUS" in command:
@@ -92,8 +110,6 @@ def start_listening_loop():
                     connection.sendall("%d,%s,%s,%s\n"%(0,name, ra, dec))
                     logger.info("Found star. Returning: %d,%s,%s,%s\n"%(0,name, ra, dec))
                 except Exception as e:
-                    with open("/tmp/e", "w") as f:
-                        f.write(str(sys.exc_info()[0]))
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
                     connection.sendall("%d,%s,%s,%s\n"%(-1,"null", (datetime.datetime.utcnow()[4]+3)*15, 40))
@@ -109,8 +125,6 @@ def start_listening_loop():
                     nsources, fwhm, ellipticity = sextractor.get_image_pars(lfile)
                     connection.sendall("%d,%d,%d,%.3f\n"%(0, nsources, fwhm, ellipticity))
                 except Exception as e:
-                    with open("/tmp/e", "w") as f:
-                        f.write(str(sys.exc_info()[0]))
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
                     connection.sendall("%d,%d,%d,%.3f\n"%(-1, 0, 0, 0))
@@ -118,7 +132,7 @@ def start_listening_loop():
             elif "FWHM" in command:
                 logger.info( "Finding the FWHM for the last 3 images.")
                 mydir = timestamp.replace("-","")
-                statsfile = os.path.join("/scr2/sedm/phot/%s/stats"%mydir, "stats.log")
+                statsfile = os.path.join("%s/%s/stats"%(_photpath, mydir), "stats_%s.log"%mydir)
                 if (os.path.isfile(statsfile)):
                     stats = np.genfromtxt(statsfile, dtype=None, delimiter=",")
                     if len(stats) > 3:
@@ -145,7 +159,7 @@ def start_listening_loop():
                     astrofile = os.path.basename(image)
                     date = astrofile.split("_")[0].replace("rc","")
                     astrofile = astrofile.replace("rc", "a_rc").replace(".new", ".fits")
-                    endpath = "/scr2/sedm/phot/%s/%s"%(date, astrofile)
+                    endpath = "%s/%s/%s"%(_photpath, date, astrofile)
                     if (not os.path.isdir(os.path.dirname(endpath))):
                         os.makedirs(os.path.dirname(endpath))
                     os.system('scp -i /home/sedm/.ssh/guider_rsa developer@p200-guider.palomar.caltech.edu:%s %s'%(image, endpath))
@@ -165,9 +179,6 @@ def start_listening_loop():
                         connection.sendall("%d,%s,%s\n"%(retcode,offsets[1], offsets[2]))
                 except Exception as e:
                     logger.error( "Error occurred when processing command  " + str(data))
-                    with open("/tmp/offsets_error", "w") as f:
-                        f.write(str(sys.exc_info()[0]))
-                        f.write(str(e))
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
                     connection.sendall("%d,%s,%s\n"%(-1,0,0))
@@ -186,10 +197,10 @@ if __name__ == '__main__':
     '''
     
     #If the file was modified last time more than 60s ago, relaunch the listener.   
-    modified = datetime.datetime.strptime(time.ctime(os.path.getmtime("/tmp/sedm_listener_alive")), "%a %b  %d %H:%M:%S %Y") 
+    modified = datetime.datetime.strptime(time.ctime(os.path.getmtime(_alivefile)), "%a %b  %d %H:%M:%S %Y") 
     now = datetime.datetime.now()
     
-    if ( (now - modified).seconds > 30):
+    if ( (now - modified).seconds > 10):
         start_listening_loop()
 
                 

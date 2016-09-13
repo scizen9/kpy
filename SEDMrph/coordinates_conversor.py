@@ -34,9 +34,14 @@ def getDegDecString(dec):
         decparams = dec.split(":")
     elif (" " in dec.strip()):
         decparams = dec.strip().split(" ")
+       
+    if ("-" in decparams[0]):
+        sign = -1.
+    else:
+        sign = 1.
         
-    decparams = [float(r) for r in decparams]
-    return  getDegDec(*tuple(decparams))
+    decparams = [np.abs(float(r)) for r in decparams]
+    return sign *  getDegDec(*tuple(decparams))
  
 def getDegRa(hh, mm, ss):
 	return  15*(hh + mm/60. + ss/3600.)

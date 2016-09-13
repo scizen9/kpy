@@ -36,7 +36,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir="."):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir=".", box=15):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -70,7 +70,10 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     
     if (fitsutils.has_par(image, 'FWHM')):
         fwhm_value = fitsutils.get_par(image, 'FWHM')
-    airmass_value = fitsutils.get_par(image, 'AIRMASS')
+    if (fitsutils.has_par(image, 'AIRMASS')):
+        airmass_value = fitsutils.get_par(image, 'AIRMASS')
+    else:
+	airmass_value = 1.3
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
 
@@ -89,8 +92,8 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         pass
     
     print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
-    sky_rad= math.ceil(float(fwhm_value)*4)
+    aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
+    sky_rad= math.ceil(aperture_rad)*5
     
     print aperture_rad, sky_rad
 
@@ -108,9 +111,9 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
    
    
         iraf.noao.digiphot.apphot.qphot(image = image,\
-        cbox = 25. ,\
+        cbox = box ,\
         annulus = sky_rad ,\
-        dannulus = 10. ,\
+        dannulus = 15. ,\
         aperture = str(aperture_rad),\
         coords = coords ,\
         output = out_name ,\
@@ -202,7 +205,6 @@ def get_xy_coords(image, ra, dec):
     cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     output = proc.stdout.read()    
-    print output 
     output = output.split("->")[1]
     
     coords = []
@@ -211,7 +213,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwhm=2, box=4):
+def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, box=4, ra=None, dec=None):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -223,14 +225,18 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         fxn()
-    if (not plot_only):
-        iraf.noao(_doprint=0)
-        iraf.digiphot(_doprint=0)
-        iraf.apphot(_doprint=0)
-        iraf.unlearn("apphot")
+
+    iraf.noao(_doprint=0)
+    iraf.digiphot(_doprint=0)
+    iraf.apphot(_doprint=0)
+    iraf.unlearn("apphot")
     
     #Check that actually the object is within this frame.
-    ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
+    if (ra is None or dec is None):
+        if (fitsutils.has_par(image, "OBJRA") and fitsutils.has_par(image, "OBJRA")):
+            ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
+        else:
+            ra, dec = cc.hour2deg(fitsutils.get_par(image, 'RA'), fitsutils.get_par(image, 'DEC'))
     
     impf = pf.open(image)
     wcs = pywcs.WCS(impf[0].header)
@@ -242,8 +248,8 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     if (pra > 0)  and (pra < shape[0]) and (pdec > 0) and (pdec < shape[1]):
         pass
     else:
-        #print image, "ERROR! Object coordinates are outside this frame. Skipping any aperture photometry!!"
-        #print pra, pdec, shape
+        print image, "ERROR! Object coordinates are outside this frame. Skipping any aperture photometry!!"
+        print pra, pdec, shape
         return
     
     
@@ -253,7 +259,7 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     imdir = os.path.dirname(image)
     imname = os.path.basename(image)
     plotdir = os.path.join(imdir, "photometry")
-    
+
     if not os.path.isdir(plotdir):
         os.makedirs(plotdir)
         
@@ -264,7 +270,11 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     fwhm_value = fwhm
     if (fitsutils.has_par(image, 'FWHM')):
         fwhm_value = fitsutils.get_par(image, 'FWHM')
-    airmass_value = fitsutils.get_par(image, 'AIRMASS')
+    if (fitsutils.has_par(image, 'AIRMASS')):
+        airmass_value = fitsutils.get_par(image, 'AIRMASS')
+    else:
+        airmass_value = 1.3
+        
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
     
@@ -277,8 +287,8 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
             fwhm_value = fwhm_value / 0.394
     
     #print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*1.5)      # Set aperture radius to three times the PSF radius
-    sky_rad= math.ceil(float(fwhm_value)*5)
+    aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
+    sky_rad= math.ceil(aperture_rad*4)
     
     #print aperture_rad, sky_rad
 
@@ -287,85 +297,82 @@ def get_app_phot_target(image, plot_only=False, store=True, wcsin="logical", fwh
     print "Saving coodinates for the object in pixels",pra,pdec
     coords = "/tmp/coords.dat"    
     np.savetxt("/tmp/coords.dat", np.array([[pra, pdec]]), fmt="%.4f %.4f")
-    
-    zmin, zmax = zscale.zscale(impf[0].data)
-       
-    im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
-    plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
-    if (plot_only): 
+
+
+    if (plot):    
+        zmin, zmax = zscale.zscale(impf[0].data)
+           
+        im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
+        plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
         plt.savefig(os.path.join(plotdir, imname+".png"))
         plt.clf()
     
+    
+    if os.path.isfile(out_name): os.remove(out_name)
+    if os.path.isfile(clean_name): os.remove(clean_name)
+
+
+    iraf.noao.digiphot.apphot.qphot(image = image,\
+    cbox = box ,\
+    annulus = sky_rad ,\
+    dannulus = 15. ,\
+    aperture = str(aperture_rad),\
+    coords = coords ,\
+    output = out_name ,\
+    plotfile = "" ,\
+    zmag = 0. ,\
+    exposure = "exptime" ,\
+    airmass = "airmass" ,\
+    filter = "filter" ,\
+    obstime = "DATE" ,\
+    epadu = gain ,\
+    interactive = "no" ,\
+    radplots = "yes" ,\
+    verbose = "no" ,\
+    graphics = "stdgraph" ,\
+    display = "stdimage" ,\
+    icommands = "" ,\
+    wcsin = "logical",
+    wcsout = "logical",
+    gcommands = "") 
+
+
+    #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
+    iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+    
+
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    if (ma.size > 0):  
+        if (ma.size==1):
+            ma = np.array([ma])
+        m = ma[~np.isnan(ma["fit_mag"])]
     else:
-
-        if os.path.isfile(out_name): os.remove(out_name)
-        if os.path.isfile(clean_name): os.remove(clean_name)
-
-
-        iraf.noao.digiphot.apphot.qphot(image = image,\
-        cbox = box ,\
-        annulus = sky_rad ,\
-        dannulus = 10. ,\
-        aperture = str(aperture_rad),\
-        coords = coords ,\
-        output = out_name ,\
-        plotfile = "" ,\
-        zmag = 0. ,\
-        exposure = "exptime" ,\
-        airmass = "airmass" ,\
-        filter = "filters" ,\
-        obstime = "DATE" ,\
-        epadu = gain ,\
-        interactive = "no" ,\
-        radplots = "yes" ,\
-        verbose = "no" ,\
-        graphics = "stdgraph" ,\
-        display = "stdimage" ,\
-        icommands = "" ,\
-        wcsin = "logical",
-        wcsout = "logical",
-        gcommands = "") 
-
-
-        #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+        print "Only one object found!"
+        m = np.array([ma])
         
-    
-        ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
-        if (ma.size > 0):  
-            if (ma.size==1):
-                ma = np.array([ma])
-            m = ma[~np.isnan(ma["fit_mag"])]
-        else:
-            print "Only one object found!"
-            m = np.array([ma])
-            
-    
-        if (fitsutils.has_par(image, "ZEROPT")):
-            band = fitsutils.get_par(image, "filter")
-            mag =  ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT")
-            magerr = np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2)  
+
+    insmag =  np.round(ma['fit_mag'][0] , 3)
+    insmagerr = np.round(ma['fiterr'][0], 3)  
+    if (fitsutils.has_par(image, "ZEROPT")):
+        mag =  insmag + float(fitsutils.get_par(image, "ZEROPT"))
+        magerr = np.sqrt(insmagerr**2+ float(fitsutils.get_par(image, "ZEROPTU"))**2)  
 	
-            if np.isnan(mag):
-		mag, magerr = 0, 0
-            fitsutils.update_par(image, "APPMAG",mag) 
-            fitsutils.update_par(image, "APPMAGER", magerr) 
-            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] + fitsutils.get_par(image, "ZEROPT"), np.sqrt(ma['fiterr'][0]**2+ fitsutils.get_par(image, "ZEROPTU")**2), fwhm_value
-        else:
-            mag =  ma['fit_mag'][0] 
-            magerr = ma['fiterr'][0]  
-	
-            if np.isnan(mag):
-		mag, magerr = 0, 0
-            band = fitsutils.get_par(image, "filter")
-            fitsutils.update_par(image, "APPMAG", mag )
-            fitsutils.update_par(image, "APPMAGER", magerr)
-            print fitsutils.get_par(image, "NAME"), band, ma['fit_mag'][0] , ma['fiterr'][0], fwhm_value
-                 
+    if np.isnan(mag):
+        mag, magerr = 0, 0
+        insmag, insmagerr = 0,0           
+
+   
+    fitsutils.update_par(image, "INSMAG", "%.3f"%insmag )
+    fitsutils.update_par(image, "INSMAGER", "%.3f"%insmagerr)
+    fitsutils.update_par(image, "APPMAG", np.round(mag, 3) )
+    fitsutils.update_par(image, "APPMAGER", np.round(magerr, 3))
+
+         
+    if (plot):
         X = int(ma["X"][0])
         Y = int(ma["Y"][0])
         pra = int(pra)
-	pdec = int(pdec)
+        pdec = int(pdec)
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)

@@ -11,7 +11,9 @@ try:
     from pyraf import iraf 
 except:
     pass
-import pyfits as pf
+from astropy.io import fits
+from astropy import wcs
+
 from matplotlib import pylab as plt
 import subprocess
 import argparse
@@ -22,6 +24,7 @@ import datetime
 import logging
 import sextractor
 import zeropoint
+from astropy.io import fits
 
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
@@ -33,6 +36,25 @@ timestamp=timestamp.split("T")[0]
 logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
 logger = logging.getLogger('rcred')
     
+def get_xy_coords(image, ra, dec):
+    '''
+    Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    output = output.split("->")[1]
+    
+    coords = []
+    for s in output.split(","):
+        coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
+        
+    return coords
     
 def create_masterbias(biasdir=None, channel='rc'):
     '''
@@ -215,7 +237,10 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     debiased_flats = glob.glob("b_*.fits")
     for f in debiased_flats:
         logger.info( "Slicing file %s"% f)
-        slice_rc(f)
+        try:
+            slice_rc(f)
+        except:
+            logger.error("Error when slicing file... deleting the unsliced one...")
         #Remove the un-sliced file
         os.remove(f)
         
@@ -231,7 +256,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         
         lfiles = []
         for f in glob.glob('b_*_%s.fits'%b):
-            d = pf.open(f)[0].data
+            d = fits.open(f)[0].data
             if np.percentile(d, 90)>4000 and np.percentile(d, 90)<40000:
                 lfiles.append(f)
 
@@ -281,12 +306,135 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
             os.makedirs(newdir)
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
 
+def mask_stars(image, sexfile, plot=False, overwrite=False):
+    ''' 
+    Finds the stars in the sextrated file and creates a mask file.
+    '''
+       
+    maskdir = os.path.join(os.path.abspath(os.path.dirname(image)), "masks")
 
+    if not os.path.isdir(maskdir):
+        os.makedirs(maskdir)
+        
+    maskname = os.path.join(maskdir, os.path.basename(image).replace(".fits", ".im.fits"))
+
+    if (os.path.isfile(maskname) and not overwrite):
+        return maskname
+
+    print "Creating mask %s"%maskname
+    
+    hdulist = fits.open(image)
+    header = hdulist[0].header
+    data = np.ones_like(hdulist[0].data)
+    
+    stars = np.genfromtxt(sexfile)
+    fwhm = stars[:,7]
+    mag = stars[:,4]
+    flags = np.array(stars[:, 10], dtype=np.int)
+
+    starmask = ( mag < np.percentile(mag, 90)) | (np.bitwise_and(flags, np.repeat(0x004, len(flags)) )>1)
+    stars = stars[ starmask]
+
+    fwhm = stars[:,7]
+
+    x = stars[:,0]
+    y = stars[:,1]
+    
+    lenx = data.shape[0]
+    leny = data.shape[1]
+    X, Y = np.meshgrid( np.arange(leny), np.arange(lenx))
+    
+    for i in range(len(stars)):
+        data[ np.sqrt((X-x[i])**2 + (Y-y[i])**2)< fwhm[i]*5] = 0
+            
+            
+    if (plot):
+        print image
+        plt.imshow(np.log10(np.abs(hdulist[0].data)), alpha=0.9)
+        plt.imshow(data, alpha=0.5)
+        plt.show()
+
+    hdu = fits.PrimaryHDU(data)
+    hdu.header = header
+    newhdulist = fits.HDUList([hdu])
+    newhdulist.writeto(maskname)
+
+    return maskname
+    
+def create_superflat(imdir, filters=["u", "g", "r", "i"]):
+    #Locate images for each filter
+    imlist = glob.glob("rc*fits")
+    
+  
+    #Run sextractor to locate bright sources
+  
+    sexfiles = sextractor.run_sex(imlist, overwrite=False)
+    maskfiles = []
+    
+    for i, im in enumerate(imlist): 
+        #Create a mask and store it int he mask directory
+        maskfile = mask_stars(im, sexfiles[i])        
+        maskfiles.append(maskfile)
+        fitsutils.update_par(im, "BPM", os.path.relpath(maskfile))
+        
+    
+        
+    for filt in filters:
+        fimlist = [im for im in imlist if fitsutils.get_par(im, "FILTER") == filt]
+        fmasklist = [im for im in maskfiles if fitsutils.get_par(im, "FILTER") == filt]
+        
+        if len(fimlist) == 0:
+            continue
+        
+        fsfile ="lflat_%s"%filt
+        msfile = "lmask_%s"%filt
+        np.savetxt(fsfile, np.array(fimlist), fmt="%s")
+        np.savetxt(msfile, np.array(fmasklist), fmt="%s")
+        
+        
+        '''masklist = []
+        
+        for m in fmasklist:
+            hdulist = fits.open(m)
+            data = hdulist[0].data
+            masklist.append(data)
+            
+            
+        masklist = np.array(masklist)
+        
+        hdu = fits.PrimaryHDU(masklist)
+        hdulist = fits.HDUList([hdu])
+        hdulist.writeto("mastermask_%s.fits"%filt)'''           
+                
+        # Running IRAF
+        iraf.noao(_doprint=0)
+        iraf.imred(_doprint=0)
+        iraf.ccdred(_doprint=0)
+        
+        iraf.imarith("@"+fsfile, "*", "@"+msfile, "m_@"+fsfile)
+
+
+        #Combine flats
+        iraf.imcombine(input = "m_@"+fsfile, \
+                        output = "superflat_%s.fits"%filt, \
+                        combine = "median",\
+                        scale = "mode", \
+                        masktype="badvalue",\
+                        maskvalue = 0)
+                        
+        iraf.imstat("superflat_%s.fits"%filt, fields="image,npix,mean,stddev,min,max,mode", Stdout="Flat_stats")
+        time.sleep(0.1)
+        st = np.genfromtxt("Flat_stats", names=True, dtype=None)
+        #Normalize flats
+        iraf.imarith("superflat_%s.fits"%filt, "/", st["MODE"], "superflat_%s_norm.fits"%filt)
+                        
+
+    
 def get_median_bkg(img):
     '''
     Computes the median background.
     '''
-    hdu = pf.open(img)
+    hdu = fits.open(img)
     header = hdu[0].header
     bkg = np.median(hdu[0].data[hdu[0].data > 0])
     return bkg
@@ -340,11 +488,13 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
     radius: radius of uncertainty on astrometric position in image.
     '''
 
+    img = os.path.abspath(img)
+    
     ra = fitsutils.get_par(img, 'OBJRA')
     dec = fitsutils.get_par(img, 'OBJDEC')
-    logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
+    #logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
     
-    astro = "a_" + img
+    astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
     
     #If astrometry exists, we don't run it again.
     if (os.path.isfile(astro) and not overwrite):
@@ -357,7 +507,7 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
       -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
-    logger.info( cmd)
+    #logger.info( cmd)
 
     subprocess.call(cmd, shell=True)
     
@@ -381,7 +531,7 @@ def make_mask_cross(img):
     if (os.path.isfile(maskname)):
         return maskname
         
-    f = pf.open(img)
+    f = fits.open(img)
     data = f[0].data
     
     corners = {
@@ -458,22 +608,26 @@ def is_on_target(image):
     Add as a parameter whether the image is on target or not.
     
     '''
-    import pywcs
     import coordinates_conversor as cc
+    
     
     ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
 
-    impf = pf.open(image)
-    wcs = pywcs.WCS(impf[0].header)
-    #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
-    pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+    impf = fits.open(image)
+    w = wcs.WCS(impf[0].header)
+    
+    filt = fitsutils.get_par(image, "FILTER")
+    #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+    pra, pdec = get_xy_coords(image, ra,dec)
 
     shape = impf[0].data.shape
     
     if (pra > 0)  and (pra < shape[0]) and (pdec > 0) and (pdec < shape[1]):
         fitsutils.update_par(image, "ONTARGET", 1)
+        return True
     else:
         fitsutils.update_par(image, "ONTARGET", 0)
+        return False
         
     
 def clean_cosmic(f):
@@ -517,7 +671,7 @@ def get_overscan_bias_rc(img):
     '''
     Bias from overscan region.
     '''
-    f = pf.open(img)
+    f = fits.open(img)
     bias = np.nanmedian(f[0].data[990-100:990+100,970-100:970+100].flatten())
     
     return bias
@@ -580,7 +734,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     print "Reducing image ", image    
 
     
-    
+    image = os.path.abspath(image)
     imname = os.path.basename(image).replace(".fits", "")
     try:
         objectname = fitsutils.get_par(image, "NAME").replace(" ","")+"_"+fitsutils.get_par(image, "FILTER")
@@ -614,9 +768,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         if existing:
             return []
 
-
-    #Rename to the image name only
-    image = os.path.basename(image)
 
         
     #Initialize the basic parameters.
@@ -676,7 +827,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     create_masterflat(flatdir, biasdir)
     
     #New names for the object.
-    debiased = "b_" + img
+    debiased = os.path.join(os.path.dirname(img), "b_" + os.path.basename(img))
     logger.info( "Creating debiased file, %s"%debiased)
     
     if ( (fitsutils.get_par(img, "ADCSPEED")==0.1 and not os.path.isfile(bias_slow)) \
@@ -705,7 +856,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         fitsutils.update_par(debiased, "RDNOISE", 4.)
 
     #Set negative counts to zero
-    hdu = pf.open(debiased)
+    hdu = fits.open(debiased)
     header = hdu[0].header
     hdu[0].data[hdu[0].data<0] = 0
     hdu.writeto(debiased, clobber=True)
@@ -722,7 +873,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for i, debiased_f in enumerate(slice_names):
         b = fitsutils.get_par(debiased_f, 'filter')
         
-        deflatted = imname + "_f_b_" + astro + objectname + "_%s.fits"%b
+        deflatted = os.path.join(os.path.dirname(image), target_dir, imname + "_f_b_" + astro + objectname + "_%s.fits"%b)
 
         #Flat to be used for that filter
         flat = os.path.join(flatdir, "Flat_%s_%s_norm.fits"%(channel, b))
@@ -755,20 +906,18 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         slice_names[i] = deflatted
             
                 
-    reduced_imgs = []   
     #Moving files to the target directory
-    for name in slice_names:
-        newname = get_sequential_name(target_dir, name, 0)
-        bkg = get_median_bkg(name)
-        fitsutils.update_par(name, "SKYBKG", bkg)
-        shutil.move(name, newname)
-        reduced_imgs.append(newname)
+    for image in slice_names:
+        bkg = get_median_bkg(image)
+        fitsutils.update_par(image, "SKYBKG", bkg)
+        #shutil.move(name, newname)
+
         
     #Compute the zeropoints
-    for image in reduced_imgs:
+    for image in slice_names:
         zeropoint.calibrate_zeropoint(image)
         
-    return reduced_imgs
+    return slice_names
 
                 
 if __name__ == '__main__':
@@ -830,13 +979,16 @@ if __name__ == '__main__':
         mydir = os.path.abspath(photdir)
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
-            if (fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE")=="SCIENCE"):
-                myfiles.append(f)
+            try:
+            	if (fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE")=="SCIENCE"):
+                	myfiles.append(f)
+            except:
+            	print "problems opening file %s"%f
     else:
-        print '''ERROR! You should specify one of the following:\n
-                   - A filelist name with the images you want to reduce [-l]
-                   OR
-                   - The name of the directory which you want to reduce [-d].'''
+	print '''ERROR! You should specify one of the following:\n
+        - A filelist name with the images you want to reduce [-l]
+        OR
+        - The name of the directory which you want to reduce [-d].'''
 
     if (False): #len(myfiles)>0):
     	create_masterbias()
