@@ -92,3 +92,4 @@ if __name__=="__main__":
             findername = finder(f)
             if(os.path.isfile(findername)):
                 cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/redux/%s/."%(findername, timestamp)
+                
