@@ -231,17 +231,22 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     iraf.apphot(_doprint=0)
     iraf.unlearn("apphot")
     
+    impf = pf.open(image)
+    wcs = pywcs.WCS(impf[0].header)
     #Check that actually the object is within this frame.
     if (ra is None or dec is None):
         if (fitsutils.has_par(image, "OBJRA") and fitsutils.has_par(image, "OBJRA")):
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
         else:
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'RA'), fitsutils.get_par(image, 'DEC'))
-    
-    impf = pf.open(image)
-    wcs = pywcs.WCS(impf[0].header)
-    #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
-    pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+    else:
+        if(wcsin == "logical"):
+            pra, pdec = ra, dec
+        else:
+        #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
+            pra, pdec = get_xy_coords(image, ra, dec)
+            #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
+            #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
 
     shape = impf[0].data.shape
     
@@ -252,9 +257,6 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
         print pra, pdec, shape
         return
     
-    
-    #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
-    pra, pdec = get_xy_coords(image, ra, dec)
         
     imdir = os.path.dirname(image)
     imname = os.path.basename(image)
