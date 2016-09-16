@@ -18,6 +18,7 @@ import os, sys, math
 import pyfits as pf
 import zscale
 import time
+import sextractor
 import fitsutils
 import glob
 import argparse
@@ -270,8 +271,10 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     
     
     fwhm_value = fwhm
-    if (fitsutils.has_par(image, 'FWHM')):
-        fwhm_value = fitsutils.get_par(image, 'FWHM')
+
+    nsrc, fwhm_value, ellip = sextractor.get_image_pars(image)
+    fitsutils.update_par(image, 'FWHM', fwhm_value)
+        
     if (fitsutils.has_par(image, 'AIRMASS')):
         airmass_value = fitsutils.get_par(image, 'AIRMASS')
     else:
@@ -280,13 +283,6 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
     
-    
-    #Obtain the fwhm in pixels
-    if wcsin == "logical":   
-        if (fitsutils.has_par(image, 'SEEPIX')):
-            fwhm_value = fitsutils.get_par(image, 'SEEPIX')
-        else:
-            fwhm_value = fwhm_value / 0.394
     
     #print "FWHM", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
