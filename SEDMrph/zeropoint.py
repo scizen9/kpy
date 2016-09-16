@@ -792,7 +792,7 @@ def interpolate_zp(reduced, logfile):
     
     jdmin =  np.min(a['jd'])
     
-    jdmax = np.max(a['jd']) - jdmin
+    jdmax = np.max(a['jd'])
     
     zpfiles = glob.glob(os.path.join(reduced, "*fits"))
     
@@ -817,6 +817,7 @@ def interpolate_zp(reduced, logfile):
         filt = fitsutils.get_par(image, "FILTER")
         
         #To not extrapolate outside of the valid interval.
+        jd = np.maximum(0, fitsutils.get_par(image, "JD") - jdmin)
         jd = np.minimum(jdmax, fitsutils.get_par(image, "JD") - jdmin)
         airmass = fitsutils.get_par(image, "AIRMASS")
         
