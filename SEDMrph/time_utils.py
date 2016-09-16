@@ -16,7 +16,7 @@ def mjd2utc(mjd):
     t = Time(mjd+2400000.5, format='jd', scale="utc")
     return t.iso
     
-def jd2utc(jd, string=True):
+def jd2utc(jd, string=False):
     t = Time(jd, format='jd', scale="utc")
     
     if (string):
