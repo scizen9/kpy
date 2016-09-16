@@ -240,6 +240,8 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
         else:
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'RA'), fitsutils.get_par(image, 'DEC'))
+            pra, pdec = get_xy_coords(image, ra, dec)
+
     else:
         if(wcsin == "logical"):
             pra, pdec = ra, dec
