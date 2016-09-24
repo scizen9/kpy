@@ -59,16 +59,16 @@ def report():
                 expt *= 2.
         else:
             expt = 0.
-            # get airmass
-            meta = sp['meta']
-            if 'airmass1' in meta:
-                air = meta['airmass1']
-                if 'airmass2' in meta:
-                    air = (air + meta['airmass2']) / 2.
-            elif 'airmass' in meta:
-                air = meta['airmass']
-            else:
-                air = 0.
+        # get airmass
+        meta = sp['meta']
+        if 'airmass1' in meta:
+            air = meta['airmass1']
+            if 'airmass2' in meta:
+                air = (air + meta['airmass2']) / 2.
+        elif 'airmass' in meta:
+            air = meta['airmass']
+        else:
+            air = 0.
         # Don't count missing objects
         if qual < 4:
             totexpt += expt
