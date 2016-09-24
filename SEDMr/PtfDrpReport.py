@@ -75,7 +75,7 @@ def report():
         else:
             lostexp += expt
 
-        out.write("%-25s %4s %6s   %6.1f %4d %5s   %5.3s\n" %
+        out.write("%-25s %4s %6s   %6.1f %4d %5s   %5.3f\n" %
                   (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
                    air))
 
