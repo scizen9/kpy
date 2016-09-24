@@ -29,7 +29,7 @@ def report():
         else:
             skysub = 1
         if '_obs' in f:
-            obs = f.split('_')[-1].split('.')[0]
+            obs = f.split('_')[-2].split('.')[0]
         else:
             obs = "-"
         if 'object_spaxel_ids_A' in sp:
@@ -50,7 +50,7 @@ def report():
             lostexp += expt
 
         objname = f.split('.')[0]
-        objname = objname.split('_')[1:]
+        objname = "_".join(objname.split('_')[1:])
 
         print "%-25s %4s %6s   %6.1f %4d %5s" % (objname, obs, meth, expt, qual,
                                                  ("on" if skysub else "off"))
