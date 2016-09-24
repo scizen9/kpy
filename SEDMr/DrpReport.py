@@ -51,7 +51,7 @@ def report():
 
         objname = f.split('.')[0]
         if '_obs' in objname:
-            objname = "_".join(objname.split('_')[1:-1])
+            objname = "_".join(objname.split('_')[1:-2])
         else:
             objname = "_".join(objname.split('_')[1:])
 
