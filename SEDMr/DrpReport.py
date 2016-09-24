@@ -15,7 +15,7 @@ def report():
           (os.getcwd(), len(flist))
     totexpt = 0.
     lostexp = 0.
-    print "Object                     Obs Method  Exptime Qual Skysb"
+    print "Object                     Obs Method  Exptime Qual Skysb Airmass"
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
@@ -43,6 +43,19 @@ def report():
                 expt *= 2.
         else:
             expt = 0.
+        # get airmass
+        meta = sp['meta']
+        if 'airmass1' in meta:
+            air1 = meta['airmass1']
+            if 'airmass2' in meta:
+                air = (air1 + meta['airmass2'])/2.
+            else:
+                air = air1
+        elif 'airmass' in meta:
+            air = meta['airmass']
+        else:
+            air = 0.
+
         # Don't count missing objects
         if qual < 4:
             totexpt += expt
@@ -55,8 +68,9 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print "%-25s %4s %6s   %6.1f %4d %5s" % (objname, obs, meth, expt, qual,
-                                                 ("on" if skysub else "off"))
+        print "%-25s %4s %6s   %6.1f %4d %5s %5.3f" % (objname, obs, meth, expt,
+                                                       qual, ("on" if skysub
+                                                              else "off"), air)
     print "\nTotal quality (1-3) science exposure time = %.1f s" % totexpt
     if lostexp > 0:
         print "Total exposure time lost to missing targets = %.1f s\n" % lostexp
