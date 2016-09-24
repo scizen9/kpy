@@ -4,6 +4,7 @@ import time
 import numpy as np
 import subprocess
 
+
 def report():
     """Generate DRP report using output sp_<object>.npy files"""
 
@@ -12,17 +13,17 @@ def report():
     flist.sort(key=os.path.getmtime)
     
     out = open("report_ptf.txt", "w")
-    out.write( "\nReport generated on %s\n\n" % time.strftime("%c"))
+    out.write("\nReport generated on %s\n\n" % time.strftime("%c"))
     totexpt = 0.
     lostexp = 0.
-    out.write( "Object                     Obs Method  Exptime Qual Skysb\n")
+    out.write("Object                     Obs Method  Exptime Qual Skysb\n")
 
     objects = []
 
     for f in flist:
         objname = f.split('_')[1].split('.')[0]
 
-        if not 'PTF' in objname:
+        if 'PTF' not in objname:
             continue
         if '_A_' in f or '_B_' in f:
             continue
@@ -43,7 +44,7 @@ def report():
             skysub = 1
 
         if '_obs' in f:
-            obs = f.split('_')[2].split('.')[0]
+            obs = f.split('_')[-1].split('.')[0]
         else:
             obs = "-"
 
@@ -64,25 +65,26 @@ def report():
         else:
             lostexp += expt
 
-        out.write( "%-25s %4s %6s   %6.1f %4d %5s \n" % (objname, obs, meth, expt, qual,
-                                                 ("on" if skysub else "off")))
+        out.write("%-25s %4s %6s   %6.1f %4d %5s \n" %
+                  (objname, obs, meth, expt, qual, ("on" if skysub else "off")))
 
-    if (len(objects)>0):
-    	out.write( "\n")
-    	out.write( "Spectra are available in the marshal: \n")
-    	for o in objects:
-        	out.write( "http://ptf.caltech.edu/cgi-bin/ptf/transient/view_source.cgi?name=%s\n"%(o))
-	out.close()
-	return True
+    if len(objects) > 0:
+        out.write("\n")
+        out.write("Spectra are available in the marshal: \n")
+        for o in objects:
+            out.write("http://ptf.caltech.edu/cgi-bin/ptf/transient/view_source.cgi?name=%s\n"%(o))
+        out.close()
+        return True
     else:
-	out.close()
-	return False
+        out.close()
+        return False
 
 if __name__ == '__main__':
     report = report()
     if report:
-    	current_dir = os.path.basename(os.path.abspath("."))
-    	cmd = 'cat report_ptf.txt | mail -s "SEDM DRP Report for %s" iptftransient@astro.caltech.edu'%current_dir
-	subprocess.call(cmd, shell=True)
+        current_dir = os.path.basename(os.path.abspath("."))
+        # change to iptftransient@lists.astro.caltech.edu on 9/23/2016
+        cmd = 'cat report_ptf.txt | mail -s "SEDM DRP Report for %s" iptftransient@astro.caltech.edu'%current_dir
+        subprocess.call(cmd, shell=True)
     else:
-	print "No PTF objets to report. \n"
+        print "No PTF objets to report. \n"
