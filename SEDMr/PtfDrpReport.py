@@ -16,7 +16,7 @@ def report():
     out.write("\nReport generated on %s\n\n" % time.strftime("%c"))
     totexpt = 0.
     lostexp = 0.
-    out.write("Object                     Obs Method  Exptime Qual Skysb\n")
+    out.write("Object                     Obs Method  Exptime Qual Skysb Airmass\n")
 
     objects = []
 
@@ -59,14 +59,25 @@ def report():
                 expt *= 2.
         else:
             expt = 0.
+            # get airmass
+            meta = sp['meta']
+            if 'airmass1' in meta:
+                air = meta['airmass1']
+                if 'airmass2' in meta:
+                    air = (air + meta['airmass2']) / 2.
+            elif 'airmass' in meta:
+                air = meta['airmass']
+            else:
+                air = 0.
         # Don't count missing objects
         if qual < 4:
             totexpt += expt
         else:
             lostexp += expt
 
-        out.write("%-25s %4s %6s   %6.1f %4d %5s \n" %
-                  (objname, obs, meth, expt, qual, ("on" if skysub else "off")))
+        out.write("%-25s %4s %6s   %6.1f %4d %5s   %5.3s\n" %
+                  (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
+                   air))
 
     if len(objects) > 0:
         out.write("\n")

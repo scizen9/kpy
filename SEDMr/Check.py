@@ -162,7 +162,11 @@ def check_spec(specname, corrname='std-correction.npy',
     if 'radius_as' in ss:
         print "Extraction radius: %1.2f asec" % ss['radius_as']
 
-    if 'airmass' in meta:
+    if 'airmass1' in meta:
+        ec = meta['airmass1']
+        if 'airmass2' in meta:
+            ec = (ec + meta['airmass2']) / 2.
+    elif 'airmass' in meta:
         ec = meta['airmass']
     else:
         ec = 0

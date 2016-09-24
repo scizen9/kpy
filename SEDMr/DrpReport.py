@@ -46,11 +46,9 @@ def report():
         # get airmass
         meta = sp['meta']
         if 'airmass1' in meta:
-            air1 = meta['airmass1']
+            air = meta['airmass1']
             if 'airmass2' in meta:
-                air = (air1 + meta['airmass2'])/2.
-            else:
-                air = air1
+                air = (air + meta['airmass2']) / 2.
         elif 'airmass' in meta:
             air = meta['airmass']
         else:
@@ -68,9 +66,10 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print "%-25s %4s %6s   %6.1f %4d %5s %5.3f" % (objname, obs, meth, expt,
-                                                       qual, ("on" if skysub
-                                                              else "off"), air)
+        print "%-25s %4s %6s   %6.1f %4d %5s  %5.3f" % (objname, obs, meth,
+                                                        expt, qual,
+                                                        ("on" if skysub
+                                                         else "off"), air)
     print "\nTotal quality (1-3) science exposure time = %.1f s" % totexpt
     if lostexp > 0:
         print "Total exposure time lost to missing targets = %.1f s\n" % lostexp
