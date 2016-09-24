@@ -83,8 +83,8 @@ if __name__ == '__main__':
     report = report()
     if report:
         current_dir = os.path.basename(os.path.abspath("."))
-        # change to iptftransient@lists.astro.caltech.edu on 9/23/2016
-        cmd = 'cat report_ptf.txt | mail -s "SEDM DRP Report for %s" iptftransient@astro.caltech.edu'%current_dir
+        # changed to iptftransient@lists.astro.caltech.edu on 9/24/2016
+        cmd = 'cat report_ptf.txt | mail -s "SEDM DRP Report for %s" iptftransient@lists.astro.caltech.edu'%current_dir
         subprocess.call(cmd, shell=True)
     else:
         print "No PTF objets to report. \n"
