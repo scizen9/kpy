@@ -44,7 +44,7 @@ def report():
             skysub = 1
 
         if '_obs' in f:
-            obs = f.split('_')[-1].split('.')[0]
+            obs = f.split('_')[-2].split('.')[0]
         else:
             obs = "-"
 
