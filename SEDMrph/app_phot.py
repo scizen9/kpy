@@ -7,6 +7,7 @@ Created on Sat May 23 18:23:02 2015
 
 import numpy as np
 import matplotlib
+import datetime
 matplotlib.use("Agg", warn=False)
 from matplotlib import pylab as plt
 
@@ -415,12 +416,18 @@ if __name__ == '__main__':
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('reduced', type=str, help='Directory containing the reduced fits for the night.')
+    parser.add_argument('-d', '--reddir', type=str, dest="reduced", help='Fits directory file with reduced images.', default=None)
 
     args = parser.parse_args()
     
     reduced = args.reduced
     
+    if (reduced is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        reduced = os.path.join("/scr2/sedm/phot/", timestamp, "reduced")
+
+
     os.chdir(reduced)
     
 
@@ -428,3 +435,7 @@ if __name__ == '__main__':
         if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
 		#print f
         	get_app_phot_target(f, box=5)
+         
+    cmd = 'gethead ONTARGET NAME JD APPMAG APPMAGER INSTMAG INSTMAGER *fits | grep ".fits 1" > photometry/magnitudes.dat'
+    subprocess.call(cmd, shell=True)
+    
