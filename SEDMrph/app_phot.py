@@ -438,6 +438,6 @@ if __name__ == '__main__':
 		#print f
         	get_app_phot_target(f, box=5)
          
-    cmd = 'echo "FILE ONTARGET NAME JD APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU" > photometry/magnitudes.dat; gethead ONTARGET NAME JD APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU *fits | grep ".fits 1" >> photometry/magnitudes.dat'
+    cmd = 'echo "FILE ONTARGET NAME JD LST APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU" > photometry/magnitudes.dat; gethead ONTARGET NAME JD LST APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU *fits | grep -E "fits[\ ]+1" >> photometry/magnitudes.dat'
     subprocess.call(cmd, shell=True)
     
