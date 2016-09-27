@@ -1157,24 +1157,27 @@ def main(reduced):
      
 if __name__ == '__main__':
     
+
     parser = argparse.ArgumentParser(description=\
         '''
 
-        Runs astrometry.net on the image specified as a parameter and returns 
-        the offset needed to be applied in order to center the object coordinates 
-        in the reference pixel.
+        Computes the zeropoints for all the images in the folder.
             
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('reduced', type=str, help='Directory containing the reduced fits for the night.')
+    parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
 
     args = parser.parse_args()
     
-    reduced = args.reduced
+    photdir = args.photdir
     
-    if (reduced is None):
-        print "Please, add the directory containing reduced data as a parameter."
-    else:
-        main(reduced)
+    if (photdir is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+
+    main(os.path.join(os.path.abspath(photdir), "reduced"))
+
+
 
