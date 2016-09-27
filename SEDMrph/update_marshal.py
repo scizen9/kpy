@@ -9,6 +9,9 @@ from numpy import *
 from math import *
 from types import *
 import time_utils
+import fitsutils
+import numpy as np
+import pg
 
 def update_fremling():
     racen=256.9935
