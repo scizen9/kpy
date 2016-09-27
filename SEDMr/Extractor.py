@@ -1604,8 +1604,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Y [as]")
         tlab = meta['outname']
-        if 'airmass' in meta:
-            tlab += ", Airmass: %.3f" % meta['airmass']
+        air = (meta['airmass1'] + meta['airmass2']) / 2.
+        tlab += ", Airmass: %.3f" % air
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
         pl.title(tlab)
