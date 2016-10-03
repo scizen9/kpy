@@ -817,8 +817,8 @@ def interpolate_zp(reduced, logfile):
         filt = fitsutils.get_par(image, "FILTER")
         
         #To not extrapolate outside of the valid interval.
-        jd = np.maximum(0, fitsutils.get_par(image, "JD") - jdmin)
-        jd = np.minimum(jdmax, fitsutils.get_par(image, "JD") - jdmin)
+        jd = np.maximum(np.percentile(a['jd']-jdmin, 10), fitsutils.get_par(image, "JD") - jdmin)
+        jd = np.minimum(np.percentile(a['jd']-jdmin, 90), fitsutils.get_par(image, "JD") - jdmin)
         airmass = fitsutils.get_par(image, "AIRMASS")
         
         #If there are coefficients for that filter, load them and interpolate.
