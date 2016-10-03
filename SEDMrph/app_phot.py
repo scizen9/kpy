@@ -7,6 +7,7 @@ Created on Sat May 23 18:23:02 2015
 
 import numpy as np
 import matplotlib
+import datetime
 matplotlib.use("Agg", warn=False)
 from matplotlib import pylab as plt
 
@@ -233,17 +234,24 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     iraf.apphot(_doprint=0)
     iraf.unlearn("apphot")
     
+    impf = pf.open(image)
+    wcs = pywcs.WCS(impf[0].header)
     #Check that actually the object is within this frame.
     if (ra is None or dec is None):
         if (fitsutils.has_par(image, "OBJRA") and fitsutils.has_par(image, "OBJRA")):
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
         else:
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'RA'), fitsutils.get_par(image, 'DEC'))
-    
-    impf = pf.open(image)
-    wcs = pywcs.WCS(impf[0].header)
-    #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
-    pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
+        pra, pdec = get_xy_coords(image, ra, dec)
+
+    else:
+        if(wcsin == "logical"):
+            pra, pdec = ra, dec
+        else:
+        #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
+            pra, pdec = get_xy_coords(image, ra, dec)
+            #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
+            #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
 
     shape = impf[0].data.shape
     
@@ -254,9 +262,6 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
         print pra, pdec, shape
         return
     
-    
-    #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
-    pra, pdec = get_xy_coords(image, ra, dec)
         
     imdir = os.path.dirname(image)
     imname = os.path.basename(image)
@@ -272,6 +277,8 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     fwhm_value = fwhm
 
     nsrc, fwhm_value, ellip = sextractor.get_image_pars(image)
+    if np.isnan(fwhm_value):
+	fwhm_value=99
     fitsutils.update_par(image, 'FWHM', fwhm_value)
         
     if (fitsutils.has_par(image, 'AIRMASS')):
@@ -412,12 +419,18 @@ if __name__ == '__main__':
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('reduced', type=str, help='Directory containing the reduced fits for the night.')
+    parser.add_argument('-d', '--reddir', type=str, dest="reduced", help='Fits directory file with reduced images.', default=None)
 
     args = parser.parse_args()
     
     reduced = args.reduced
     
+    if (reduced is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        reduced = os.path.join("/scr2/sedm/phot/", timestamp, "reduced")
+
+
     os.chdir(reduced)
     
 
@@ -425,3 +438,7 @@ if __name__ == '__main__':
         if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
 		#print f
         	get_app_phot_target(f, box=5)
+         
+    cmd = 'echo "FILE ONTARGET NAME JD LST APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU" > photometry/magnitudes.dat; gethead ONTARGET NAME JD LST APPMAGER INSMAG INSMAGER ZEROPT ZEROPTU *fits | grep -E "fits[\ ]+1" >> photometry/magnitudes.dat'
+    subprocess.call(cmd, shell=True)
+    

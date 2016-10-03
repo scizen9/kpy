@@ -137,7 +137,7 @@ def plot_stats(statfile):
     s = s[s["f3"]>1]
 
     day_frac_diff = datetime.timedelta(np.ceil((datetime.datetime.now() - datetime.datetime.utcnow() ).total_seconds())/3600/24)
-    datestat = np.array([ (datetime.datetime.strptime(time_utils.jd2utc(jd), "%Y-%m-%d %H:%M:%S.%f")) for jd in s["f2"]])
+    datestat = np.array([ time_utils.jd2utc(jd) for jd in s["f2"]])
     datestat = datestat + day_frac_diff
     
     #We add 5h to the UTC date, so it alwasy keeps the date of the end of the night.
@@ -217,6 +217,8 @@ if __name__ == '__main__':
         timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
 	print "New directory %s"%photdir
+    else:
+        timestamp=os.path.basename(os.path.abspath(photdir))
     print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 

@@ -648,6 +648,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
 
 
+
     for b in set(a['filter']):
         ab = a[a['filter']==b]
         
@@ -657,7 +658,28 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         ab = ab[ (ab["color"]>mincol) * (ab["color"]<maxcol) ]        
         
+        #Remove detections which are too far
+        coefs, residuals, rank, singular_values, rcond = np.polyfit(ab["std"], ab["inst"], w=1./np.maximum(0.3, np.sqrt(ab["stderr"]**2 + ab["insterr"]**2)), deg=1, full=True)
+        p = np.poly1d(coefs)
         
+        if (plot):
+            plt.figure()
+            plt.title("Filter %s"%(b))
+            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="o")
+            plt.plot(ab["std"], p(ab["std"]))
+            
+        diff = np.abs(ab["inst"] - p(ab["std"]))
+        mad = stats.funcs.median_absolute_deviation(diff)
+        ab = ab[diff<mad*5]
+        
+                
+        if (plot):
+            plt.figure()
+            plt.title("Filter %s"%(b))
+            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="o")
+            plt.plot(ab["std"], p(ab["std"]))
+            plt.show()
+            
         #Find the coefficients.
         '''M = np.zeros((len(ab), 4))
         M[:,0] = 1      
@@ -692,14 +714,14 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         mask = mask_col_outlier * mask_airmass_outlier * mask_col_jd
         
         ab = ab[~mask]'''
-        M = np.zeros((len(ab), 6))
+        M = np.zeros((len(ab), 5))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
         M[:,2] = ab['airmass'] - 1.3
         M[:,3] = ab['jd'] 
         M[:,4] = ab['jd']**2
-        M[:,5] = ab['jd']**3
+        #M[:,5] = ab['jd']**3
         
         #print M
         
@@ -713,19 +735,19 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         np.savetxt("coefs_%s.txt"%b, coef)
         
         #Empirical and predicted values
-        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 )
+        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2)# + coef[5]*ab['jd']**3 )
         pred_col = ab['color']*coef[1]
 
-        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3)
+        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2)# + coef[5]*ab['jd']**3)
         pred_airmass = (ab['airmass']-1.3)*coef[2]
         
         emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
-        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 
+        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2# + coef[5]*ab['jd']**3 
                 
-        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 
-        rms =  np.sqrt(np.sum((depend-est_zp)**2))/(len(depend)-1)
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 #+ coef[5]*ab['jd']**3 
+        rms =  np.sqrt(np.sum((depend-est_zp)**2)/(len(depend)-1))
         np.savetxt("rms_%s.txt"%b, np.array([rms]))
-        print "Filter %s RMS %s"%(b, rms)
+        print "Filter %s ZP %.2f RMS %.2f"%(b, coef[0], rms)
 
         if (plot):
             plt.close("all")
@@ -734,7 +756,6 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             ax1.plot(ab['color'],  pred_col, color=cols[b])
             ax1.set_xlabel("color")
 
-            print np.median(ab['color'])*coef[1]
             ax2.plot(ab['airmass'], emp_airmass, "o", color=cols[b], ms=4, alpha=0.4)
             ax2.plot(ab['airmass'], pred_airmass , color=cols[b])
             ax2.set_xlabel("airmass")
@@ -771,12 +792,12 @@ def interpolate_zp(reduced, logfile):
     
     jdmin =  np.min(a['jd'])
     
-    jdmax = np.max(a['jd']) - jdmin
+    jdmax = np.max(a['jd'])
     
     zpfiles = glob.glob(os.path.join(reduced, "*fits"))
     
     zpfiles = [zf for zf in zpfiles if fitsutils.has_par(zf, "IQZEROPT") and \
-    (fitsutils.get_par(zf, "IQZEROPT")==0 or fitsutils.get_par(zf, "ZEROPT")==0)]
+    (fitsutils.get_par(zf, "IQZEROPT")==0 or fitsutils.get_par(zf, "ZEROPT")==0 or fitsutils.get_par(zf, "ZPCAT") == "SDSSinterpolated") ]
     
     #Load the coefficients.
     coefs = {}    
@@ -796,7 +817,8 @@ def interpolate_zp(reduced, logfile):
         filt = fitsutils.get_par(image, "FILTER")
         
         #To not extrapolate outside of the valid interval.
-        jd = np.minimum(jdmax, fitsutils.get_par(image, "JD") - jdmin)
+        jd = np.maximum(np.percentile(a['jd']-jdmin, 10), fitsutils.get_par(image, "JD") - jdmin)
+        jd = np.minimum(np.percentile(a['jd']-jdmin, 90), fitsutils.get_par(image, "JD") - jdmin)
         airmass = fitsutils.get_par(image, "AIRMASS")
         
         #If there are coefficients for that filter, load them and interpolate.
@@ -806,7 +828,7 @@ def interpolate_zp(reduced, logfile):
         
         #est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
 
-        values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3])
+        values = np.array([1, 0, airmass-1.3, jd, jd**2])
         est_zp = np.sum(coefs[filt]*values)
         
         #Update the header with the computed zeropoint.
@@ -1135,24 +1157,27 @@ def main(reduced):
      
 if __name__ == '__main__':
     
+
     parser = argparse.ArgumentParser(description=\
         '''
 
-        Runs astrometry.net on the image specified as a parameter and returns 
-        the offset needed to be applied in order to center the object coordinates 
-        in the reference pixel.
+        Computes the zeropoints for all the images in the folder.
             
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
 
-    parser.add_argument('reduced', type=str, help='Directory containing the reduced fits for the night.')
+    parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
 
     args = parser.parse_args()
     
-    reduced = args.reduced
+    photdir = args.photdir
     
-    if (reduced is None):
-        print "Please, add the directory containing reduced data as a parameter."
-    else:
-        main(reduced)
+    if (photdir is None):
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
+        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+
+    main(os.path.join(os.path.abspath(photdir), "reduced"))
+
+
 
