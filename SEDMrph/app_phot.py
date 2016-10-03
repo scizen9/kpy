@@ -25,6 +25,7 @@ import argparse
 import coordinates_conversor as cc
 import pywcs
 import matplotlib.lines as mlines
+import subprocess
 
 ref_stars_file = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_ps1.csv"
 ref_stars_file_sdss = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_sdss.csv"
