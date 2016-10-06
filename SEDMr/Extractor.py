@@ -1668,7 +1668,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Y [as]")
-        tlab = meta['outname']
+        tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
+                                               meta['outname'])
         air = (meta['airmass1'] + meta['airmass2']) / 2.
         tlab += ", Airmass: %.3f" % air
         if 1 <= quality <= 4:
