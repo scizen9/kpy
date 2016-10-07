@@ -1032,9 +1032,10 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
              lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
-    resa = interp_spectra(ex, sixa, outname=outname+".pdf")
-    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
-    vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
+    resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
+    skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                  sky=True)
+    vara, nspxav = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
