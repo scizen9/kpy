@@ -626,7 +626,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
                 s_grid.append(fl)
                 newsix.append(ix)
             else:
-                print "rejected - ix: %d, flx: %f" % (ix, f_test)
+                print "rejected - ix: %d, flx: %.1f" % (ix, f_test)
     else:
         newsix = None
 
