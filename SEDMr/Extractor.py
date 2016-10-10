@@ -118,7 +118,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 
 
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
-                               airmass=1.0):
+                               airmass=1.0, sigfac=3.0):
     """ 
     Returns index of spectra picked by Guassian fit.
     
@@ -173,8 +173,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     pos = (xc, yc)
 
     # get 3-sigma extent
-    a = popt[3]*3.
-    b = popt[4]*3.
+    a = popt[3]*sigfac
+    b = popt[4]*sigfac
     theta = popt[5]
     z = popt[0]
 
@@ -368,12 +368,12 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     return skys
 
 
-def identify_bgd_spectra(spectra, pos, ellipse=None):
+def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
     kt = SedSpec.Spectra(spectra)
 
-    a = ellipse[0]
-    b = ellipse[1]
-    sky_a = ellipse[0] + 3.
+    a = ellipse[0] * expfac
+    b = ellipse[1] * expfac
+    sky_a = a + 3. * expfac
     sky_b = sky_a * (b/a)
     xc = ellipse[2]
     yc = ellipse[3]
@@ -580,7 +580,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         f_lim = np.percentile(f_grid, percent)
         print "Trimming at %.1f %%, flux = %.1f" % (percent, f_lim)
         if f_lim < 0:
-            print "WARNING: If A/B pair, sky has changed between A and B"
+            print "WARNING: If A/B pair, sky level has changed between A and B"
             print "         Consider single mode extraction"
         l_grid = onto
         s_grid = []
@@ -1169,7 +1169,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
 def handle_single(imfile, fine, outname=None, offset=None,
                   radius=2., flat_corrections=None, nosky=False,
-                  lmin=650., lmax=700., specExtract=False):
+                  lmin=650., lmax=700., specExtract=False, autoExtract=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
@@ -1185,6 +1185,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
         specExtract (Boolean): perform extraction to a spectrum?
+        autoExtract (Boolean): automatically find source?
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -1282,45 +1283,61 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Get the object name of record
         objname = meta['header']['OBJECT'].split()[0]
 
-        message = "\nMark positive (red) target"
+        if autoExtract:
+            # Automatic extraction using Gaussian fit for Standard Stars
+            sixa, posa, adcpos, ellipse = \
+                identify_spectra_gauss_fit(ex,
+                                           prlltc=Angle(meta['PRLLTC'],
+                                                        unit='deg'),
+                                           lmin=lmin, lmax=lmax,
+                                           airmass=meta['airmass'],
+                                           sigfac=2.0)
+            radius_used = ellipse[0] * 0.5
+            quality = 1  # by definition
 
-        # A single-frame Science Object
-        sixa, posa, adcpos, ellipse, stats = \
-            identify_spectra_gui(ex, radius=radius,
-                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                 scaled=False, bgd_sub=False,
-                                 lmin=lmin, lmax=lmax,
-                                 objname=objname, airmass=meta['airmass'],
-                                 nosky=nosky,
-                                 message=message)
-        radius_used = ellipse[0]
+            # Use all sky spaxels in image
+            kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
 
-        # Use an annulus for sky spaxels for Science Objects
-        kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
+        else:
+            message = "\nMark positive (red) target"
+
+            # A single-frame Science Object
+            sixa, posa, adcpos, ellipse, stats = \
+                identify_spectra_gui(ex, radius=radius,
+                                     prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                     scaled=False, bgd_sub=False,
+                                     lmin=lmin, lmax=lmax,
+                                     objname=objname, airmass=meta['airmass'],
+                                     nosky=nosky,
+                                     message=message)
+            radius_used = ellipse[0]
+
+            # Get quality of observation
+            print "Enter quality of observation:"
+            print "1 - good       (no problems)"
+            print "2 - acceptable (minor problem)"
+            print "3 - poor       (major problem)"
+            print "4 - no object visible"
+            q = 'x'
+            quality = -1
+            prom = ": "
+            while not q.isdigit() or quality < 1 or quality > 4:
+                q = raw_input(prom)
+                if q.isdigit():
+                    quality = int(q)
+                    if quality < 1 or quality > 4:
+                        prom = "Try again: "
+                else:
+                    prom = "Try again: "
+            print "Quality = %d, now making outputs..." % quality
+
+            # Use an annulus for sky spaxels for Science Objects
+            kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
 
         for ix in sixa:
             ex[ix].is_obj = True
         for ix in kixa:
             ex[ix].is_sky = True
-
-        # Get quality of observation
-        print "Enter quality of observation:"
-        print "1 - good       (no problems)"
-        print "2 - acceptable (minor problem)"
-        print "3 - poor       (major problem)"
-        print "4 - no object visible"
-        q = 'x'
-        quality = -1
-        prom = ": "
-        while not q.isdigit() or quality < 1 or quality > 4:
-            q = raw_input(prom)
-            if q.isdigit():
-                quality = int(q)
-                if quality < 1 or quality > 4:
-                    prom = "Try again: "
-            else:
-                prom = "Try again: "
-        print "Quality = %d, now making outputs..." % quality
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
@@ -1797,6 +1814,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                         help='Perform flat extraction')
     parser.add_argument('--specExtract', action="store_true", default=False,
                         help='Perform spectral extraction')
+    parser.add_argument('--autoExtract', action="store_true", default=False,
+                        help='Perform automatic extraction')
 
     args = parser.parse_args()
 
@@ -1828,7 +1847,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                 handle_single(args.A, args.fine, outname=args.outname,
                               offset=args.Aoffset, radius=args.radius_as,
                               flat_corrections=flat, nosky=args.nosky,
-                              specExtract=args.specExtract)
+                              specExtract=args.specExtract,
+                              autoExtract=args.autoExtract)
         else:
             print "Standard Star Extraction to %s.npy" % args.outname
             star = Stds.Standards[args.std]

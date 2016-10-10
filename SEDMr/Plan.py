@@ -308,7 +308,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 sp_%(outname)s: %(outname)s
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 redo_%(name)s:
