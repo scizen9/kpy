@@ -579,6 +579,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     if percent is not None:
         f_lim = np.percentile(f_grid, percent)
         print "Trimming at %.1f %%, flux = %.1f" % (percent, f_lim)
+        if f_lim < 0:
+            print "WARNING: If A/B pair, sky has changed between A and B"
+            print "         Consider single mode extraction"
         l_grid = onto
         s_grid = []
         newsix = []
