@@ -47,7 +47,7 @@ else
             python $SEDMPATH/SEDMr/DrpReport.py
             breaksw
         default
-            python $*
+            python -u $*
             breaksw
     endsw
 endif
