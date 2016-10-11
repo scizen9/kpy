@@ -8,6 +8,7 @@ Functions
     * :func:`find_recent`  finds the most recent processed calibration file
     * :func:`cpsci`        copies new science images files into redux directory
     * :func:`proc_stds`    processes standard star observations
+    * :func:`proc_auto`    processes automatic extraction observations
     * :func:`proc_bias_crrs`  processes biases and CR rejection
     * :func:`proc_bkg_flex`   processes bkg sub and flex calculation
     * :func:`docp`            low level copy routine
