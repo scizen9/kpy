@@ -8,7 +8,6 @@ Functions
     * :func:`find_recent`  finds the most recent processed calibration file
     * :func:`cpsci`        copies new science images files into redux directory
     * :func:`proc_stds`    processes standard star observations
-    * :func:`proc_auto`    processes automatic extraction observations
     * :func:`proc_bias_crrs`  processes biases and CR rejection
     * :func:`proc_bkg_flex`   processes bkg sub and flex calculation
     * :func:`docp`            low level copy routine
@@ -277,31 +276,6 @@ def proc_stds(ncp):
     return ret
 
 
-def proc_auto():
-    """Process automatically extracted observations.
-
-    Args:
-
-    Returns:
-        bool: True if processing was successful, otherwise False
-
-    """
-
-    # Default return value
-    ret = False
-    # Make auto
-    startTime = time.time()
-    retcode = os.system("make auto")
-    procTime = int(time.time() - startTime)
-    # Did it work?
-    if retcode == 0:
-        print("automatically extracted observations processed in %d s" %
-              procTime)
-        ret = True
-
-    return ret
-
-
 def proc_bkg_flex(copied):
     """Process bkg subtractions and flexure calculations.
 
@@ -396,8 +370,6 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
         if nstd > 0:
             if not proc_stds(nstd):
                 print "Error processing standard stars"
-        # Process automatic extractions
-        proc_auto()
 
     return ncp
     # END: cpsci
