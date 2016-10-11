@@ -12,7 +12,6 @@ from astropy.time import Time
 fspec = os.path.join('/scr2/sedmdrp/redux', '20??????')
 # fspec = os.path.join('/Users/Neill/sedm/data/redux', '20??????')
 dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])
-print dlist
 
 jd = []
 ef1 = []
@@ -29,7 +28,6 @@ for d in dlist:
     slist = glob.glob(fspec)
 
     for s in slist:
-        print s
         ss = np.load(s)[0]
         if 'efficiency' not in ss:
             continue
@@ -44,8 +42,6 @@ for d in dlist:
         ef5.append(np.nanmean(ef[(wl > 800) * (wl < 900)]))
 
         jd.append(dtime.jd)
-        print (jd,ef1,ef2,ef3,ef4,ef5)
-
 
 legend = ['400-500', '500-600', '600-700', '700-800', '800-900']
 pl.plot(jd, ef1)
