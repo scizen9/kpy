@@ -8,9 +8,8 @@ import pylab as pl
 import numpy as np
 from astropy.time import Time
 
-
-fspec = os.path.join('/scr2/sedmdrp/redux', '20??????')
-# fspec = os.path.join('/Users/Neill/sedm/data/redux', '20??????')
+sdir = '/scr2/sedmdrp/redux'
+fspec = os.path.join(sdir, '20??????')
 dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])
 
 jd = []
@@ -43,15 +42,17 @@ for d in dlist:
 
         jd.append(dtime.jd)
 
-legend = ['400-500', '500-600', '600-700', '700-800', '800-900']
-pl.plot(jd, ef1)
-pl.plot(jd, ef2)
-pl.plot(jd, ef3)
-pl.plot(jd, ef4)
-pl.plot(jd, ef5)
+pl.plot(jd, ef1, label='400-500 nm')
+pl.plot(jd, ef2, label='500-600 nm')
+pl.plot(jd, ef3, label='600-700 nm')
+pl.plot(jd, ef4, label='700-800 nm')
+pl.plot(jd, ef5, label='800-900 nm')
 pl.xlabel('JD')
 pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
-pl.legend(legend)
-pl.show()
+pl.legend(loc=2)
+pl.grid(True)
+ofil = os.path.join(sdir, 'SEDM_eff_trend.pdf')
+pl.savefig(ofil)
+
 

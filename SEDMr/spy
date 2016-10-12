@@ -46,6 +46,8 @@ else
         case "report":
             python $SEDMPATH/SEDMr/DrpReport.py
             breaksw
+        case "effplot":
+            python $SEDMPATH/SEDMr/EffTrend.py
         default
             python -u $*
             breaksw
