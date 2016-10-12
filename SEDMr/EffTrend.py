@@ -10,7 +10,7 @@ from astropy.time import Time
 
 sdir = '/scr2/sedmdrp/redux'
 fspec = os.path.join(sdir, '20??????')
-dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])
+dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
 jd = []
 ef1 = []
