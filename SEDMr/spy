@@ -48,6 +48,7 @@ else
             breaksw
         case "effplot":
             python $SEDMPATH/SEDMr/EffTrend.py
+            breaksw
         default
             python -u $*
             breaksw
