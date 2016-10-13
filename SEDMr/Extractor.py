@@ -118,7 +118,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 
 
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
-                               airmass=1.0):
+                               airmass=1.0, sigfac=3.0):
     """ 
     Returns index of spectra picked by Guassian fit.
     
@@ -173,8 +173,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     pos = (xc, yc)
 
     # get 3-sigma extent
-    a = popt[3]*3.
-    b = popt[4]*3.
+    a = popt[3]*sigfac
+    b = popt[4]*sigfac
     theta = popt[5]
     z = popt[0]
 
@@ -368,12 +368,12 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     return skys
 
 
-def identify_bgd_spectra(spectra, pos, ellipse=None):
+def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
     kt = SedSpec.Spectra(spectra)
 
-    a = ellipse[0]
-    b = ellipse[1]
-    sky_a = ellipse[0] + 3.
+    a = ellipse[0] * expfac
+    b = ellipse[1] * expfac
+    sky_a = a + 3. * expfac
     sky_b = sky_a * (b/a)
     xc = ellipse[2]
     yc = ellipse[3]
@@ -509,7 +509,7 @@ def c_to_nm(coefficients, pix, offset=0.):
 
 
 def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
-                   corrfile=None, dnm=0., onto=None, sky=False):
+                   corrfile=None, dnm=0., onto=None, sky=False, percent=None):
     """Interp spectra onto common grid
 
     Args:
@@ -522,10 +522,12 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         dnm: Offset (usually for flexure) in nm
         onto:
         sky:
+        percent:
     """
 
     l_grid = onto
     s_grid = []
+    f_grid = []
     lamcoeff = None
     # for ix,spectrum in enumerate(all_spectra):
     for ix in six:
@@ -561,15 +563,77 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         if l_grid is None:
             # use the first set of wavelengths and store
             l_grid = l
-            s_grid.append(s * pon)
+            fl = s * pon
             lamcoeff = spectrum.lamcoeff
         else:
             # Interpolate onto our wavelength grid and store
             fun = interp1d(l, s*pon, bounds_error=False, fill_value=0)
-            s_grid.append(fun(l_grid))
+            fl = fun(l_grid)
+
+        s_grid.append(fl)
+
+        if percent is not None:
+            f_grid.append(np.nansum(fl[(l_grid > 500)*(l_grid < 900)]))
+
+    # Are we trimming at a percentile?
+    if percent is not None:
+        f_lim = np.percentile(f_grid, percent)
+        print "Trimming at %.1f %%, flux = %.1f" % (percent, f_lim)
+        if f_lim < 0:
+            print "WARNING: If A/B pair, sky level has changed between A and B"
+            print "         Consider single mode extraction"
+        l_grid = onto
+        s_grid = []
+        newsix = []
+        lamcoeff = None
+        # for ix,spectrum in enumerate(all_spectra):
+        for ix in six:
+            spectrum = all_spectra[ix]
+
+            if sky and all_spectra[ix].is_obj:
+                continue
+
+            l, s = spectrum.get_counts(the_spec='specw')
+            pix = np.arange(*spectrum.xrange)
+
+            # Preference to lamcoeff over mdn_coeff
+            if spectrum.lamcoeff is not None:
+                cs = spectrum.lamcoeff
+            else:
+                cs = spectrum.mdn_coeff
+
+            # get wavelengths for spectrum
+            l = c_to_nm(cs, pix, offset=dnm)
+
+            # skip short spectra (on or near edge of IFU)
+            if l.max() - l.min() < 300:
+                continue
+
+            # Positive or negative spectra
+            pon = sign
+
+            # Check if our wavelength grid is defined,
+            if l_grid is None:
+                # use the first set of wavelengths and store
+                l_grid = l
+                fl = s * pon
+                lamcoeff = spectrum.lamcoeff
+            else:
+                # Interpolate onto our wavelength grid and store
+                fun = interp1d(l, s * pon, bounds_error=False, fill_value=0)
+                fl = fun(l_grid)
+
+            f_test = np.nansum(fl[(l_grid > 500)*(l_grid < 900)])
+
+            if f_test > f_lim:
+                s_grid.append(fl)
+                newsix.append(ix)
+            else:
+                print "rejected - ix: %d, flx: %.1f" % (ix, f_test)
+    else:
+        newsix = None
 
     # average of all spectra selected
-    # I wonder if this should be a weighted mean?
     medspec = np.nanmean(s_grid, axis=0)
 
     # Output figures if requested
@@ -657,7 +721,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
     pl.figure(2)
 
-    return result
+    return result, newsix
 
 
 def imarith(operand1, op, operand2, result, doairmass=False, doexptime=False):
@@ -971,9 +1035,10 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
              lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
-    resa = interp_spectra(ex, sixa, outname=outname+".pdf")
-    skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
-    vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
+    resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
+    skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                  sky=True)
+    vara, nspxav = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1104,7 +1169,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
 def handle_single(imfile, fine, outname=None, offset=None,
                   radius=2., flat_corrections=None, nosky=False,
-                  lmin=650., lmax=700., specExtract=False):
+                  lmin=650., lmax=700., specExtract=False, autoExtract=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
@@ -1120,6 +1185,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
         specExtract (Boolean): perform extraction to a spectrum?
+        autoExtract (Boolean): automatically find source?
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -1217,59 +1283,77 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Get the object name of record
         objname = meta['header']['OBJECT'].split()[0]
 
-        message = "\nMark positive (red) target"
+        if autoExtract:
+            # Automatic extraction using Gaussian fit for Standard Stars
+            sixa, posa, adcpos, ellipse = \
+                identify_spectra_gauss_fit(ex,
+                                           prlltc=Angle(meta['PRLLTC'],
+                                                        unit='deg'),
+                                           lmin=lmin, lmax=lmax,
+                                           airmass=meta['airmass'],
+                                           sigfac=2.0)
+            radius_used = ellipse[0] * 0.5
+            quality = 1  # by definition
 
-        # A single-frame Science Object
-        sixa, posa, adcpos, ellipse, stats = \
-            identify_spectra_gui(ex, radius=radius,
-                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                 scaled=False, bgd_sub=False,
-                                 lmin=lmin, lmax=lmax,
-                                 objname=objname, airmass=meta['airmass'],
-                                 nosky=nosky,
-                                 message=message)
-        radius_used = ellipse[0]
+            # Use all sky spaxels in image
+            kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
 
-        # Use an annulus for sky spaxels for Science Objects
-        kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
+        else:
+            message = "\nMark positive (red) target"
+
+            # A single-frame Science Object
+            sixa, posa, adcpos, ellipse, stats = \
+                identify_spectra_gui(ex, radius=radius,
+                                     prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                     scaled=False, bgd_sub=False,
+                                     lmin=lmin, lmax=lmax,
+                                     objname=objname, airmass=meta['airmass'],
+                                     nosky=nosky,
+                                     message=message)
+            radius_used = ellipse[0]
+
+            # Get quality of observation
+            print "Enter quality of observation:"
+            print "1 - good       (no problems)"
+            print "2 - acceptable (minor problem)"
+            print "3 - poor       (major problem)"
+            print "4 - no object visible"
+            q = 'x'
+            quality = -1
+            prom = ": "
+            while not q.isdigit() or quality < 1 or quality > 4:
+                q = raw_input(prom)
+                if q.isdigit():
+                    quality = int(q)
+                    if quality < 1 or quality > 4:
+                        prom = "Try again: "
+                else:
+                    prom = "Try again: "
+            print "Quality = %d, now making outputs..." % quality
+
+            # Use an annulus for sky spaxels for Science Objects
+            kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
 
         for ix in sixa:
             ex[ix].is_obj = True
         for ix in kixa:
             ex[ix].is_sky = True
 
-        # Get quality of observation
-        print "Enter quality of observation:"
-        print "1 - good       (no problems)"
-        print "2 - acceptable (minor problem)"
-        print "3 - poor       (major problem)"
-        print "4 - no object visible"
-        q = 'x'
-        quality = -1
-        prom = ": "
-        while not q.isdigit() or quality < 1 or quality > 4:
-            q = raw_input(prom)
-            if q.isdigit():
-                quality = int(q)
-                if quality < 1 or quality > 4:
-                    prom = "Try again: "
-            else:
-                prom = "Try again: "
-        print "Quality = %d, now making outputs..." % quality
-
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
                  quality=quality, lmin=lmin, lmax=lmax)
         # get the mean spectrum over the selected spaxels
-        resa = interp_spectra(ex, sixa, outname=outname+".pdf")
-        skya = interp_spectra(ex, kixa, outname=outname+"_sky.pdf", sky=True)
-        vara = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
+        resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
+                                    percent=30.)
+        skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                     sky=True)
+        vara, nsxav = interp_spectra(e_var, nsxa, outname=outname+"_var.pdf")
         # Plot out the X/Y positions of the selected spaxels
         xsa = []
         ysa = []
         xsk = []
         ysk = []
-        for ix in sixa:
+        for ix in nsxa:
             xsa.append(ex[ix].X_as)
             ysa.append(ex[ix].Y_as)
         for ix in kixa:
@@ -1330,23 +1414,23 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Calculate output corrected spectrum
         if nosky:
             # Account for airmass and aperture
-            res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(sixa)
+            res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
         else:
             # Account for sky, airmass and aperture
-            res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
+            res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
 
         # Store new metadata
         res[0]['exptime'] = meta['exptime']
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr'] = extcorr
-        res[0]['skyph'] = sky * len(sixa)
+        res[0]['skyph'] = sky * len(nsxa)
         res[0]['skynm'] = ll
         res[0]['var'] = varspec
         res[0]['radius_as'] = radius_used
         res[0]['position'] = posa
-        res[0]['N_spax'] = len(sixa)
+        res[0]['N_spax'] = len(nsxa)
         res[0]['meta'] = meta
-        res[0]['object_spaxel_ids'] = sixa
+        res[0]['object_spaxel_ids'] = nsxa
         res[0]['sky_spaxel_ids'] = kixa
         res[0]['sky_spectra'] = skya[0]['spectra']
         res[0]['sky_subtraction'] = False if nosky else True
@@ -1545,15 +1629,17 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             if ex[ix].is_obj:
                 kixb.remove(ix)
 
-        resa = interp_spectra(ex, sixa, sign=1, outname=outname+"_A.pdf")
-        resb = interp_spectra(ex, sixb, sign=-1, outname=outname+"_B.pdf")
-        skya = interp_spectra(ex, kixa, sign=1, outname=outname+"_skyA.pdf",
-                              sky=True)
-        skyb = interp_spectra(ex, kixb, sign=-1, outname=outname+"_skyB.pdf",
-                              sky=True)
-        vara = interp_spectra(ex_var, sixa, sign=1,
+        resa, nsxA = interp_spectra(ex, sixa, sign=1,
+                                    outname=outname+"_A.pdf", percent=30.)
+        resb, nsxB = interp_spectra(ex, sixb, sign=-1,
+                                    outname=outname+"_B.pdf", percent=30.)
+        skya, nsxAk = interp_spectra(ex, kixa, sign=1,
+                                     outname=outname+"_skyA.pdf", sky=True)
+        skyb, nsxBk = interp_spectra(ex, kixb, sign=-1,
+                                     outname=outname+"_skyB.pdf", sky=True)
+        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1,
                               outname=outname+"_A_var.pdf")
-        varb = interp_spectra(ex_var, sixb, sign=1,
+        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1,
                               outname=outname+"_B_var.pdf")
 
         # Plot out the X/Y selected spectra
@@ -1565,10 +1651,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         yka = []
         xkb = []
         ykb = []
-        for ix in sixa:
+        for ix in nsxA:
             xsa.append(ex[ix].X_as)
             ysa.append(ex[ix].Y_as)
-        for ix in sixb:
+        for ix in nsxB:
             xsb.append(ex[ix].X_as)
             ysb.append(ex[ix].Y_as)
         for ix in kixa:
@@ -1603,7 +1689,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Y [as]")
-        tlab = meta['outname']
+        tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
+                                               meta['outname'])
         air = (meta['airmass1'] + meta['airmass2']) / 2.
         tlab += ", Airmass: %.3f" % air
         if 1 <= quality <= 4:
@@ -1641,7 +1728,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             varspec = np.nanmean([var_a(ll), var_b(ll)], axis=0) * \
-                      (len(sixa) + len(sixb))
+                      (len(nsxA) + len(nsxB))
 
         res = [{"doc": resa[0]["doc"],
                 "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
@@ -1664,7 +1751,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 warnings.simplefilter("ignore", category=FutureWarning)
                 res[0]['ph_10m_nm'] = \
                     np.nansum([f1(ll) * extcorra, f2(ll) * extcorrb],
-                              axis=0) * (len(sixa) + len(sixb))
+                              axis=0) * (len(nsxA) + len(nsxB))
         else:
             print "Sky subtraction on"
             with warnings.catch_warnings():
@@ -1672,23 +1759,23 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 res[0]['ph_10m_nm'] = \
                     np.nansum([(f1(ll)-sky_a(ll)) * extcorra,
                                (f2(ll)-sky_b(ll)) * extcorrb], axis=0) * \
-                             (len(sixa) + len(sixb))
+                             (len(nsxA) + len(nsxB))
 
         res[0]['exptime'] = meta['exptime']
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
-        res[0]['skyph'] = sky * (len(sixa) + len(sixb))
+        res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
         res[0]['var'] = varspec
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa
-        res[0]['N_spaxA'] = len(sixa)
-        res[0]['N_spaxB'] = len(sixb)
+        res[0]['N_spaxA'] = len(nsxA)
+        res[0]['N_spaxB'] = len(nsxB)
         res[0]['meta'] = meta
-        res[0]['object_spaxel_ids_A'] = sixa
+        res[0]['object_spaxel_ids_A'] = nsxA
         res[0]['sky_spaxel_ids_A'] = kixa
-        res[0]['object_spaxel_ids_B'] = sixb
+        res[0]['object_spaxel_ids_B'] = nsxB
         res[0]['sky_spaxel_ids_B'] = kixb
         res[0]['sky_subtraction'] = False if nosky else True
         res[0]['quality'] = quality
@@ -1727,6 +1814,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                         help='Perform flat extraction')
     parser.add_argument('--specExtract', action="store_true", default=False,
                         help='Perform spectral extraction')
+    parser.add_argument('--autoExtract', action="store_true", default=False,
+                        help='Perform automatic extraction')
 
     args = parser.parse_args()
 
@@ -1758,7 +1847,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                 handle_single(args.A, args.fine, outname=args.outname,
                               offset=args.Aoffset, radius=args.radius_as,
                               flat_corrections=flat, nosky=args.nosky,
-                              specExtract=args.specExtract)
+                              specExtract=args.specExtract,
+                              autoExtract=args.autoExtract)
         else:
             print "Standard Star Extraction to %s.npy" % args.outname
             star = Stds.Standards[args.std]

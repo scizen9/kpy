@@ -308,7 +308,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 sp_%(outname)s: %(outname)s
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig
 
 redo_%(name)s:
@@ -413,6 +413,7 @@ def to_makefile(objs, calibs):
     stds_dep = ""
     sci = ""
     oth = ""
+    auto = ""
 
     flexures = ""
 
@@ -459,6 +460,7 @@ def to_makefile(objs, calibs):
                                          standard=standard)
                         MF += m
                         oth += "sp_" + a + " "
+                        auto += "sp_" + a + " "
                 continue
 
             # Handle science targets
@@ -491,6 +493,7 @@ def to_makefile(objs, calibs):
                             sci += "sp_" + a + " "
                         else:
                             oth += "sp_" + a + " "
+                            auto += "sp_" + a + " "
     stds += " "
 
     preamble = make_preamble
@@ -499,10 +502,11 @@ def to_makefile(objs, calibs):
     clean = "\n\nclean:\n\trm %s %s" % (all, stds)
     science = "\n\nscience: %s report\n" % sci
     other = "\n\nother: %s report\n" % oth
+    automatic = "\n\nauto: %s report\n" % auto
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
 
-    f.write(preamble + corr + "\nall: stds %s%s%s%s" % (all, clean,
-                                                        science, other) +
+    f.write(preamble + corr + "\nall: stds %s%s%s%s%s" % (all, clean, science,
+                                                          other, automatic) +
             "\n" + MF + "\n" + flexures)
     f.close()
 
