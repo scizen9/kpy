@@ -92,7 +92,7 @@ def start_listening_loop():
             command = data.split(",")[0]
             
             if "FOCUS" in command:
-                logger.info( "Finding the best focus.")
+                logger.info( "Finding the best focus for RC.")
                 lfiles = data.split(",")[1:]
                 for i, lf in enumerate(lfiles):
                     lf = lf.replace("raw", "phot")
@@ -103,6 +103,18 @@ def start_listening_loop():
                 focus, sigma = sextractor.get_focus(lfiles, plot=True)
                 connection.sendall("%.2f,%.2f\n"%(focus, sigma))
                 logger.info("Selected focus: %.2f,%.2f\n"%(focus, sigma))
+            elif "FOCUSIFU" in command:
+                logger.info( "Finding the best focus for the IFU.")
+                lfiles = data.split(",")[1:]
+                for i, lf in enumerate(lfiles):
+                    lf = lf.replace("raw", "phot")
+                    lfiles[i] = lf
+                #Wait until the image is available.                
+                while (not os.path.isfile(lfiles[-1])):
+                        time.sleep(0.5)
+                focus, sigma = sextractor.get_focusifu(lfiles, plot=True)
+                connection.sendall("%.2f,%.2f\n"%(focus, sigma))
+                logger.info("Selected focus ifu: %.2f,%.2f\n"%(focus, sigma))
             elif "SAO" in command:
                 try:
                     logger.info( "Looking for a nice SAO star.")
