@@ -203,6 +203,7 @@ def start_listening_loop():
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
             else:
+                logger.error( "Unknown command: "%command)
                 break
         #Exit and restart the listener if the program is running for more than 12 hours and 
         #it is later than 10AM, so we don't disrupt the night scheduler.
