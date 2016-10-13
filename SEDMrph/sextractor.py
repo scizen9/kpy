@@ -104,7 +104,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
  
         focpos.append(pos)
         fwhms.append(np.nanmean(s[:,7]*0.394))
-	mad = np.median(np.abs(s[:,7] - np.nanmean(s[:,7])))/0.67448975019608171 * 0.394
+        mad = np.median(np.abs(s[:,7] - np.nanmean(s[:,7])))/0.67448975019608171 * 0.394
         #std_fwhm.append(np.std(s[:,6]*0.394))
         std_fwhm.append(mad)
     
@@ -134,7 +134,82 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
     return x[np.argmin(p(x))], coefs[0]
     
+def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
+    '''
+    Analyses the sextractor filelist to determine the best focus.
+   
+	#   1 X_IMAGE                Object position along x                                    [pixel]
+	#   2 Y_IMAGE                Object position along y                                    [pixel]
+	#   3 ALPHA_J2000            Right ascension of barycenter (J2000)                      [deg]
+	#   4 DELTA_J2000            Declination of barycenter (J2000)                          [deg]
+	#   5 MAG_BEST               Best of MAG_AUTO and MAG_ISOCOR                            [mag]
+	#   6 MAGERR_BEST            RMS error for MAG_BEST                                     [mag]
+	#   7 FWHM_WORLD             FWHM assuming a gaussian core                              [deg]
+	#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
+	#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE                                       
+	#  10 BACKGROUND             Background at centroid position                            [count]
+	#  11 FLAGS                  Extraction flags   
+ 
+    returns: A tuple containing:
+        1. - The best focus values as interpolated from the images.
+        2. - The sigma whithin which we should look for a finer focus.
+    '''
+    sexfileslist = list(sexfileslist)    
+    sexfileslist.sort()
+ 
+    focpos = []
+    fwhms = []
+    std_fwhm = []
+    for i, f in enumerate(sexfileslist):
+        print f
+        fits = f.replace("sextractor/", "").replace(".sex", ".fits")
+        print fits
+        FF = pf.open(fits)
+        pos= float(FF[0].header['focpos'])
 
+        s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
+        ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), ("background", np.float), ("flags", np.float)])
+        
+        #sb = s[s["mag"]<np.median(s["mag"]) - 4*np.std(s["mag"])]
+        
+        sb = s[s["ellipticity"]> 0.9]
+        
+        if(debug):
+            plt.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]))
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
+            plt.clf()
+        
+        focpos.append(pos)
+        fwhms.append(np.min(sb["mag"]))
+        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 10)))
+    
+    focpos = np.array(focpos)
+    fwhms = np.array(fwhms)
+    std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
+    
+    print focpos, fwhms, 1/std_fwhm
+    coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
+    
+    x = np.linspace(np.min(focpos), np.max(focpos), 100)
+    p = np.poly1d(coefs)
+    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs,std_fwhm
+    
+    
+    if (plot==True):
+        plt.title("Best focus:%.2f"% x[np.argmin(p(x))])
+        with open("/tmp/focus", "w") as f:
+            f.write(str(focpos))
+            f.write(str(fwhms))
+        plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
+        plt.plot(x, p(x), "-")
+        plt.xlabel("Focus (mm)")
+        plt.ylabel("Brightest spaxel")
+        if (interactive):
+            plt.show()
+        else:
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+    return x[np.argmin(p(x))], coefs[0]
+    
 def analyse_image(sexfile):
     '''
     Analyses the sextractor filelist to determine the best focus.
@@ -207,6 +282,15 @@ def get_focus(lfiles, plot=True):
     '''
     sexfiles = run_sex(lfiles)
     focus, sigma = analyse_sex(sexfiles, plot=plot)
+    return focus, sigma
+    
+def get_focus_ifu(lfiles, plot=True):
+    '''
+    Receives a list of focus ifu files and returns the best focus.
+    '''
+    sexfiles = run_sex(lfiles)
+    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot)
+    
     return focus, sigma
     
 def get_image_pars(image):
