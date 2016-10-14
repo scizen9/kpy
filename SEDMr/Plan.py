@@ -301,6 +301,12 @@ def MF_single(objname, obsnum, ifile, standard=None):
         tp['STD'] = ''
     else:
         tp['STD'] = "--std %s" % standard
+
+    if 'PTF' in objname:
+        tp['interact'] = '--interact'
+    else:
+        tp['interact'] = ''
+
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
@@ -309,7 +315,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 
 sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
-\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
+\t$(PLOT) --spec %(specnam)s --savespec --savefig %(interact)s
 
 redo_%(name)s:
 \ttouch %(outname)s
