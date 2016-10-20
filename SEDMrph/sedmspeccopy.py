@@ -45,7 +45,7 @@ def parse_and_fill(spec, snidoutput):
             "Ia": 0, "Ib": 0, "Ic": 0, "II": 0, "NotSN": 0, "rlap": 0,
             "bestMatchType": "", "bestMatchSubtype": "", "bestMatchRedshift": 0}
 
-    if os.exists(snidoutput):
+    if os.path.exists(snidoutput):
         with open(snidoutput, "r") as snid:
 
             lines = snid.readlines()
@@ -87,7 +87,7 @@ def parse_and_fill(spec, snidoutput):
             else:
                 break
 
-        if os.exists(snidoutput):
+        if os.path.exists(snidoutput):
             specLines.insert(commentLinesCount,
                              "# SNIDFRAC_NOTSN: " + str(pars["NotSN"]) + "\n")
             specLines.insert(commentLinesCount,
