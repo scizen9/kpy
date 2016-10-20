@@ -153,8 +153,8 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             if data['std-maxnm'] > maxnm:
                 maxnm = data['std-maxnm']
         # Convert file named sp_STD-nnnn_obs* to a name compaitable
-        # with Standards.py
-        pred = ifile.lstrip("sp_STD-")
+        # with Standards.py.  First strip of "sp_STD-"
+        pred = ifile[7:]
         pred = pred.split("_")[0]
         legend.append(pred)
         pred = pred.lower().replace("+", "").replace("-", "_")

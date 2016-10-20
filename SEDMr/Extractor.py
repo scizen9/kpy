@@ -1169,7 +1169,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
 def handle_single(imfile, fine, outname=None, offset=None,
                   radius=2., flat_corrections=None, nosky=False,
-                  lmin=650., lmax=700., specExtract=False, autoExtract=False):
+                  lmin=650., lmax=700.,
+                  specExtract=False, autoExtract=False, interact=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
@@ -1186,6 +1187,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         lmax (float): upper wavelength limit for image generation
         specExtract (Boolean): perform extraction to a spectrum?
         autoExtract (Boolean): automatically find source?
+        interact (Boolean): Interactively set the quality of the extraction?
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -1312,24 +1314,29 @@ def handle_single(imfile, fine, outname=None, offset=None,
                                      message=message)
             radius_used = ellipse[0]
 
-            # Get quality of observation
-            print "Enter quality of observation:"
-            print "1 - good       (no problems)"
-            print "2 - acceptable (minor problem)"
-            print "3 - poor       (major problem)"
-            print "4 - no object visible"
-            q = 'x'
-            quality = -1
-            prom = ": "
-            while not q.isdigit() or quality < 1 or quality > 4:
-                q = raw_input(prom)
-                if q.isdigit():
-                    quality = int(q)
-                    if quality < 1 or quality > 4:
+            if interact:
+
+                # Get quality of observation
+                print "Enter quality of observation:"
+                print "1 - good       (no problems)"
+                print "2 - acceptable (minor problem)"
+                print "3 - poor       (major problem)"
+                print "4 - no object visible"
+                q = 'x'
+                quality = -1
+                prom = ": "
+                while not q.isdigit() or quality < 1 or quality > 4:
+                    q = raw_input(prom)
+                    if q.isdigit():
+                        quality = int(q)
+                        if quality < 1 or quality > 4:
+                            prom = "Try again: "
+                    else:
                         prom = "Try again: "
-                else:
-                    prom = "Try again: "
-            print "Quality = %d, now making outputs..." % quality
+                print "Quality = %d, now making outputs..." % quality
+            else:
+                quality = 0
+                print "Now making outputs..."
 
             # Use an annulus for sky spaxels for Science Objects
             kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
@@ -1448,7 +1455,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
 def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 flat_corrections=None, nosky=False, lmin=650., lmax=700.,
-                specExtract=False):
+                specExtract=False, interact=False):
     """Loads IFU frame "afile" and "bfile" and extract A-B spectra using "fine".
 
     Args:
@@ -1464,6 +1471,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
         specExtract (Boolean): perform extraction to a spectrum?
+        interact (Boolean): Interactively set the quality of the extraction?
 
     Returns:
         The extracted spectrum, a dictionary:
@@ -1593,24 +1601,29 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         for ix in sixb:
             ex[ix].is_obj = True
 
-        # Get quality of observation
-        print "Enter quality of observation:"
-        print "1 - good       (no problems)"
-        print "2 - acceptable (minor problem)"
-        print "3 - poor       (major problem)"
-        print "4 - no object visible"
-        q = 'x'
-        quality = -1
-        prom = ": "
-        while not q.isdigit() or quality < 1 or quality > 4:
-            q = raw_input(prom)
-            if q.isdigit():
-                quality = int(q)
-                if quality < 1 or quality > 4:
+        if interact:
+
+            # Get quality of observation
+            print "Enter quality of observation:"
+            print "1 - good       (no problems)"
+            print "2 - acceptable (minor problem)"
+            print "3 - poor       (major problem)"
+            print "4 - no object visible"
+            q = 'x'
+            quality = -1
+            prom = ": "
+            while not q.isdigit() or quality < 1 or quality > 4:
+                q = raw_input(prom)
+                if q.isdigit():
+                    quality = int(q)
+                    if quality < 1 or quality > 4:
+                        prom = "Try again: "
+                else:
                     prom = "Try again: "
-            else:
-                prom = "Try again: "
-        print "Quality = %d, now making outputs..." % quality
+            print "Quality = %d, now making outputs..." % quality
+        else:
+            quality = 0
+            print "Now making outputs..."
 
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
@@ -1816,6 +1829,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                         help='Perform spectral extraction')
     parser.add_argument('--autoExtract', action="store_true", default=False,
                         help='Perform automatic extraction')
+    parser.add_argument('--interact', action="store_true", default=False,
+                        help='Interactively set the quality')
 
     args = parser.parse_args()
 
@@ -1835,7 +1850,8 @@ Handles a single A image and A+B pair as well as flat extraction.
         handle_dual(args.A, args.B, args.fine, outname=args.outname,
                     offset=args.Aoffset, radius=args.radius_as,
                     flat_corrections=flat, nosky=args.nosky,
-                    specExtract=args.specExtract)
+                    specExtract=args.specExtract,
+                    interact=args.interact)
 
     elif args.A is not None:
         if args.std is None:
@@ -1848,7 +1864,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                               offset=args.Aoffset, radius=args.radius_as,
                               flat_corrections=flat, nosky=args.nosky,
                               specExtract=args.specExtract,
-                              autoExtract=args.autoExtract)
+                              autoExtract=args.autoExtract,
+                              interact=args.interact)
         else:
             print "Standard Star Extraction to %s.npy" % args.outname
             star = Stds.Standards[args.std]

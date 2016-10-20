@@ -112,8 +112,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         pl.show()
 
 
-def check_spec(specname, corrname='std-correction.npy',
-               redshift=0, smoothing=0, savefig=False, savespec=False):
+def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
+               savefig=False, savespec=False, interact=False):
     """Plot a spectrum.
 
     This function can produce an ascii spectrum suitable for uploading
@@ -127,6 +127,7 @@ def check_spec(specname, corrname='std-correction.npy',
         smoothing (int): number of pixels to smooth over
         savefig (bool): save a pdf of the plot
         savespec (bool): save an ascii spectrum
+        interact (bool): query for the quality of the spectrum
 
     Returns:
         None
@@ -312,13 +313,43 @@ def check_spec(specname, corrname='std-correction.npy',
     pl.grid(True)
     pl.ioff()
 
+    if interact:
+        pl.ion()
+        pl.show()
+        # Get quality of observation
+        print "Enter quality of observation:"
+        print "1 - good       (no problems)"
+        print "2 - acceptable (minor problem)"
+        print "3 - poor       (major problem)"
+        print "4 - no object visible"
+        q = 'x'
+        qual = -1
+        prom = ": "
+        while not q.isdigit() or qual < 1 or qual > 4:
+            q = raw_input(prom)
+            if q.isdigit():
+                qual = int(q)
+                if qual < 1 or qual > 4:
+                    prom = "Try again: "
+            else:
+                prom = "Try again: "
+        print "Quality = %d" % qual
+        tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
+               (specname, ec, et, "On" if skysub else "Off", qual)
+        pl.title(tlab)
+        res = np.load(specname)
+        res[0]['quality'] = qual
+        np.save(specname, res)
+        pl.ioff()
+
     # Save fig to file
     if savefig:
         outf = specname[(specname.find('_') + 1):specname.find('.')] + \
                '_SEDM.pdf'
         pl.savefig(outf)
         print "Figure saved to " + outf
-    else:
+
+    if not interact and not savefig:
         pl.show()
 
     if savespec:
@@ -370,6 +401,8 @@ if __name__ == '__main__':
                         help='Save pdf figure')
     parser.add_argument('--savespec', action="store_true", default=False,
                         help='Save spec ASCII file')
+    parser.add_argument('--interact', action="store_true", default=False,
+                        help='Interactively enter spectrum quality')
     parser.add_argument('--spec', type=str, help='Extracted spectrum file')
     parser.add_argument('--corrname', type=str, default='std-correction.npy')
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
@@ -383,4 +416,5 @@ if __name__ == '__main__':
     if args.spec is not None:
         check_spec(args.spec, corrname=args.corrname, redshift=args.redshift,
                    smoothing=args.smoothing,
-                   savefig=args.savefig, savespec=args.savespec)
+                   savefig=args.savefig, savespec=args.savespec,
+                   interact=args.interact)
