@@ -22,12 +22,11 @@ def find_line_match(lines, matchDict):
 
     for index in range(0, len(lines)):
         for positionKey in matchDict:
-            if(len(lines[index].split()) == 0 or
-                    len(lines[index].split()) <= positionKey or
-                    lines[index].split()[positionKey] !=
+            if (len(lines[index].split()) == 0 or 
+                    len(lines[index].split()) <= positionKey or 
+                    lines[index].split()[positionKey] != 
                     matchDict[positionKey]):
-                lineNumber = -1
-                break
+                pass
             else:
                 lineNumber = index
                 break
@@ -45,33 +44,36 @@ def parse_and_fill(spec, snidoutput):
     pars = {"zmed": -1, "zmederr": -1, "agem": -1, "agemerr": -1,
             "Ia": 0, "Ib": 0, "Ic": 0, "II": 0, "NotSN": 0, "rlap": 0,
             "bestMatchType": "", "bestMatchSubtype": "", "bestMatchRedshift": 0}
-    
-    with open(snidoutput, "r") as snid:
-        
-        lines = snid.readlines()
 
-        zmedLine = find_line_match(lines, {0: 'zmed'})
-        agemLine = find_line_match(lines, {0: 'agem'})
-        typeIaLine = find_line_match(lines, {0: 'Ia'})
-        typeIbLine = find_line_match(lines, {0: 'Ib'})
-        typeIcLine = find_line_match(lines, {0: 'Ic'})
-        typeIILine = find_line_match(lines, {0: 'II'})
-        typeNotSNLine = find_line_match(lines, {0: 'NotSN'})
-        bestMatchLine = find_line_match(lines, {0: '1'})
+    if os.exists(snidoutput):
+        with open(snidoutput, "r") as snid:
 
-        pars["zmed"] = float(lines[zmedLine].split()[1])
-        pars["zmederr"] = float(lines[zmedLine].split()[2])
-        pars["agem"] = float(lines[agemLine].split()[1])
-        pars["agemerr"] = float(lines[agemLine].split()[2])
-        pars["Ia"] = float(lines[typeIaLine].split()[2])
-        pars["Ib"] = float(lines[typeIbLine].split()[2])
-        pars["Ic"] = float(lines[typeIcLine].split()[2])
-        pars["II"] = float(lines[typeIILine].split()[2])
-        pars["NotSN"] = float(lines[typeNotSNLine].split()[2])
-        pars["rlap"] = float(lines[bestMatchLine].split()[4])       
-        pars["bestMatchType"] = lines[bestMatchLine].split()[2].split("-")[0]
-        pars["bestMatchSubtype"] = lines[bestMatchLine].split()[2].split("-")[1]
-        pars["bestMatchRedshift"] = float(lines[bestMatchLine].split()[5])
+            lines = snid.readlines()
+
+            zmedLine = find_line_match(lines, {0: 'zmed'})
+            agemLine = find_line_match(lines, {0: 'agem'})
+            typeIaLine = find_line_match(lines, {0: 'Ia'})
+            typeIbLine = find_line_match(lines, {0: 'Ib'})
+            typeIcLine = find_line_match(lines, {0: 'Ic'})
+            typeIILine = find_line_match(lines, {0: 'II'})
+            typeNotSNLine = find_line_match(lines, {0: 'NotSN'})
+            bestMatchLine = find_line_match(lines, {0: '1'})
+
+            pars["zmed"] = float(lines[zmedLine].split()[1])
+            pars["zmederr"] = float(lines[zmedLine].split()[2])
+            pars["agem"] = float(lines[agemLine].split()[1])
+            pars["agemerr"] = float(lines[agemLine].split()[2])
+            pars["Ia"] = float(lines[typeIaLine].split()[2])
+            pars["Ib"] = float(lines[typeIbLine].split()[2])
+            pars["Ic"] = float(lines[typeIcLine].split()[2])
+            pars["II"] = float(lines[typeIILine].split()[2])
+            pars["NotSN"] = float(lines[typeNotSNLine].split()[2])
+            pars["rlap"] = float(lines[bestMatchLine].split()[4])
+            pars["bestMatchType"] = \
+                lines[bestMatchLine].split()[2].split("-")[0]
+            pars["bestMatchSubtype"] = \
+                lines[bestMatchLine].split()[2].split("-")[1]
+            pars["bestMatchRedshift"] = float(lines[bestMatchLine].split()[5])
 
     print pars
 
@@ -85,34 +87,38 @@ def parse_and_fill(spec, snidoutput):
             else:
                 break
 
-        specLines.insert(commentLinesCount,
-                         "# SNIDFRAC_NOTSN: " + str(pars["NotSN"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDFRAC_II: " + str(pars["II"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDFRAC_IC: " + str(pars["Ic"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDFRAC_IB: " + str(pars["Ib"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDFRAC_IA: " + str(pars["Ia"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDAGEMERR: " + str(pars["agemerr"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDAGEM: " + str(pars["agem"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDZMEDERR: " + str(pars["zmederr"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDZMED: " + str(pars["zmed"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDMATCHREDSHIFT: " +
-                         str(pars["bestMatchRedshift"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDMATCHRLAP: " + str(pars["rlap"]) + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDMATCHSUBTYPE: " +
-                         pars["bestMatchSubtype"] + "\n")
-        specLines.insert(commentLinesCount,
-                         "# SNIDMATCHTYPE: " + pars["bestMatchType"] + "\n")
+        if os.exists(snidoutput):
+            specLines.insert(commentLinesCount,
+                             "# SNIDFRAC_NOTSN: " + str(pars["NotSN"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDFRAC_II: " + str(pars["II"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDFRAC_IC: " + str(pars["Ic"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDFRAC_IB: " + str(pars["Ib"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDFRAC_IA: " + str(pars["Ia"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDAGEMERR: " + str(pars["agemerr"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDAGEM: " + str(pars["agem"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDZMEDERR: " + str(pars["zmederr"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDZMED: " + str(pars["zmed"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDMATCHREDSHIFT: " +
+                             str(pars["bestMatchRedshift"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDMATCHRLAP: " + str(pars["rlap"]) + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDMATCHSUBTYPE: " +
+                             pars["bestMatchSubtype"] + "\n")
+            specLines.insert(commentLinesCount,
+                             "# SNIDMATCHTYPE: " + pars["bestMatchType"] + "\n")
+        else:
+            specLines.insert(commentLinesCount,
+                             "# SNIDMATCHTYPE: NONE\n")
 
     with open(spec, "w") as specOut:
         specOut.write("".join(specLines))
@@ -149,7 +155,7 @@ def run_snid(specdir, overwrite=False):
                 continue
             
         # Else, we run the classification with snid
-        cmd = "snid wmin=4500 wmax=9500 skyclip=1 medlen=20 aband=1 rlapmin=4 plot=0 %s"%f                
+        cmd = "snid wmin=4000 wmax=9500 skyclip=1 medlen=20 aband=1 rlapmin=4 inter=0 plot=0 %s"%f
         print cmd
         try:
             subprocess.call(cmd, shell=True)
@@ -235,6 +241,7 @@ if __name__ == '__main__':
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
                                                                         newname)
             print cmd
+            cmd = "ls %s" % f
             try:
                 subprocess.call(cmd, shell=True)
             except:
