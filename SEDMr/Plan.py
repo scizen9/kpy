@@ -179,7 +179,7 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
 
 %_SEDM.pdf : sp_%.npy
-	$(PLOT) --spec $< --savefig
+	$(PLOT) --spec $< --savefig --interact
 
 .PHONY: cleanstds newstds report ptfreport finalreport
 
@@ -301,6 +301,12 @@ def MF_single(objname, obsnum, ifile, standard=None):
         tp['STD'] = ''
     else:
         tp['STD'] = "--std %s" % standard
+
+    if 'PTF' in objname:
+        tp['interact'] = '--interact'
+    else:
+        tp['interact'] = ''
+
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
@@ -309,7 +315,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 
 sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
-\t$(PLOT) --spec %(specnam)s --savespec --savefig
+\t$(PLOT) --spec %(specnam)s --savespec --savefig %(interact)s
 
 redo_%(name)s:
 \ttouch %(outname)s
@@ -397,7 +403,7 @@ def MF_AB(objname, obsnum, A, B):
 
 sp_%(outname)s: %(outname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
-\t$(PLOT) --spec %(specnam)s --savespec --savefig
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 redo_%(name)s:
 \ttouch %(outname)s
@@ -444,8 +450,8 @@ def to_makefile(objs, calibs):
 
                     for ix, obsfile in enumerate(obsfiles):
                         m, a = MF_standard(objname, "%i_%i" % (obsnum, ix),
-                                         obsfile,
-                                         standard=standard)
+                                           obsfile,
+                                           standard=standard)
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "
