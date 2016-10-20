@@ -120,20 +120,32 @@ def parse_and_fill(spec, snidoutput):
 
 def run_snid(specdir, overwrite=False):
     """
-    Runs snid in batch mode on all the txt files found in the given directory.
-    If a given file was already classified, it skips it, unless overwrite is requested.
+    Runs snid in batch mode on all the PTF*_SEDM.txt files found in the given
+    directory.  If a given file was already classified, it skips it, unless
+    overwrite is requested.
     """
     
-    for f in glob.glob(os.path.join(specdir, "*.txt")):
+    for f in glob.glob(os.path.join(specdir, "PTF*_SEDM.txt")):
 
         # retrieve the quality of the spectra.
         with open(f, "r") as sf:
             a = sf.readlines()
-            
-            clas = [ai for ai in a if "TYPE" in ai]
-            
-            # If the file has been classified, move to the next
-            if len(clas) > 0 and not overwrite:
+
+            qual = [ai for ai in a if "QUALITY" in ai]
+
+            if len(qual) > 0:
+                match = re.search(r'\(?([0-9]+)\)?', qual[0])
+                qual = int(match.group(1))
+            else:
+                qual = 5
+
+            if qual < 3:
+                clas = [ai for ai in a if "TYPE" in ai]
+
+                # If the file has been classified, move to the next
+                if len(clas) > 0 and not overwrite:
+                    continue
+            else:
                 continue
             
         # Else, we run the classification with snid
@@ -180,7 +192,13 @@ if __name__ == '__main__':
         specdir = os.path.abspath(specdir)
         timestamp = os.path.basename(specdir)
         os.chdir(specdir)
+
     print os.getcwd()
+
+    # Run snid on extracted spectra
+    print "Running snid on PTF*_SEDM.txt files in %s" % specdir
+    run_snid(specdir=specdir)
+
     sedmfiles = glob.glob("PTF*.txt")
     print "Copying", sedmfiles
     
@@ -188,7 +206,7 @@ if __name__ == '__main__':
     
     for f in sedmfiles:
         
-        qual = -1
+        qual = 5
         # retrieve the quality of the spectra.
         with open(f, "r") as sf:
             a = sf.readlines()
@@ -198,13 +216,15 @@ if __name__ == '__main__':
             if len(qual) > 0:
                 match = re.search(r'\(?([0-9]+)\)?', qual[0])
                 qual = int(match.group(1))
+            else:
+                qual = 5
 
         # Only write the spectra that have good qualities.
         if qual < 3:
             newname = os.path.basename(f).split("_")[0].replace("PTF", "")
             
             version = 1
-            if not versions.has_key(newname ):
+            if not versions.has_key(newname):
                 versions[newname] = 1
             else:
                 versions[newname] += 1
