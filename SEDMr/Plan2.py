@@ -423,8 +423,8 @@ def to_makefile(objs, calibs):
 
                     for ix, obsfile in enumerate(obsfiles):
                         m, a = MF_standard(objname, "%i_%i" % (obsnum, ix),
-                                         obsfile,
-                                         standard=standard)
+                                           obsfile,
+                                           standard=standard)
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "

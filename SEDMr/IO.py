@@ -1,4 +1,3 @@
-
 import os
 import pyfits as pf
 import NPK.Util as UU
@@ -36,7 +35,7 @@ def readspec(path, corrname='std-correction.npy'):
         # Check SEDM_REF env var
         sref = os.getenv("SEDM_REF")
         if sref is not None:
-            corrname = os.path.join(sref,'std-correction.npy')
+            corrname = os.path.join(sref, 'std-correction.npy')
         else:
             corrname = '/scr2/sedm/ref/std-correction.npy'
 
@@ -45,7 +44,7 @@ def readspec(path, corrname='std-correction.npy'):
     ss = np.load(path)[0]
 
     corr = np.load(corrname)[0]
-    corf = interp1d(corr['nm'],corr['correction'], bounds_error=False,
+    corf = interp1d(corr['nm'], corr['correction'], bounds_error=False,
                     fill_value=1.0)
 
     if 'maxnm' in corr:
@@ -86,8 +85,8 @@ def readfits(path):
         if os.path.exists("%s.gz" % path):
             path += ".gz"
         else:
-            raise Exception("The file at path %s or %s.gz does not exist" % 
-                                                                (path, path))
+            raise Exception("The file at path %s or %s.gz does not exist" %
+                            (path, path))
 
     hdulist = pf.open(path)
     
@@ -97,25 +96,25 @@ def readfits(path):
 def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
 
     if type(towrite) == pf.PrimaryHDU:
-        list = pf.HDUList(towrite)
+        hlist = pf.HDUList(towrite)
     elif type(towrite) == pf.HDUList:
-        list = towrite
+        hlist = towrite
     else:
-        list = pf.HDUList(pf.PrimaryHDU(towrite))
+        hlist = pf.HDUList(pf.PrimaryHDU(towrite))
 
     if no_lossy_compress: 
         if '.gz' in fname:
-            list.writeto(os.path.splitext(fname)[0], clobber=clobber)
+            hlist.writeto(os.path.splitext(fname)[0], clobber=clobber)
         else:
-            list.writeto(fname, clobber=clobber)
+            hlist.writeto(fname, clobber=clobber)
         return
     
     if '.gz' in fname:
         n = os.path.splitext(fname)[0]
     else:
         n = fname
-    list[0].data = UU.floatcompress(list[0].data)
-    list.writeto(fname, clobber=clobber)
+    hlist[0].data = UU.floatcompress(hlist[0].data)
+    hlist.writeto(fname, clobber=clobber)
     
     os.system("gzip  %s" % n)
     
@@ -131,11 +130,14 @@ def convert_spectra_to_recarray(spectra):
     types = []
     for key in keys:
         l = np.size(getattr(spectra[0], key))
-        if key == 'lamcoeff': l = 6
-        if key == 'spec': l = 265
-        if key == 'specw': l = 265
+        if key == 'lamcoeff':
+            l = 6
+        if key == 'spec':
+            l = 265
+        if key == 'specw':
+            l = 265
 
-        types.append( (key, np.float, l) )
+        types.append((key, np.float, l))
 
     to_handle = []
     for spectrum in spectra:
@@ -180,12 +182,15 @@ def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
 
     for ix, spectrum in enumerate(spectra):
         spec = spectrum.specw
-        if spec is None: continue
+        if spec is None:
+            continue
 
         img[ix, 0:len(spec)] = spec
 
-        try: lam = chebval(np.arange(*spectrum.xrange), spectrum.lamcoeff)
-        except: continue
+        try:
+            lam = chebval(np.arange(*spectrum.xrange), spectrum.lamcoeff)
+        except:
+            continue
         IF = interp1d(lam, spec, bounds_error=False, fill_value=np.nan)
 
         img2[ix, :] = IF(lfid)
@@ -193,24 +198,24 @@ def convert_spectra_to_img(spectra, CRVAL1, CRPIX1):
     return img, img2
 
 
-def write_cube(spectra, headers):
+def write_cube(spectra):
     """Create a FITS file with all spectra written."""
 
     recarr = convert_spectra_to_recarray(spectra)
 
-    img,img2 = convert_spectra_to_img(spectra, CRVAL1, CRPIX1)
+    img, img2 = convert_spectra_to_img(spectra, CRVAL1, CRPIX1)
 
     f1 = pf.PrimaryHDU(img)
-    f2 = pf.ImageHDU(np.zeros((10,10)))
+    f2 = pf.ImageHDU(np.zeros((10, 10)))
     t3 = pf.BinTableHDU(recarr)
     f4 = pf.ImageHDU(img2)
-    f5 = pf.ImageHDU(np.zeros((10,10)))
+    f5 = pf.ImageHDU(np.zeros((10, 10)))
 
     f4.header['CRVAL1'] = CRVAL1
     f4.header['CRPIX1'] = -CRPIX1
     f4.header['CTYPE1'] = 'WAVE-LOG'
     f4.header['CUNIT1'] = 'NM'
 
-    towrite = pf.HDUList( [f1, f2, t3, f4, f5])
+    towrite = pf.HDUList([f1, f2, t3, f4, f5])
     towrite.writeto('test.fits', clobber=True)
 

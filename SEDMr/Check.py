@@ -79,10 +79,10 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
               (len(cc), (len(cc) - len(c)), smdn, sstd))
-        smx = smdn + 3. * sstd
-        smn = smdn - 3. * sstd
-        if smn < 0.:
-            smn = 0.
+        # smx = smdn + 3. * sstd
+        # smn = smdn - 3. * sstd
+        # if smn < 0.:
+        #     smn = 0.
         smn = 0.
         smx = 1.2
         cbtitle = "Wavelength RMS [nm]"
@@ -148,6 +148,10 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         skyspec /= 10.
     if stdspec is not None:
         stdspec /= 10.
+
+    # Print wavelength range
+    print "Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
+                                            np.nanmax(lam[np.isfinite(spec)]))
 
     # Get object name
     if 'header' in meta:
@@ -229,7 +233,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     plm.window.wm_geometry("900x500+10+10")
 
     # See if this is a standard star
-    pred = specname.lstrip("sp_STD-")
+    pred = specname[7:]
     pred = pred.split("_")[0]
     pred = pred.lower().replace("+", "").replace("-", "_")
     if pred in Stds.Standards:
@@ -353,7 +357,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.show()
 
     if savespec:
-        roi = (lam > 3800.0) & (lam < maxwl)
+        roi = (lam > 3800.0) & (lam < maxwl) & np.isfinite(spec)
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
