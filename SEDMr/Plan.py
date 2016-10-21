@@ -164,6 +164,7 @@ CRRS = $(addprefix crr_,$(BIAS))
 BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
 EXTR = $(subst .fits.gz,.npy,$(BACK))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
+FIGS = $(subst .npy,_SEDM.pdf,$(EXTR))
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
@@ -191,6 +192,7 @@ bias: bias0.1.fits bias2.0.fits $(BIAS)
 crrs: $(CRRS) 
 back: $(BACK)
 extr: $(EXTR)
+figs: $(FIGS)
 
 $(BIAS): bias0.1.fits bias2.0.fits
 	$(BSUB) $(subst b_,,$@)
