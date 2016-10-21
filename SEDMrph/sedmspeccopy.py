@@ -140,7 +140,7 @@ def run_snid(spec_dir='./', overwrite=False):
 
             q = [li for li in l if "QUALITY" in li]
 
-            if len(qual) > 0:
+            if len(q) > 0:
                 token = re.search(r'\(?([0-9]+)\)?', q[0])
                 q = int(token.group(1))
             else:
