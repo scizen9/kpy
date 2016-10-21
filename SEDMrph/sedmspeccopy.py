@@ -125,7 +125,7 @@ def parse_and_fill(spec, snidoutput):
         specOut.write("".join(spec_lines))
 
 
-def run_snid(spec_dir, overwrite=False):
+def run_snid(spec_dir='./', overwrite=False):
     """
     Runs snid in batch mode on all the PTF*_SEDM.txt files found in the given
     directory.  If a given file was already classified, it skips it, unless
@@ -206,7 +206,7 @@ if __name__ == '__main__':
 
     # Run snid on extracted spectra
     print "Running snid on PTF*_SEDM.txt files in %s" % specdir
-    run_snid(specdir=specdir)
+    run_snid(spec_dir=specdir)
 
     sedmfiles = glob.glob("PTF*.txt")
     print "Copying", sedmfiles
