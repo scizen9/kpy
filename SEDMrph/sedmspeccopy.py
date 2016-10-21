@@ -71,8 +71,11 @@ def parse_and_fill(spec, snidoutput):
             pars["rlap"] = float(lines[best_match_line].split()[4])
             pars["bestMatchType"] = \
                 lines[best_match_line].split()[2].split("-")[0]
-            pars["bestMatchSubtype"] = \
-                lines[best_match_line].split()[2].split("-")[1]
+            if len(lines[best_match_line].split()[2].split("-")) > 1:
+                pars["bestMatchSubtype"] = \
+                    lines[best_match_line].split()[2].split("-")[1]
+            else:
+                pars["bestMatchSubtype"] = '-'
             pars["bestMatchRedshift"] = float(lines[best_match_line].split()[5])
 
     print pars
