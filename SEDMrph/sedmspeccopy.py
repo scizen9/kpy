@@ -127,6 +127,8 @@ def parse_and_fill(spec, snidoutput):
     with open(spec, "w") as specOut:
         specOut.write("".join(spec_lines))
 
+    return pars["bestMatchType"]
+
 
 def run_snid(spec_dir='./', overwrite=False):
     """
@@ -161,7 +163,7 @@ def run_snid(spec_dir='./', overwrite=False):
             
         # If we are here, we run the classification with snid
         cm = "snid wmin=4000 wmax=9500 skyclip=1 medlen=20 aband=1" \
-             " rlapmin=4 inter=0 plot=0 %s" % fl
+             " rlapmin=4 inter=0 plot=2 %s" % fl
         print cm
         try:
             subprocess.call(cm, shell=True)
@@ -170,7 +172,13 @@ def run_snid(spec_dir='./', overwrite=False):
             continue
         
         snidoutput = fl.replace(".txt", "_snid.output")
-        parse_and_fill(fl, snidoutput)
+        snid_type = parse_and_fill(fl, snidoutput)
+        psoutput = fl.replace(".txt", "_comp0001_snidflux.ps")
+        if os.path.exists(psoutput):
+            pngfile = fl.replace(".txt", "_"+snid_type+".png")
+            cm = "convert -flatten -rotate 90 "+psoutput+" "+pngfile
+            subprocess.call(cm, shell=True)
+    # END loop over each file matching PTF*_SEDM.txt
             
     
 if __name__ == '__main__':

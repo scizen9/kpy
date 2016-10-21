@@ -184,7 +184,6 @@ flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 .PHONY: cleanstds newstds report ptfreport finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
-bgd: $(BGD) bias
 crrs: $(CRRS) 
 back: $(BACK)
 
