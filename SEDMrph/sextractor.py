@@ -238,7 +238,7 @@ def analyse_image(sexfile):
     s = np.genfromtxt(sexfile, comments="#")
 
     if (s is None or s.ndim==0 or len(s)==0):
-        return 0,0,0
+        return 0,0,0,0
 
     #Select sources inside of the cross
     x = s[:,0]
@@ -252,7 +252,7 @@ def analyse_image(sexfile):
     if (nsources > 0):
         print nsources
     else:
-        return 0,0,0
+        return 0,0,0,0
     #Select round sources (ellipticity is 1-axis_ratio)
     s = s[s[:,8]<0.5]
     ellipticity = np.nanmedian(s[:,8])
@@ -265,7 +265,7 @@ def analyse_image(sexfile):
     if (nsources > 0):
         print nsources
     else:
-        return 0,0,0
+        return 0,0,0,0
         
     #Select bright magnitudes
     s = s[s[:,4]<np.percentile(s[:,4], 20)]
@@ -300,5 +300,5 @@ def get_image_pars(image):
     sexfiles = run_sex([image])
     pars = analyse_image(sexfiles[0])
     
-    return pars[0], pars[1], pars[2]
+    return pars[0], pars[1], pars[2], pars[3]
     
