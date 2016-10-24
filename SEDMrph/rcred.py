@@ -799,7 +799,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     
     
     #Get basic statistics for the image
-    nsrc, fwhm, ellip = sextractor.get_image_pars(img)
+    nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(img)
     
     logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
     print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
