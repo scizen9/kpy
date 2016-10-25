@@ -221,7 +221,8 @@ if __name__ == '__main__':
 
         # Only write the spectra that have good qualities.
         if qual < 3:
-            newname = os.path.basename(f).split("_")[0].replace("PTF", "")
+            basename = os.path.basename(f)
+            newname = basename.split("_")[0].replace("PTF", "")
             
             version = 1
             if not versions.has_key(newname):
@@ -234,9 +235,19 @@ if __name__ == '__main__':
             cmd = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
                                                                         newname)
-            print cmd
+            #Find the plot that is associated with the spectrum
+            name = basename.split("_")[0]
+            plotfile = glob.glob( os.path.join(os.path.dirname(f), name+"*png"))
+            
+            if (len(plotfile)>0):
+                plotfile = plotfile[0]
+                cmd2 = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
+                  "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (plotfile,
+                                                                        os.path.basename(plotfile))
+            print cmd, cmd2
             try:
                 subprocess.call(cmd, shell=True)
+                subprocess.call(cmd2, shell=True)
             except:
                 print "Error copying the file"
                 pass
