@@ -123,12 +123,12 @@ def upload_snid_plot(sedmfile, plotfile, db):
     sourceid = get_sourceid(db, sedmp["OBJECT"].replace("PTF", ""))
     
     if sedmp.has_key("SNIDMATCHRLAP") and float(sedmp["SNIDMATCHRLAP"])>5:
-        comment = "SNID automatic classification. Best fit is a % % at z=%.3f+-%.3f at %d+-%d days"%\
-        (sedmp["SNIDMATCHTYPE"], sedmp["SNIDMATCHSUBTYPE"], sedmp["SNIDZMED"], sedmp["SNIDZMEDERR"], sedmp["SNIDAGEM"]. sedmp["SNIDAGEMERR"])    
+        comment = "SNID automatic classification. Best fit is a %s %s at z=%.3f+-%.3f at %d+-%d days"%(sedmp["SNIDMATCHTYPE"], sedmp["SNIDMATCHSUBTYPE"], float(sedmp["SNIDZMED"]), float(sedmp["SNIDZMEDERR"]), float(sedmp["SNIDAGEM"]), float(sedmp["SNIDAGEMERR"]))    
     else:
         comment = 'SNID could not find a good match'
     
-    
+    print comment
+
     #Fill the parameters for the DB with the right values.
     params = {}
     params['id'] = -1
@@ -138,7 +138,7 @@ def upload_snid_plot(sedmfile, plotfile, db):
     params['type'] = 'info'
     params['comment'] = comment
     params['sourceid'] =  sourceid
-    params['attachment'] = os.path.join('ptf/attachments/', os.path.basename(plotfile))
+    params['attachment'] = os.path.join('attachments/', os.path.basename(plotfile))
 
     
     # commit the entry to the DB
@@ -168,8 +168,10 @@ if __name__ == '__main__':
     overwrite = args.overwrite
     
     name = os.path.basename(sedmfile).split("_")[0]
-    plotfile = glob.glob( os.path.join(os.path.dirname(sedmfile), name+"*png"))
-    
+    plotfile = glob.glob( os.path.join(os.path.dirname(sedmfile), "*"+name+"*png"))
+   
+    print "PLOTFILES",plotfile
+ 
     if (len(plotfile)>0):
         copyplotfile = True
         plotfile = plotfile[0]
@@ -203,6 +205,8 @@ if __name__ == '__main__':
             else:
                 print "File %s already exists in destination as %s. No overwrite selected. Skipping."%(sedmfile, sedmfiledest)
                 os.remove(sedmfile)
+		if copyplotfile:
+			os.remove(plotfile)
                 sys.exit(0)                
     else:
         sedmfiledest = sedmfile
@@ -233,7 +237,7 @@ if __name__ == '__main__':
         
     try:
         db = dbconnect()
-        upload_sedm(sedmfiledest, db)
+        #upload_sedm(sedmfiledest, db)
         if (copyplotfile):
             upload_snid_plot(sedmfiledest, sedmplotfiledest, db)
     except IOError:
