@@ -60,90 +60,89 @@ def weaveConvolve(image, kernel):
             return_val = 1;
             """
  
-    weave.inline(code, ['image', 'isvalid', 'nx', 'ny', 'kernel', 'nkx', 'nky', 'smoothed'],
-                 type_converters=converters.blitz, compiler = 'gcc')
+    weave.inline(code, ['image', 'isvalid', 'nx', 'ny', 'kernel',
+                        'nkx', 'nky', 'smoothed'],
+                 type_converters=converters.blitz, compiler='gcc')
  
     return smoothed
 
 
 def remove(fname):
-    try: os.remove(fname)
-    except: pass
+    try:
+        os.remove(fname)
+    except:
+        pass
 
 
-
-def estimateBackground(fine, infile, flex=None, gausswidth=100, outname=None):
+def estimateBackground(fine, infile, gausswidth=100, outname=None):
 
     if outname is None:
         print "Need an output name"
         return
 
-    dX = 0
-    dY = 0
-
     infile[0].data = infile[0].data.astype(np.float64)
     data = infile[0].data.copy()
-    
 
     for ff in fine:
-        if not ff.ok: continue
-        if ff.xrange is None: continue
-        if ff.poly is None: continue
+        if not ff.ok:
+            continue
+        if ff.xrange is None:
+            continue
+        if ff.poly is None:
+            continue
         
         xs = np.arange(*ff.xrange)
         ys = np.round(np.poly1d(ff.poly)(xs)).astype(np.int)
 
-        for dY in xrange(-5,6):
+        for dY in xrange(-5, 6):
             ty = ys.copy() - dY
-            try: data[ty,xs] = np.nan
-            except: pass
+            try:
+                data[ty, xs] = np.nan
+            except:
+                pass
 
     from astropy.convolution import convolve, convolve_fft, Box2DKernel
 
     print "Traditional convolve (pass 1)"
     k = Box2DKernel(17)
     flt = data.copy()
-    NaNs = ~np.isfinite(data)
-    OKs = np.isfinite(data)
+    nans = ~np.isfinite(data)
+    oks = np.isfinite(data)
     for i in xrange(5):
         flt = convolve(flt, k)
-        flt[OKs] = data[OKs]
-        print "\tIteration %d of 5" %  (i+1)
-        #IO.writefits(pf.PrimaryHDU(flt), "test_%i.fits.gz" % i, clobber=True)
+        flt[oks] = data[oks]
+        print "\tIteration %d of 5" % (i+1)
+        # IO.writefits(pf.PrimaryHDU(flt), "test_%i.fits.gz" % i, clobber=True)
 
-    data[NaNs] = flt[NaNs]
-    fname = os.path.join(os.path.dirname(outname), 
-        "lf_" + os.path.basename(outname))
-    #IO.writefits(data, fname, clobber=True)
-    
+    data[nans] = flt[nans]
+    # fname = os.path.join(os.path.dirname(outname),
+    #     "lf_" + os.path.basename(outname))
+    # IO.writefits(data, fname, clobber=True)
 
-    #print "FFT convolve (pass 2)"
+    # print "FFT convolve (pass 2)"
     print "Gaussian filter with width = %d (pass 2)" % gausswidth
-    #k = Box2DKernel(70)
-    #flt = convolve_fft(data, k)
+    # k = Box2DKernel(70)
+    # flt = convolve_fft(data, k)
     flt = gaussian_filter(data, gausswidth)
 
-
-    fname = os.path.join(os.path.dirname(outname), 
-        "bgd_" + os.path.basename(outname))
+    ofname = os.path.join(os.path.dirname(outname),
+                          "bgd_" + os.path.basename(outname))
     HDU = pf.PrimaryHDU(flt)
     HDU.header["GAUFWID"] = (gausswidth, 'Gaussian filter width in pixels')
-    IO.writefits(HDU, fname, clobber=True)
-    print "Background image in %s" % fname + ".gz"
-    
+    IO.writefits(HDU, ofname, clobber=True)
+    print "Background image in %s" % ofname + ".gz"
 
-    infile[0].header["BGDSUB"] = "Background subtracted using %s" % fname
+    infile[0].header["BGDSUB"] = "Background subtracted using %s" % ofname
     infile[0].header["GAUFWID"] = (gausswidth, 
                                    'Gaussian filter width in pixels')
-    fname = os.path.join(os.path.dirname(outname), 
-        "bs_" + os.path.basename(outname))
+    ofname = os.path.join(os.path.dirname(outname),
+                          "bs_" + os.path.basename(outname))
     infile[0].data -= flt
 
-    IO.writefits(infile, fname, clobber=True)
-    print "Subtracted image in %s" % fname + ".gz"
+    IO.writefits(infile, ofname, clobber=True)
+    print "Subtracted image in %s" % ofname + ".gz"
 
     return flt
-
 
 
 if __name__ == '__main__':
@@ -152,30 +151,23 @@ if __name__ == '__main__':
 
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
-
     parser.add_argument('fine', type=str, help='Fine correction path')
     parser.add_argument('infile', type=str, help='Path to FITS file to refit')
-    parser.add_argument('--flexfile', type=str, help='Path to flexure npy file')
-    parser.add_argument('--gausswidth', type=int, default=100, help='Gaussian filter width in pixels')
-
+    parser.add_argument('--gausswidth', type=int, default=100,
+                        help='Gaussian filter width in pixels')
 
     args = parser.parse_args()
     fine = np.load(args.fine)
     infile = pf.open(args.infile)
 
     if infile[0].header['EXPTIME'] < 30:
-        fname = os.path.join(os.path.dirname(args.infile), 
-            "bs_" + os.path.basename(args.infile))
+        fname = os.path.join(os.path.dirname(args.infile),
+                             "bs_" + os.path.basename(args.infile))
         shutil.copy(args.infile, fname)
         os.system("gzip --fast --force %s" % fname)
         sys.exit(0)
 
-    if args.flexfile is not None:
-        flex = np.load(args.flexfile)
-    else: flex=None
+    gauss_width = args.gausswidth
 
-    gausswidth = args.gausswidth
-
-
-    background = estimateBackground(fine, infile, flex=flex, 
-                                    gausswidth=gausswidth, outname=args.infile)
+    background = estimateBackground(fine, infile, gausswidth=gauss_width,
+                                    outname=args.infile)

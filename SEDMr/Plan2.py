@@ -170,7 +170,9 @@ SRCS = $(wildcard ifu*fits)
 BIAS = $(addprefix b_,$(SRCS))
 CRRS = $(addprefix crr_,$(BIAS))
 BACK = $(addsuffix .gz,$(addprefix bs_,$(CRRS)))
+EXTR = $(subst .fits.gz,.npy,$(BACK))
 FLEX = $(subst .fits,.npy,$(addprefix flex_,$(BACK)))
+FIGS = $(subst .npy,_SEDM.pdf,$(EXTR))
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
@@ -186,15 +188,19 @@ bs_crr_b_%.gz : crr_b_%
 flex_bs_crr_b_%.npy : bs_crr_b_%.fits.gz
 	$(FLEXCMD) cube.npy $< --outfile $@
 
+bs_crr_b_%.npy : bs_crr_b_%.fits.gz flex_bs_crr_b_%.npy
+	$(EXTSINGLE) cube.npy --A $< --outname $@ --flat_correction flat-dome-700to900.npy --Aoffset flex_$@ --specExtract
+
 %_SEDM.pdf : sp_%.npy
 	$(PLOT) --spec $< --savefig --interact
 
 .PHONY: cleanstds newstds report ptfreport finalreport
 
 bias: bias0.1.fits bias2.0.fits $(BIAS)
-bgd: $(BGD) bias
 crrs: $(CRRS) 
 back: $(BACK)
+extr: $(EXTR)
+figs: $(FIGS)
 
 $(BIAS): bias0.1.fits bias2.0.fits
 	$(BSUB) $(subst b_,,$@)

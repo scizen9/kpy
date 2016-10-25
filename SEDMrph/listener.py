@@ -134,12 +134,12 @@ def start_listening_loop():
                 while (not os.path.isfile(lfile)):
                         time.sleep(0.5)
                 try:
-                    nsources, fwhm, ellipticity = sextractor.get_image_pars(lfile)
-                    connection.sendall("%d,%d,%d,%.3f\n"%(0, nsources, fwhm, ellipticity))
+                    nsources, fwhm, ellipticity, bkg = sextractor.get_image_pars(lfile)
+                    connection.sendall("%d,%d,%d,%.3f\n"%(0, nsources, fwhm, ellipticity, bkg))
                 except Exception as e:
                     logger.error(str(sys.exc_info()[0]))
                     logger.error(e)
-                    connection.sendall("%d,%d,%d,%.3f\n"%(-1, 0, 0, 0))
+                    connection.sendall("%d,%d,%d,%.3f\n"%(-1, 0, 0, 0, 0))
                     
             elif "FWHM" in command:
                 logger.info( "Finding the FWHM for the last 3 images.")
