@@ -138,7 +138,7 @@ def run_snid(spec_dir='./', overwrite=False):
     """
     
     for fl in glob.glob(os.path.join(spec_dir, "PTF*_SEDM.txt")):
-
+        print fl
         # retrieve the quality of the spectra.
         with open(fl, "r") as sfl:
             l = sfl.readlines()
@@ -154,7 +154,7 @@ def run_snid(spec_dir='./', overwrite=False):
             # If quality is good, check for previous classification
             if q < 3:
                 clas = [li for li in l if "TYPE" in li]
-
+                print "classification: ", clas
                 # If the file has been classified, move to the next
                 if len(clas) > 0 and not overwrite:
                     continue
@@ -245,7 +245,7 @@ if __name__ == '__main__':
             newname = basename.split("_")[0].replace("PTF", "")
             
             version = 1
-            if not versions.has_key(newname):
+            if newname not in versions:
                 versions[newname] = 1
             else:
                 versions[newname] += 1
@@ -255,17 +255,20 @@ if __name__ == '__main__':
             cmd = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (f,
                                                                         newname)
-            #Find the plot that is associated with the spectrum
+            # Find the plot that is associated with the spectrum
             name = basename.split("_")[0]
-            plotfile = glob.glob( os.path.join(os.path.dirname(f), name+"*png"))
+            plotfile = glob.glob(os.path.join(os.path.dirname(f), name+"*png"))
             
-            if (len(plotfile)>0):
+            if len(plotfile) > 0:
                 plotfile = plotfile[0]
                 cmd2 = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (plotfile,
                                                                         os.path.basename(plotfile))
-		print cmd2
-            print cmd
+            else:
+		cmd2 = ""
+
+            print cmd, cmd2
+
             try:
                 subprocess.call(cmd, shell=True)
                 subprocess.call(cmd2, shell=True)

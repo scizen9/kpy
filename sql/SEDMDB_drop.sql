@@ -57,6 +57,8 @@ DROP TABLE ref_stars;
 
 DROP TABLE request;
 
+DROP TABLE schedule;
+
 DROP TABLE spec;
 
 DROP TABLE telescope_stats;

@@ -856,8 +856,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--rawdir', type=str, default='/scr2/sedm/raw',
                         help='Input raw directory (/scr2/sedm/raw)')
-    parser.add_argument('--reduxdir', type=str, default='/scr2/sedm/redux',
-                        help='Output reduced directory (/scr2/sedm/redux)')
+    parser.add_argument('--reduxdir', type=str, default='/scr2/sedmdrp/redux',
+                        help='Output reduced directory (/scr2/sedmdrp/redux)')
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
 

@@ -29,9 +29,15 @@ def report():
         else:
             skysub = 1
         if '_obs' in f:
-            obs = f.split('_')[-2].split('.')[0]
+            if len(f.split('_')) > 3:
+                obs = f.split('_')[-2].split('.')[0]
+            elif len(f.split('_')) == 3:
+                obs = f.split('_')[-1].split('.')[0]
+            else:
+                obs = "obs1"
         else:
-            obs = "-"
+            obs = "obs1"
+        obs = obs.split('s')[-1]
         if 'object_spaxel_ids_A' in sp:
             meth = "A / B"
         else:
@@ -62,7 +68,10 @@ def report():
 
         objname = f.split('.')[0]
         if '_obs' in objname:
-            objname = "_".join(objname.split('_')[1:-2])
+            if len(objname.split('_')) > 3:
+                objname = "_".join(objname.split('_')[1:-2])
+            else:
+                objname = "_".join(objname.split('_')[1:-1])
         else:
             objname = "_".join(objname.split('_')[1:])
 

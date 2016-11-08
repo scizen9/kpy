@@ -12,9 +12,13 @@ def utc2mjd(times):
     t = Time(times, format='isot', scale='utc')
     return t.mjd
     
-def mjd2utc(mjd):
+def mjd2utc(mjd, string=False):
     t = Time(mjd+2400000.5, format='jd', scale="utc")
-    return t.iso
+    
+    if (string):
+        return t.iso
+    else:
+        return datetime.datetime.strptime(t.iso, "%Y-%m-%d %H:%M:%S.%f")  
     
 def jd2utc(jd, string=False):
     t = Time(jd, format='jd', scale="utc")
