@@ -264,7 +264,8 @@ if __name__ == '__main__':
                 cmd2 = "rcp %s nblago@yupana.caltech.edu:/scr/apache/htdocs/" \
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (plotfile,
                                                                         os.path.basename(plotfile))
-            print cmd, cmd2
+		print cmd2
+            print cmd
             try:
                 subprocess.call(cmd, shell=True)
                 subprocess.call(cmd2, shell=True)
