@@ -75,9 +75,9 @@ CREATE TABLE elliptical_heliocentric (
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
-    O decimal(10,8),
+    longascnode_O decimal(10,8),
     -- argument of perihelion
-    o decimal(10,8),
+    perihelion_o decimal(10,8),
     -- mean distance AU
     a decimal(10,8),
     -- mean daily motion: deg/day
@@ -108,9 +108,9 @@ CREATE TABLE hyperbolic_heliocentric (
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
-    O decimal(10,8),
+    longascnode_O decimal(10,8),
     -- argument of perihelion
-    o decimal(10,8),
+    perihelion_o decimal(10,8),
     -- eccentricity (<1)
     e decimal(10,8),
     -- perihelion distance, AU
@@ -137,9 +137,9 @@ CREATE TABLE parabolic_heliocentric (
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
-    O decimal(10,8),
+    longascnode_O decimal(10,8),
     -- argument of perihelion
-    o decimal(10,8),
+    perihelion_o decimal(10,8),
     -- perihelion distance, AU
     q decimal(10,8),
     -- equinox year
@@ -285,7 +285,7 @@ CREATE TABLE schedule (
     filter text NULL,
     creationdate date  DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
-    CONSTRAINT request_pk PRIMARY KEY (id)
+    CONSTRAINT schedule_pk PRIMARY KEY (id)
 );
 
 -- Table: spec
