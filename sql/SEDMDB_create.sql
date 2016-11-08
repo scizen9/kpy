@@ -5,6 +5,7 @@
 -- Table: classification
 CREATE TABLE classification (
     id bigint  NOT NULL,
+    object_id bigint NOT NULL,
     spec_id bigint  NOT NULL,
     classification text  NULL,
     redshift decimal(7,5)  NULL,
@@ -49,18 +50,149 @@ CREATE TABLE metrics_spec (
 );
 
 -- Table: object
+-- f fixed (or at most exhibits constant curvilinear proper motion)
+-- e heliocentric elliptical orbit
+-- h heliocentric hyperbolic orbit
+-- p heliocentric parabolic orbit
+-- E geocentric elliptical orbit, i.e., Earth satellite
+-- P built-in planet or natural satellite name
+--
 CREATE TABLE object (
     id bigint  NOT NULL,
     marshal_id bigint  NOT NULL,
     name text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
+    typedesig varchar(1),
     CONSTRAINT object_pk PRIMARY KEY (id)
+);
+
+
+--parameters from http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501
+CREATE TABLE elliptical_heliocentric (
+    id bigint not null,
+    object_id bigint not null,
+    --inclination
+    inclination decimal(10,8),
+    -- longitude of ascending node
+    O decimal(10,8),
+    -- argument of perihelion
+    o decimal(10,8),
+    -- mean distance AU
+    a decimal(10,8),
+    -- mean daily motion: deg/day
+    n decimal(10,8),
+    -- eccentricity (<1)
+    e decimal(10,8),
+    -- Mean anomaly
+    M decimal(10,8),
+    --epoch date. Time of M
+    mjdepoch int,
+    -- equinox year
+    D int,
+    -- first abd second components of magnitude model
+    M1 decimal(5,4),
+    M2 decimal(5,4),
+    -- angula size at 1 AU
+    s decimal(10,8),
+    CONSTRAINT sso_pk PRIMARY KEY (id)
+
+);
+
+
+CREATE TABLE hyperbolic_heliocentric (
+    id bigint not null,
+    object_id bigint not null,
+    -- date of the epoch of perihelion
+    T date,
+    --inclination
+    inclination decimal(10,8),
+    -- longitude of ascending node
+    O decimal(10,8),
+    -- argument of perihelion
+    o decimal(10,8),
+    -- eccentricity (<1)
+    e decimal(10,8),
+    -- perihelion distance, AU
+    q decimal(10,8),
+    -- equinox year
+    D int,
+    -- first abd second components of magnitude model
+    M1 decimal(5,4),
+    M2 decimal(5,4),
+    -- angular size at 1 AU
+    s decimal(10,8),
+    CONSTRAINT hyperbolic_heliocentric_pk PRIMARY KEY (id)
+
+);
+
+
+CREATE TABLE parabolic_heliocentric (
+    id bigint not null,
+    object_id bigint not null,
+    -- date of the epoch of perihelion
+    T date,
+    -- eccentricity (<1)
+    e decimal(10,8),
+    --inclination
+    inclination decimal(10,8),
+    -- longitude of ascending node
+    O decimal(10,8),
+    -- argument of perihelion
+    o decimal(10,8),
+    -- perihelion distance, AU
+    q decimal(10,8),
+    -- equinox year
+    D int,
+    -- first abd second components of magnitude model
+    M1 decimal(5,4),
+    M2 decimal(5,4),
+    -- angular size at 1 AU
+    s decimal(10,8),
+    CONSTRAINT parabolic_heliocentric_pk PRIMARY KEY (id)
+);
+
+
+CREATE TABLE earth_satellite (
+    id bigint not null,
+    object_id bigint not null,
+    -- first date the elements are valid
+    T date,
+    --inclination
+    inclination decimal(10,8),
+    -- RA of ascending node
+    ra decimal(10,8),
+    -- eccentricity (<1)
+    e decimal(10,8),
+    -- argument of pedigree
+    pedigree decimal(10,8),
+    -- Mean anomaly
+    M decimal(10,8),
+    -- mean motion, revs/day
+    n decimal(10,8),
+    -- orbit decay rate, rev/day^2
+    decay decimal(10,8),
+    -- integral reference orbit number at epoch
+    reforbit int,
+    -- drag coefficient, 1/(earth radii)
+    drag decimal(10,8),
+    CONSTRAINT earth_satellite_pk PRIMARY KEY (id)
+);
+
+CREATE TABLE periodic (
+    id bigint not null,
+    object_id bigint not null,
+    mjd0 decimal (10,8),
+    phasedays decimal(10,8),
+    CONSTRAINT periodic_pk PRIMARY KEY (id)
+
+
 );
 
 -- Table: observation
 CREATE TABLE observation (
     id bigint  NOT NULL,
+    object_id bigint NOT NULL,
     request_id bigint  NOT NULL,
     mjd decimal(10,2)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
@@ -121,21 +253,38 @@ CREATE TABLE request (
     id bigint  NOT NULL,
     object_id bigint  NOT NULL,
     user_id bigint  NOT NULL,
+    program_id smallint  NOT NULL,
     marshal_id bigint  NOT NULL,
     exptime int  NOT NULL,
-    maxairmass decimal(5,2)  NOT NULL,
-    isspec boolean  NOT NULL,
+    maxairmass decimal(5,2)  DEFAULT 2.5,
+    instrument text  NOT NULL,
+    status text  DEFAULT 'PENDING',
+    priority decimal(5,2)  NOT NULL,
+    inidate date  NOT NULL,
+    enddate date  NOT NULL,
+    cadence decimal(5,2) NULL,
+    phasesamples decimal(5,2)  NULL,
+    sampletolerance decimal(5,2) NULL,
+    filters text  NULL,
+    creationdate date DEFAULT NOW(),
+    lastmodified date  DEFAULT NOW(),
+    CONSTRAINT request_pk PRIMARY KEY (id)
+);
+
+CREATE TABLE schedule (
+    id bigint  NOT NULL,
+    object_id bigint  NOT NULL,
+    request_id bigint  NOT NULL,
+    marshal_id bigint  NOT NULL,
+    exptime int  NOT NULL,
+    instrument text  NOT NULL,
     status text  NOT NULL,
     priority decimal(5,2)  NOT NULL,
     inidate date  NOT NULL,
     enddate date  NOT NULL,
-    jd0 decimal(5,2) NULL,
-    phasefreq decimal(12,6) NULL,
-    programid smallint  NOT NULL,
-    mag decimal(5,2)  NOT NULL,
-    filter text  NOT NULL,
-    creationdate date  NULL,
-    lastmodified date  NULL,
+    filter text NULL,
+    creationdate date  DEFAULT NOW(),
+    lastmodified date  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
 );
 
@@ -191,11 +340,36 @@ CREATE TABLE users (
 );
 
 -- foreign keys
+-- Reference: schedule_object (table: schedule)
+ALTER TABLE schedule ADD CONSTRAINT schedule_object
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: schedule_request (table: schedule)
+ALTER TABLE schedule ADD CONSTRAINT schedule_request
+    FOREIGN KEY (request_id)
+    REFERENCES request (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
 -- Reference: classification_spec (table: classification)
 ALTER TABLE classification ADD CONSTRAINT classification_spec
     FOREIGN KEY (spec_id)
     REFERENCES spec (id)  
     NOT DEFERRABLE 
+    INITIALLY IMMEDIATE
+;
+
+
+-- Reference: classification_spec (table: classification)
+ALTER TABLE classification ADD CONSTRAINT classification_object
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
@@ -284,6 +458,45 @@ ALTER TABLE request ADD CONSTRAINT users_request
     FOREIGN KEY (user_id)
     REFERENCES users (id)  
     NOT DEFERRABLE 
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: object_elliptical_heliocentric (table: elliptical_heliocentric)
+ALTER TABLE elliptical_heliocentric ADD CONSTRAINT object_elliptical_heliocentric
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: object_earth_satellite (table: earth_satellite)
+ALTER TABLE earth_satellite ADD CONSTRAINT object_earth_satellite
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: object_parabolic_heliocentric (table: parabolic_heliocentric)
+ALTER TABLE parabolic_heliocentric ADD CONSTRAINT object_parabolic_heliocentric
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: object_hyperbolic_heliocentric (table: hyperbolic_heliocentric)
+ALTER TABLE hyperbolic_heliocentric ADD CONSTRAINT object_hyperbolic_heliocentric
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+-- Reference: object_periodic (table: periodic)
+ALTER TABLE periodic ADD CONSTRAINT object_periodic
+    FOREIGN KEY (object_id)
+    REFERENCES object (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
