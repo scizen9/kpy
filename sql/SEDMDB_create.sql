@@ -64,6 +64,7 @@ CREATE TABLE object (
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
     typedesig varchar(1),
+    epoch float,
     CONSTRAINT object_pk PRIMARY KEY (id)
 );
 
@@ -254,10 +255,9 @@ CREATE TABLE request (
     object_id bigint  NOT NULL,
     user_id bigint  NOT NULL,
     program_id smallint  NOT NULL,
-    marshal_id bigint  NOT NULL,
+    marshal_id bigint NULL,
     exptime int  NOT NULL,
     maxairmass decimal(5,2)  DEFAULT 2.5,
-    instrument text  NOT NULL,
     status text  DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
     inidate date  NOT NULL,
@@ -265,27 +265,30 @@ CREATE TABLE request (
     cadence decimal(5,2) NULL,
     phasesamples decimal(5,2)  NULL,
     sampletolerance decimal(5,2) NULL,
-    filters text  NULL,
+    filters text[]  NULL,
+    nexposures integer[] NULL,
+    order integer[] NULL,
     creationdate date DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
 );
 
-CREATE TABLE schedule (
+CREATE TABLE atomicrequest (
     id bigint  NOT NULL,
     object_id bigint  NOT NULL,
     request_id bigint  NOT NULL,
-    marshal_id bigint  NOT NULL,
-    exptime int  NOT NULL,
+    order_id int NULL,
+    exptime float  NOT NULL,
     instrument text  NOT NULL,
     status text  NOT NULL,
+    active boolean DEFAULT FALSE,
     priority decimal(5,2)  NOT NULL,
     inidate date  NOT NULL,
     enddate date  NOT NULL,
     filter text NULL,
     creationdate date  DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
-    CONSTRAINT schedule_pk PRIMARY KEY (id)
+    CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
 );
 
 -- Table: spec
@@ -340,16 +343,16 @@ CREATE TABLE users (
 );
 
 -- foreign keys
--- Reference: schedule_object (table: schedule)
-ALTER TABLE schedule ADD CONSTRAINT schedule_object
+-- Reference: atomicrequest_object (table: atomicrequest)
+ALTER TABLE atomicrequest ADD CONSTRAINT atomicrequest_object
     FOREIGN KEY (object_id)
     REFERENCES object (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
--- Reference: schedule_request (table: schedule)
-ALTER TABLE schedule ADD CONSTRAINT schedule_request
+-- Reference: atomicrequest_request (table: atomicrequest)
+ALTER TABLE atomicrequest ADD CONSTRAINT atomicrequest_request
     FOREIGN KEY (request_id)
     REFERENCES request (id)
     NOT DEFERRABLE

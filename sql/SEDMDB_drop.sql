@@ -53,7 +53,7 @@ DROP TABLE phot;
 
 DROP TABLE ref_stars;
 
-DROP TABLE schedule;
+DROP TABLE atomicrequest;
 
 DROP TABLE spec;
 
