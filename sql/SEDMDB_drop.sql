@@ -65,5 +65,15 @@ DROP TABLE telescope_stats;
 
 DROP TABLE users;
 
+DROP TABLE elliptical_heliocentric;
+
+DROP TABLE hyperbolic_heliocentric;
+
+DROP TABLE parabolic_heliocentric;
+
+DROP TABLE earth_satellite;
+
+DROP TABLE periodic;
+
 -- End of file.
 
