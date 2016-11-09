@@ -53,8 +53,6 @@ DROP TABLE phot;
 
 DROP TABLE ref_stars;
 
-DROP TABLE request;
-
 DROP TABLE schedule;
 
 DROP TABLE spec;
@@ -75,5 +73,6 @@ DROP TABLE periodic;
 
 DROP TABLE object;
 
+DROP TABLE request;
 -- End of file.
 
