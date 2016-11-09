@@ -265,7 +265,7 @@ if __name__ == '__main__':
                   "marshals/transient/ptf/spectra/sedm_to_upload/%s" % (plotfile,
                                                                         os.path.basename(plotfile))
             else:
-		cmd2 = ""
+                cmd2 = ""
 
             print cmd, cmd2
 
