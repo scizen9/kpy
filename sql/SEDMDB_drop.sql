@@ -47,8 +47,6 @@ DROP TABLE metrics_phot;
 
 DROP TABLE metrics_spec;
 
-DROP TABLE object;
-
 DROP TABLE observation;
 
 DROP TABLE phot;
@@ -74,6 +72,8 @@ DROP TABLE parabolic_heliocentric;
 DROP TABLE earth_satellite;
 
 DROP TABLE periodic;
+
+DROP TABLE object;
 
 -- End of file.
 
