@@ -55,7 +55,6 @@ class SedmDB:
         cursor = conn.cursor()
         try:
             cursor.execute(sql)
-	    
         except exc.DBAPIError, e:
             # an exception is raised, Connection is invalidated.
             if e.connection_invalidated:
@@ -67,14 +66,7 @@ class SedmDB:
         else:
             cursor.execute("commit;")
             return []
-        """       
-        if ret:
-            obj = cursor.fetchall()
-            conn.close()
-            return obj
-        else:
-            conn.close()
-            return None"""
+
     def get_conn_sedmDB(self):
         """
         Runs the WSDB sql query in a safe way through the DBManager.
@@ -91,13 +83,11 @@ class SedmDB:
           (-1, "ERROR: User exists!")
 
         """
-        usernames = self.execute_sql("SELECT name FROM users")
-
+        # check if already contained
+        usernames = self.execute_sql('SELECT name FROM users')
         if not pardic['name'] in usernames:
-            sql = ("INSERT INTO users (id, name, email) VALUES ('%s', '%s', '%s');"
+            self.execute_sql("INSERT INTO users Values (%s, %s, %s)"
                              % (pardic['id'],pardic['name'],pardic['email']))
-            print sql            
-            self.execute_sql(sql)#, False)            
             return (0, "User added")
         else:
             return (-1, "ERROR: User exists!")
