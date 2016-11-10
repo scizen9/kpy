@@ -69,12 +69,17 @@ def parse_and_fill(spec, snidoutput):
             pars["II"] = float(lines[type_ii_line].split()[2])
             pars["NotSN"] = float(lines[type_not_sn_line].split()[2])
             pars["rlap"] = float(lines[best_match_line].split()[4])
-            pars["bestMatchType"] = \
-                lines[best_match_line].split()[2].split("-")[0]
-            if len(lines[best_match_line].split()[2].split("-")) > 1:
-                pars["bestMatchSubtype"] = \
-                    lines[best_match_line].split()[2].split("-")[1]
+            # Test type
+            typstr = lines[best_match_line].split()[2]
+            sntype = ''.join(c for c in typstr if ord(c) >= 32)
+            if len(sntype) > 0:
+                pars["bestMatchType"] = sntype.split("-")[0]
+                if len(sntype.split("-")) > 1:
+                    pars["bestMatchSubtype"] = sntype.split("-")[1]
+                else:
+                    pars["bestMatchSubtype"] = '-'
             else:
+                pars["bestMatchType"] = "None"
                 pars["bestMatchSubtype"] = '-'
             pars["bestMatchRedshift"] = float(lines[best_match_line].split()[5])
 
