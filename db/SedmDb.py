@@ -20,17 +20,17 @@ class SedmDB:
 			p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
 	    		self.user_sedmdb = p.stdout.read().replace('\n', '')
 
-			self.pool_sedmdb = pool.QueuePool(self.__getWSDBConn__, max_overflow=10, pool_size=2, recycle=True)
+			self.pool_sedmdb = pool.QueuePool(self.__getSedmDBConn__, max_overflow=10, pool_size=2, recycle=True)
 
 		def __str__(self):
 		    return repr(self)
 
 		def __getSedmDBConn__(self):
-              '''
-              Creates the connection to SedmDB.
-              '''
-              sedmdbcon = psycopg2.connect(host="pharos.caltech.edu", port="5432", dbname="sedmdbtest", user=self.user_sedmdb)
-              return sedmdbcon
+              		'''
+              		Creates the connection to SedmDB.
+              		'''
+              		sedmdbcon = psycopg2.connect(host="localhost", port="5432", dbname="sedmdbtest", user=self.user_sedmdb)
+              		return sedmdbcon
 
 
 	instance = None
@@ -60,9 +60,13 @@ class SedmDB:
 		    if e.connection_invalidated:
 			print "Connection was invalidated!"
 		
-		obj = cursor.fetchall()
+		try:
+			obj = cursor.fetchall()
+		except:
+			obj = None
 		conn.close()
-		return obj
+		if not obj is None:
+			return obj
 
 
 	def get_conn_sedmDB(self):
@@ -79,18 +83,18 @@ class SedmDB:
 	def add_user(pardic):
 		'''
 		Adds a new user. Checks for duplicates in name. If user exists:	    
-          (-1, "ERROR: User exists!")
-	
-	    '''   
-	    pass   
+        	  (-1, "ERROR: User exists!")
+		
+	    	'''   
+	    	pass   
 
 	def remove_user(pardic):
 		'''
 		Removes the user. If user does not exist:	    
-          (-1, "ERROR: User does not exist!")
+          	(-1, "ERROR: User does not exist!")
 	
-	    '''   
-	    pass    
+		'''   
+		pass    
 	
 	def add_group(pardic):
 	    '''
