@@ -85,9 +85,10 @@ class SedmDB:
         """
         # check if already contained
         usernames = self.execute_sql('SELECT name FROM users')
-        if not pardic['name'] in usernames:
-            self.execute_sql("INSERT INTO users Values (%s, %s, %s)"
-                             % (pardic['id'],pardic['name'],pardic['email']))
+        user_ids = self.execute_sql('SELECT id FROM users')
+        if not (pardic['name'] in usernames or pardic['id'] in user_ids):
+            self.execute_sql("INSERT INTO users (id, name, email) Values ('%s', '%s', '%s')"
+                             % (pardic['id'], pardic['name'], pardic['email']))
             return (0, "User added")
         else:
             return (-1, "ERROR: User exists!")
@@ -99,7 +100,16 @@ class SedmDB:
           (-1, "ERROR: User does not exist!")
 
         """
-        pass
+        ids = self.execute_sql('SELECT id FROM users')
+        usernames = self.execute_sql('SELECT name FROM users')
+        emails = self.execute_sql('SELECT email FROM users')
+        users = [[ids[i], usernames[i], emails[i]] for i in range(len(ids))]
+        # TODO: only look at the id?
+        if [pardic['id'], pardic['name'], pardic['email']] in users:
+            self.execute_sql('DELETE FROM users WHERE id=%s' % (pardic['id'],))
+            return (0, "user removed")
+        else:
+            return (-1, "ERROR: User does not exist!")
 
     def add_group(self, pardic):
         """
@@ -284,3 +294,4 @@ class SedmDB:
         Creates a classification object attached to the reduced spectrum.
         """
         pass
+
