@@ -21,7 +21,7 @@ def report():
             continue
         sp = np.load(f)[0]
         # trim the .npy off the end
-        f2 = '.'.join(f.split('.')[0:-1])
+        objname = '.'.join(f.split('.')[0:-1])
         if 'quality' in sp:
             qual = sp['quality']
         else:
@@ -31,10 +31,10 @@ def report():
         else:
             skysub = 1
         if '_obs' in f:
-            if len(f2.split('_')) > 3:
-                obs = f2.split('_')[-2]
-            elif len(f2.split('_')) == 3:
-                obs = f2.split('_')[-1]
+            if len(objname.split('_')) > 3:
+                obs = objname.split('_')[-2]
+            elif len(objname.split('_')) == 3:
+                obs = objname.split('_')[-1]
             else:
                 obs = "obs1"
         else:
@@ -68,7 +68,6 @@ def report():
         else:
             lostexp += expt
 
-        objname = f.split('.')[0]
         if '_obs' in objname:
             if len(objname.split('_')) > 3:
                 objname = "_".join(objname.split('_')[1:-2])
