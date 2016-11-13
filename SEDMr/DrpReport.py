@@ -20,6 +20,8 @@ def report():
         if '_A_' in f or '_B_' in f:
             continue
         sp = np.load(f)[0]
+        # trim the .npy off the end
+        f2 = '.'.join(f.split('.')[0:-1])
         if 'quality' in sp:
             qual = sp['quality']
         else:
@@ -29,10 +31,10 @@ def report():
         else:
             skysub = 1
         if '_obs' in f:
-            if len(f.split('_')) > 3:
-                obs = f.split('_')[-2].split('.')[0]
-            elif len(f.split('_')) == 3:
-                obs = f.split('_')[-1].split('.')[0]
+            if len(f2.split('_')) > 3:
+                obs = f2.split('_')[-2]
+            elif len(f2.split('_')) == 3:
+                obs = f2.split('_')[-1]
             else:
                 obs = "obs1"
         else:
@@ -60,8 +62,8 @@ def report():
         else:
             air = 0.
 
-        # Don't count missing objects
-        if qual < 4:
+        # Don't count bad objects
+        if qual < 3:
             totexpt += expt
         else:
             lostexp += expt
@@ -81,7 +83,7 @@ def report():
                                                          else "off"), air)
     print "\nTotal quality (1-3) science exposure time = %.1f s" % totexpt
     if lostexp > 0:
-        print "Total exposure time lost to missing targets = %.1f s\n" % lostexp
+        print "Total exposure time lost to bad targets = %.1f s\n" % lostexp
 
 if __name__ == '__main__':
     report()
