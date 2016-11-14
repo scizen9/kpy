@@ -405,7 +405,7 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 
 
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
-             ellipse=None, ellipseb=None, quality=0,
+             ellipse=None, ellipseb=None, quality=0, bgd_sub=True,
              lmin=650., lmax=700., cmin=None, cmax=None):
     """ Convert spectra list into image_[outname].pdf
 
@@ -419,6 +419,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         ellipse (tuple): ellipse parameters for A aperture
         ellipseb (tuple): ellipse parameters for B aperture
         quality (int): from 1 (good) to 4 (no object)
+        bgd_sub (boolean): set to True to subtract median background
         lmin (float): minimum wavelength in nm to sum over
         lmax (float): maximum wavelength in nm to sum over
         cmin (float): cube intensity minimum for scaling
@@ -445,6 +446,9 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
                 vs.append(np.median(x.specw[ok]))
+
+    if bgd_sub:
+        vs -= np.median(vs)
 
     # Clean outliers
     vcln = reject_outliers(np.array(vs, dtype=np.float), m=3.)
@@ -1033,7 +1037,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-             lmin=lmin, lmax=lmax)
+             bgd_sub=False, lmin=lmin, lmax=lmax)
     # get the mean spectrum over the selected spaxels
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
@@ -1348,7 +1352,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 quality=quality, lmin=lmin, lmax=lmax)
+                 quality=quality, bgd_sub=False, lmin=lmin, lmax=lmax)
         # get the mean spectrum over the selected spaxels
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
