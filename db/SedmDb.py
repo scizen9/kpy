@@ -47,7 +47,7 @@ class SedmDB:
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
-    def execute_sql(self, sql):#, ret = True):
+    def execute_sql(self, sql):
         """
         Runs the SedmDB sql query in a safe way through the DBManager.
 
@@ -87,14 +87,19 @@ class SedmDB:
         """
         # TODO: is name, id, or e-mail the best designator to test for?
         # check if already contained
-        usernames = [user[0] for user in self.execute_sql('SELECT name FROM users;')]
-        user_ids = [user_id[0] for user_id in self.execute_sql('SELECT id FROM users;')]
+        users = self.execute_sql('SELECT * FROM users')
+        usernames = [user[1] for user in users]
+        user_ids = [user[0] for user in users]
         if not (pardic['name'] in usernames or pardic['id'] in user_ids):
             self.execute_sql("INSERT INTO users (id, name, email) Values ('%s', '%s', '%s');"
                              % (pardic['id'], pardic['name'], pardic['email']))
             return (0, "User added")
+        elif pardic['name'] in usernames and pardic['id'] in user_ids:
+            return (-1, "ERROR: User with that name and id exists")
+        elif pardic['name'] in usernames:
+            return (-1, "ERROR: User with that name exists!")
         else:
-            return (-1, "ERROR: User exists!")
+            return (-1, "ERROR: User with that id exists!")
         # TODO: test this
 
     def remove_user(self, pardic):
@@ -103,12 +108,9 @@ class SedmDB:
           (-1, "ERROR: User does not exist!")
 
         """
-        ids = [user_id[0] for user_id in self.execute_sql('SELECT id FROM users;')]
-        usernames = [name[0] for name in self.execute_sql('SELECT name FROM users;')]
-        emails = [email[0] for email in self.execute_sql('SELECT email FROM users;')]
-        users = [[ids[i], usernames[i], emails[i]] for i in range(len(ids))]
+        users = self.execute_sql('SELECT * FROM users')  # [(id, name, email), (id, name, email), ...]
         # TODO: only look at the id?
-        if [pardic['id'], pardic['name'], pardic['email']] in users:
+        if (int(pardic['id']), pardic['name'], pardic['email']) in users:
             self.execute_sql("DELETE FROM users WHERE id='%s';" % (pardic['id'],))
             return (0, "user removed")
         else:
@@ -214,16 +216,14 @@ class SedmDB:
 
          (-1, "ERROR: this request is a duplicate!")
          """
-        # TODO: remove options that are default null? (let them be introduced by update_request)
+        # TODO: remove options that are default null (let them be introduced by update_request)
+        # TODO: have update_request handle status, cadence, phasesamples, sampletolerance, odering (,nexposures, filter?)
         sql = ("INSERT INTO request (id, object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
-               "status, priority, inidate, enddate, cadence, phasesamples, sampletolerance, filters,"
-               " nexposures, ordering, creationdate, lastmodified) VALUES ('%s', '%s', '%s', '%s', '%s',"
-               "'%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');" %
+               " priority, inidate, enddate, filters, ellinexposures) VALUES ('%s', '%s', '%s', '%s', '%s',"
+               "'%s', '%s', '%s', '%s', '%s', '%s', '%s');" %
                (pardic['id'], pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
-                pardic['exptime'], pardic['maxairmass'], pardic['status'], pardic['priority'], pardic['inidate'],
-                pardic['enddate'], pardic['cadence'], pardic['phasesamples'], pardic['sampletolerance'],
-                pardic['filters'], pardic['nexposures'], pardic['ordering'], pardic['creationdate'],
-                pardic['lastmodified']))
+                pardic['exptime'], pardic['maxairmass'], pardic['priority'], pardic['inidate'],
+                pardic['enddate'], pardic['filters'], pardic['nexposures']))
         self.execute_sql(sql)
         objects = self.execute_sql("SELECT id FROM object;")
         if pardic['object_id'] not in objects:  # does the database check this?
@@ -250,7 +250,7 @@ class SedmDB:
         sql = "UPDATE request SET "
         for key in update_list:
             sql += "%s = '%s' AND" % (key, pardic[key])
-        sql = sql[:-4]  # to remove the extra AND
+        sql += "lastmodified = 'NOW()';" # TODO: check if this works
         sql += "WHERE id = %s" % (pardic['id'],)
 
     def expire_requests(self):
