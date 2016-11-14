@@ -267,7 +267,7 @@ CREATE TABLE request (
     sampletolerance decimal(5,2) NULL,
     filters text[]  NULL,
     nexposures integer[] NULL,
-    order integer[] NULL,
+    ordering integer[] NULL,
     creationdate date DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
@@ -337,9 +337,18 @@ CREATE TABLE telescope_stats (
 -- Table: users
 CREATE TABLE users (
     id bigint  NOT NULL,
+    group_id bigint NOT NULL,
     name text  NOT NULL,
     email text  NULL,
     CONSTRAINT users_pk PRIMARY KEY (id)
+);
+
+-- Table: groups
+CREATE TABLE groups (
+    id bigint NOT NULL,
+    designator text NULL,
+    users integer[] NULL,
+    CONSTRAINT groups PRIMARY KEY (id)
 );
 
 -- foreign keys
@@ -499,6 +508,14 @@ ALTER TABLE hyperbolic_heliocentric ADD CONSTRAINT object_hyperbolic_heliocentri
 ALTER TABLE periodic ADD CONSTRAINT object_periodic
     FOREIGN KEY (object_id)
     REFERENCES object (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: user_group (table: users)
+ALTER TABLE users ADD CONSTRAINT user_group
+    FOREIGN KEY (group_id)
+    REFERENCES groups (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
