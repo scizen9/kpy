@@ -142,6 +142,11 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         except:
             raise Exception("Not able to load %s. " % ifile)
 
+        # Check quality of extraction
+        if data["quality"] > 0:
+            print "Bad std extraction in %s" % ifile
+            continue
+
         # Check for calculated correction
         if "std-correction" not in data.keys():
             print "No std-correction vector in %s" % ifile

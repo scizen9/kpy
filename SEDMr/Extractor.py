@@ -124,6 +124,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     
     NOTE: Index is counted against the array, not seg_id
     """
+
+    status = 0
+
     pl.ioff()
 
     kt = SedSpec.Spectra(spectra)
@@ -154,27 +157,41 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     sigma_x = 1.3
     sigma_y = 1.
     amplitude = np.nanmax(grid_vs)
-    print("initial guess: z,a,b,x,y: %f, %f, %f, %f, %f" %
-          (amplitude, sigma_x, sigma_y, xo, yo))
+    print("initial guess: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
+          (amplitude, sigma_x, sigma_y, xo, yo, 0.))
 
     # create data
     initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0,
                      np.nanmean(grid_vs))
 
-    popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
-                               grid_vs.flatten(), p0=initial_guess)
+    try:
+        popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
+                                   grid_vs.flatten(), p0=initial_guess)
+    except RuntimeError:
+        print "ERROR: unable to fit Gaussian"
+        print "Using initial guess"
+        status = 3
+        popt = initial_guess
+
     xc = popt[1]
     yc = popt[2]
     if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
-        print "Warning: X,Y out of bounds: %f, %f" % (xc, yc)
+        print "ERROR: X,Y out of bounds: %f, %f" % (xc, yc)
         print "Using initial position: %f, %f" % (xo, yo)
         xc = xo
         yc = yo
+        status = 1
     pos = (xc, yc)
 
     # get 3-sigma extent
     a = popt[3]*sigfac
     b = popt[4]*sigfac
+    if a > 30. or b > 30.:
+        print "ERROR: A,B out of bounds: %f, %f" % (a, b)
+        print "Using initial values: %f, %f" % (sigma_x, sigma_y)
+        a = sigma_x * sigfac
+        b = sigma_y * sigfac
+        status = 2
     theta = popt[5]
     z = popt[0]
 
@@ -199,7 +216,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     kix = list(set(all_kix))
     print "found this many spaxels: %d" % len(kix)
 
-    return kt.good_positions[kix], pos, positions, ellipse
+    return kt.good_positions[kix], pos, positions, ellipse, status
 
 
 def find_positions_ellipse(xy, h, k, a, b, theta):
@@ -1019,11 +1036,17 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     objname = meta['header']['OBJECT'].split()[0]
 
     # Automatic extraction using Gaussian fit for Standard Stars
-    sixa, posa, adcpos, ellipse = \
+    sixa, posa, adcpos, ellipse, status = \
         identify_spectra_gauss_fit(ex,
                                    prlltc=Angle(meta['PRLLTC'], unit='deg'),
                                    lmin=lmin, lmax=lmax,
                                    airmass=meta['airmass'])
+
+    if status > 0:
+        quality = 4  # something went wrong
+    else:
+        quality = 0  # good fit
+
     radius_used = ellipse[0] * 0.5
 
     # Mark object spaxels
@@ -1156,7 +1179,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['sky_spaxel_ids'] = kixa
     res[0]['sky_spectra'] = skya[0]['spectra']
     res[0]['sky_subtraction'] = True
-    res[0]['quality'] = 0
+    res[0]['quality'] = quality
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1291,7 +1314,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         if autoExtract:
             # Automatic extraction using Gaussian fit for Standard Stars
-            sixa, posa, adcpos, ellipse = \
+            sixa, posa, adcpos, ellipse, status = \
                 identify_spectra_gauss_fit(ex,
                                            prlltc=Angle(meta['PRLLTC'],
                                                         unit='deg'),
@@ -1299,7 +1322,10 @@ def handle_single(imfile, fine, outname=None, offset=None,
                                            airmass=meta['airmass'],
                                            sigfac=2.0)
             radius_used = ellipse[0] * 0.5
-            quality = 1  # by definition
+            if status > 0:
+                quality = 4  # something went wrong
+            else:
+                quality = 1  # by definition
 
             # Use all sky spaxels in image
             kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
