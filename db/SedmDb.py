@@ -3,10 +3,12 @@ from sqlalchemy import exc, create_engine
 import psycopg2
 import numpy as np
 import subprocess
+import warnings
 
 
 # Singleton/SingletonPattern.py
 
+# noinspection PyArgumentList,SqlResolve,SqlNoDataSourceInspection,PyRedundantParentheses
 class SedmDB:
     class __SedmDB:
         def __init__(self):
@@ -83,11 +85,12 @@ class SedmDB:
           (-1, "ERROR: User exists!")
 
         """
+        # TODO: is name, id, or e-mail the best designator to test for?
         # check if already contained
-        usernames = self.execute_sql('SELECT name FROM users')
-        user_ids = self.execute_sql('SELECT id FROM users')
+        usernames = [user[0] for user in self.execute_sql('SELECT name FROM users;')]
+        user_ids = [user_id[0] for user_id in self.execute_sql('SELECT id FROM users;')]
         if not (pardic['name'] in usernames or pardic['id'] in user_ids):
-            self.execute_sql("INSERT INTO users (id, name, email) Values ('%s', '%s', '%s')"
+            self.execute_sql("INSERT INTO users (id, name, email) Values ('%s', '%s', '%s');"
                              % (pardic['id'], pardic['name'], pardic['email']))
             return (0, "User added")
         else:
@@ -100,13 +103,13 @@ class SedmDB:
           (-1, "ERROR: User does not exist!")
 
         """
-        ids = self.execute_sql('SELECT id FROM users')
-        usernames = self.execute_sql('SELECT name FROM users')
-        emails = self.execute_sql('SELECT email FROM users')
+        ids = [user_id[0] for user_id in self.execute_sql('SELECT id FROM users;')]
+        usernames = [name[0] for name in self.execute_sql('SELECT name FROM users;')]
+        emails = [email[0] for email in self.execute_sql('SELECT email FROM users;')]
         users = [[ids[i], usernames[i], emails[i]] for i in range(len(ids))]
         # TODO: only look at the id?
         if [pardic['id'], pardic['name'], pardic['email']] in users:
-            self.execute_sql('DELETE FROM users WHERE id=%s' % (pardic['id'],))
+            self.execute_sql("DELETE FROM users WHERE id='%s';" % (pardic['id'],))
             return (0, "user removed")
         else:
             return (-1, "ERROR: User does not exist!")
@@ -118,6 +121,7 @@ class SedmDB:
         (-1, "ERROR: Group exists!")
 
         """
+        # Need a group table or a group_id (in the user table)
         pass
 
     def add_to_group(self, user, group):
@@ -136,8 +140,8 @@ class SedmDB:
           It shall create a new object in periodic or any of the solar system objects (SS) if necessary.
             The parameters will be specified in the objparams dictionary.
           In case of a SSO, the user has the option to specify only the name if the object is know.
-          The function shall check the parameters of the object from the .edb XEphem files and fill the table corresponding
-            to the orbital parameters of the object.
+          The function shall check the parameters of the object from the .edb XEphem files and fill the table
+            corresponding to the orbital parameters of the object.
           The return of the function can be as follows:
 
           (CODE, MESSAGE)
@@ -146,8 +150,61 @@ class SedmDB:
           (0, "Object added")
           (-1, "ERROR: the orbital parameters for the SSO are now tabulated. Please, introduce them manually.")
           """
+        # TODO: test for each different case of typedesig
+        # TODO: have it update existing object if it already exists?
+        # TODO: set objparams default to None?
+        if objparams:
+            if not pardic['id'] == objparams['object_id']:
+                raise AttributeError('object_id in objparams differs from id in pardic')
 
-        pass
+        obj_sql = ("INSERT INTO object (id, marshal_id, name, ra, dec, typedesig, epoch) Values "
+                   "('%s','%s','%s','%s','%s','%s','%s');" % (
+                        pardic['id'], pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
+                        pardic['typedesig'], pardic['epoch']))
+
+        if not pardic['typedesig'] == 'P':
+            self.execute_sql(obj_sql)  # TODO, modify it depending on what parameters make sense for the type
+            if pardic['typedesig'] == 'e':
+                sql = ("INSERT INTO elliptical_heliocentric (id, object_id, inclination, longascnode_O, perihelion_o, "
+                       "a, n, e, M, mjdepoch, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s',"
+                       "'%s','%s','%s','%s')" % (
+                        objparams['id'], pardic['id'], objparams['inclination'], objparams['longascnode_O'],
+                        objparams['perihelion_o'], objparams['a'], objparams['n'], objparams['e'], objparams['M'],
+                        objparams['mjdepoch'], objparams['D'], objparams['M1'], objparams['M2'], objparams['s']))
+                self.execute_sql(sql)
+
+            elif pardic['typedesig'] == 'h':
+                sql = (
+                 "INSERT INTO hyperbolic_heliocentric (id, object_id, T, inclination, longascnode_O, perihelion_o, "
+                 "e, q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (objparams['id'], pardic['id'], objparams['T'], objparams['inclination'], objparams['longascnode_O'],
+                  objparams['perihelion_o'], objparams['e'], objparams['q'], objparams['D'], objparams['M1'],
+                  objparams['M2'], objparams['s']))
+                self.execute_sql(sql)
+
+            elif pardic['typedesig'] == 'p':
+                sql = (
+                 "INSERT INTO parabolic_heliocentric (id, object_id, T, e, inclination, longascnode_O, perihelion_o, "
+                 "q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (objparams['id'], pardic['id'], objparams['T'], objparams['e'], objparams['inclination'],
+                  objparams['longascnode_O'], objparams['perihelion_o'], objparams['q'], objparams['D'],
+                  objparams['M1'], objparams['M2'], objparams['s']))
+                self.execute_sql(sql)
+
+            elif pardic['typedesig'] == 'E':
+                sql = (
+                 "INSERT INTO parabolic_heliocentric (id, object_id, T, inclination, ra, e, pedigree, M, n, "
+                 "decay, reforbit, drag) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (objparams['id'], pardic['id'], objparams['T'], objparams['inclination'], objparams['ra'],
+                  objparams['e'], objparams['pedigree'], objparams['M'], objparams['n'], objparams['decay'],
+                  objparams['reforbit'], objparams['drag']))
+                self.execute_sql(sql)
+            else:
+                pass
+
+        elif pardic['typedesig'] == 'P':
+            # TODO, use the planet/satellite name (.edb XEphem) to generate the orbit
+            pass
 
     def add_request(self, pardic):
         """
@@ -157,23 +214,44 @@ class SedmDB:
 
          (-1, "ERROR: this request is a duplicate!")
          """
-
+        # TODO: remove options that are default null? (let them be introduced by update_request)
+        sql = ("INSERT INTO request (id, object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
+               "status, priority, inidate, enddate, cadence, phasesamples, sampletolerance, filters,"
+               " nexposures, ordering, creationdate, lastmodified) VALUES ('%s', '%s', '%s', '%s', '%s',"
+               "'%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');" %
+               (pardic['id'], pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
+                pardic['exptime'], pardic['maxairmass'], pardic['status'], pardic['priority'], pardic['inidate'],
+                pardic['enddate'], pardic['cadence'], pardic['phasesamples'], pardic['sampletolerance'],
+                pardic['filters'], pardic['nexposures'], pardic['ordering'], pardic['creationdate'],
+                pardic['lastmodified']))
+        self.execute_sql(sql)
+        objects = self.execute_sql("SELECT id FROM object;")
+        if pardic['object_id'] not in objects:  # does the database check this?
+            warnings.warn("object associated with request is not in database", UserWarning)
         pass
 
     def update_request(self, pardic):
         """
-         Updates the request table with the parameters form the dictionary.
+         Updates the request table with the parameters from the dictionary.
       
           possible values for status are:
-            - PENDIG
+            - PENDING
             - ACTIVE
             - COMPLETED
             - CANCELED
             - EXPIRED
 
          """
-
-        pass
+        # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
+        keys = pardic.keys()
+        update_list = keys.remove('id')
+        if len(update_list) == 0:
+            return (-1, "ERROR: no parameters given to update")
+        sql = "UPDATE request SET "
+        for key in update_list:
+            sql += "%s = '%s' AND" % (key, pardic[key])
+        sql = sql[:-4]  # to remove the extra AND
+        sql += "WHERE id = %s" % (pardic['id'],)
 
     def expire_requests(self):
         """
@@ -189,8 +267,9 @@ class SedmDB:
          Returns the list of requests that are active now.
 
          """
-
-        pass
+        # TODO: test, add formatting?
+        active_requests = self.execute_sql("SELECT * FROM request WHERE status='ACTIVE';")
+        return active_requests
 
     def add_atomic_request(self, pardic):
         """
@@ -203,6 +282,37 @@ class SedmDB:
          """
 
         pass
+
+    def update_atomic_request(self, pardic):
+        """
+        Updates an atomic request with the parameters from the dictionary
+
+        """
+        # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
+        keys = pardic.keys()
+        update_list = keys.remove('id')
+        if len(update_list) == 0:
+            return (-1, "ERROR: no parameters given to update")
+        sql = "UPDATE atomicrequest SET "
+        for key in update_list:
+            sql += "%s = '%s' AND" % (key, pardic[key])
+        sql = sql[:-4]  # to remove the extra AND
+        sql += "WHERE id = %s" % (pardic['id'],)
+
+    def get_request_atomic_requests(self, request_id):
+        """
+        return the atomicreqests associated with a single request
+
+        Args:
+            request_id: int
+                The request_id of the desired request
+
+        Returns:
+            all atomicreqests associated with the desired request
+        """
+        # TODO: test
+        atomic_requests = self.execute_sql("SELECT * from atomicrequest WHERE request_id = %s" % (request_id,))
+        return atomic_requests
 
     def add_observation_fits(self, fitsfile):
         """
