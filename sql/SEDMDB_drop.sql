@@ -39,6 +39,9 @@ ALTER TABLE request
     DROP CONSTRAINT users_request;
 
 -- tables
+
+DROP TABLE usergroups;
+
 DROP TABLE classification;
 
 DROP TABLE flexure;
@@ -74,5 +77,8 @@ DROP TABLE periodic;
 DROP TABLE object;
 
 DROP TABLE request;
+
+DROP TABLE groups;
+
 -- End of file.
 
