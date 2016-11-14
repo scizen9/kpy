@@ -225,7 +225,7 @@ class SedmDB:
                 pardic['exptime'], pardic['maxairmass'], pardic['priority'], pardic['inidate'],
                 pardic['enddate'], pardic['filters'], pardic['nexposures']))
         self.execute_sql(sql)
-        objects = self.execute_sql("SELECT id FROM object;")
+        objects = [obj[0] for obj in self.execute_sql("SELECT id FROM object;")]
         if pardic['object_id'] not in objects:  # does the database check this?
             warnings.warn("object associated with request is not in database", UserWarning)
         pass
@@ -244,14 +244,16 @@ class SedmDB:
          """
         # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
         keys = pardic.keys()
-        update_list = keys.remove('id')
-        if len(update_list) == 0:
+        keys.remove('id')
+        if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update")
         sql = "UPDATE request SET "
-        for key in update_list:
-            sql += "%s = '%s' AND" % (key, pardic[key])
-        sql += "lastmodified = 'NOW()';" # TODO: check if this works
-        sql += "WHERE id = %s" % (pardic['id'],)
+        for key in keys:
+            sql += "%s = '%s', " % (key, pardic[key])
+        sql += "lastmodified = 'NOW()' "  # TODO: check if this works
+        sql += "WHERE id = %s;" % (pardic['id'],)
+        # TODO: check if the requests exists yet
+        self.execute_sql(sql)
 
     def expire_requests(self):
         """
@@ -290,14 +292,15 @@ class SedmDB:
         """
         # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
         keys = pardic.keys()
-        update_list = keys.remove('id')
-        if len(update_list) == 0:
+        keys.remove('id')
+        if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update")
         sql = "UPDATE atomicrequest SET "
-        for key in update_list:
-            sql += "%s = '%s' AND" % (key, pardic[key])
-        sql = sql[:-4]  # to remove the extra AND
-        sql += "WHERE id = %s" % (pardic['id'],)
+        for key in keys:
+            sql += "%s = '%s', " % (key, pardic[key])
+        sql += "lastmodified = 'NOW()' "  # TODO: check if this works
+        sql += "WHERE id = %s;" % (pardic['id'],)
+        self.execute_sql(sql)
 
     def get_request_atomic_requests(self, request_id):
         """
