@@ -4,7 +4,7 @@
 -- tables
 -- Table: classification
 CREATE TABLE classification (
-    id bigint SERIAL,
+    id BIGSERIAL,
     object_id bigint NOT NULL,
     spec_id bigint NOT NULL,
     classification text  NULL,
@@ -19,7 +19,7 @@ CREATE TABLE classification (
 
 -- Table: flexure
 CREATE TABLE flexure (
-    id bigint SERIAL,
+    id BIGSERIAL,
     rms decimal(8,4)  NOT NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE flexure (
 
 -- Table: metrics_phot
 CREATE TABLE metrics_phot (
-    id bigint SERIAL,
+    id BIGSERIAL,
     phot_id bigint NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
@@ -41,7 +41,7 @@ CREATE TABLE metrics_phot (
 
 -- Table: metrics_spec
 CREATE TABLE metrics_spec (
-    id bigint SERIAL,
+    id BIGSERIAL,
     spec_id bigint NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
@@ -58,7 +58,7 @@ CREATE TABLE metrics_spec (
 -- P built-in planet or natural satellite name
 --
 CREATE TABLE object (
-    id bigint SERIAL,
+    id BIGSERIAL,
     marshal_id bigint NOT NULL,
     name text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
@@ -192,7 +192,7 @@ CREATE TABLE periodic (
 
 -- Table: observation
 CREATE TABLE observation (
-    id bigint SERIAL,
+    id BIGSERIAL,
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
     mjd decimal(10,2)  NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE observation (
 
 -- Table: phot
 CREATE TABLE phot (
-    id bigint SERIAL,
+    id BIGSERIAL,
     observation_id bigint NOT NULL,
     astrometry boolean  NOT NULL,
     filter text  NOT NULL,
@@ -233,7 +233,7 @@ CREATE TABLE phot (
 
 -- Table: ref_stars
 CREATE TABLE ref_stars (
-    id bigint SERIAL,
+    id BIGSERIAL,
     phot_id bigint NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE ref_stars (
 
 -- Table: request
 CREATE TABLE request (
-    id bigint SERIAL,
+    id BIGSERIAL,
     object_id bigint NOT NULL,
     user_id bigint NOT NULL,
     program_id smallint  NOT NULL,
@@ -274,7 +274,7 @@ CREATE TABLE request (
 );
 
 CREATE TABLE atomicrequest (
-    id bigint SERIAL,
+    id BIGSERIAL,
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
     order_id int NULL,
@@ -293,7 +293,7 @@ CREATE TABLE atomicrequest (
 
 -- Table: spec
 CREATE TABLE spec (
-    id bigint SERIAL,
+    id BIGSERIAL,
     observation_id bigint NOT NULL,
     reducedfile text  NULL,
     sexfile text  NULL,
@@ -310,7 +310,7 @@ CREATE TABLE spec (
 
 -- Table: telescope_stats
 CREATE TABLE telescope_stats (
-    id bigint SERIAL,
+    id BIGSERIAL,
     observation_id bigint NOT NULL,
     date date  NOT NULL,
     dome_status text  NULL,
@@ -336,7 +336,7 @@ CREATE TABLE telescope_stats (
 
 -- Table: users
 CREATE TABLE users (
-    id bigint SERIAL,
+    id BIGSERIAL,
     group_id bigint NOT NULL,
     name text  NOT NULL,
     email text  NULL,
@@ -345,7 +345,7 @@ CREATE TABLE users (
 
 -- Table: groups
 CREATE TABLE groups (
-    id bigint SERIAL,
+    id BIGSERIAL,
     designator text NULL,
     CONSTRAINT groups_pk PRIMARY KEY (id)
 );
