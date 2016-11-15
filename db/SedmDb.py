@@ -91,8 +91,9 @@ class SedmDB:
         usernames = [user[1] for user in users]
         user_ids = [user[0] for user in users]
         if not (pardic['name'] in usernames or pardic['id'] in user_ids):
-            self.execute_sql("INSERT INTO users (id, name, email) Values ('%s', '%s', '%s');"
-                             % (pardic['id'], pardic['name'], pardic['email']))
+            self.execute_sql("INSERT INTO users (id, group_id, name, email) Values ('%s', '%s', '%s', '%s');"
+                             % (pardic['id'], pardic['group_id'], pardic['name'], pardic['email']))
+            self.add_to_group(pardic['id'], pardic['group_id'])
             return (0, "User added")
         elif pardic['name'] in usernames and pardic['id'] in user_ids:
             return (-1, "ERROR: User with that name and id exists")
@@ -108,9 +109,10 @@ class SedmDB:
           (-1, "ERROR: User does not exist!")
 
         """
+        # TODO: also remove user from a group
         users = self.execute_sql('SELECT * FROM users')  # [(id, name, email), (id, name, email), ...]
         # TODO: only look at the id?
-        if (int(pardic['id']), pardic['name'], pardic['email']) in users:
+        if (int(pardic['id']), int(pardic['group_id']), pardic['name'], pardic['email']) in users:
             self.execute_sql("DELETE FROM users WHERE id='%s';" % (pardic['id'],))
             return (0, "user removed")
         else:
@@ -123,8 +125,16 @@ class SedmDB:
         (-1, "ERROR: Group exists!")
 
         """
-        # Need a group table or a group_id (in the user table)
-        pass
+        groups = [id[0] for id in self.execute_sql('SELECT id FROM groups;')]
+        if int(pardic['id']) not in groups and pardic['designator']:
+            self.execute_sql(("INSERT INTO groups (id, designator) VALUES ('%s', '%s')"
+                              % (pardic['id'], pardic['designator'])))
+            return (0, "Group added")
+        elif int(pardic['id']) not in groups:
+            self.execute_sql(("INSERT INTO groups (id) VALUES '%s'" % (pardic['id'],)))
+            return (0, "Group added, designator needed")
+        else:
+            return (-1, "Group exists")
 
     def add_to_group(self, user, group):
         """
@@ -134,7 +144,15 @@ class SedmDB:
         (-1, "ERROR: Group exists!")
 
         """
-        pass
+        usergroups = self.execute_sql('SELECT (user_id, group_d) FROM usergroups')
+        if (user, group) in usergroups:
+            return (-1, "ERROR: user already in group")
+        elif user in [ids[0] for ids in usergroups]:
+            return (-1, "ERROR: user in different group")
+            # TODO: make it so a user can have multiple groups?
+        else:
+            self.execute_sql("INSERT INTO usergroups (user_id, group_id) VALUES ('%s','%s')"
+                             % (user, group))
 
     def add_object(self, pardic, objparams):
         """
@@ -158,6 +176,8 @@ class SedmDB:
         if objparams:
             if not pardic['id'] == objparams['object_id']:
                 raise AttributeError('object_id in objparams differs from id in pardic')
+        if pardic['id'] in [obj[0] for obj in self.execute_sql('SELECT id FROM ojbect')]:
+            return (-1, "ERROR: object exists")
 
         obj_sql = ("INSERT INTO object (id, marshal_id, name, ra, dec, typedesig, epoch) Values "
                    "('%s','%s','%s','%s','%s','%s','%s');" % (
@@ -218,12 +238,14 @@ class SedmDB:
          """
         # TODO: remove options that are default null (let them be introduced by update_request)
         # TODO: have update_request handle status, cadence, phasesamples, sampletolerance, odering (,nexposures, filter?)
+        if pardic['id'] in [request[0] for request in self.execute_sql('SELECT id FROM request')]:
+            return (-1, "ERROR: request id exists")
+
         sql = ("INSERT INTO request (id, object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
-               " priority, inidate, enddate, filters, ellinexposures) VALUES ('%s', '%s', '%s', '%s', '%s',"
-               "'%s', '%s', '%s', '%s', '%s', '%s', '%s');" %
+               " priority, inidate, enddate) VALUES ('%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s');" %
                (pardic['id'], pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
                 pardic['exptime'], pardic['maxairmass'], pardic['priority'], pardic['inidate'],
-                pardic['enddate'], pardic['filters'], pardic['nexposures']))
+                pardic['enddate']))
         self.execute_sql(sql)
         objects = [obj[0] for obj in self.execute_sql("SELECT id FROM object;")]
         if pardic['object_id'] not in objects:  # does the database check this?

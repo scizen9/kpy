@@ -355,7 +355,7 @@ CREATE TABLE usergroups (
     user_id bigint NOT NULL,
     group_id bigint NOT NULL,
     CONSTRAINT user_groups PRIMARY KEY (user_id, group_id)
-):
+);
 
 -- foreign keys
 -- Reference: atomicrequest_object (table: atomicrequest)
