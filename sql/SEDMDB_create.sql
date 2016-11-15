@@ -4,9 +4,9 @@
 -- tables
 -- Table: classification
 CREATE TABLE classification (
-    id bigint  SERIAL,
+    id bigint SERIAL,
     object_id bigint NOT NULL,
-    spec_id bigint SERIAL,
+    spec_id bigint NOT NULL,
     classification text  NULL,
     redshift decimal(7,5)  NULL,
     redshifterr decimal(7,5)  NULL,
@@ -29,7 +29,7 @@ CREATE TABLE flexure (
 -- Table: metrics_phot
 CREATE TABLE metrics_phot (
     id bigint SERIAL,
-    phot_id bigint SERIAL,
+    phot_id bigint NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
     zp decimal(5,2)  NULL,
@@ -42,7 +42,7 @@ CREATE TABLE metrics_phot (
 -- Table: metrics_spec
 CREATE TABLE metrics_spec (
     id bigint SERIAL,
-    spec_id bigint SERIAL,
+    spec_id bigint NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
     line_fwhm int  NULL,
@@ -59,7 +59,7 @@ CREATE TABLE metrics_spec (
 --
 CREATE TABLE object (
     id bigint SERIAL,
-    marshal_id bigint SERIAL,
+    marshal_id bigint NOT NULL,
     name text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
@@ -194,7 +194,7 @@ CREATE TABLE periodic (
 CREATE TABLE observation (
     id bigint SERIAL,
     object_id bigint NOT NULL,
-    request_id bigint SERIAL,
+    request_id bigint NOT NULL,
     mjd decimal(10,2)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
     exptime decimal(6,2)  NOT NULL,
@@ -218,7 +218,7 @@ CREATE TABLE observation (
 -- Table: phot
 CREATE TABLE phot (
     id bigint SERIAL,
-    observation_id bigint SERIAL,
+    observation_id bigint NOT NULL,
     astrometry boolean  NOT NULL,
     filter text  NOT NULL,
     reducedfile text  NULL,
@@ -234,7 +234,7 @@ CREATE TABLE phot (
 -- Table: ref_stars
 CREATE TABLE ref_stars (
     id bigint SERIAL,
-    phot_id bigint SERIAL,
+    phot_id bigint NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
     survey text  NOT NULL,
@@ -252,8 +252,8 @@ CREATE TABLE ref_stars (
 -- Table: request
 CREATE TABLE request (
     id bigint SERIAL,
-    object_id bigint SERIAL,
-    user_id bigint SERIAL,
+    object_id bigint NOT NULL,
+    user_id bigint NOT NULL,
     program_id smallint  NOT NULL,
     marshal_id bigint NULL,
     exptime int  NOT NULL,
@@ -275,8 +275,8 @@ CREATE TABLE request (
 
 CREATE TABLE atomicrequest (
     id bigint SERIAL,
-    object_id bigint SERIAL,
-    request_id bigint SERIAL,
+    object_id bigint NOT NULL,
+    request_id bigint NOT NULL,
     order_id int NULL,
     exptime float  NOT NULL,
     instrument text  NOT NULL,
@@ -294,7 +294,7 @@ CREATE TABLE atomicrequest (
 -- Table: spec
 CREATE TABLE spec (
     id bigint SERIAL,
-    observation_id bigint SERIAL,
+    observation_id bigint NOT NULL,
     reducedfile text  NULL,
     sexfile text  NULL,
     biasfile text  NULL,
@@ -311,7 +311,7 @@ CREATE TABLE spec (
 -- Table: telescope_stats
 CREATE TABLE telescope_stats (
     id bigint SERIAL,
-    observation_id bigint SERIAL,
+    observation_id bigint NOT NULL,
     date date  NOT NULL,
     dome_status text  NULL,
     in_temp decimal(5,2)  NULL,
