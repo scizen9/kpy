@@ -1189,9 +1189,10 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Save the final spectrum
     np.save("sp_" + outname, res)
     print "Wrote sp_"+outname+".npy"
-    # Save std star ellipse
-    np.save("ell_" + outname, ellipse)
-    print "Wrote ell_%s.npy" % outname
+    # Save std star ellipse if all went well
+    if quality == 0:
+        np.save("ell_" + outname, ellipse)
+        print "Wrote ell_%s.npy" % outname
 
 
 def handle_single(imfile, fine, outname=None, offset=None,
