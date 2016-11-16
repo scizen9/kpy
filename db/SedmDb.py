@@ -85,22 +85,18 @@ class SedmDB:
           (-1, "ERROR: User exists!")
 
         """
-        # TODO: is name, id, or e-mail the best designator to test for?
+        # TODO: is name or e-mail the best designator to test for?
         # check if already contained
         users = self.execute_sql('SELECT * FROM users')
-        usernames = [user[1] for user in users]
-        user_ids = [user[0] for user in users]
-        if not (pardic['name'] in usernames or pardic['id'] in user_ids):
-            self.execute_sql("INSERT INTO users (id, group_id, name, email) Values ('%s', '%s', '%s', '%s');"
-                             % (pardic['id'], pardic['group_id'], pardic['name'], pardic['email']))
-            self.add_to_group(pardic['id'], pardic['group_id'])
+        emails = [user[3] for user in users]
+        if not pardic['email'] in emails:
+            self.execute_sql("INSERT INTO users (group_id, name, email) Values ('%s', '%s', '%s');"
+                             % (pardic['group_id'], pardic['name'], pardic['email']))
+            user_id = self.execute_sql("SELECT id FROM users WHERE email='%s'" % (pardic['email'],))[0][0]
+            self.add_to_group(user_id, pardic['group_id'])
             return (0, "User added")
-        elif pardic['name'] in usernames and pardic['id'] in user_ids:
-            return (-1, "ERROR: User with that name and id exists")
-        elif pardic['name'] in usernames:
-            return (-1, "ERROR: User with that name exists!")
         else:
-            return (-1, "ERROR: User with that id exists!")
+            return (-1, "ERROR: User with that email exists!")
         # TODO: test this
 
     def remove_user(self, pardic):
@@ -109,12 +105,25 @@ class SedmDB:
           (-1, "ERROR: User does not exist!")
 
         """
+        # TODO: remove id option?
+        if 'id' in pardic.keys():
+            if pardic['id'] in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
+                self.execute_sql("DELETE FROM usergroups WHERE id='%s'" % (user_id,))
+                self.execute_sql("DELETE FROM users WHERE id='%s';" % (user_id,))
+                return (0, "user removed")
+            else:
+                return (-1, "ERROR: no user with that id!")
+        elif 'email' in pardic.keys():
+            user_id = self.execute_sql("SELECT id FROM users WHERE email='%s'" % (pardic['email'],))
+            if user_id:
+                self.execute_sql("DELETE FROM usergroups WHERE user_id='%s'" % (user_id[0][0],))
+                self.execute_sql("DELETE FROM users WHERE id='%s';" % (user_id[0][0],))
+                return (0, "user removed")
+            else:
+                return (-1, "ERROR: no user with that email!")
         # TODO: also remove user from a group
-        users = self.execute_sql('SELECT * FROM users')  # [(id, name, email), (id, name, email), ...]
-        # TODO: only look at the id?
-        if (int(pardic['id']), int(pardic['group_id']), pardic['name'], pardic['email']) in users:
-            self.execute_sql("DELETE FROM users WHERE id='%s';" % (pardic['id'],))
-            return (0, "user removed")
+        elif 'name' in pardic.keys() or 'group_id' in pardic.keys():
+            return (-1, "ERROR: email or id required!")
         else:
             return (-1, "ERROR: User does not exist!")
 
@@ -125,16 +134,15 @@ class SedmDB:
         (-1, "ERROR: Group exists!")
 
         """
-        groups = [id[0] for id in self.execute_sql('SELECT id FROM groups;')]
-        if int(pardic['id']) not in groups and pardic['designator']:
-            self.execute_sql(("INSERT INTO groups (id, designator) VALUES ('%s', '%s')"
-                              % (pardic['id'], pardic['designator'])))
+        groups = [des[0] for des in self.execute_sql('SELECT designator FROM groups;')]
+        if not pardic['designator']:
+            return (-1, 'ERROR: no group designator provided!')
+        if pardic['designator'] not in groups:
+            self.execute_sql(("INSERT INTO groups (designator) VALUES ('%s')"
+                              % (pardic['designator'])))
             return (0, "Group added")
-        elif int(pardic['id']) not in groups:
-            self.execute_sql(("INSERT INTO groups (id) VALUES '%s'" % (pardic['id'],)))
-            return (0, "Group added, designator needed")
         else:
-            return (-1, "Group exists")
+            return (-1, "ERROR: Group exists!")
 
     def add_to_group(self, user, group):
         """
@@ -144,7 +152,11 @@ class SedmDB:
         (-1, "ERROR: Group exists!")
 
         """
-        usergroups = self.execute_sql('SELECT (user_id, group_d) FROM usergroups')
+        if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
+            return (-1, "ERROR: user does not exist")
+        if group not in [group_id[0] for group_id in self.execute_sql('SELECT id FROM groups')]:
+            return (-1, "ERROR: group does not exist")
+        usergroups = self.execute_sql('SELECT (user_id, group_id) FROM usergroups')
         if (user, group) in usergroups:
             return (-1, "ERROR: user already in group")
         elif user in [ids[0] for ids in usergroups]:
@@ -153,11 +165,12 @@ class SedmDB:
         else:
             self.execute_sql("INSERT INTO usergroups (user_id, group_id) VALUES ('%s','%s')"
                              % (user, group))
+            return (0, "User added to group")
 
     def add_object(self, pardic, objparams):
         """
           Creates a new object in the db with the characterisstics given by the dictionary of parameters: pardic.
-          It shall create a new object in periodic or any of the solar system objects (SS) if necessary.
+          It shall create a new object in periodic or any of the solar system objects (SSO) if necessary.
             The parameters will be specified in the objparams dictionary.
           In case of a SSO, the user has the option to specify only the name if the object is know.
           The function shall check the parameters of the object from the .edb XEphem files and fill the table
@@ -173,51 +186,50 @@ class SedmDB:
         # TODO: test for each different case of typedesig
         # TODO: have it update existing object if it already exists?
         # TODO: set objparams default to None?
-        if objparams:
-            if not pardic['id'] == objparams['object_id']:
-                raise AttributeError('object_id in objparams differs from id in pardic')
-        if pardic['id'] in [obj[0] for obj in self.execute_sql('SELECT id FROM ojbect')]:
+
+        if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
             return (-1, "ERROR: object exists")
 
-        obj_sql = ("INSERT INTO object (id, marshal_id, name, ra, dec, typedesig, epoch) Values "
-                   "('%s','%s','%s','%s','%s','%s','%s');" % (
-                        pardic['id'], pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
+        obj_sql = ("INSERT INTO object (marshal_id, name, ra, dec, typedesig, epoch) Values "
+                   "('%s','%s','%s','%s','%s','%s');" % (
+                        pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                         pardic['typedesig'], pardic['epoch']))
 
+        self.execute_sql(obj_sql)  # TODO, modify it depending on what parameters make sense for the type
+        object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
         if not pardic['typedesig'] == 'P':
-            self.execute_sql(obj_sql)  # TODO, modify it depending on what parameters make sense for the type
             if pardic['typedesig'] == 'e':
-                sql = ("INSERT INTO elliptical_heliocentric (id, object_id, inclination, longascnode_O, perihelion_o, "
-                       "a, n, e, M, mjdepoch, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s',"
+                sql = ("INSERT INTO elliptical_heliocentric (object_id, inclination, longascnode_O, perihelion_o, "
+                       "a, n, e, M, mjdepoch, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s',"
                        "'%s','%s','%s','%s')" % (
-                        objparams['id'], pardic['id'], objparams['inclination'], objparams['longascnode_O'],
+                        pardic['id'], objparams['inclination'], objparams['longascnode_O'],
                         objparams['perihelion_o'], objparams['a'], objparams['n'], objparams['e'], objparams['M'],
                         objparams['mjdepoch'], objparams['D'], objparams['M1'], objparams['M2'], objparams['s']))
                 self.execute_sql(sql)
 
             elif pardic['typedesig'] == 'h':
                 sql = (
-                 "INSERT INTO hyperbolic_heliocentric (id, object_id, T, inclination, longascnode_O, perihelion_o, "
-                 "e, q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
-                 (objparams['id'], pardic['id'], objparams['T'], objparams['inclination'], objparams['longascnode_O'],
+                 "INSERT INTO hyperbolic_heliocentric (object_id, T, inclination, longascnode_O, perihelion_o, "
+                 "e, q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (pardic['id'], objparams['T'], objparams['inclination'], objparams['longascnode_O'],
                   objparams['perihelion_o'], objparams['e'], objparams['q'], objparams['D'], objparams['M1'],
                   objparams['M2'], objparams['s']))
                 self.execute_sql(sql)
 
             elif pardic['typedesig'] == 'p':
                 sql = (
-                 "INSERT INTO parabolic_heliocentric (id, object_id, T, e, inclination, longascnode_O, perihelion_o, "
-                 "q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
-                 (objparams['id'], pardic['id'], objparams['T'], objparams['e'], objparams['inclination'],
+                 "INSERT INTO parabolic_heliocentric (object_id, T, e, inclination, longascnode_O, perihelion_o, "
+                 "q, D, M1, M2, s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (pardic['id'], objparams['T'], objparams['e'], objparams['inclination'],
                   objparams['longascnode_O'], objparams['perihelion_o'], objparams['q'], objparams['D'],
                   objparams['M1'], objparams['M2'], objparams['s']))
                 self.execute_sql(sql)
 
             elif pardic['typedesig'] == 'E':
                 sql = (
-                 "INSERT INTO parabolic_heliocentric (id, object_id, T, inclination, ra, e, pedigree, M, n, "
-                 "decay, reforbit, drag) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
-                 (objparams['id'], pardic['id'], objparams['T'], objparams['inclination'], objparams['ra'],
+                 "INSERT INTO parabolic_heliocentric (object_id, T, inclination, ra, e, pedigree, M, n, "
+                 "decay, reforbit, drag) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+                 (pardic['id'], objparams['T'], objparams['inclination'], objparams['ra'],
                   objparams['e'], objparams['pedigree'], objparams['M'], objparams['n'], objparams['decay'],
                   objparams['reforbit'], objparams['drag']))
                 self.execute_sql(sql)
@@ -238,19 +250,22 @@ class SedmDB:
          """
         # TODO: remove options that are default null (let them be introduced by update_request)
         # TODO: have update_request handle status, cadence, phasesamples, sampletolerance, odering (,nexposures, filter?)
-        if pardic['id'] in [request[0] for request in self.execute_sql('SELECT id FROM request')]:
-            return (-1, "ERROR: request id exists")
+        requests = self.execute_sql("SELECT (object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
+               " priority, inidate, enddate) FROM request WHERE status != 'EXPIRED';")
+        if (pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
+                pardic['exptime'], pardic['maxairmass'], pardic['priority'], pardic['inidate'],
+                pardic['enddate']) in requests: 
+            return (-1, "ERROR: request already exists")
+        if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
+            return (-1, "ERROR: object does not exist")
 
-        sql = ("INSERT INTO request (id, object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
-               " priority, inidate, enddate) VALUES ('%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s');" %
-               (pardic['id'], pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
+        sql = ("INSERT INTO request (object_id, user_id, program_id, marshal_id, exptime, maxairmass,"
+               " priority, inidate, enddate) VALUES ('%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s');" %
+               (pardic['object_id'], pardic['user_id'], pardic['program_id'], pardic['marshal_id'],
                 pardic['exptime'], pardic['maxairmass'], pardic['priority'], pardic['inidate'],
                 pardic['enddate']))
         self.execute_sql(sql)
-        objects = [obj[0] for obj in self.execute_sql("SELECT id FROM object;")]
-        if pardic['object_id'] not in objects:  # does the database check this?
-            warnings.warn("object associated with request is not in database", UserWarning)
-        pass
+        return (0, "Request added")
 
     def update_request(self, pardic):
         """
