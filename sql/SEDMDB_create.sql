@@ -59,7 +59,7 @@ CREATE TABLE metrics_spec (
 --
 CREATE TABLE object (
     id BIGSERIAL,
-    marshal_id bigint NOT NULL,
+    marshal_id bigint NOT NULL UNIQUE,
     name text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE object (
 --parameters from http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501
 CREATE TABLE elliptical_heliocentric (
     id bigint not null,
-    object_id bigint not null,
+    object_id bigint not null UNIQUE,
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
@@ -103,7 +103,7 @@ CREATE TABLE elliptical_heliocentric (
 
 CREATE TABLE hyperbolic_heliocentric (
     id bigint not null,
-    object_id bigint not null,
+    object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
     T date,
     --inclination
@@ -130,7 +130,7 @@ CREATE TABLE hyperbolic_heliocentric (
 
 CREATE TABLE parabolic_heliocentric (
     id bigint not null,
-    object_id bigint not null,
+    object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
     T date,
     -- eccentricity (<1)
@@ -156,7 +156,7 @@ CREATE TABLE parabolic_heliocentric (
 
 CREATE TABLE earth_satellite (
     id bigint not null,
-    object_id bigint not null,
+    object_id bigint not null UNIQUE,
     -- first date the elements are valid
     T date,
     --inclination
@@ -198,7 +198,7 @@ CREATE TABLE observation (
     mjd decimal(10,2)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
     exptime decimal(6,2)  NOT NULL,
-    file text  NOT NULL,
+    fitsfile text  NOT NULL UNIQUE,
     imtype text  NULL,
     lst text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
@@ -215,10 +215,27 @@ CREATE TABLE observation (
     CONSTRAINT observation_pk PRIMARY KEY (id)
 );
 
+-- Table: spec
+CREATE TABLE spec (
+    id BIGSERIAL,
+    observation_id bigint NOT NULL UNIQUE,
+    reducedfile text  NULL,
+    sexfile text  NULL,
+    biasfile text  NULL,
+    flatfile text  NULL,
+    imgset text  NULL,
+    quality int  NOT NULL,
+    cubefile text  NULL,
+    standardfile text  NULL,
+    marshal_spec_id bigint  NULL,
+    skysub boolean  NOT NULL,
+    CONSTRAINT spec_pk PRIMARY KEY (id)
+);
+
 -- Table: phot
 CREATE TABLE phot (
     id BIGSERIAL,
-    observation_id bigint NOT NULL,
+    observation_id bigint NOT NULL UNIQUE,
     astrometry boolean  NOT NULL,
     filter text  NOT NULL,
     reducedfile text  NULL,
@@ -291,23 +308,6 @@ CREATE TABLE atomicrequest (
     CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
 );
 
--- Table: spec
-CREATE TABLE spec (
-    id BIGSERIAL,
-    observation_id bigint NOT NULL,
-    reducedfile text  NULL,
-    sexfile text  NULL,
-    biasfile text  NULL,
-    flatfile text  NULL,
-    imgset text  NULL,
-    quality int  NOT NULL,
-    cubefile text  NULL,
-    standardfile text  NULL,
-    marshal_spec_id bigint  NULL,
-    skysub boolean  NOT NULL,
-    CONSTRAINT spec_pk PRIMARY KEY (id)
-);
-
 -- Table: telescope_stats
 CREATE TABLE telescope_stats (
     id BIGSERIAL,
@@ -346,7 +346,7 @@ CREATE TABLE users (
 -- Table: groups
 CREATE TABLE groups (
     id BIGSERIAL,
-    designator text NULL,
+    designator text NULL UNIQUE,
     CONSTRAINT groups_pk PRIMARY KEY (id)
 );
 
@@ -355,7 +355,7 @@ CREATE TABLE usergroups (
     user_id bigint NOT NULL,
     group_id bigint NOT NULL,
     CONSTRAINT user_groups PRIMARY KEY (user_id, group_id)
-):
+);
 
 -- foreign keys
 -- Reference: atomicrequest_object (table: atomicrequest)
