@@ -23,6 +23,8 @@ CREATE TABLE flexure (
     rms decimal(8,4)  NOT NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
+    timestamp1 TIME NOT NULL,
+    timestamp2 TIME NOT NULL,
     CONSTRAINT flexure_pk PRIMARY KEY (id)
 );
 
@@ -284,9 +286,9 @@ CREATE TABLE request (
     cadence decimal(5,2) NULL,
     phasesamples decimal(5,2)  NULL,
     sampletolerance decimal(5,2) NULL,
-    filters text[] DEFAULT {'ifu','u','g','r','i'},
+    filters text[] DEFAULT '{ifu,u,g,r,i}',
     nexposures integer[] NULL,
-    ordering integer[] NULL,
+    ordering text[] NULL,
     creationdate date DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
@@ -298,13 +300,11 @@ CREATE TABLE atomicrequest (
     request_id bigint NOT NULL,
     order_id int NULL,
     exptime float  NOT NULL,
-    instrument text  NOT NULL,
-    status text  NOT NULL,
-    active boolean DEFAULT FALSE,
+    filter text NOT NULL,
+    status text DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
     inidate date  NOT NULL,
     enddate date  NOT NULL,
-    filter text NULL,
     creationdate date  DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
@@ -348,7 +348,7 @@ CREATE TABLE users (
 -- Table: groups
 CREATE TABLE groups (
     id BIGSERIAL,
-    designator text NULL UNIQUE,
+    designator text NOT NULL UNIQUE,
     CONSTRAINT groups_pk PRIMARY KEY (id)
 );
 
