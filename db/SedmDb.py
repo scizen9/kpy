@@ -45,6 +45,8 @@ class SedmDB:
         if not SedmDB.instance:
             SedmDB.instance = SedmDB.__SedmDB()
 
+        self.sso_objects = None
+
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
@@ -204,11 +206,14 @@ class SedmDB:
         and are stored in the corresponding Table for the objects orbit type.
         Args:
             pardic: dict
-                requred: 'name', 'typedesig'(, 'ra', 'dec', 'epoch' OR 'marshal_id' for fixed object)
+                requred: 'name', 'typedesig'
+                        (, 'ra', 'dec', 'epoch' OR 'marshal_id' for fixed object)
+                        (, 'iauname' for non-fixed objects if no objparams)
                 optional: 'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
                 NOTE: 'typedesig' should be one of:
                             'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
                             'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
+                      'iauname' should be '# name' for minor planet names
             objparams: dict (different required parameters needed for each typedesig)
                 'f' or 'P' (or if pardic['name'] is in .edb file): none needed
                 'e': 'inclination', 'longascnode_0' (lon. of ascending node), 'perihelion_o' (arg. of perihelion),
@@ -258,6 +263,12 @@ class SedmDB:
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
                 return (-1, "ERROR: object exists")
         # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
+
+        # format array([# name, typedesig, ... same ordering as table
+        asteroids = np.genfromtxt('/home/sedm/kpy/ephem/asteroids.edb',
+                                  skip_header=4, delimiter=',', dtype='S25')
+        # TODO: get other dbs (e.g. JPL's ELEMENTS.COMET) in comma-separated format
+
         if pardic['typedesig'] == 'f':
             obj_sql = ("INSERT INTO object (marshal_id, name, ra, dec, typedesig, epoch) Values "
                        "('%s','%s','%s','%s','%s','%s');" % (
@@ -266,6 +277,15 @@ class SedmDB:
 
             self.execute_sql(obj_sql)
             return (0, "Object added")
+
+        elif pardic['typedesig'] == 'P':
+            # TODO, use the planet/satellite name (.edb XEphem) to generate the orbit
+            obj_name = pardic['name']
+
+            pass
+
+        elif not pardic['iauname'] and not objparams:  # if not fixed or default, need identifier
+            return (-1, "ERROR: need 'iauname' or objparams for non-fixed objects")
 
         elif pardic['typedesig'] == 'e':
             # TODO: modify obj_sql for the specific typedesig
@@ -339,12 +359,6 @@ class SedmDB:
             self.execute_sql(sql)
             return (0, "Earth satellite object added")
 
-        elif pardic['typedesig'] == 'P':
-            # TODO, use the planet/satellite name (.edb XEphem) to generate the orbit
-            obj_name = pardic['name']
-            
-            pass
-
     def add_request(self, pardic):
         """
 
@@ -353,21 +367,18 @@ class SedmDB:
                 required: 'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
                           'priority', 'inidate' (start of observing window), 'enddate' (end of observing window)
                 optional: 'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
-                          'cadence' (
+                          'cadence' (,
+                          'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
+                          the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
+                          'ordering' (string e.g. '{3g, 3r, 1i, 1spec, 2i}' for 3 g, then 3  r, then 1 i, 1 spec, 1 i)
+                NOTE: the numbers in 'ordering' must be single digit
 
 
         Returns:
 
         """
+        # TODO: get a better description of cadence/phasesamples/sampletolerance
 
-
-        """
-         Creates a new object in the request table with the parameters form the dictionary.
-         It shall check that there are no duplicate requests for the same object, obsreving time and project ID.
-         If there is a duplicate, it should return a negative result and a message.
-
-         (-1, "ERROR: this request is a duplicate!")
-         """
         # TODO: handle exptime in-function?
         # TODO: indicate that exptime should be of the form '{ifu_time, rc_time}' with those being time per exposure
         requests = self.execute_sql("SELECT (object_id, program_id) FROM request WHERE status != 'EXPIRED';")
@@ -486,22 +497,20 @@ class SedmDB:
         """
 
         Args:
-            pardic:
-
+            pardic: dict
+                required: 'request_id', 'exptime' (duration based on magnitude),
+                          'filter', 'priority', 'inidate', 'enddate'
+                optional: 'object_id', 'order_id' (index of observation order for the request e.g. 0)
                 filter options: 'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
         Returns:
 
         """
+        # TODO: better description of 'order_id'
+        # TODO: determine whether this should handle filter modifications to exptime?
+        if 'object_id' not in pardic.keys():
+            pardic['object_id'] = self.execute_sql("SELECT object_id FROM request WHERE id='%s'" %
+                                                   (pardic['request_id'],))[0][0]
 
-
-        """
-         Creates a new object in the schedule table with the parameters specified in the dictionary.
-
-        - PENDING
-        - OBSERVED
-        - REDUCED
-
-         """
         req_obj_stat = self.execute_sql("SELECT (object_id, status) FROM request WHERE id='%s'" % (pardic['request_id']))
         if not req_obj_stat:  # if there is no request with the id given
             return (-1, "ERROR: request does not exist!")
@@ -511,9 +520,9 @@ class SedmDB:
             return (-1, "ERROR: request has expired!")
 
         sql = ("INSERT INTO request (object_id, request_id, order_id, exptime, filter, maxairmass,"
-               " priority, inidate, enddate) VALUES ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s');" %
+               " priority, inidate, enddate) VALUES ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s');" %
                (pardic['object_id'], pardic['request_id'], pardic['order_id'],
-                pardic['exptime'],  pardic['filter'], pardic['priority'],
+                pardic['exptime'],  pardic['filter'], pardic['maxairmass'], pardic['priority'],
                 pardic['inidate'], pardic['enddate']))
         # atomic_requests should be created at the start, and purged at the end of each night
         # TODO: given above comment, do we need inidate/enddate?
@@ -521,14 +530,63 @@ class SedmDB:
         return (0, "Request added")
         # TODO: test
 
+    def create_request_atomic_requests(self, request_id):
+        request = self.execute_sql("SELECT (object_id, exptime, maxairmass, priority, inidate, enddate,"
+                                   "cadence, phasesamples, sampletolerance, filters, nexposures, ordering) "
+                                   "FROM request WHERE id='%s'" % (request_id,))[0]
+        # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
+        pardic = {'object_id': request[0], 'maxairmass': request[2], 'priority': request[3], 'inidate': request[4],
+                  'enddate': request[5], 'request_id': request_id}
+        obs_order = []
+        if request[11]:
+            for num_fil in request[11]:
+                for n in range(num_fil[0]):  # the number should be single digit
+                    obs_order.append(num_fil[1:])
+        elif request[10]:
+            for filter_idx in range(len(request[9])):
+                for n in range(request[10][filter_idx]):
+                    obs_order.append(request[9][filter_idx])
+        else:
+            return (-1, "ERROR: request contains neither 'nexposures' nor 'ordering'")
+
+        ifus = np.where(np.array(obs_order) == 'ifu')[0]
+        if len(ifus) == 2:  # TODO: check if a/b is the only way of having 2 ifu
+            obs_order[ifus[0]] = 'ifu_a'
+            obs_order[ifus[1]] = 'ifu_b'
+        if [filter not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'] for filter in obs_order]:
+            return (-1, "ERROR: either 'filters' or 'ordering' has an invalid entry")
+        for n, filter_des in enumerate(obs_order):
+            pardic['filter'] = filter_des
+            pardic['order_id'] = n
+            # TODO: do exptime modifications here per filter and ab vs single exposure or in `add_atomic_request`?
+            if 'ifu' in filter_des:
+                pardic['exptime'] = request[1][0]  # TODO: make sure the sql returns the proper format
+            else:
+                pardic['exptime'] = request[1][1]
+            self.add_atomic_request(pardic)
+        return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
+
     def update_atomic_request(self, pardic):
         """
         Updates an atomic request with the parameters from the dictionary
+        Args:
+            pardic: dict
+                required: 'id'
+                optional: 'status', 'priority', 'inidate', 'enddate', 'exptime'
+                NOTE: 'status' can be 'PENDING', 'OBSERVED', or 'REDUCED'
+        Returns:
 
         """
         # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
         keys = list(pardic.keys())
+        # remove parameters not allowed to be modified
+        for param in ['object_id', 'request_id', 'order_id', 'filter', 'creationdate', 'lastmodified']:
+            if param in keys:
+                keys.remove(param)
+        if 'id' not in keys:
+            return (-1, "ERROR: no 'id' provided")
         keys.remove('id')
+
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update")
         sql = "UPDATE atomicrequest SET "
@@ -537,6 +595,7 @@ class SedmDB:
         sql += "lastmodified = 'NOW()' "  # TODO: check if this works
         sql += "WHERE id = %s;" % (pardic['id'],)
         self.execute_sql(sql)
+        return (0, "Atomic request updated")
 
     def get_request_atomic_requests(self, request_id):
         """

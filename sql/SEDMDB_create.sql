@@ -98,7 +98,7 @@ CREATE TABLE elliptical_heliocentric (
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angula size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT sso_pk PRIMARY KEY (id)
 
 );
@@ -121,11 +121,11 @@ CREATE TABLE hyperbolic_heliocentric (
     q decimal(10,8),
     -- equinox year
     D int,
-    -- first abd second components of magnitude model
+    -- first and second components of magnitude model
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angular size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT hyperbolic_heliocentric_pk PRIMARY KEY (id)
 
 );
@@ -148,11 +148,11 @@ CREATE TABLE parabolic_heliocentric (
     q decimal(10,8),
     -- equinox year
     D int,
-    -- first abd second components of magnitude model
+    -- first and second components of magnitude model
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angular size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT parabolic_heliocentric_pk PRIMARY KEY (id)
 );
 
