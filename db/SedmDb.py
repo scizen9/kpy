@@ -190,7 +190,7 @@ class SedmDB:
             return (-1, "ERROR: user does not exist")
         if group not in [group_id[0] for group_id in self.execute_sql('SELECT id FROM groups')]:
             return (-1, "ERROR: group does not exist")
-        usergroups = self.execute_sql('SELECT (user_id, group_id) FROM usergroups')
+        usergroups = self.execute_sql('SELECT user_id, group_id FROM usergroups')
         if (user, group) in usergroups:
             return (-1, "ERROR: user already in group")
         else:
@@ -199,7 +199,7 @@ class SedmDB:
             return (0, "User added to group")
         # TODO: test adding a user to group, non-existant user, non-existant group, already connected user/group
 
-    def add_object(self, pardic, objparams):
+    def add_object(self, pardic, objparams={}):
         """
         Creates a new object, if the object is a solar system object (SSO) it attempts to find an entry for it
         in the .edb (XEphem) files. If objparams are given, they are used (and update the file if the object is found)
@@ -381,7 +381,7 @@ class SedmDB:
 
         # TODO: handle exptime in-function?
         # TODO: indicate that exptime should be of the form '{ifu_time, rc_time}' with those being time per exposure
-        requests = self.execute_sql("SELECT (object_id, program_id) FROM request WHERE status != 'EXPIRED';")
+        requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
         # TODO: check mainly for program_id, issue warning that it is a repeat, but allow
         if (pardic['object_id'], pardic['program_id']) in requests:
             # warnings.warn
@@ -511,7 +511,7 @@ class SedmDB:
             pardic['object_id'] = self.execute_sql("SELECT object_id FROM request WHERE id='%s'" %
                                                    (pardic['request_id'],))[0][0]
 
-        req_obj_stat = self.execute_sql("SELECT (object_id, status) FROM request WHERE id='%s'" % (pardic['request_id']))
+        req_obj_stat = self.execute_sql("SELECT object_id, status FROM request WHERE id='%s'" % (pardic['request_id']))
         if not req_obj_stat:  # if there is no request with the id given
             return (-1, "ERROR: request does not exist!")
         # TODO: make sure docstring indicates object_id, ... are generated
@@ -531,8 +531,8 @@ class SedmDB:
         # TODO: test
 
     def create_request_atomic_requests(self, request_id):
-        request = self.execute_sql("SELECT (object_id, exptime, maxairmass, priority, inidate, enddate,"
-                                   "cadence, phasesamples, sampletolerance, filters, nexposures, ordering) "
+        request = self.execute_sql("SELECT object_id, exptime, maxairmass, priority, inidate, enddate,"
+                                   "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
                                    "FROM request WHERE id='%s'" % (request_id,))[0]
         # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
         pardic = {'object_id': request[0], 'maxairmass': request[2], 'priority': request[3], 'inidate': request[4],
@@ -633,7 +633,7 @@ class SedmDB:
         atomic_id = 1
         request_id = 1
         object_id = 1
-        # request_id, object_id = self.execute_sql("SELECT (request_id, object_id) FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
+        # request_id, object_id = self.execute_sql("SELECT request_id, object_id FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
         # TODO: uncomment above and remove the "request_id=1 and object_id=1" once implemented
         header_dict = {'object_id': object_id, 'request_id': request_id, 'atomicrequest_id': atomic_id,
                        'mjd': header['JD'], 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],

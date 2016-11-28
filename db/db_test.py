@@ -22,15 +22,15 @@ def test_user_manipulation():
     # check that the function returned a positive and that it was successful
     assert added[0] == 0
     assert [user[0] for user in db.execute_sql("SELECT username FROM users WHERE username='test_user';")]
-    user_id = db.execute_sql("SELECT id FROM users WHERE username='test_user';")
+    user_id = db.execute_sql("SELECT id FROM users WHERE username='test_user';")[0][0]
     # check that it was properly added to its group
-    assert (user_id, 1) in db.execute_sql("SELECT (user_id, group_id) FROM usergroups")
+    assert (user_id, 1) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check other aspects of adding to groups
     assert db.add_to_group(user_id, 1) == (-1, "ERROR: user already in group")
     assert db.add_to_group(user_id, 0) == (-1, "ERROR: group does not exist")
     assert db.add_to_group(0, 1) == (-1, "ERROR: user does not exist")
     db.add_to_group(user_id, 2)  # multiple groups per user
-    assert (user_id, 2) in db.execute_sql("SELECT (user_id, group_id) FROM usergroups")
+    assert (user_id, 2) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check that it can't create another user with the same username
     add_again = db.add_user(user_dict)
     assert add_again[0] == -1
@@ -49,7 +49,7 @@ def test_user_manipulation():
 # TODO: more robust testing of the objects
 fixed_object = {'marshal_id': 90, 'name': 'test_obj', 'ra': 20, 'dec': 40, 'typedesig': 'f', 'epoch': 2000}
 
-if not db.execute_sql("SELECT * FROM object WHERE object_id='1'"):  # make sure there is a object
+if not db.execute_sql("SELECT * FROM object WHERE id='1'"):  # make sure there is a object
     db.add_object(fixed_object)
     fixed_object['marshal_id'] = 60
 
