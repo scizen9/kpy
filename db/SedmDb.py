@@ -366,21 +366,22 @@ class SedmDB:
             pardic: dict
                 required: 'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
                           'priority', 'inidate' (start of observing window), 'enddate' (end of observing window)
+                     and one of 'nexposures' or 'ordering' described below
                 optional: 'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
                           'cadence' (,
                           'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
-                          the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
-                          'ordering' (string e.g. '{3g, 3r, 1i, 1spec, 2i}' for 3 g, then 3  r, then 1 i, 1 spec, 1 i)
-                NOTE: the numbers in 'ordering' must be single digit
-
-
+                          the samples can be taken), 'nexposures' (string '{# of spec, # of u, # of g, # of r, # of i}'),
+                          'ordering' (string e.g. '{3g, 3r, 1i, 1s, 2i}' for 3 g, then 3  r, then 1 i, 1 spec, 1 i)
+                Notes: the numbers in 'ordering' must be single digit,
+                       spec/phot_duration should be duration per exp
         Returns:
+            (-1, "ERROR: ...") if there is an issue with the input
+            (0, "Request added") if there are no errors
 
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
 
-        # TODO: handle exptime in-function?
-        # TODO: indicate that exptime should be of the form '{ifu_time, rc_time}' with those being time per exposure
+        # TODO: handle exptime/magnitude in-function?
         requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
         # TODO: check mainly for program_id, issue warning that it is a repeat, but allow
         if (pardic['object_id'], pardic['program_id']) in requests:
@@ -389,6 +390,31 @@ class SedmDB:
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
             return (-1, "ERROR: object does not exist")
         # TODO: set default inidate/enddate?
+
+        if 'ordering' in pardic.keys():
+            nexpo = pardic['ordering'][1:-1].split(',')
+            nexposure = [0, 0, 0, 0, 0]
+            for entry in nexpo:
+                if entry[-1] == 's':
+                    nexposure[0] += entry[0]
+                elif entry[-1] == 'u':
+                    nexposure[1] += entry[0]
+                elif entry[-1] == 'g':
+                    nexposure[2] += entry[0]
+                elif entry[-1] == 'r':
+                    nexposure[3] += entry[0]
+                elif entry[-1] == 'i':
+                    nexposure[4] += entry[0]
+
+            # make sure that 'nexposures' and 'ordering' are consistent
+            if 'nexposures' in pardic.keys():
+                if not '{%s, %s, %s, %s, %s}' % tuple(nexposure) == pardic['nexposures']:
+                    return (-1, "ERROR: nexposures and ordering are inconsistent")
+            else:
+                pardic['nexposures'] = '{%s, %s, %s, %s, %s}' % tuple(nexposure)
+
+        elif not ('nexposures' in pardic.keys() or 'ordering' in pardic.keys()):
+            return (-1, "ERROR: 'nexposures' or 'ordering' is required")
 
         default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                           'inidate', 'enddate']
@@ -460,8 +486,15 @@ class SedmDB:
 
         """
         # tests written
-        sql = "UPDATE request SET status = 'EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
+        sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
         self.execute_sql(sql)
+        # TODO: test if the following works
+        test = ("UPDATE atomicrequest SET atomicrequest.status='EXPIRED' WHERE (SELECT id FROM request WHERE"
+                "atomicrequest.request_id=request.id AND request.status='EXPIRED')")
+        
+        atomic_sql = ("UPDATE atomicrequest, request SET atomicrequest.status='EXPIRED' WHERE atomicrequest.request_id"
+                      "=request.id AND request.status='EXPIRED'")
+        self.execute_sql(atomic_sql)
         return (0, "Requests expired")
 
     def cancel_scheduled_request(self, requestid):
@@ -541,7 +574,7 @@ class SedmDB:
         if request[11]:
             for num_fil in request[11]:
                 for n in range(num_fil[0]):  # the number should be single digit
-                    obs_order.append(num_fil[1:])
+                    obs_order.append(int(num_fil[1:]))
         elif request[10]:
             for filter_idx in range(len(request[9])):
                 for n in range(request[10][filter_idx]):
@@ -573,7 +606,7 @@ class SedmDB:
             pardic: dict
                 required: 'id'
                 optional: 'status', 'priority', 'inidate', 'enddate', 'exptime'
-                NOTE: 'status' can be 'PENDING', 'OBSERVED', or 'REDUCED'
+                NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
         Returns:
 
         """
@@ -609,7 +642,8 @@ class SedmDB:
             all atomicreqests associated with the desired request
         """
         # TODO: test
-        atomic_requests = self.execute_sql("SELECT * from atomicrequest WHERE request_id = %s" % (request_id,))
+        atomic_requests = self.execute_sql("SELECT id, object_id, request_id, order_id, exptime, filter, priority "
+                                           "FROM atomicrequest WHERE request_id = %s" % (request_id,))
         return atomic_requests
 
     def add_observation_fits(self, fitsfile):

@@ -60,13 +60,17 @@ def test_object_creation():
 
 request_dict = {'object_id': 1, 'user_id': default_user_id, 'program_id': 1, 'marshal_id': 90, 
                 'exptime': '{2700, 600}', 'maxairmass': '3.5', 'status': '', 'priority': 3.5, 'inidate': '2016-11-10',
-                'enddate': '2016-12-10', 'cadence': 0, 'phasesamples': '', 'sampletolerance': '',
-                'nexposures': '{1,1,1,2,0}', 'ordering': '{"2g","1r","1s","2g","2r"}'}
+                'enddate': '2016-11-14', 'cadence': 0, 'phasesamples': '', 'sampletolerance': '',
+                'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,1r,1s,2g,2r}'}
 
 
 def test_request_manipulation():
-    db.add_request(request_dict)    
-    assert db.execute_sql('SELECT * FROM request;')
+    db.add_request(request_dict)
+    assert not db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,2,1,2,0}'")
+    request_dict['nexposures'] = None  # '{1,0,4,3,0}'
+    db.add_request(request_dict)
+    request = db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,3,0}'")
+    assert request[0] == 0
     # TODO: add tests of update_request etc.
 
 
@@ -80,7 +84,7 @@ def test_request_expiration(request):
         request['enddate'] = '2016-11-11'
         db.add_request(request)
     else:
-        db.update_request({'id':test_request[0][0], 'status': 'PENDING'})
+        db.update_request({'id': test_request[0][0], 'status': 'PENDING'})
     assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
     db.expire_requests()
     assert 'EXPIRED' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
