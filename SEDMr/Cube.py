@@ -134,6 +134,9 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
 
     back = np.median(allspec, 0)
 
+    if 'fits' not in outname:
+        outname += '.fits'
+
     ff = pf.PrimaryHDU(img.T)
     ff.writeto(outname)
 
