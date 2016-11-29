@@ -64,7 +64,7 @@ class SedmDB:
             # an exception is raised, Connection is invalidated.
             if e.connection_invalidated:
                 print "Connection was invalidated!"
-        if 'SELECT' in sql:
+        if 'SELECT' in sql[:8]:
             print cursor
             obj = cursor.fetchall()
             return obj
@@ -370,8 +370,8 @@ class SedmDB:
                 optional: 'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
                           'cadence' (,
                           'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
-                          the samples can be taken), 'nexposures' (string '{# of spec, # of u, # of g, # of r, # of i}'),
-                          'ordering' (string e.g. '{3g, 3r, 1i, 1s, 2i}' for 3 g, then 3  r, then 1 i, 1 spec, 1 i)
+                          the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
+                          'ordering' (string e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 g, then 3  r, then 1 i, 1 ifu, 1 i)
                 Notes: the numbers in 'ordering' must be single digit,
                        spec/phot_duration should be duration per exp
         Returns:
@@ -395,16 +395,16 @@ class SedmDB:
             nexpo = pardic['ordering'][1:-1].split(',')
             nexposure = [0, 0, 0, 0, 0]
             for entry in nexpo:
-                if entry[-1] == 's':
-                    nexposure[0] += entry[0]
-                elif entry[-1] == 'u':
-                    nexposure[1] += entry[0]
-                elif entry[-1] == 'g':
-                    nexposure[2] += entry[0]
-                elif entry[-1] == 'r':
-                    nexposure[3] += entry[0]
-                elif entry[-1] == 'i':
-                    nexposure[4] += entry[0]
+                if entry[1:] == 'ifu':
+                    nexposure[0] += int(entry[0])
+                elif entry[1:] == 'u':
+                    nexposure[1] += int(entry[0])
+                elif entry[1:] == 'g':
+                    nexposure[2] += int(entry[0])
+                elif entry[1:] == 'r':
+                    nexposure[3] += int(entry[0])
+                elif entry[1:] == 'i':
+                    nexposure[4] += int(entry[0])
 
             # make sure that 'nexposures' and 'ordering' are consistent
             if 'nexposures' in pardic.keys():
@@ -440,6 +440,8 @@ class SedmDB:
         values = values[:-2] + ')'
         sql = ("INSERT INTO request %s VALUES %s;" % (columns, values))
         self.execute_sql(sql)
+        self_id = max([id_no[0] for id_no in self.execute_sql('SELECT id FROM request')])
+        self.create_request_atomic_requests(self_id)
         return (0, "Request added")
         # TODO: test ...
 
@@ -455,6 +457,7 @@ class SedmDB:
             - EXPIRED
 
          """
+        # TODO: make this update associated atomicrequest entries as well
         # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
         keys = list(pardic.keys())
         keys.remove('id')
@@ -489,12 +492,12 @@ class SedmDB:
         sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
         self.execute_sql(sql)
         # TODO: test if the following works
-        test = ("UPDATE atomicrequest SET atomicrequest.status='EXPIRED' WHERE (SELECT id FROM request WHERE"
+        test = ("UPDATE atomicrequest SET status='EXPIRED' WHERE EXISTS (SELECT id FROM request WHERE "
                 "atomicrequest.request_id=request.id AND request.status='EXPIRED')")
         
-        atomic_sql = ("UPDATE atomicrequest, request SET atomicrequest.status='EXPIRED' WHERE atomicrequest.request_id"
+        atomic_sql = ("UPDATE atomicrequest, request SET status='EXPIRED' WHERE atomicrequest.request_id"
                       "=request.id AND request.status='EXPIRED'")
-        self.execute_sql(atomic_sql)
+        self.execute_sql(test)
         return (0, "Requests expired")
 
     def cancel_scheduled_request(self, requestid):
@@ -544,7 +547,7 @@ class SedmDB:
             pardic['object_id'] = self.execute_sql("SELECT object_id FROM request WHERE id='%s'" %
                                                    (pardic['request_id'],))[0][0]
 
-        req_obj_stat = self.execute_sql("SELECT object_id, status FROM request WHERE id='%s'" % (pardic['request_id']))
+        req_obj_stat = self.execute_sql("SELECT object_id, status FROM request WHERE id='%s'" % (pardic['request_id']))[0]
         if not req_obj_stat:  # if there is no request with the id given
             return (-1, "ERROR: request does not exist!")
         # TODO: make sure docstring indicates object_id, ... are generated
@@ -552,10 +555,10 @@ class SedmDB:
         if req_obj_stat[1] == 'EXPIRED':
             return (-1, "ERROR: request has expired!")
 
-        sql = ("INSERT INTO request (object_id, request_id, order_id, exptime, filter, maxairmass,"
-               " priority, inidate, enddate) VALUES ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s');" %
+        sql = ("INSERT INTO atomicrequest (object_id, request_id, order_id, exptime, filter,"
+               " priority, inidate, enddate) VALUES ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s');" %
                (pardic['object_id'], pardic['request_id'], pardic['order_id'],
-                pardic['exptime'],  pardic['filter'], pardic['maxairmass'], pardic['priority'],
+                pardic['exptime'],  pardic['filter'], pardic['priority'],
                 pardic['inidate'], pardic['enddate']))
         # atomic_requests should be created at the start, and purged at the end of each night
         # TODO: given above comment, do we need inidate/enddate?
@@ -564,29 +567,30 @@ class SedmDB:
         # TODO: test
 
     def create_request_atomic_requests(self, request_id):
+        if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
+            return (-1, "ERROR: atomicrequests already exist for that request")
         request = self.execute_sql("SELECT object_id, exptime, maxairmass, priority, inidate, enddate,"
                                    "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
-                                   "FROM request WHERE id='%s'" % (request_id,))[0]
+                                   "FROM request WHERE id='%s';" % (request_id,))[0]
         # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
         pardic = {'object_id': request[0], 'maxairmass': request[2], 'priority': request[3], 'inidate': request[4],
                   'enddate': request[5], 'request_id': request_id}
         obs_order = []
         if request[11]:
             for num_fil in request[11]:
-                for n in range(num_fil[0]):  # the number should be single digit
-                    obs_order.append(int(num_fil[1:]))
+                for n in range(int(num_fil[0])):  # the number should be single digit
+                    obs_order.append(num_fil[1:])
         elif request[10]:
             for filter_idx in range(len(request[9])):
                 for n in range(request[10][filter_idx]):
                     obs_order.append(request[9][filter_idx])
         else:
             return (-1, "ERROR: request contains neither 'nexposures' nor 'ordering'")
-
         ifus = np.where(np.array(obs_order) == 'ifu')[0]
         if len(ifus) == 2:  # TODO: check if a/b is the only way of having 2 ifu
             obs_order[ifus[0]] = 'ifu_a'
             obs_order[ifus[1]] = 'ifu_b'
-        if [filter not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'] for filter in obs_order]:
+        if any([(filt not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']) for filt in obs_order]):
             return (-1, "ERROR: either 'filters' or 'ordering' has an invalid entry")
         for n, filter_des in enumerate(obs_order):
             pardic['filter'] = filter_des
@@ -670,11 +674,12 @@ class SedmDB:
         # request_id, object_id = self.execute_sql("SELECT request_id, object_id FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
         # TODO: uncomment above and remove the "request_id=1 and object_id=1" once implemented
         header_dict = {'object_id': object_id, 'request_id': request_id, 'atomicrequest_id': atomic_id,
-                       'mjd': header['JD'], 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
-                       'fitsfile': fitsfile, 'lst': header['LST'], 'ra': header['RA'], 'dec': header['DEC'],
-                       'tel_ra': header['TEL_RA'], 'tel_dec': header['TEL_DEC'], 'tel_az': header['TEL_AZ'],
-                       'tel_el': header['TEL_EL'], 'tel_pa': header['TEL_PA'], 'ra_off': header['RA_OFF'],
-                       'dec_off': header['DEC_OFF'], 'utc': header['UTC'], 'camera': header['CAM_NAME']}
+                       'mjd': header['JD']-2400000.5, 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
+                       'fitsfile': fitsfile, 'lst': header['LST'], 'ra': ra_to_decimal(header['RA']), 
+                       'dec': dec_to_decimal(header['DEC']), 'tel_ra': header['TEL_RA'], 'tel_dec': header['TEL_DEC'],
+                       'tel_az': header['TEL_AZ'], 'tel_el': header['TEL_EL'], 'tel_pa': header['TEL_PA'], 
+                       'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME']}
+        # TODO: add 'imtype'        
         # generate string describing the columns
         columns = list(header_dict.keys())
         cols = "("
@@ -688,8 +693,8 @@ class SedmDB:
         self.execute_sql(sql)
 
         # TODO: see if OUTPUT is able to be used instead of the following
-        observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'")
-                          % (header_dict['atomicrequest_id'],))[0][0]
+        observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'"
+                          % (header_dict['atomicrequest_id'],)))[0][0]
 
         tel_stats = {'date': header['OBSDATE'], 'dome_status': header['DOMEST'], 'in_temp': header['IN_AIR'],
                      'in_humidity': header['IN_HUM'], 'in_dew': header['IN_DEW'], 'out_temp': header['OUT_AIR'],
@@ -697,7 +702,7 @@ class SedmDB:
                      'wsp_cur': header['WSP_CUR'], 'wsp_avg': header['WSP_AVG'], 'mir_temp': header['MIR_TEMP'],
                      'top_air': header['TOP_AIR'], 'pri_temp': header['PRI_TEMP'], 'sec_temp': header['SEC_TEMP'],
                      'flo_temp': header['FLO_TEMP'], 'bot_temp': header['BOT_TEMP'], 'mid_temp': header['MID_TEMP'],
-                     'top_temp': header['TOP_TEMP'], 'observation_id': observation_id}
+                     'top_temp': header['TOP_TEMP'], 'observation_id': int(observation_id)}
         # perform the same sql-creation as above
         stat_columns = list(tel_stats.keys())
         stat_cols = "("
@@ -709,11 +714,11 @@ class SedmDB:
         self.execute_sql(stat_sql)
 
         # TODO: make sure the atomicrequest_id is stored in header
+        """
         request_status = [status[0] for status in
                           self.execute_sql("SELECT status FROM atomicrequest WHERE request_id='%s'" % (request_id,))]
-        print request_status  # still testing if this is working
         if all(np.array(request_status) == 'OBSERVED'):
-            self.update_request({'id': request_id, 'status': 'COMPLETED'})
+            self.update_request({'id': request_id, 'status': 'COMPLETED'})""" # must test with connected request/atomicrequest/fitsfile
         # TODO: add other returns for failure cases?
         return (0, "Observation added")
         # TODO: test with actual fits files
@@ -771,4 +776,14 @@ class SedmDB:
         Creates a classification object attached to the reduced spectrum.
         """
         pass
+
+
+def ra_to_decimal(ra):
+    hms = ra.split(':')
+    return float(hms[0])*15+float(hms[1])/4+float(hms[2])/240
+
+
+def dec_to_decimal(dec):
+    dms = dec.split(':')
+    return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
 

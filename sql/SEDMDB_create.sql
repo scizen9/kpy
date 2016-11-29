@@ -213,7 +213,6 @@ CREATE TABLE observation (
     tel_el decimal(5,2)  NOT NULL,
     tel_pa decimal(5,2)  NOT NULL,
     ra_off decimal(5,2)  NOT NULL,
-    utc date  NOT NULL,
     dec_off decimal(5,2)  NOT NULL,
     camera text  NULL,
     CONSTRAINT observation_pk PRIMARY KEY (id)
