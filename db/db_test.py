@@ -61,16 +61,16 @@ def test_object_creation():
 request_dict = {'object_id': 1, 'user_id': default_user_id, 'program_id': 1, 'marshal_id': 90, 
                 'exptime': '{2700, 600}', 'maxairmass': '3.5', 'status': '', 'priority': 3.5, 'inidate': '2016-11-10',
                 'enddate': '2016-11-14', 'cadence': 0, 'phasesamples': '', 'sampletolerance': '',
-                'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,1r,1s,2g,2r}'}
+                'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,2r,1ifu,2g,2r}'}
 
 
 def test_request_manipulation():
     db.add_request(request_dict)
     assert not db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,2,1,2,0}'")
-    request_dict['nexposures'] = None  # '{1,0,4,3,0}'
+    request_dict.pop('nexposures', None) # '{1,0,4,3,0}'
     db.add_request(request_dict)
-    request = db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,3,0}'")
-    assert request[0] == 0
+    request = db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}'")
+    assert request
     # TODO: add tests of update_request etc.
 
 
