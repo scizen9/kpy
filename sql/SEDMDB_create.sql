@@ -23,6 +23,8 @@ CREATE TABLE flexure (
     rms decimal(8,4)  NOT NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
+    timestamp1 TIME NOT NULL,
+    timestamp2 TIME NOT NULL,
     CONSTRAINT flexure_pk PRIMARY KEY (id)
 );
 
@@ -59,10 +61,11 @@ CREATE TABLE metrics_spec (
 --
 CREATE TABLE object (
     id BIGSERIAL,
-    marshal_id bigint NOT NULL UNIQUE,
+    marshal_id bigint NULL UNIQUE,
     name text  NOT NULL,
-    ra decimal(12,6)  NOT NULL,
-    dec decimal(12,6)  NOT NULL,
+    iauname text NULL UNIQUE,
+    ra decimal(12,6) NULL,
+    dec decimal(12,6) NULL,
     typedesig varchar(1),
     epoch float,
     CONSTRAINT object_pk PRIMARY KEY (id)
@@ -95,7 +98,7 @@ CREATE TABLE elliptical_heliocentric (
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angula size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT sso_pk PRIMARY KEY (id)
 
 );
@@ -118,11 +121,11 @@ CREATE TABLE hyperbolic_heliocentric (
     q decimal(10,8),
     -- equinox year
     D int,
-    -- first abd second components of magnitude model
+    -- first and second components of magnitude model
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angular size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT hyperbolic_heliocentric_pk PRIMARY KEY (id)
 
 );
@@ -145,11 +148,11 @@ CREATE TABLE parabolic_heliocentric (
     q decimal(10,8),
     -- equinox year
     D int,
-    -- first abd second components of magnitude model
+    -- first and second components of magnitude model
     M1 decimal(5,4),
     M2 decimal(5,4),
     -- angular size at 1 AU
-    s decimal(10,8),
+    s decimal(10,8) NULL,
     CONSTRAINT parabolic_heliocentric_pk PRIMARY KEY (id)
 );
 
@@ -195,7 +198,8 @@ CREATE TABLE observation (
     id BIGSERIAL,
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
-    mjd decimal(10,2)  NOT NULL,
+    atomicrequest_id bigint NOT NULL,
+    mjd decimal(10,5)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
     exptime decimal(6,2)  NOT NULL,
     fitsfile text  NOT NULL UNIQUE,
@@ -209,7 +213,6 @@ CREATE TABLE observation (
     tel_el decimal(5,2)  NOT NULL,
     tel_pa decimal(5,2)  NOT NULL,
     ra_off decimal(5,2)  NOT NULL,
-    utc date  NOT NULL,
     dec_off decimal(5,2)  NOT NULL,
     camera text  NULL,
     CONSTRAINT observation_pk PRIMARY KEY (id)
@@ -273,7 +276,7 @@ CREATE TABLE request (
     user_id bigint NOT NULL,
     program_id smallint  NOT NULL,
     marshal_id bigint NULL,
-    exptime int  NOT NULL,
+    exptime integer[]  NOT NULL,
     maxairmass decimal(5,2)  DEFAULT 2.5,
     status text  DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
@@ -282,9 +285,9 @@ CREATE TABLE request (
     cadence decimal(5,2) NULL,
     phasesamples decimal(5,2)  NULL,
     sampletolerance decimal(5,2) NULL,
-    filters text[]  NULL,
+    filters text[] DEFAULT '{ifu,u,g,r,i}',
     nexposures integer[] NULL,
-    ordering integer[] NULL,
+    ordering text[] NULL,
     creationdate date DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
@@ -296,13 +299,11 @@ CREATE TABLE atomicrequest (
     request_id bigint NOT NULL,
     order_id int NULL,
     exptime float  NOT NULL,
-    instrument text  NOT NULL,
-    status text  NOT NULL,
-    active boolean DEFAULT FALSE,
+    filter text NOT NULL,
+    status text DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
     inidate date  NOT NULL,
     enddate date  NOT NULL,
-    filter text NULL,
     creationdate date  DEFAULT NOW(),
     lastmodified date  DEFAULT NOW(),
     CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
@@ -311,7 +312,7 @@ CREATE TABLE atomicrequest (
 -- Table: telescope_stats
 CREATE TABLE telescope_stats (
     id BIGSERIAL,
-    observation_id bigint NOT NULL,
+    observation_id bigint NOT NULL UNIQUE,
     date date  NOT NULL,
     dome_status text  NULL,
     in_temp decimal(5,2)  NULL,
@@ -337,8 +338,8 @@ CREATE TABLE telescope_stats (
 -- Table: users
 CREATE TABLE users (
     id BIGSERIAL,
-    group_id bigint NOT NULL,
-    name text  NOT NULL,
+    username text NOT NULL UNIQUE,
+    name text  NULL,
     email text  NULL,
     CONSTRAINT users_pk PRIMARY KEY (id)
 );
@@ -346,7 +347,7 @@ CREATE TABLE users (
 -- Table: groups
 CREATE TABLE groups (
     id BIGSERIAL,
-    designator text NULL UNIQUE,
+    designator text NOT NULL UNIQUE,
     CONSTRAINT groups_pk PRIMARY KEY (id)
 );
 
@@ -433,6 +434,14 @@ ALTER TABLE metrics_spec ADD CONSTRAINT metrics_spec_spec
 ALTER TABLE observation ADD CONSTRAINT observation_request
     FOREIGN KEY (request_id)
     REFERENCES request (id)  
+    NOT DEFERRABLE 
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: observation_atomic_request (table: observation)
+ALTER TABLE observation ADD CONSTRAINT observation_atomic_request
+    FOREIGN KEY (atomicrequest_id)
+    REFERENCES atomicrequest (id)  
     NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
@@ -528,14 +537,6 @@ ALTER TABLE hyperbolic_heliocentric ADD CONSTRAINT object_hyperbolic_heliocentri
 ALTER TABLE periodic ADD CONSTRAINT object_periodic
     FOREIGN KEY (object_id)
     REFERENCES object (id)
-    NOT DEFERRABLE
-    INITIALLY IMMEDIATE
-;
-
--- Reference: user_group (table: users)
-ALTER TABLE users ADD CONSTRAINT user_group
-    FOREIGN KEY (group_id)
-    REFERENCES groups (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
