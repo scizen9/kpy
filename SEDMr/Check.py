@@ -369,6 +369,12 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         header += "\nSKYSUB: %s" % ("On" if skysub else "Off")
         header += "\nQUALITY: %d" % qual
         header += "\nAIRMASS: %1.2f" % ec
+        if 'radius_as' in ss:
+            header += "\nRAPASEC: %.1f" % ss['radius_as']
+        if 'xfwhm' in ss:
+            header += "\nSKYLFWHMNM: %.1f" % ss['xfwhm']
+        if 'yfwhm' in ss:
+            header += "\nTRACEFWHMPX: %.1f" % ss['yfwhm']
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
         print "Saved to " + outf

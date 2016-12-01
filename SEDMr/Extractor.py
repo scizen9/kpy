@@ -422,7 +422,7 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 
 
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
-             ellipse=None, ellipseb=None, quality=0, bgd_sub=True,
+             ellipse=None, ellipseb=None, bgd_sub=True,
              lmin=650., lmax=700., cmin=None, cmax=None):
     """ Convert spectra list into image_[outname].pdf
 
@@ -435,7 +435,6 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         adcpos (tuple): position offsets due to atmospheric dispersion (asec)
         ellipse (tuple): ellipse parameters for A aperture
         ellipseb (tuple): ellipse parameters for B aperture
-        quality (int): from 1 (good) to 4 (no object)
         bgd_sub (boolean): set to True to subtract median background
         lmin (float): minimum wavelength in nm to sum over
         lmax (float): maximum wavelength in nm to sum over
@@ -513,8 +512,6 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
-    if 1 <= quality <= 4:
-        tlab += ", Qual: %d" % quality
     pl.title(tlab)
     pl.colorbar()
     pl.savefig("image_%s.pdf" % outname)
@@ -964,9 +961,20 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
         print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        if 'xfwhm' in ff[0]:
+            xfwhm = ff[0]['xfwhm']
+            yfwhm = ff[0]['yfwhm']
+            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm'])
+        else:
+            xfwhm = 0.
+            yfwhm = 0.
     else:
         flexure_x_corr_nm = 0.
         flexure_y_corr_pix = 0.
+        xfwhm = 0.
+        yfwhm = 0.
+
     # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
         print "USING extractions in %s.npy!" % outname
@@ -1164,6 +1172,12 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['ea'] = earea
     res[0]['efficiency'] = eff
 
+    # Store flexure data
+    res[0]['dXnm'] = flexure_x_corr_nm
+    res[0]['dYpix'] = flexure_y_corr_pix
+    res[0]['xfwhm'] = xfwhm
+    res[0]['yfwhm'] = yfwhm
+
     # Store new metadata
     res[0]['exptime'] = meta['exptime']
     res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
@@ -1241,9 +1255,20 @@ def handle_single(imfile, fine, outname=None, offset=None,
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
         print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        if 'xfwhm' in ff[0]:
+            xfwhm = ff[0]['xfwhm']
+            yfwhm = ff[0]['yfwhm']
+            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm'])
+        else:
+            xfwhm = 0.
+            yfwhm = 0.
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
+        xfwhm = 0.
+        yfwhm = 0.
+
     # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
         print "USING extractions in %s.npy!" % outname
@@ -1379,7 +1404,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 quality=quality, bgd_sub=False, lmin=lmin, lmax=lmax)
+                 bgd_sub=False, lmin=lmin, lmax=lmax)
         # get the mean spectrum over the selected spaxels
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
@@ -1457,6 +1482,12 @@ def handle_single(imfile, fine, outname=None, offset=None,
             # Account for sky, airmass and aperture
             res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
 
+        # Store flexure data
+        res[0]['dXnm'] = flexure_x_corr_nm
+        res[0]['dYpix'] = flexure_y_corr_pix
+        res[0]['xfwhm'] = xfwhm
+        res[0]['yfwhm'] = yfwhm
+
         # Store new metadata
         res[0]['exptime'] = meta['exptime']
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
@@ -1527,11 +1558,20 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         ff = np.load(offset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = -ff[0]['dYpix']
-
         print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        if 'xfwhm' in ff[0]:
+            xfwhm = ff[0]['xfwhm']
+            yfwhm = ff[0]['yfwhm']
+            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm'])
+        else:
+            xfwhm = 0.
+            yfwhm = 0.
     else:
         flexure_x_corr_nm = 0
         flexure_y_corr_pix = 0
+        xfwhm = 0.
+        yfwhm = 0.
 
     if os.path.isfile(outname + ".npy"):
         print "USING extractions in %s!" % outname
@@ -1658,7 +1698,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
-                 quality=quality, lmin=lmin, lmax=lmax,
+                 lmin=lmin, lmax=lmax,
                  cmin=stats["cmin"],
                  cmax=stats["cmax"])
 
@@ -1805,6 +1845,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                (f2(ll)-sky_b(ll)) * extcorrb], axis=0) * \
                              (len(nsxA) + len(nsxB))
 
+        # Store flexure data
+        res[0]['dXnm'] = flexure_x_corr_nm
+        res[0]['dYpix'] = flexure_y_corr_pix
+        res[0]['xfwhm'] = xfwhm
+        res[0]['yfwhm'] = yfwhm
+
+        # Store new metatdata
         res[0]['exptime'] = meta['exptime']
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr_A'] = extcorra
@@ -1823,13 +1870,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['sky_spaxel_ids_B'] = kixb
         res[0]['sky_subtraction'] = False if nosky else True
         res[0]['quality'] = quality
-
+        # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
         xs = np.arange(len(ll)+1)
         newll = chebval(xs, coef)
-
+        # Store offsets
         res[0]['dlam'] = np.diff(newll)
-
+        # Save the final spectrum
         np.save("sp_" + outname, res)
         print "Wrote sp_"+outname+".npy"
 
