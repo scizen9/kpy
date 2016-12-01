@@ -13,6 +13,12 @@ if not db.execute_sql("SELECT id FROM groups WHERE id='2'"):  # make sure there 
 db.add_user({'group_id': 1, 'username': 'default_user', 'name': 'apo', 'email': 'kiwi'})  # create a user to tie to the requests
 default_user_id = db.execute_sql("SELECT id FROM users WHERE username='default_user'")[0][0]
 
+
+def test_add_group():  # add_to_group is tested below
+    assert db.add_group({'designator': 'default group'}) == (-1, "ERROR: group exists!")
+    assert db.add_group({'id': 500}) == (-1, "ERROR: no group designator provided!")
+
+
 # to test add/remove_user
 def test_user_manipulation():
     usernames = [user[0] for user in db.execute_sql('SELECT username from users;')]
@@ -26,9 +32,9 @@ def test_user_manipulation():
     # check that it was properly added to its group
     assert (user_id, 1) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check other aspects of adding to groups
-    assert db.add_to_group(user_id, 1) == (-1, "ERROR: user already in group")
-    assert db.add_to_group(user_id, 0) == (-1, "ERROR: group does not exist")
-    assert db.add_to_group(0, 1) == (-1, "ERROR: user does not exist")
+    assert db.add_to_group(user_id, 1) == (-1, "ERROR: user already in group!")
+    assert db.add_to_group(user_id, 0) == (-1, "ERROR: group does not exist!")
+    assert db.add_to_group(0, 1) == (-1, "ERROR: user does not exist!")
     db.add_to_group(user_id, 2)  # multiple groups per user
     assert (user_id, 2) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check that it can't create another user with the same username
@@ -44,7 +50,10 @@ def test_user_manipulation():
     remove_again = db.remove_user(user_dict)
     assert remove_again[0] == -1
 
-    # TODO: test for valid/invalid inputs. create an update_user?
+    assert db.remove_user({'username': 'unused_name'}) == (-1, "ERROR: no user with that username!")
+    assert db.remove_user({'id': 0}) == (-1, "ERROR: no user with that id!")
+    assert db.remove_user({'name': 'neo', 'email': '3po'}) == (-1, "ERROR: username or id required!")
+    assert db.remove_user({}) == (-1, "ERROR: username or id required!")
     
 # TODO: more robust testing of the objects
 fixed_object = {'marshal_id': 90, 'name': 'test_obj', 'ra': 20, 'dec': 40, 'typedesig': 'f', 'epoch': 2000}
@@ -59,22 +68,32 @@ def test_object_creation():
 
 
 request_dict = {'object_id': 1, 'user_id': default_user_id, 'program_id': 1, 'marshal_id': 90, 
-                'exptime': '{2700, 600}', 'maxairmass': '3.5', 'status': '', 'priority': 3.5, 'inidate': '2016-11-10',
-                'enddate': '2016-11-14', 'cadence': 0, 'phasesamples': '', 'sampletolerance': '',
-                'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,2r,1ifu,2g,2r}'}
+                'exptime': '{2700, 600}', 'maxairmass': '3.5', 'priority': 3.5, 'inidate': '2016-11-10',
+                'enddate': '2016-11-14', 'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,2r,1ifu,2g,2r}'}
 
 
 def test_request_manipulation():
+    assert db.add_request(request_dict) == (-1, "ERROR: nexposures and ordering are inconsistent!")
+    request_dict.pop('nexposures', None)  # '{1,0,4,3,0}'
     db.add_request(request_dict)
-    assert not db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,2,1,2,0}'")
-    request_dict.pop('nexposures', None) # '{1,0,4,3,0}'
-    db.add_request(request_dict)
-    request = db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}'")
-    assert request
-    # TODO: add tests of update_request etc.
+    assert db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}' AND status != 'EXPIRED'")
+    request_dict.pop('ordering', None)
+    assert db.add_request(request_dict) == (-1, "ERROR: nexposures or ordering is required!")
+    request_dict['ordering'] = '{2g,2r,1ifu,2g,2r}'  # return ordering to the dict
+
+    request_dict.pop('priority', None)
+    assert db.add_request(request_dict) == (-1, "ERROR: priority not in dictionary!")
+    request_dict['priority'] = 3.5  # re-add it to the dict
+
+    request_dict['object_id'] = 0
+    assert db.add_request(request_dict) == (-1, "ERROR: object does not exist") ????
+    request_dict['object_id'] = 1
 
 
+# TODO: add tests of update_request etc.
 def test_request_update():
+    object, status, priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")
+
     pass
 
 
@@ -94,6 +113,7 @@ def test_fits_header_parse():
     db.add_observation_fits(fitsfile)
 
 if __name__ == '__main__':
+    test_add_group()
     test_user_manipulation()
     test_object_creation()
     test_request_manipulation()

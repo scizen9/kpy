@@ -96,8 +96,13 @@ class SedmDB:
         # check if already contained
         usernames = [user[0] for user in self.execute_sql('SELECT username FROM users')]
         if not pardic['username'] in usernames:
-            self.execute_sql("INSERT INTO users (username, name, email) Values ('%s', '%s', '%s');"
-                             % (pardic['username'], pardic['name'], pardic['email']))
+            # TODO: make name/email optional and generate the sql?
+            sql = ("INSERT INTO users (username, name, email) Values ('%s', '%s', '%s');"
+                   % (pardic['username'], pardic['name'], pardic['email']))
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_user sql command failed with an IntegrityError")
             user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))[0][0]
 
             # TODO: choose between group_id and designator or handle both?
@@ -117,12 +122,11 @@ class SedmDB:
             else:
                 return (0, "User added")
         else:
-            return (-1, "ERROR: User with that username exists!")
-        # TODO: test
+            return (-1, "ERROR: user with that username exists!")
 
     def remove_user(self, pardic):
         """
-
+        Removes an existing user
         Args:
             pardic: dict
                 required: 'username' (recommended) OR 'id'
@@ -146,11 +150,8 @@ class SedmDB:
                 return (0, "User removed")
             else:
                 return (-1, "ERROR: no user with that id!")
-        elif 'name' in pardic.keys() or 'email' in pardic.keys():
-            return (-1, "ERROR: username or id required!")
         else:
-            return (-1, "ERROR: User does not exist!")
-        # TODO: test id, username, neither and incorrect ones
+            return (-1, "ERROR: username or id required!")
 
     def add_group(self, pardic):
         """
@@ -163,15 +164,18 @@ class SedmDB:
             (-1, "ERROR: ...") if no designator was provided or there is already a group with it
             (0, "Group added") if the adding was successful
         """
-        if not pardic['designator']:
+        if 'designator' not in pardic.keys():
             return (-1, 'ERROR: no group designator provided!')
         groups = [des[0] for des in self.execute_sql('SELECT designator FROM groups;')]
         if pardic['designator'] not in groups:
-            self.execute_sql(("INSERT INTO groups (designator) VALUES ('%s')"
-                              % (pardic['designator'])))
+            sql = ("INSERT INTO groups (designator) VALUES ('%s')" % (pardic['designator']))
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_group sql command failed with an IntegrityError")
             return (0, "Group added")
         else:
-            return (-1, "ERROR: Group exists!")
+            return (-1, "ERROR: group exists!")
 
     def add_to_group(self, user, group):
         """
@@ -187,17 +191,19 @@ class SedmDB:
             (0, "User added to group") if the adding was successful
         """
         if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
-            return (-1, "ERROR: user does not exist")
+            return (-1, "ERROR: user does not exist!")
         if group not in [group_id[0] for group_id in self.execute_sql('SELECT id FROM groups')]:
-            return (-1, "ERROR: group does not exist")
+            return (-1, "ERROR: group does not exist!")
         usergroups = self.execute_sql('SELECT user_id, group_id FROM usergroups')
         if (user, group) in usergroups:
-            return (-1, "ERROR: user already in group")
+            return (-1, "ERROR: user already in group!")
         else:
-            self.execute_sql("INSERT INTO usergroups (user_id, group_id) VALUES ('%s','%s')"
-                             % (user, group))
+            sql = "INSERT INTO usergroups (user_id, group_id) VALUES ('%s','%s')" % (user, group)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_to_group sql command failed with an IntegrityError")
             return (0, "User added to group")
-        # TODO: test adding a user to group, non-existant user, non-existant group, already connected user/group
 
     def add_object(self, pardic, objparams={}):
         """
@@ -232,12 +238,10 @@ class SedmDB:
                      'decay' (orbit decay rate, rev/day^2), 'reforbit' (integral reference orbit number at epoch),
                      'drag' (drag coefficient, 1/(Earth radii))
 
-
         Returns:
             (-1, "ERROR: ...") if it failed to add
             (0, "Object added") if the object is added successfully
         """
-
 
         """
           Creates a new object in the db with the characterisstics given by the dictionary of parameters: pardic.
@@ -261,7 +265,7 @@ class SedmDB:
         # TODO: add iauname to all of the obj_sql and generate them rather than hard-code
         if 'marshal_id' in pardic.keys():
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
-                return (-1, "ERROR: object exists")
+                return (-1, "ERROR: object exists!")
         # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
 
         # format array([# name, typedesig, ... same ordering as table
@@ -274,8 +278,10 @@ class SedmDB:
                        "('%s','%s','%s','%s','%s','%s');" % (
                            pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                            pardic['typedesig'], pardic['epoch']))
-
-            self.execute_sql(obj_sql)
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError")
             return (0, "Object added")
 
         elif pardic['typedesig'] == 'P':
@@ -285,7 +291,7 @@ class SedmDB:
             pass
 
         elif not pardic['iauname'] and not objparams:  # if not fixed or default, need identifier
-            return (-1, "ERROR: need 'iauname' or objparams for non-fixed objects")
+            return (-1, "ERROR: need iauname or objparams for non-fixed objects!")
 
         elif pardic['typedesig'] == 'e':
             # TODO: modify obj_sql for the specific typedesig
@@ -293,7 +299,10 @@ class SedmDB:
                        "('%s','%s','%s','%s','%s','%s');" % (
                            pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                            pardic['typedesig'], pardic['epoch']))
-            self.execute_sql(obj_sql)
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             sql = ("INSERT INTO elliptical_heliocentric (object_id, inclination, longascnode_O, perihelion_o, "
@@ -302,7 +311,10 @@ class SedmDB:
                     object_id, objparams['inclination'], objparams['longascnode_O'],
                     objparams['perihelion_o'], objparams['a'], objparams['n'], objparams['e'], objparams['M'],
                     objparams['mjdepoch'], objparams['D'], objparams['M1'], objparams['M2'], objparams['s']))
-            self.execute_sql(sql)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object 'e' sql command failed with an IntegrityError")
             return (0, "Elliptical heliocentric object added")
 
         elif pardic['typedesig'] == 'h':
@@ -311,7 +323,10 @@ class SedmDB:
                        "('%s','%s','%s','%s','%s','%s');" % (
                            pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                            pardic['typedesig'], pardic['epoch']))
-            self.execute_sql(obj_sql)
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             sql = (
@@ -320,7 +335,10 @@ class SedmDB:
              (object_id, objparams['T'], objparams['inclination'], objparams['longascnode_O'],
               objparams['perihelion_o'], objparams['e'], objparams['q'], objparams['D'], objparams['M1'],
               objparams['M2'], objparams['s']))
-            self.execute_sql(sql)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object 'h' sql command failed with an IntegrityError")
             return (0, "Hyperbolic heliocentric object added")
 
         elif pardic['typedesig'] == 'p':
@@ -329,7 +347,10 @@ class SedmDB:
                        "('%s','%s','%s','%s','%s','%s');" % (
                            pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                            pardic['typedesig'], pardic['epoch']))
-            self.execute_sql(obj_sql)
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             sql = (
@@ -338,7 +359,10 @@ class SedmDB:
              (object_id, objparams['T'], objparams['e'], objparams['inclination'],
               objparams['longascnode_O'], objparams['perihelion_o'], objparams['q'], objparams['D'],
               objparams['M1'], objparams['M2'], objparams['s']))
-            self.execute_sql(sql)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object 'p' sql command failed with an IntegrityError")
             return (0, "Parabolic heliocentric object added")
 
         elif pardic['typedesig'] == 'E':
@@ -347,7 +371,10 @@ class SedmDB:
                        "('%s','%s','%s','%s','%s','%s');" % (
                            pardic['marshal_id'], pardic['name'], pardic['ra'], pardic['dec'],
                            pardic['typedesig'], pardic['epoch']))
-            self.execute_sql(obj_sql)
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             sql = (
@@ -356,12 +383,15 @@ class SedmDB:
              (object_id, objparams['T'], objparams['inclination'], objparams['ra'],
               objparams['e'], objparams['pedigree'], objparams['M'], objparams['n'], objparams['decay'],
               objparams['reforbit'], objparams['drag']))
-            self.execute_sql(sql)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object 'E' sql command failed with an IntegrityError")
             return (0, "Earth satellite object added")
 
     def add_request(self, pardic):
         """
-
+        Add a request
         Args:
             pardic: dict
                 required: 'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
@@ -388,7 +418,7 @@ class SedmDB:
             # warnings.warn
             print "program %s has already requested object: %s" % (pardic['program_id'], pardic['object_id'])
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
-            return (-1, "ERROR: object does not exist")
+            return (-1, "ERROR: object does not exist!")
         # TODO: set default inidate/enddate?
 
         if 'ordering' in pardic.keys():
@@ -409,12 +439,12 @@ class SedmDB:
             # make sure that 'nexposures' and 'ordering' are consistent
             if 'nexposures' in pardic.keys():
                 if not '{%s, %s, %s, %s, %s}' % tuple(nexposure) == pardic['nexposures']:
-                    return (-1, "ERROR: nexposures and ordering are inconsistent")
+                    return (-1, "ERROR: nexposures and ordering are inconsistent!")
             else:
                 pardic['nexposures'] = '{%s, %s, %s, %s, %s}' % tuple(nexposure)
 
         elif not ('nexposures' in pardic.keys() or 'ordering' in pardic.keys()):
-            return (-1, "ERROR: 'nexposures' or 'ordering' is required")
+            return (-1, "ERROR: nexposures or ordering is required!")
 
         default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                           'inidate', 'enddate']
@@ -423,12 +453,12 @@ class SedmDB:
         # add the required parameters
         for param in default_params:
             if param not in pardic.keys():
-                return (-1, "ERROR: %s not in dictionary" % (param,))
+                return (-1, "ERROR: %s not in dictionary!" % (param,))
             elif pardic[param]:
                 columns += (param + ", ")  # e.g. "(cadence, sampletolerance, "
                 values += "'%s', " % (pardic[param],)  # e.g. "('24000', '.2', "
             else:
-                return (-1, "ERROR: no value provided for %s" % (param,))
+                return (-1, "ERROR: no value provided for %s!" % (param,))
         # add non-required parameters
         other_params = [param for param in pardic.keys() if param not in default_params]
         for param in other_params:
@@ -439,7 +469,11 @@ class SedmDB:
         columns = columns[:-2] + ')'
         values = values[:-2] + ')'
         sql = ("INSERT INTO request %s VALUES %s;" % (columns, values))
-        self.execute_sql(sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_request sql command failed with an IntegrityError")
+        # TODO: implement this in more places
         self_id = max([id_no[0] for id_no in self.execute_sql('SELECT id FROM request')])
         self.create_request_atomic_requests(self_id)
         return (0, "Request added")
@@ -458,20 +492,28 @@ class SedmDB:
 
          """
         # TODO: make this update associated atomicrequest entries as well
-        # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
+        # TODO: test, complete docstring
+        # TODO: determine which parameters shouldn't be changed
         keys = list(pardic.keys())
+        for param in ['object_id', 'filters', 'creationdate', 'lastmodified']:
+            if param in keys:
+                keys.remove(param)
+        if 'id' not in keys:
+            return (-1, "ERROR: no id provided!")
         keys.remove('id')
         if len(keys) == 0:
-            return (-1, "ERROR: no parameters given to update")
+            return (-1, "ERROR: no parameters given to update!")
         sql = "UPDATE request SET "
         for key in keys:
             sql += "%s = '%s', " % (key, pardic[key])
         sql += "lastmodified = 'NOW()' "  # TODO: check if this works
         sql += "WHERE id = %s;" % (pardic['id'],)
         # TODO: check if the requests exists yet
-        self.execute_sql(sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_request sql command failed with an IntegrityError")
         return (0, "Requests updated")
-        # TODO: test...
 
     def get_active_requests(self):
         """
@@ -492,12 +534,9 @@ class SedmDB:
         sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
         self.execute_sql(sql)
         # TODO: test if the following works
-        test = ("UPDATE atomicrequest SET status='EXPIRED' WHERE EXISTS (SELECT id FROM request WHERE "
-                "atomicrequest.request_id=request.id AND request.status='EXPIRED')")
-        
-        atomic_sql = ("UPDATE atomicrequest, request SET status='EXPIRED' WHERE atomicrequest.request_id"
-                      "=request.id AND request.status='EXPIRED'")
-        self.execute_sql(test)
+        atomic_sql = ("UPDATE atomicrequest SET status='EXPIRED' WHERE EXISTS (SELECT id FROM request WHERE "
+                      "atomicrequest.request_id=request.id AND request.status='EXPIRED')")
+        self.execute_sql(atomic_sql)
         return (0, "Requests expired")
 
     def cancel_scheduled_request(self, requestid):
@@ -562,13 +601,16 @@ class SedmDB:
                 pardic['inidate'], pardic['enddate']))
         # atomic_requests should be created at the start, and purged at the end of each night
         # TODO: given above comment, do we need inidate/enddate?
-        self.execute_sql(sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_atomic_request sql command failed with an IntegrityError")
         return (0, "Request added")
         # TODO: test
 
     def create_request_atomic_requests(self, request_id):
         if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
-            return (-1, "ERROR: atomicrequests already exist for that request")
+            return (-1, "ERROR: atomicrequests already exist for that request!")
         request = self.execute_sql("SELECT object_id, exptime, maxairmass, priority, inidate, enddate,"
                                    "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
                                    "FROM request WHERE id='%s';" % (request_id,))[0]
@@ -585,13 +627,13 @@ class SedmDB:
                 for n in range(request[10][filter_idx]):
                     obs_order.append(request[9][filter_idx])
         else:
-            return (-1, "ERROR: request contains neither 'nexposures' nor 'ordering'")
+            return (-1, "ERROR: request contains neither nexposures nor ordering!")  # add_request should prevevnt this
         ifus = np.where(np.array(obs_order) == 'ifu')[0]
         if len(ifus) == 2:  # TODO: check if a/b is the only way of having 2 ifu
             obs_order[ifus[0]] = 'ifu_a'
             obs_order[ifus[1]] = 'ifu_b'
         if any([(filt not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']) for filt in obs_order]):
-            return (-1, "ERROR: either 'filters' or 'ordering' has an invalid entry")
+            return (-1, "ERROR: either filters or ordering has an invalid entry!")
         for n, filter_des in enumerate(obs_order):
             pardic['filter'] = filter_des
             pardic['order_id'] = n
@@ -621,17 +663,20 @@ class SedmDB:
             if param in keys:
                 keys.remove(param)
         if 'id' not in keys:
-            return (-1, "ERROR: no 'id' provided")
+            return (-1, "ERROR: no id provided!")
         keys.remove('id')
 
         if len(keys) == 0:
-            return (-1, "ERROR: no parameters given to update")
+            return (-1, "ERROR: no parameters given to update!")
         sql = "UPDATE atomicrequest SET "
         for key in keys:
             sql += "%s = '%s', " % (key, pardic[key])
         sql += "lastmodified = 'NOW()' "  # TODO: check if this works
         sql += "WHERE id = %s;" % (pardic['id'],)
-        self.execute_sql(sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_atomic_request sql command failed with an IntegrityError")
         return (0, "Atomic request updated")
 
     def get_request_atomic_requests(self, request_id):
@@ -690,7 +735,10 @@ class SedmDB:
         values_list = list(header_dict.values())
         values = '(' + str(values_list)[1:-1] + ')'  # make it into the correct value format
         sql = ("INSERT INTO observation %s VALUES %s" % (cols, values))
-        self.execute_sql(sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: adding observation sql command failed with an IntegrityError")
 
         # TODO: see if OUTPUT is able to be used instead of the following
         observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'"
@@ -711,7 +759,10 @@ class SedmDB:
         stat_cols = stat_cols[:-2] + ')'  # get rid of extra ", "
         stat_values = '(' + str(list(tel_stats.values()))[1:-1] + ')'  # make it into the correct value format
         stat_sql = ("INSERT INTO telescope_stats %s VALUES %s" % (stat_cols, stat_values))
-        self.execute_sql(stat_sql)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: adding tel_stats sql command failed with an IntegrityError")
 
         # TODO: make sure the atomicrequest_id is stored in header
         """
