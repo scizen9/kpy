@@ -125,7 +125,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         # do the fit
         fit = NFit.mpfit_do(ffun, lamgrid[roi], skyspec[roi], parinfo)
         # did the fit succeed?
-        if fit.status == 1 & fit.params[2] > 0.:
+        if fit.status == 1 and fit.params[2] > 0.:
             off = fit.params[1] - skyline
             sumoff += off * fit.params[0]
             sumscale += fit.params[0]
