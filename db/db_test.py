@@ -86,15 +86,19 @@ def test_request_manipulation():
     request_dict['priority'] = 3.5  # re-add it to the dict
 
     request_dict['object_id'] = 0
-    assert db.add_request(request_dict) == (-1, "ERROR: object does not exist") ????
+    assert db.add_request(request_dict) == (-1, "ERROR: object does not exist!")
     request_dict['object_id'] = 1
 
 
-# TODO: add tests of update_request etc.
 def test_request_update():
     object, status, priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")
-
-    pass
+    db.update_request({'id': 1, 'object_id': object+1, 'status': 'NEW', 'priority': priority+1})
+    new_obj, new_stat, new_priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")
+    # object_id isn't allowed to be updated and the given status isn't valid
+    assert new_obj == object and new_stat == status and new_priority == priority+1
+    assert db.update_request({'object_id': object+1, 'status': 'ACTIVE'}) == (-1, "ERROR: no id provided!")
+    assert db.update_request({'id': 0, 'maxairmass': 3}) == (-1, "ERROR: request does not exist!")
+    assert db.update_request({'id': 1, 'creationdate': '2016-02-04'}) == (-1, "ERROR: no parameters given to update!")
 
 
 def test_request_expiration(request):
@@ -109,7 +113,7 @@ def test_request_expiration(request):
     assert 'EXPIRED' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
 
 def test_fits_header_parse():
-    fitsfile= '/scr2/sedm/phot/20161012/rc20161012_12_36_34.fits'
+    fitsfile = '/scr2/sedm/phot/20161012/rc20161012_12_36_34.fits'
     db.add_observation_fits(fitsfile)
 
 if __name__ == '__main__':
@@ -117,5 +121,6 @@ if __name__ == '__main__':
     test_user_manipulation()
     test_object_creation()
     test_request_manipulation()
+    test_request_update()
     test_request_expiration(request_dict)
 

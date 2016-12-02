@@ -415,7 +415,7 @@ class SedmDB:
         requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
         # TODO: check mainly for program_id, issue warning that it is a repeat, but allow
         if (pardic['object_id'], pardic['program_id']) in requests:
-            # warnings.warn
+            # TODO: set a warnings.warn?
             print "program %s has already requested object: %s" % (pardic['program_id'], pardic['object_id'])
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
             return (-1, "ERROR: object does not exist!")
@@ -448,7 +448,7 @@ class SedmDB:
 
         default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                           'inidate', 'enddate']
-        columns = '('
+        columns = "("
         values = "("
         # add the required parameters
         for param in default_params:
@@ -481,18 +481,17 @@ class SedmDB:
 
     def update_request(self, pardic):
         """
-         Updates the request table with the parameters from the dictionary.
-      
-          possible values for status are:
-            - PENDING
-            - ACTIVE
-            - COMPLETED
-            - CANCELED
-            - EXPIRED
-
-         """
-        # TODO: make this update associated atomicrequest entries as well
-        # TODO: test, complete docstring
+        Updates the request table with the parameters from the dictionary.
+        Args:
+            pardic: dict
+                required: 'id'
+                optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime'
+                Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
+        Returns:
+            (-1, "ERROR: ...") if there was an issue with the updating
+            (0, "Requests updated") if the update was successful
+        """
+        # TODO: *** make this update associated atomicrequest entries as well ***
         # TODO: determine which parameters shouldn't be changed
         keys = list(pardic.keys())
         for param in ['object_id', 'filters', 'creationdate', 'lastmodified']:
@@ -500,15 +499,19 @@ class SedmDB:
                 keys.remove(param)
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
+        if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
+            return (-1, "ERROR: request does not exist!")
         keys.remove('id')
+        if 'status' in keys:
+            if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
+                keys.remove('status')
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         sql = "UPDATE request SET "
         for key in keys:
             sql += "%s = '%s', " % (key, pardic[key])
-        sql += "lastmodified = 'NOW()' "  # TODO: check if this works
+        sql += "lastmodified = 'NOW()' "
         sql += "WHERE id = %s;" % (pardic['id'],)
-        # TODO: check if the requests exists yet
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -517,18 +520,18 @@ class SedmDB:
 
     def get_active_requests(self):
         """
-         Returns the list of requests that are active now.
-
-         """
-        # TODO: test, add formatting?
-        active_requests = self.execute_sql("SELECT * FROM request WHERE status='ACTIVE';")
+        Returns the list of requests that are active now.
+        """
+        # TODO: test?
+        sql = ("SELECT object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, "
+               "phasesamples, sampletolerance, filters, nexposures, ordering FROM request WHERE status='ACTIVE';")
+        active_requests = self.execute_sql(sql)
         return active_requests
 
     def expire_requests(self):
         """
          Updates the request table. For all the active requests that were not completed,
-          and had an expiry date before than NOW(), are marked as "EXPIRED".
-
+             and had an expiry date before than NOW(), are marked as "EXPIRED".
         """
         # tests written
         sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
@@ -609,6 +612,15 @@ class SedmDB:
         # TODO: test
 
     def create_request_atomic_requests(self, request_id):
+        """
+        create atomicrequest entries for a given request
+        Args:
+            request_id: int
+                id of the request that needs atomicrequests
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Added (#) atomic requests for request (#)") if it was successful
+        """
         if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
             return (-1, "ERROR: atomicrequests already exist for that request!")
         request = self.execute_sql("SELECT object_id, exptime, maxairmass, priority, inidate, enddate,"
@@ -642,7 +654,9 @@ class SedmDB:
                 pardic['exptime'] = request[1][0]  # TODO: make sure the sql returns the proper format
             else:
                 pardic['exptime'] = request[1][1]
-            self.add_atomic_request(pardic)
+            add_return = self.add_atomic_request(pardic)
+            if add_return[0] == -1:
+                return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n+1, filter_des))
         return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
 
     def update_atomic_request(self, pardic):
@@ -671,7 +685,7 @@ class SedmDB:
         sql = "UPDATE atomicrequest SET "
         for key in keys:
             sql += "%s = '%s', " % (key, pardic[key])
-        sql += "lastmodified = 'NOW()' "  # TODO: check if this works
+        sql += "lastmodified = 'NOW()' "
         sql += "WHERE id = %s;" % (pardic['id'],)
         try:
             self.execute_sql(sql)
@@ -760,7 +774,7 @@ class SedmDB:
         stat_values = '(' + str(list(tel_stats.values()))[1:-1] + ')'  # make it into the correct value format
         stat_sql = ("INSERT INTO telescope_stats %s VALUES %s" % (stat_cols, stat_values))
         try:
-            self.execute_sql(sql)
+            self.execute_sql(stat_sql)
         except exc.IntegrityError:
             return (-1, "ERROR: adding tel_stats sql command failed with an IntegrityError")
 
@@ -776,57 +790,188 @@ class SedmDB:
 
     def add_reduced_photometry(self, pardic):
         """
-         Creates a new object in the phot table with the parameters specified in the dictionary.
-         Only one reduction shall exist for each observation. If the reduction exists, an update
-         is made.
+        Creates a new object in the phot table
+        Args:
+            pardic: dict
+                required: 'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
+                          'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id'
 
-          This function also updates the schdele table and changes the status 
-          of the associated request to "REDUCED".
-         """
-        
-        pass
+        Returns:
+
+        """
+        # TODO: can astrometry/filter/reducedfile/sexfile/biasfile/maskfile/flatfile/pipeline/marshal_phot_id be determined by reducedfile?
+
+        """
+        Creates a new object in the phot table with the parameters specified in the dictionary.
+        Only one reduction shall exist for each observation. If the reduction exists, an update
+        is made.
+
+        This function also updates the schdele table and changes the status
+        of the associated request to "REDUCED".
+        """
+        keys = list(pardic.keys())
+        if 'observation_id' not in keys:
+            return (-1, "ERROR: observation_id not provided")
+
+        columns = "("
+        values = "("
+        for param in keys:
+            if pardic[param]:  # make sure that there is a value
+                columns += (param + ", ")
+                values += "'%s', " % (pardic[param],)
+        columns = columns[:-2] + ')'
+        values = values[:-2] + ')'
+        sql = "INSERT INTO phot %s VALUES %s" % (columns, values)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_reduced_photometry sql command failed with an IntegrityError")
+        return (0, "Classification request updated")
 
     def add_reduced_spectrum(self, pardic):
         """
-         Creates a new object in the spec table with the parameters specified in the dictionary.
-         Only one reduction shall exist for each observation. If the reduction exists, an update
-         is made.
+        Creates a new object in the spec table
+        Args:
+            pardic: dict
+                required: 'observation_id', 'reducedfile', 'biasfile', 'flatfile', 'imgset'
 
-          This function also updates the schdele table and changes the status 
-          of the associated request to "REDUCED".
-         """
+        Returns:
+        """
+        # TODO: can biasfile/flatfile/imgset/quality/cubefile/standardfile/skysub be determined by reducedfile?
+
+        """
+        Creates a new object in the spec table with the parameters specified in the dictionary.
+        Only one reduction shall exist for each observation. If the reduction exists, an update
+        is made.
+
+        This function also updates the schdele table and changes the status
+        of the associated request to "REDUCED".
+        """
         pass
 
     def add_metrics_phot(self, pardic):
         """
-         Creates a new object in the metrics phot table with the parameters specified in the dictionary.
-         Only one metric shall exist for each observation. If the reduction exists, an update
-         is made.
-         """
+        Creates a new object in the metrics phot table with the parameters specified in the dictionary.
+        Only one metric shall exist for each observation. If the reduction exists, an update
+        is made.
+        """
         # create and/or update
         pass
 
     def add_metrics_spec(self, pardic):
         """
-         Creates a new object in the metrics spec stats table with the parameters specified in the dictionary.
-         Only one metric shall exist for each observation. If the reduction exists, an update
-         is made.
-         """
+        Creates a new object in the metrics spec stats table with the parameters specified in the dictionary.
+        Only one metric shall exist for each observation. If the reduction exists, an update
+        is made.
+        """
         # create table
         pass
 
     def add_flexure(self, pardic):
         """
-         Creates a new object in the flexure table.
-         """
+        Creates a new object in the flexure table.
+        Args:
+            pardic: dict
+                required: 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2'
+        Returns:
+
+        """
+        # TODO: find out what the 'rms' is here
+        # TODO: not require timestamp1 and timestamp2, derive them from spec info?
         # if flexure is too high, tell something is wrong?
         pass
 
     def add_classification(self, pardic):
         """
         Creates a classification object attached to the reduced spectrum.
+        Args:
+            pardic: dict
+                required: 'spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score'
+                optional: 'phase', 'phase_err'
+        Returns:
+            (-1, "ERROR: ...") if there is an issue
+            (0, 'Classification request updated") if it was successful
         """
-        pass
+        keys = list(pardic.keys())
+        for key in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score']:
+            if key not in keys:
+                return (-1, "ERROR: %s not provided" % (key,))
+        classified = self.execute_sql("SELECT classification, redshift, redshift_err FROM classification "
+                                      "WHERE spec_id = '%s' AND classifier = '%s';" % (pardic['spec_id'],
+                                                                                       pardic['classification']))
+        if classified:
+            return (-1, "ERROR: entry exists for that spectra and classifier with classification %s, redshift %s, "
+                        "redshift_err %s. Use `update_classification` if necessary." % (classified[0], classified[1],
+                                                                                        classified[2]))
+        columns = "("
+        values = "("
+        for param in keys:
+            if pardic[param]:  # make sure that there is a value
+                columns += (param + ", ")
+                values += "'%s', " % (pardic[param],)
+        columns = columns[:-2] + ')'
+        values = values[:-2] + ')'
+        sql = "INSERT INTO classification %s VALUES %s;" % (columns, values)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_classification sql command failed with an IntegrityError")
+        return (0, "Classification request updated")
+
+    def update_classification(self, pardic):
+        """
+        Update a classification
+        Args:
+            pardic: dict
+                required: 'id' OR ('spec_id', 'classifier')
+                optional: 'classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score'
+                Note: this function will not modify id, spec_id, classifier or object_id
+        Returns:
+            (-1, "ERROR: ...") if there is an issue
+            (0, "Classification updated") if it was successful
+        """
+        keys = list(pardic.keys())
+        if 'id' in keys:
+            try:
+                spec_id, classifier = self.execute("SELECT spec_id, classifier FROM classification WHERE id='%s';"
+                                                   % (pardic['id']))[0]
+            except IndexError:
+                return (-1, "ERROR: no classification entry with the given id")
+            if 'classifier' in keys:
+                if not pardic['classifier'] == classifier:
+                    return (-1, "ERROR: classifier provided does not match classification id")
+                keys.remove('classifier')
+            if 'spec_id' in keys:
+                if not pardic['spec_id'] == spec_id:
+                    return (-1, "ERROR: spec_id provided does not match classification id")
+                keys.remove('spec_id')
+        elif 'spec_id' in keys and 'classifier' in keys:
+            try:
+                id = self.execute_sql("SELECT id FROM classification WHERE spec_id='%s' AND "
+                                      "classifier='%s'" % (pardic['spec_id'], pardic['classifier']))[0]
+            except IndexError:
+                return (-1, "ERROR: no classification entry with the given spec_id and classifier")
+            pardic['id'] = id[0][0]
+            keys.remove('spec_id')
+            keys.remove('classifier')
+        else:
+            return (-1, "ERROR: needs id or both spec_id and classifier")
+
+        keys.remove('id')
+        if 'object_id' in keys:
+            keys.remove('object_id')
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        sql = "UPDATE classification SET "
+        for key in keys:
+            sql += "%s = '%s', " % (key, pardic[key])
+        sql += "WHERE id = %s;" % (pardic['id'],)
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_classification sql command failed with an IntegrityError")
+        return (0, "Classification updated")
+
 
 
 def ra_to_decimal(ra):
@@ -837,4 +982,3 @@ def ra_to_decimal(ra):
 def dec_to_decimal(dec):
     dms = dec.split(':')
     return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
-

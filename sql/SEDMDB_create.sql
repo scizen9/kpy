@@ -9,7 +9,7 @@ CREATE TABLE classification (
     spec_id bigint NOT NULL,
     classification text  NULL,
     redshift decimal(7,5)  NULL,
-    redshifterr decimal(7,5)  NULL,
+    redshift_err decimal(7,5)  NULL,
     phase decimal(5,2)  NULL,
     phase_err decimal(5,2)  NULL,
     classifier text  NULL,
