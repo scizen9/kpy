@@ -100,14 +100,16 @@ class SedmDB:
         usernames = [user[0] for user in self.execute_sql('SELECT username FROM users')]
         if pardic['username'] in usernames:
             return (-1, "ERROR: user with that username exists!")
-        for key in ['group_id', 'group_designator']:  # these are not for inserting into users
-            if key in keys:
+        for key in keys:  # remove group keys and any other bad keys
+            if key not in ['username', 'name', 'email']:
                 keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'users')
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: add_user sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_user sql command failed with a ProgrammingError!")
 
         user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))[0][0]
         # add the user to the given group
@@ -176,6 +178,8 @@ class SedmDB:
                 self.execute_sql(sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_group sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_group sql command failed with a ProgrammingError!")
             return (0, "Group added")
         else:
             return (-1, "ERROR: group exists!")
@@ -206,6 +210,8 @@ class SedmDB:
                 self.execute_sql(sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_to_group sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User added to group")
 
     def add_object(self, pardic, orbit_params={}):
@@ -291,6 +297,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             return (0, "Fixedd object added")
 
         elif pardic['typedesig'] == 'P':
@@ -299,6 +307,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
 
             # TODO, use the planet/satellite name (.edb XEphem) to generate the orbit
             obj_name = pardic['name']
@@ -317,6 +327,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             orbit_params['object_id'] = object_id
@@ -326,6 +338,8 @@ class SedmDB:
                 self.execute_sql(orb_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object 'e' sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object 'e' sql command failed with a ProgrammingError!")
             return (0, "Elliptical heliocentric object added")
 
         elif pardic['typedesig'] == 'h':
@@ -334,6 +348,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             orbit_params['object_id'] = object_id
@@ -343,6 +359,8 @@ class SedmDB:
                 self.execute_sql(orb_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object 'h' sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object 'h' sql command failed with a ProgrammingError!")
             return (0, "Hyperbolic heliocentric object added")
 
         elif pardic['typedesig'] == 'p':
@@ -351,6 +369,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             orbit_params['object_id'] = object_id
@@ -360,6 +380,8 @@ class SedmDB:
                 self.execute_sql(orb_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object 'p' sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object 'p' sql command failed with a ProgrammingError!")
             return (0, "Parabolic heliocentric object added")
 
         elif pardic['typedesig'] == 'E':
@@ -368,6 +390,8 @@ class SedmDB:
                 self.execute_sql(obj_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
 
             orbit_params['object_id'] = object_id
@@ -377,6 +401,8 @@ class SedmDB:
                 self.execute_sql(orb_sql)
             except exc.IntegrityError:
                 return (-1, "ERROR: add_object 'E' sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object 'E' sql command failed with a ProgrammingError!")
             return (0, "Earth satellite object added")
 
     def add_request(self, pardic):
@@ -450,6 +476,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: add_request sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_request sql command failed with a ProgrammingError!")
         # TODO: implement this in more places
         self_id = max([id_no[0] for id_no in self.execute_sql('SELECT id FROM request')])
         atomic_requests = self.create_request_atomic_requests(self_id)
@@ -492,6 +520,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: update_request sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_request sql command failed with a ProgrammingError!")
         return (0, "Requests updated")
 
     def get_active_requests(self):
@@ -588,6 +618,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: add_atomic_request sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Request added")
 
     def create_request_atomic_requests(self, request_id):
@@ -602,12 +634,12 @@ class SedmDB:
         """
         if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
             return (-1, "ERROR: atomicrequests already exist for that request!")
-        request = self.execute_sql("SELECT object_id, exptime, maxairmass, priority, inidate, enddate,"
+        request = self.execute_sql("SELECT object_id, exptime, priority, inidate, enddate,"
                                    "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
                                    "FROM request WHERE id='%s';" % (request_id,))[0]
         # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
-        pardic = {'object_id': request[0], 'maxairmass': request[2], 'priority': request[3], 'inidate': request[4],
-                  'enddate': request[5], 'request_id': request_id}
+        pardic = {'object_id': request[0], 'priority': request[2], 'inidate': request[3],
+                  'enddate': request[4], 'request_id': request_id}
         obs_order = []
         if request[11]:
             for num_fil in request[11]:
@@ -666,6 +698,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: update_atomic_request sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Atomic request updated")
 
     def get_request_atomic_requests(self, request_id):
@@ -721,6 +755,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: adding observation sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: adding observation sql command failed with a ProgrammingError!")
 
         # TODO: see if OUTPUT is able to be used instead of the following
         observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'"
@@ -740,6 +776,8 @@ class SedmDB:
             self.execute_sql(stat_sql)
         except exc.IntegrityError:
             return (-1, "ERROR: adding tel_stats sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: adding tel_stats sql command failed with a ProgrammingError!")
 
         # TODO: make sure the atomicrequest_id is stored in header
         """
@@ -781,6 +819,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: add_reduced_photometry sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
         return (0, "Classification request updated")
 
     def add_reduced_spectrum(self, pardic):
@@ -866,6 +906,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: add_classification sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_classification sql command failed with a ProgrammingError!")
         return (0, "Classification added")
 
     def update_classification(self, pardic):
@@ -917,6 +959,8 @@ class SedmDB:
             self.execute_sql(sql)
         except exc.IntegrityError:
             return (-1, "ERROR: update_classification sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_classification sql command failed with a ProgrammingError!")
         return (0, "Classification updated")
 
 

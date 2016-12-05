@@ -4,6 +4,8 @@ import numpy as np
 
 db = SedmDb.SedmDB()
 
+# TODO: make tests that cause IntegrityError (giving a value in of the wrong format e.g. string for a decimal parameter) and ProgrammingError (attempting to insert/update a column that doesn't exist)
+# TODO: make the functions reject pardic keys that aren't columns
 
 user_dict = {'group_id': 1, 'username': 'test_user', 'name': 'nmo', 'email': 'dodo'}
 
