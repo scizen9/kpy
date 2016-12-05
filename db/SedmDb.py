@@ -282,11 +282,15 @@ class SedmDB:
                                   skip_header=4, delimiter=',', dtype='S25')
         # TODO: get other dbs (e.g. JPL's ELEMENTS.COMET) in comma-separated format
         obj_keys = list(pardic.keys())
-        for key in ['name', 'typedesig']:
+
+        for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
             if key not in obj_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in obj_keys:  # remove any extraneous keys
+            if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
+                obj_keys.remove(key)
 
         if pardic['typedesig'] == 'f':
             if not ('marshal_id' in obj_keys or ('ra' in obj_keys and 'dec' in obj_keys and 'epoch' in obj_keys)):
@@ -333,6 +337,10 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
+            for key in orb_keys:
+                if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
+                               'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
+                    orb_keys.remove(key)
             orb_sql = generate_insert_sql(orbit_params, orb_keys, 'elliptical_heliocentric')
             try:
                 self.execute_sql(orb_sql)
@@ -354,6 +362,10 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
+            for key in orb_keys:
+                if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                               'M1', 'M2', 's', 'object_id']:
+                    orb_keys.remove(key)
             orb_sql = generate_insert_sql(orbit_params, orb_keys, 'hyperbolic_heliocentric')
             try:
                 self.execute_sql(orb_sql)
@@ -375,6 +387,10 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
+            for key in orb_keys:
+                if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                               'M1', 'M2', 's', 'object_id']:
+                    orb_keys.remove(key)
             orb_sql = generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
             try:
                 self.execute_sql(orb_sql)
@@ -396,6 +412,10 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
+            for key in orb_keys:
+                if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
+                               'decay', 'reforbit', 'drag', 'object_id']:
+                    orb_keys.remove(key)
             orb_sql = generate_insert_sql(orbit_params, orb_keys, 'earth_satellite')
             try:
                 self.execute_sql(orb_sql)
@@ -404,6 +424,8 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object 'E' sql command failed with a ProgrammingError!")
             return (0, "Earth satellite object added")
+        else:
+            return (-1, "ERROR: typedesig provided was not 'f', 'P', 'e', 'h', 'p', nor 'E'!")
 
     def add_request(self, pardic):
         """
@@ -466,11 +488,16 @@ class SedmDB:
         keys = list(pardic.keys())
         default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                           'inidate', 'enddate']
-        for param in default_params:
+        for param in default_params:  # check that all required values are provided
             if param not in keys:
                 return (-1, "ERROR: %s not in dictionary!" % (param,))
             if not pardic[param]:
                 return (-1, "ERROR: no value provided for %s!" % (param,))
+        for key in keys:  # remove any invalid keys
+            if key not in ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
+                           'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
+                           'phasesamples', 'sampletolerance', 'nexposures', 'ordering']:
+                keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'request')
         try:
             self.execute_sql(sql)
@@ -502,9 +529,6 @@ class SedmDB:
         # TODO: *** make this update associated atomicrequest entries as well ***
         # TODO: determine which parameters shouldn't be changed
         keys = list(pardic.keys())
-        for param in ['object_id', 'filters', 'creationdate', 'lastmodified']:
-            if param in keys:
-                keys.remove(param)
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
@@ -513,6 +537,9 @@ class SedmDB:
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
+        for key in keys:  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['id', 'status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime']:
+                keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         sql = generate_update_sql(pardic, keys, 'request', True)
@@ -606,13 +633,16 @@ class SedmDB:
         if 'object_id' not in keys:
             pardic['object_id'] = req_obj_stat[0][0]
         else:
-            if not pardic['object_id'] == req_obj_stat[0][0]:
+            if not pardic['object_id'] == req_obj_stat[0][0]:  # check for mismatch of given object_id and request_id
                 return (-1, "ERROR: object_id given doesn't match request_id!")
-        if req_obj_stat[0][1] == 'EXPIRED':
+        if req_obj_stat[0][1] == 'EXPIRED':  # check if the request has expired
             return (-1, "ERROR: request has expired!")
-        if pardic['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:
+        if pardic['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:  # check the filter is valid
             return (-1, "ERROR: invalid filter given!")
-
+        for key in keys:  # remove and invalid keys
+            if key not in ['request_id', 'exptime', 'filter', 'priority',
+                           'inidate', 'enddate', 'object_id', 'order_id']:
+                keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'atomicrequest')
         try:
             self.execute_sql(sql)
@@ -679,17 +709,19 @@ class SedmDB:
                 optional: 'status', 'priority', 'inidate', 'enddate', 'exptime'
                 NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
         Returns:
-
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Atomic request updated") if it completed successfully
         """
-        # TODO: test, complete docstring, restrict which parameters are allowed to be changed?
+        # TODO: test, complete docstring, determine which parameters are allowed to be changed
         keys = list(pardic.keys())
-        # remove parameters not allowed to be modified
-        for param in ['object_id', 'request_id', 'order_id', 'filter', 'creationdate', 'lastmodified']:
-            if param in keys:
-                keys.remove(param)
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
-        keys.remove('id')
+        if 'status' in keys:
+            if pardic['status'] not in ['PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED', 'CANCELED']:
+                keys.remove('status')  # TODO: remove it, return a -1, or print/warn?
+        for key in keys:  # remove 'id' and any disallowed/invalid keys
+            if key not in ['status', 'priority', 'inidate', 'enddate', 'exptime']:
+                keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
 
@@ -798,7 +830,8 @@ class SedmDB:
                           'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id'
 
         Returns:
-
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Photometry added") if it was successful
         """
         # TODO: can astrometry/filter/reducedfile/sexfile/biasfile/maskfile/flatfile/pipeline/marshal_phot_id be determined by reducedfile?
 
@@ -813,7 +846,10 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
             return (-1, "ERROR: observation_id not provided!")
-
+        for key in keys:  # remove any invalid keys
+            if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
+                           'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
+                keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'phot')
         try:
             self.execute_sql(sql)
@@ -821,7 +857,7 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_photometry sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
-        return (0, "Classification request updated")
+        return (0, "Photometry added")
 
     def add_reduced_spectrum(self, pardic):
         """
@@ -887,6 +923,7 @@ class SedmDB:
             (-1, "ERROR: ...") if there is an issue
             (0, 'Classification added") if it was successful
         """
+        # TODO: clean up the required parameters, test
         keys = list(pardic.keys())
         for key in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score']:
             if key not in keys:
@@ -900,7 +937,10 @@ class SedmDB:
             return (-1, "ERROR: entry exists for that spectra and classifier with classification %s, redshift %s, "
                         "redshift_err %s. Use `update_classification` if necessary." % (classified[0], classified[1],
                                                                                         classified[2]))
-
+        for key in keys:  # remove any invalid keys
+            if key not in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score',
+                           'phase', 'phase_err']:
+                keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'classification')
         try:
             self.execute_sql(sql)
@@ -922,6 +962,7 @@ class SedmDB:
             (-1, "ERROR: ...") if there is an issue
             (0, "Classification updated") if it was successful
         """
+        # TODO: test, determine which parameters should be allowed
         keys = list(pardic.keys())
         if 'id' in keys:
             try:
@@ -932,11 +973,9 @@ class SedmDB:
             if 'classifier' in keys:
                 if not pardic['classifier'] == classifier:
                     return (-1, "ERROR: classifier provided does not match classification id")
-                keys.remove('classifier')
             if 'spec_id' in keys:
                 if not pardic['spec_id'] == spec_id:
                     return (-1, "ERROR: spec_id provided does not match classification id")
-                keys.remove('spec_id')
         elif 'spec_id' in keys and 'classifier' in keys:
             try:
                 id = self.execute_sql("SELECT id FROM classification WHERE spec_id='%s' AND "
@@ -944,14 +983,13 @@ class SedmDB:
             except IndexError:
                 return (-1, "ERROR: no classification entry with the given spec_id and classifier")
             pardic['id'] = id[0][0]
-            keys.remove('spec_id')
-            keys.remove('classifier')
         else:
             return (-1, "ERROR: needs id or both spec_id and classifier")
 
-        keys.remove('id')
-        if 'object_id' in keys:
-            keys.remove('object_id')
+        for key in keys:  # remove 'id', 'object_id', 'classifier' and any invalid keys
+            if key not in ['classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score']:
+                keys.remove(key)
+
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         sql = generate_update_sql(pardic, keys, 'classification')
