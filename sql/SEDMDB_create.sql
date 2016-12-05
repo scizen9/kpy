@@ -31,7 +31,7 @@ CREATE TABLE flexure (
 -- Table: metrics_phot
 CREATE TABLE metrics_phot (
     id BIGSERIAL,
-    phot_id bigint NOT NULL,
+    phot_id bigint NOT NULL UNIQUE,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
     zp decimal(5,2)  NULL,
@@ -44,7 +44,7 @@ CREATE TABLE metrics_phot (
 -- Table: metrics_spec
 CREATE TABLE metrics_spec (
     id BIGSERIAL,
-    spec_id bigint NOT NULL,
+    spec_id bigint NOT NULL UNIQUE,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
     line_fwhm int  NULL,
