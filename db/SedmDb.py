@@ -533,12 +533,11 @@ class SedmDB:
             return (-1, "ERROR: no id provided!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
             return (-1, "ERROR: request does not exist!")
-        keys.remove('id')
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
         for key in keys:  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['id', 'status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime']:
+            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime']:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -585,7 +584,6 @@ class SedmDB:
         self.execute_sql("UPDATE atomicrequest SET status='CANCELED' WHERE request_id='%s'" % (requestid,))
         self.update_request({'id': requestid, 'status': 'CANCELED'})
         return (0, "Request canceled")
-        # TODO: write tests for existing, non-existing request
 
     def update_scheduled_request(self, requestid):
         # TODO: find what this was supposed to be
@@ -662,6 +660,14 @@ class SedmDB:
             (-1, "ERROR: ...") if there was an issue
             (0, "Added (#) atomic requests for request (#)") if it was successful
         """
+        status =  self.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
+        if not status:
+            return (-1, "ERROR: request does not exist!")
+        elif status = 'CANCELED':
+            return (-1, "ERROR: request has been canceled!")
+        elif status = 'EXPIRED':
+            return (-1, "ERROR: request has expired!")
+
         if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
             return (-1, "ERROR: atomicrequests already exist for that request!")
         request = self.execute_sql("SELECT object_id, exptime, priority, inidate, enddate,"
@@ -671,14 +677,14 @@ class SedmDB:
         pardic = {'object_id': request[0], 'priority': request[2], 'inidate': request[3],
                   'enddate': request[4], 'request_id': request_id}
         obs_order = []
-        if request[11]:
-            for num_fil in request[11]:
+        if request[10]:
+            for num_fil in request[10]:
                 for n in range(int(num_fil[0])):  # the number should be single digit
                     obs_order.append(num_fil[1:])
-        elif request[10]:
-            for filter_idx in range(len(request[9])):
-                for n in range(request[10][filter_idx]):
-                    obs_order.append(request[9][filter_idx])
+        elif request[9]:
+            for filter_idx in range(len(request[8])):
+                for n in range(request[9][filter_idx]):
+                    obs_order.append(request[8][filter_idx])
         else:
             return (-1, "ERROR: request contains neither nexposures nor ordering!")  # add_request should prevevnt this
         ifus = np.where(np.array(obs_order) == 'ifu')[0]

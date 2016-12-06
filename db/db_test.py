@@ -72,14 +72,15 @@ def test_object_creation():
 request_dict = {'object_id': 1, 'user_id': default_user_id, 'program_id': 1, 'marshal_id': 90, 
                 'exptime': '{2700, 600}', 'maxairmass': '3.5', 'priority': 3.5, 'inidate': '2016-11-10',
                 'enddate': '2016-11-14', 'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,2r,1ifu,2g,2r}'}
-
+# TODO: add to request_dict to test empty and invalid keys
 
 def test_request_manipulation():
     assert db.add_request(request_dict) == (-1, "ERROR: nexposures and ordering are inconsistent!")
-    request_dict.pop('nexposures', None)  # '{1,0,4,3,0}'
-    db.add_request(request_dict)
+    request_dict.pop('nexposures', None)
+    db.add_request(request_dict)  # this re-adds nexposures by generating from ordering
     assert db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}' AND status != 'EXPIRED'")
     request_dict.pop('ordering', None)
+    request_dict.pop('nexposures', None)
     assert db.add_request(request_dict) == (-1, "ERROR: nexposures or ordering is required!")
     request_dict['ordering'] = '{2g,2r,1ifu,2g,2r}'  # return ordering to the dict
 
@@ -93,30 +94,88 @@ def test_request_manipulation():
 
 
 def test_request_update():
-    object, status, priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")
-    db.update_request({'id': 1, 'object_id': object+1, 'status': 'NEW', 'priority': priority+1})
-    new_obj, new_stat, new_priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")
+    obj, status, priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")[0]
+    db.update_request({'id': 1, 'object_id': obj+1, 'status': 'NEW', 'priority': priority+1})
+    new_obj, new_stat, new_priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")[0]
     # object_id isn't allowed to be updated and the given status isn't valid
-    assert new_obj == object and new_stat == status and new_priority == priority+1
-    assert db.update_request({'object_id': object+1, 'status': 'ACTIVE'}) == (-1, "ERROR: no id provided!")
+    assert new_obj == obj and new_stat == status and new_priority == priority+1
+    assert db.update_request({'object_id': obj+1, 'status': 'ACTIVE'}) == (-1, "ERROR: no id provided!")
     assert db.update_request({'id': 0, 'maxairmass': 3}) == (-1, "ERROR: request does not exist!")
     assert db.update_request({'id': 1, 'creationdate': '2016-02-04'}) == (-1, "ERROR: no parameters given to update!")
 
 
-def test_request_expiration(request):
+def test_request_expiration():
     test_request = db.execute_sql("SELECT id FROM request WHERE enddate = '2016-11-11';")
     if not test_request:
-        request['enddate'] = '2016-11-11'
-        db.add_request(request)
+        request_dict['enddate'] = '2016-11-11'
+        db.add_request(request_dict)
     else:
         db.update_request({'id': test_request[0][0], 'status': 'PENDING'})
     assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
     db.expire_requests()
     assert 'EXPIRED' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
 
+
+def test_cancel_request():
+    test_request = db.execute_sql("SELECT * FROM request")
+    if not test_request:
+        db.add_request(request_dict)
+    else:
+        db.update_request({'id': 1, 'status': 'PENDING'})
+    assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
+    db.cancel_scheduled_request(1)
+    assert 'CANCELED' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
+    assert db.cancel_scheduled_request(0) = (-1, "ERROR: request does not exist!")
+
+
+def test_atomicrequest_manipulation():
+    # TODO: test for add
+    
+    
+
+    # TODO: test for update
+    pass
+
+
+def test_request_atomic_requests():
+    # create_request_atomic_requests is called by add_request already, so its tests above test valid cases
+    assert db.create_request_atomic_requests(0) == (-1, "ERROR: request does not exist!")
+    # TODO: find a way to test other situations that doesn't run into (atomicrequests for that request already exist)?
+
+
+def test_get_request_atomic_requests():
+    pass
+
+
 def test_fits_header_parse():
     fitsfile = '/scr2/sedm/phot/20161012/rc20161012_12_36_34.fits'
     db.add_observation_fits(fitsfile)
+
+
+def test_add_phot_and_metrics():
+    # test add_reduced_photometry   
+
+    # test add_metrics_phot 
+    pass
+
+
+def test_add_spec_and_metrics():
+    # test add_reduced_spectrum
+
+    # test add_metrics_spec
+    pass
+
+
+def test_add_flexure():
+    pass
+
+
+def test_classification():
+    # test add_classification
+    # test adding multiple classifications for one observation (different clssifiers)
+
+    # test update_classification
+
 
 if __name__ == '__main__':
     test_add_group()
