@@ -125,7 +125,7 @@ def test_cancel_request():
     assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
     db.cancel_scheduled_request(1)
     assert 'CANCELED' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
-    assert db.cancel_scheduled_request(0) = (-1, "ERROR: request does not exist!")
+    assert db.cancel_scheduled_request(0) == (-1, "ERROR: request does not exist!")
 
 
 def test_atomicrequest_manipulation():
@@ -175,6 +175,7 @@ def test_classification():
     # test adding multiple classifications for one observation (different clssifiers)
 
     # test update_classification
+    pass
 
 
 if __name__ == '__main__':
@@ -183,5 +184,5 @@ if __name__ == '__main__':
     test_object_creation()
     test_request_manipulation()
     test_request_update()
-    test_request_expiration(request_dict)
+    test_request_expiration()
 

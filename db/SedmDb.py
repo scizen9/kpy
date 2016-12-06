@@ -100,7 +100,7 @@ class SedmDB:
         usernames = [user[0] for user in self.execute_sql('SELECT username FROM users')]
         if pardic['username'] in usernames:
             return (-1, "ERROR: user with that username exists!")
-        for key in keys:  # remove group keys and any other bad keys
+        for key in reversed(keys):  # remove group keys and any other bad keys
             if key not in ['username', 'name', 'email']:
                 keys.remove(key)
         sql = generate_insert_sql(pardic, keys, 'users')
@@ -288,7 +288,7 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
-        for key in obj_keys:  # remove any extraneous keys
+        for key in reversed(obj_keys):  # remove any extraneous keys
             if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
                 obj_keys.remove(key)
 
@@ -337,7 +337,7 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
-            for key in orb_keys:
+            for key in reversed(orb_keys):
                 if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
                                'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
                     orb_keys.remove(key)
@@ -362,7 +362,7 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
-            for key in orb_keys:
+            for key in reversed(orb_keys):
                 if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
                                'M1', 'M2', 's', 'object_id']:
                     orb_keys.remove(key)
@@ -387,7 +387,7 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
-            for key in orb_keys:
+            for key in reversed(orb_keys):
                 if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
                                'M1', 'M2', 's', 'object_id']:
                     orb_keys.remove(key)
@@ -412,7 +412,7 @@ class SedmDB:
 
             orbit_params['object_id'] = object_id
             orb_keys = list(orbit_params.keys())
-            for key in orb_keys:
+            for key in reversed(orb_keys):
                 if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
                                'decay', 'reforbit', 'drag', 'object_id']:
                     orb_keys.remove(key)
@@ -493,7 +493,7 @@ class SedmDB:
                 return (-1, "ERROR: %s not in dictionary!" % (param,))
             if not pardic[param]:
                 return (-1, "ERROR: no value provided for %s!" % (param,))
-        for key in keys:  # remove any invalid keys
+        for key in reversed(keys):  # remove any invalid keys
             if key not in ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
                            'phasesamples', 'sampletolerance', 'nexposures', 'ordering']:
@@ -536,7 +536,7 @@ class SedmDB:
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
-        for key in keys:  # remove any keys that are invalid or not allowed to be updated
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime']:
                 keys.remove(key)
         if len(keys) == 0:
@@ -637,7 +637,7 @@ class SedmDB:
             return (-1, "ERROR: request has expired!")
         if pardic['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:  # check the filter is valid
             return (-1, "ERROR: invalid filter given!")
-        for key in keys:  # remove and invalid keys
+        for key in reversed(keys):  # remove any invalid keys
             if key not in ['request_id', 'exptime', 'filter', 'priority',
                            'inidate', 'enddate', 'object_id', 'order_id']:
                 keys.remove(key)
@@ -663,9 +663,9 @@ class SedmDB:
         status =  self.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
         if not status:
             return (-1, "ERROR: request does not exist!")
-        elif status = 'CANCELED':
+        elif status == 'CANCELED':
             return (-1, "ERROR: request has been canceled!")
-        elif status = 'EXPIRED':
+        elif status == 'EXPIRED':
             return (-1, "ERROR: request has expired!")
 
         if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
@@ -725,7 +725,7 @@ class SedmDB:
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED', 'CANCELED']:
                 keys.remove('status')  # TODO: remove it, return a -1, or print/warn?
-        for key in keys:  # remove 'id' and any disallowed/invalid keys
+        for key in reversed(keys):  # remove 'id' and any disallowed/invalid keys
             if key not in ['status', 'priority', 'inidate', 'enddate', 'exptime']:
                 keys.remove(key)
         if len(keys) == 0:
@@ -852,7 +852,7 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
             return (-1, "ERROR: observation_id not provided!")
-        for key in keys:  # remove any invalid keys
+        for key in reversed(keys):  # remove any invalid keys
             if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                            'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
                 keys.remove(key)
@@ -943,7 +943,7 @@ class SedmDB:
             return (-1, "ERROR: entry exists for that spectra and classifier with classification %s, redshift %s, "
                         "redshift_err %s. Use `update_classification` if necessary." % (classified[0], classified[1],
                                                                                         classified[2]))
-        for key in keys:  # remove any invalid keys
+        for key in reversed(keys):  # remove any invalid keys
             if key not in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score',
                            'phase', 'phase_err']:
                 keys.remove(key)
@@ -992,7 +992,7 @@ class SedmDB:
         else:
             return (-1, "ERROR: needs id or both spec_id and classifier")
 
-        for key in keys:  # remove 'id', 'object_id', 'classifier' and any invalid keys
+        for key in reversed(keys):  # remove 'id', 'object_id', 'classifier' and any invalid keys
             if key not in ['classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score']:
                 keys.remove(key)
 
