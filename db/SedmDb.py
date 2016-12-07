@@ -271,7 +271,6 @@ class SedmDB:
         # TODO: test for each different case of typedesig
         # TODO: have it update existing object if it already exists?
         # TODO: set orbit_params default to None?
-        # TODO: add iauname to all of the obj_sql and generate them rather than hard-code
         if 'marshal_id' in pardic.keys():
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
                 return (-1, "ERROR: object exists!")
@@ -505,7 +504,6 @@ class SedmDB:
             return (-1, "ERROR: add_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: add_request sql command failed with a ProgrammingError!")
-        # TODO: implement this in more places
         self_id = max([id_no[0] for id_no in self.execute_sql('SELECT id FROM request')])
         atomic_requests = self.create_request_atomic_requests(self_id)
         if atomic_requests[0] == -1:
@@ -785,7 +783,7 @@ class SedmDB:
                        'dec': dec_to_decimal(header['DEC']), 'tel_ra': header['TEL_RA'], 'tel_dec': header['TEL_DEC'],
                        'tel_az': header['TEL_AZ'], 'tel_el': header['TEL_EL'], 'tel_pa': header['TEL_PA'], 
                        'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME']}
-        # TODO: add 'imtype'        
+        # TODO: add 'imtype', generate from fitsfile name?
         # generate string describing the columns
         columns = list(header_dict.keys())
         sql = generate_insert_sql(header_dict, columns, 'observation')
@@ -839,19 +837,32 @@ class SedmDB:
             (-1, "ERROR: ...") if there was an issue
             (0, "Photometry added") if it was successful
         """
-        # TODO: can astrometry/filter/reducedfile/sexfile/biasfile/maskfile/flatfile/pipeline/marshal_phot_id be determined by reducedfile?
-
-        """
-        Creates a new object in the phot table with the parameters specified in the dictionary.
-        Only one reduction shall exist for each observation. If the reduction exists, an update
-        is made.
-
-        This function also updates the schdele table and changes the status
-        of the associated request to "REDUCED".
-        """
+        # TODO: test
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
             return (-1, "ERROR: observation_id not provided!")
+        phot_id = self.execute_sql("SELECT id FROM phot WHERE observation_id='%s'" % (pardic['observation_id']))
+        if phot_id:  # if there is already an entry for that observation, update instead
+            for key in keys:  # TODO: test the updating
+                if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
+                               'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
+                    keys.remove(key)
+            pardic['id'] = phot_id[0][0]
+            update_sql = generate_insert_sql(pardic, keys, 'spec')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_reduced_spectrum update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
+            return (0, "Spec updated for observation_id %s" % (pardic['observation_id'],))
+
+        obs = self.execute_sql("SELECT fitsfile FROM observation WHERE id='%S'" % (pardic['observation_id'],))
+        if not obs:
+            return (-1, "ERROR: no observation with the observation_id")
+        else:
+            pass
+            # TODO: generate the filter here?
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                            'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
@@ -863,6 +874,16 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_photometry sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
+        # set the atomicrequest's status to 'REDUCED'
+        reduced_sql = ("UPDATE atomicrequest SET status='REDUCED' WHERE EXISTS (SELECT id FROM observation "
+                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s';"
+                       % (pardic['observation_id'],))  # TODO: test this monstrosity, otherwise can do 2 queries
+        try:
+            self.execute_sql(reduced_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_reduced_photometry sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
         return (0, "Photometry added")
 
     def add_reduced_spectrum(self, pardic):
@@ -870,21 +891,61 @@ class SedmDB:
         Creates a new object in the spec table
         Args:
             pardic: dict
-                required: 'observation_id', 'reducedfile', 'biasfile', 'flatfile', 'imgset'
+                required: 'observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset',
+                          'quality', 'cubefile', 'standardfile', 'skysub
 
         Returns:
         """
-        # TODO: can biasfile/flatfile/imgset/quality/cubefile/standardfile/skysub be determined by reducedfile?
+        # TODO: which parameters are required? test
+        # TODO: update schedule table indicating reduction?
+        keys = list(pardic.keys())
+        if 'observation_id' not in keys:
+            return (-1, "ERROR: observation_id not provided!")
+        spec_id = self.execute_sql("SELECT id FROM spec WHERE observation_id='%s'" % (pardic['observation_id']))
+        if spec_id:  # if there is already an entry for that observation, update instead
+            for key in keys:  # TODO: test the updating
+                if key not in ['reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
+                               'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
+                    keys.remove(key)
+            pardic['id'] = spec_id[0][0]
+            update_sql = generate_insert_sql(pardic, keys, 'spec')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_reduced_spectrum update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
+            return (0, "Spec updated for observation_id %s" % (pardic['observation_id'],))
 
-        """
-        Creates a new object in the spec table with the parameters specified in the dictionary.
-        Only one reduction shall exist for each observation. If the reduction exists, an update
-        is made.
+        for key in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
+                    'standardfile', 'skysub']:
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
 
-        This function also updates the schdele table and changes the status
-        of the associated request to "REDUCED".
-        """
-        pass
+        for key in keys:
+            if key not in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
+                           'standardfile', 'marshal_spec_id', 'skysub']:
+                keys.remove(key)
+        sql = generate_insert_sql(pardic, keys, 'spec')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_reduced_spectrum sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_reduced_spectrum sql command failed with a ProgrammingError!")
+        # set the atomicrequest's status to 'REDUCED'
+        reduced_sql = ("UPDATE atomicrequest SET status='REDUCED' WHERE EXISTS (SELECT id FROM observation "
+                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s';"
+                       % (pardic['observation_id'],))  # TODO: test this monstrosity, otherwise can do 2 queries
+        try:
+            self.execute_sql(reduced_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_reduced_spectrum sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_reduced_spectrum sql command failed with a ProgrammingError!")
+        return (0, "Spectrum added")
 
     def add_metrics_phot(self, pardic):
         """
