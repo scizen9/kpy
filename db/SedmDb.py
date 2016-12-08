@@ -518,13 +518,14 @@ class SedmDB:
         Args:
             pardic: dict
                 required: 'id'
-                optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime'
+                optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate'
                 Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
         Returns:
             (-1, "ERROR: ...") if there was an issue with the updating
             (0, "Requests updated") if the update was successful
+            (0, "Requests and atomicrequests updated") if atomicrequests were also updated
         """
-        # TODO: *** make this update associated atomicrequest entries as well ***
+        # TODO: if exptime is allowed, significant changes are needed to the atomicrequest update
         # TODO: determine which parameters shouldn't be changed
         keys = list(pardic.keys())
         if 'id' not in keys:
@@ -546,11 +547,33 @@ class SedmDB:
             return (-1, "ERROR: update_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_request sql command failed with a ProgrammingError!")
-        return (0, "Requests updated")
+        # update associated atomicrequests
+        update_keys = list(pardic.keys())
+        for key in reversed(update_keys):
+            if key not in ['priority', 'inidate', 'enddate']:
+                keys.remove(key)
+        if len(update_keys) == 0:
+            return (0, "Requests updated")
+        update_sql = "UPDATE atomicrequest SET "
+        for param in update_keys:
+            if pardic[param]:  # it may be a key with nothing in it
+                update_sql += "%s = '%s', " % (param, pardic[param])
+        update_sql += "WHERE request_id = %s;" % (pardic['id'],)
+        try:
+            self.execute_sql(update_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_request atomicrequest sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_request atomicrequest sql command failed with a ProgrammingError!")
+
+        return (0, "Requests and atomicrequests updated")
 
     def get_active_requests(self):
         """
-        Returns the list of requests that are active now.
+        Returns active requests
+        Returns: list
+            (object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, phasesamples,
+             sampletolerance, filters, nexposures, ordering) for each request
         """
         # TODO: test?
         sql = ("SELECT object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, "
@@ -560,8 +583,8 @@ class SedmDB:
 
     def expire_requests(self):
         """
-         Updates the request table. For all the active requests that were not completed,
-             and had an expiry date before than NOW(), are marked as "EXPIRED".
+        Updates the request table. For all the active requests that were not completed,
+            and had an expiry date before than NOW(), are marked as "EXPIRED".
         """
         # tests written
         sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
@@ -574,8 +597,8 @@ class SedmDB:
 
     def cancel_scheduled_request(self, requestid):
         """
-         Changes the status of the scheduled request to "CANCELED"
-         """
+        Changes the status of the scheduled request to "CANCELED"
+        """
         if requestid not in [x[0] for x in self.execute_sql("SELECT id FROM request")]:
             return (-1, "ERROR: request does not exist!")
         # cancel the associated atomicrequests       
@@ -586,17 +609,17 @@ class SedmDB:
     def update_scheduled_request(self, requestid):
         # TODO: find what this was supposed to be
         """
-         Updates the scheduled request with new parameters "CANCELED"
-         """
+        Updates the scheduled request with new parameters "CANCELED"
+        """
 
         pass
 
     def cancel_scheduled_between(self, initime, endtime):
         # TODO: find if this means scheduled or requested
         """
-         Cancels all the scheduled requests that were scheduled between the ini and end time.
-          Their status should be changed to "CANCELED".
-         """
+        Cancels all the scheduled requests that were scheduled between the ini and end time.
+        Their status should be changed to "CANCELED".
+        """
 
         pass    
 
@@ -716,7 +739,7 @@ class SedmDB:
             (-1, "ERROR: ...") if there was an issue
             (0, "Atomic request updated") if it completed successfully
         """
-        # TODO: test, complete docstring, determine which parameters are allowed to be changed
+        # TODO: test, determine which parameters are allowed to be changed
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
@@ -835,7 +858,8 @@ class SedmDB:
 
         Returns:
             (-1, "ERROR: ...") if there was an issue
-            (0, "Photometry added") if it was successful
+            (0, "Photometry added") if the photometry was added successfully
+            (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
         # TODO: test
         keys = list(pardic.keys())
@@ -843,7 +867,7 @@ class SedmDB:
             return (-1, "ERROR: observation_id not provided!")
         phot_id = self.execute_sql("SELECT id FROM phot WHERE observation_id='%s'" % (pardic['observation_id']))
         if phot_id:  # if there is already an entry for that observation, update instead
-            for key in keys:  # TODO: test the updating
+            for key in reversed(keys):  # TODO: test the updating
                 if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                                'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
                     keys.remove(key)
@@ -852,10 +876,10 @@ class SedmDB:
             try:
                 self.execute_sql(update_sql)
             except exc.IntegrityError:
-                return (-1, "ERROR: add_reduced_spectrum update sql command failed with an IntegrityError!")
+                return (-1, "ERROR: add_reduced_photometry update sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
-                return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
-            return (0, "Spec updated for observation_id %s" % (pardic['observation_id'],))
+                return (-1, "ERROR: add_reduced_photometry update sql command failed with a ProgrammingError!")
+            return (0, "Photometry updated for observation_id %s" % (pardic['observation_id'],))
 
         obs = self.execute_sql("SELECT fitsfile FROM observation WHERE id='%S'" % (pardic['observation_id'],))
         if not obs:
@@ -863,6 +887,14 @@ class SedmDB:
         else:
             pass
             # TODO: generate the filter here?
+
+        for key in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
+                    'maskfile', 'flatfile', 'pipeline']:  # include 'marshal_phot_id'?
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                            'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
@@ -895,6 +927,9 @@ class SedmDB:
                           'quality', 'cubefile', 'standardfile', 'skysub
 
         Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Spectrum added")  if the spectrum was added successfully
+            (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
         # TODO: which parameters are required? test
         # TODO: update schedule table indicating reduction?
@@ -903,7 +938,7 @@ class SedmDB:
             return (-1, "ERROR: observation_id not provided!")
         spec_id = self.execute_sql("SELECT id FROM spec WHERE observation_id='%s'" % (pardic['observation_id']))
         if spec_id:  # if there is already an entry for that observation, update instead
-            for key in keys:  # TODO: test the updating
+            for key in reversed(keys):  # TODO: test the updating
                 if key not in ['reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
                                'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
                     keys.remove(key)
@@ -915,7 +950,7 @@ class SedmDB:
                 return (-1, "ERROR: add_reduced_spectrum update sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
-            return (0, "Spec updated for observation_id %s" % (pardic['observation_id'],))
+            return (0, "Spectrum updated for observation_id %s" % (pardic['observation_id'],))
 
         for key in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
                     'standardfile', 'skysub']:
@@ -924,7 +959,7 @@ class SedmDB:
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
 
-        for key in keys:
+        for key in reversed(keys):
             if key not in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
                            'standardfile', 'marshal_spec_id', 'skysub']:
                 keys.remove(key)
@@ -949,12 +984,51 @@ class SedmDB:
 
     def add_metrics_phot(self, pardic):
         """
-        Creates a new object in the metrics phot table with the parameters specified in the dictionary.
-        Only one metric shall exist for each observation. If the reduction exists, an update
-        is made.
+        Creates an entry in metrics_phot or updates an existing metrics entry
+        Args:
+            pardic: dict
+                required: 'phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources'
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
+            (0, "Photometry metrics added") if the metrics were added successfully
         """
-        # create and/or update
-        pass
+        # TODO: which parameters are required? test
+        keys = list(pardic.keys())
+        if 'phot_id' not in keys:
+            return (-1, "ERROR: phot_id not provided!")
+        metric_id = self.execute_sql("SELECT id FROM metrics_phot WHERE phot_id='%s'" % (pardic['phot_id']))
+        if metric_id:  # if there is already an entry for that observation, update instead
+            for key in reversed(keys):  # TODO: test the updating
+                if key not in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
+                    keys.remove(key)
+            pardic['id'] = metric_id[0][0]
+            update_sql = generate_insert_sql(pardic, keys, 'metrics_phot')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_metrics_phot update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_metrics_phot update sql command failed with a ProgrammingError!")
+            return (0, "Photometry metrics updated for phot_id %s" % (pardic['phot_id'],))
+
+        for key in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:  # phot_id already tested
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+
+        for key in reversed(keys):
+            if key not in ['phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
+                keys.remove(key)
+        sql = generate_insert_sql(pardic, keys, 'metrics_phot')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_metrics_phot sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_metrics_phot sql command failed with a ProgrammingError!")
+        return (0, "Photometry metrics added")
 
     def add_metrics_spec(self, pardic):
         """
@@ -962,8 +1036,42 @@ class SedmDB:
         Only one metric shall exist for each observation. If the reduction exists, an update
         is made.
         """
-        # create table
-        pass
+        # TODO: which parameters are required? test
+        keys = list(pardic.keys())
+        if 'spec_id' not in keys:
+            return (-1, "ERROR: spec_id not provided!")
+        metric_id = self.execute_sql("SELECT id FROM metrics_spec WHERE spec_id='%s'" % (pardic['spec_id']))
+        if metric_id:  # if there is already an entry for that observation, update instead
+            for key in reversed(keys):  # TODO: test the updating
+                if key not in ['fwhm', 'background', 'line_fwhm']:
+                    keys.remove(key)
+            pardic['id'] = metric_id[0][0]
+            update_sql = generate_insert_sql(pardic, keys, 'metrics_spec')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_metrics_spec update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_metrics_spec update sql command failed with a ProgrammingError!")
+            return (0, "Spectrum metrics updated for spec_id %s" % (pardic['spec_id'],))
+
+        for key in ['fwhm', 'background', 'line_fwhm']:  # phot_id already tested
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+
+        for key in reversed(keys):
+            if key not in ['fwhm', 'background', 'line_fwhm']:
+                keys.remove(key)
+        sql = generate_insert_sql(pardic, keys, 'metrics_spec')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_metrics_spec sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_metrics_spec sql command failed with a ProgrammingError!")
+        return (0, "Spectrum metrics added")
 
     def add_flexure(self, pardic):
         """
@@ -972,12 +1080,30 @@ class SedmDB:
             pardic: dict
                 required: 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2'
         Returns:
-
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Flexure added")
         """
+        # TODO: test
         # TODO: find out what the 'rms' is here
         # TODO: not require timestamp1 and timestamp2, derive them from spec info?
         # if flexure is too high, tell something is wrong?
-        pass
+        keys = list(pardic.keys())
+        for key in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(keys):
+            if key not in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
+                keys.remove(key)
+        sql = generate_insert_sql(pardic, keys, 'flexure')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_flexure sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_flexure sql command failed with a ProgrammingError!")
+        return (0, "Flexure added")
 
     def add_classification(self, pardic):
         """
