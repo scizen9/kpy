@@ -276,6 +276,31 @@ def proc_stds(ncp):
     return ret
 
 
+def proc_auto():
+    """Process automatic observations.
+
+    Args:
+        None
+
+    Returns:
+        bool: True if processing was successful, otherwise False
+
+    """
+
+    # Default return value
+    ret = False
+    # Make new stds
+    startTime = time.time()
+    retcode = os.system("make auto")
+    procTime = int(time.time() - startTime)
+    # Did it work?
+    if retcode == 0:
+        print("automatic observations processed in %d s" % procTime)
+        ret = True
+
+    return ret
+
+
 def proc_bkg_flex(copied):
     """Process bkg subtractions and flexure calculations.
 
@@ -767,6 +792,13 @@ def ObsLoop(rawlist=None, redd=None):
                           "%02d:%02d, so sun is still down, keep waiting" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
+        # do automatic processing
+        auto_status = proc_auto()
+        if auto_status:
+            print("Automatic processing successful")
+        else:
+            print("Automatic processing not successful")
+
     # Handle a ctrl-C
     except KeyboardInterrupt:
         sys.exit("Exiting")
