@@ -318,6 +318,11 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     pl.ioff()
 
     if interact:
+        # Get the culprit
+        reducer = os.getenv("SEDM_USER")
+        if reducer is None:
+            reducer = "Unknown"
+        # Set up plot
         pl.ion()
         pl.show()
         # Get quality of observation
@@ -341,8 +346,16 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
                (specname, ec, et, "On" if skysub else "Off", qual)
         pl.title(tlab)
+        # Get reducer
+        print "Enter reducer of observations:"
+        prom = "<cr> = ("+reducer+"): "
+        q = raw_input(prom)
+        if len(q) > 0:
+            reducer = q
+        # Update spectrum
         res = np.load(specname)
         res[0]['quality'] = qual
+        res[0]['reducer'] = reducer
         np.save(specname, res)
         pl.ioff()
 
