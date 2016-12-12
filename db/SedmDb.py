@@ -797,15 +797,8 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: adding tel_stats sql command failed with a ProgrammingError!")
 
-        # TODO: make sure the atomicrequest_id is stored in header
-        """
-        request_status = [status[0] for status in
-                          self.execute_sql("SELECT status FROM atomicrequest WHERE request_id='%s'" % (request_id,))]
-        if all(np.array(request_status) == 'OBSERVED'):
-            self.update_request({'id': request_id, 'status': 'COMPLETED'})"""  # must test with connected request/atomicrequest/fitsfile
         # TODO: add other returns for failure cases?
         return (0, "Observation added")
-        # TODO: test with actual fits files
 # TODO: write update_observation() and update_telescope_stats()
 
     def add_reduced_photometry(self, pardic):
@@ -841,7 +834,7 @@ class SedmDB:
                 return (-1, "ERROR: add_reduced_photometry update sql command failed with a ProgrammingError!")
             return (0, "Photometry updated for observation_id %s" % (pardic['observation_id'],))
 
-        obs = self.execute_sql("SELECT fitsfile FROM observation WHERE id='%S'" % (pardic['observation_id'],))
+        obs = self.execute_sql("SELECT fitsfile FROM observation WHERE id='%s'" % (pardic['observation_id'],))
         if not obs:
             return (-1, "ERROR: no observation with the observation_id")
         else:

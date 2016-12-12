@@ -30,14 +30,14 @@ def create_atomic_requests():
 
 def create_request_atomic_requests(request_id):
     """
-            create atomicrequest entries for a given request
-            Args:
-                request_id: int
-                    id of the request that needs atomicrequests
-            Returns:
-                (-1, "ERROR: ...") if there was an issue
-                (0, "Added (#) atomic requests for request (#)") if it was successful
-            """
+    create atomicrequest entries for a given request
+    Args:
+        request_id: int
+            id of the request that needs atomicrequests
+    Returns:
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Added (#) atomic requests for request (#)") if it was successful
+    """
     status = db.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
     if not status:
         return (-1, "ERROR: request does not exist!")
@@ -86,6 +86,12 @@ def create_request_atomic_requests(request_id):
 
 
 def add_observation_fitsfile(fitsfile):
+    """
+    Adds an observation from a fitsfile, sets the atomicobservation to 'OBSERVED'. Checks if all the atomicobservations
+    associated with its request are observed, if so it sets the request's status to 'COMPLETED'.
+    Args:
+        fitsfile: str (fits file path)
+    """
     hdulist = fits.open(fitsfile)
     header = hdulist[0].header
     header_dict = {'mjd': header['JD']-2400000.5, 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
@@ -106,6 +112,7 @@ def add_observation_fitsfile(fitsfile):
                  'top_temp': header['TOP_TEMP']}
     obs_added = db.add_observation_fits(header_dict, tel_stats)
     # check if all of the request's atomicrequests are 'OBSERVED', if so set the request's status to 'COMPLETED'
+    # TODO: must test with connected request/atomicrequest/fitsfile
     if obs_added[0] == 0:
         print db.update_atomic_request({'id': header_dict['atomicrequest_id'], 'status': 'OBSERVED'})  # better way than print?
         request_id = db.execute_sql("SELECT request_id FROM atomicrequest WHERE id='%s'"
