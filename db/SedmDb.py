@@ -88,10 +88,9 @@ class SedmDB:
         Args:
             pardic: dict
                 required: 'username' (unique), 'name', 'email'
-                optional: 'group_id' or 'group_designator'
         Returns:
             (-1, "ERROR: Username exists") if the username is a duplicate
-            (0, "....") if the user was added
+            (0, "User added") if the user was added
         """
         keys = list(pardic.keys())
         if 'username' not in keys:
@@ -110,24 +109,7 @@ class SedmDB:
             return (-1, "ERROR: add_user sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: add_user sql command failed with a ProgrammingError!")
-
-        user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))[0][0]
-        # add the user to the given group
-        if 'group_id' in pardic.keys():
-            group_add = self.add_to_group(user_id, pardic['group_id'])
-        elif 'group_designator' in pardic.keys():
-            group_id = self.execute_sql("SELECT id FROM groups WHERE designator='%s'"
-                                        % (pardic['group_designator'],))[0][0]
-            group_add = self.add_to_group(user_id, group_id)
-        else:
-            group_add = (1, "no group provided")
-
-        if group_add[0] == -1:
-            return (0, "User added, failed to add to group")
-        elif group_add[0] == 1:
-            return (0, "User added, no group provided")
-        else:
-            return (0, "User added")
+        return (0, "User added")
 
     def remove_user(self, pardic):
         """
@@ -213,6 +195,87 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User added to group")
+
+    def add_object(self, pardic):
+        """
+        Creates a new object
+        Args:
+            pardic: dict
+                required: 'name', 'typedesig'(, 'ra', 'dec', 'epoch' for a fixed object)
+                optional: 'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
+                NOTE: 'typedesig' should be one of:
+                            'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
+                            'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
+
+        Returns:
+            (-1, "ERROR: ...") if it failed to add
+            (0, "Object added") if the object is added successfully
+        """
+        # TODO: have it update existing object if it already exists?
+        if 'marshal_id' in pardic.keys():
+            if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
+                return (-1, "ERROR: object exists!")
+        # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
+        obj_keys = list(pardic.keys())
+
+        for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
+            if key not in obj_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not pardic[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(obj_keys):  # remove any extraneous keys
+            if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
+                obj_keys.remove(key)
+        pardic['name'] = pardic['name'].lower()  # make all of the names the same format for consistant searching
+        if pardic['typedesig'] == 'f':
+            for key in ['ra', 'dec', 'epoch']:
+                if key not in obj_keys:
+                    return (-1, "ERROR: %s not provided!" % (key,))
+                elif not pardic[key]:
+                    return(-1, "ERROR: no value provided for %s!" % (key,))
+
+            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
+            return (0, "Fixedd object added")
+        else:
+            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
+
+#        elif not pardic['iauname'] and not orbit_params:  # if not fixed or default, need identifier
+#            return (-1, "ERROR: need iauname or orbit_params for non-fixed objects!")
+#        elif not orbit_params:
+#            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
+
+    def get_object_id(self, object_name):
+        """
+        finds the id of an object given its name
+        Args:
+            object_name: str
+
+        Returns:
+            id, full name if one object is found
+            list of all (id, full name) if multiple matches are found for the name
+            None if the object is not found
+        """
+        object_name = object_name.lower()
+        sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
+        obj = self.execute_sql(sql)
+        if not obj:
+            return None
+        elif len(obj) > 1:
+            return obj
+        else:
+            return obj[0]  # the sql returns ((id, name),)
 
 # TODO: move following below add_object
 # TODO: query associated table for object already existing
@@ -358,87 +421,6 @@ class SedmDB:
         raise NotImplementedError
         # TODO: actually implement? maybe let higher level do this
         # TODO: query ??? for if it already exists
-
-    def get_object_id(self, object_name):
-        """
-        finds the id of an object given its name
-        Args:
-            object_name: str
-
-        Returns:
-            id, full name if one object is found
-            list of all (id, full name) if multiple matches are found for the name
-            None if the object is not found
-        """
-        object_name = object_name.lower()
-        sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
-        obj = self.execute_sql(sql)
-        if not obj:
-            return None
-        elif len(obj) > 1:
-            return obj
-        else:
-            return obj[0]  # the sql returns ((id, name),)
-
-    def add_object(self, pardic):  # TODO: separate
-        """
-        Creates a new object
-        Args:
-            pardic: dict
-                required: 'name', 'typedesig'(, 'ra', 'dec', 'epoch' for a fixed object)
-                optional: 'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
-                NOTE: 'typedesig' should be one of:
-                            'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
-                            'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
-
-        Returns:
-            (-1, "ERROR: ...") if it failed to add
-            (0, "Object added") if the object is added successfully
-        """
-        # TODO: have it update existing object if it already exists?
-        if 'marshal_id' in pardic.keys():
-            if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
-                return (-1, "ERROR: object exists!")
-        # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
-        obj_keys = list(pardic.keys())
-
-        for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
-            if key not in obj_keys:
-                return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
-        for key in reversed(obj_keys):  # remove any extraneous keys
-            if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
-                obj_keys.remove(key)
-        pardic['name'] = pardic['name'].lower()  # make all of the names the same format for consistant searching
-        if pardic['typedesig'] == 'f':
-            for key in ['ra', 'dec', 'epoch']:
-                if key not in obj_keys:
-                    return (-1, "ERROR: %s not provided!" % (key,))
-                elif not pardic[key]:
-                    return(-1, "ERROR: no value provided for %s!" % (key,))
-
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            return (0, "Fixedd object added")
-        else:
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-
-#        elif not pardic['iauname'] and not orbit_params:  # if not fixed or default, need identifier
-#            return (-1, "ERROR: need iauname or orbit_params for non-fixed objects!")
-#        elif not orbit_params:
-#            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
 
     def add_request(self, pardic):
         """
