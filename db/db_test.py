@@ -127,10 +127,27 @@ def test_cancel_request():
     assert 'CANCELED' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
     assert db.cancel_scheduled_request(0) == (-1, "ERROR: request does not exist!")
 
+atomic_dict = {}
 
 def test_atomicrequest_manipulation():
+    # TODO: change parameters to work for atomicrequests rather than requests
     # TODO: test for add
-    
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: nexposures and ordering are inconsistent!")
+    atomic_dict.pop('nexposures', None)
+    db.add_atomic_request(atomic_dict)  # this re-adds nexposures by generating from ordering
+    assert db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}' AND status != 'EXPIRED'")
+    atomic_dict.pop('ordering', None)
+    atomic_dict.pop('nexposures', None)
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: nexposures or ordering is required!")
+    atomic_dict['ordering'] = '{2g,2r,1ifu,2g,2r}'  # return ordering to the dict
+
+    atomic_dict.pop('priority', None)
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: priority not in dictionary!")
+    atomic_dict['priority'] = 3.5  # re-add it to the dict
+
+    atomic_dict['object_id'] = 0
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: object does not exist!")
+    atomic_dict['object_id'] = 1
     
 
     # TODO: test for update

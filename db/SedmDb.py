@@ -214,72 +214,192 @@ class SedmDB:
                 return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User added to group")
 
-    def add_object(self, pardic, orbit_params={}):
+# TODO: move following below add_object
+# TODO: query associated table for object already existing
+
+    def add_elliptical_orbit(self, orbit_params):
         """
-        Creates a new object, if the object is a solar system object (SSO) it attempts to find an entry for it
-        in the .edb (XEphem) files. If orbit_params are given, they are used (and update the file if the object is found)
-        and are stored in the corresponding Table for the objects orbit type.
+        Adds the orbit parameters for an object
+        Args:
+            orbit_params: dict
+                required: 'object_id', 'inclination', 'longascnode_0' (lon. of ascending node),
+                          'perihelion_o' (arg. of perihelion), 'a' (mean distance AU), 'n' (mean daily motion deg/day),
+                          'e' (eccentricity), 'M' (mean anomaly), 'mjdepoch' (epoch, time of 'M'), 'D' (equinox year),
+                          'M1', 'M2' (first and second components of magnitude model)
+                optional: 's' (angular size at 1 AU)
+        Returns:
+
+        """
+        # TODO: query associated table for object already existing, test
+        orb_keys = list(orbit_params.keys())
+        for key in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
+                    'M', 'mjdepoch', 'D', 'M1', 'M2', 'object_id']:
+            if key not in orb_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not orbit_params[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(orb_keys):
+            if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
+                           'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
+                orb_keys.remove(key)
+
+        orb_sql = generate_insert_sql(orbit_params, orb_keys, 'elliptical_heliocentric')
+        try:
+            self.execute_sql(orb_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_elliptical_orbit sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_elliptical_orbit sql command failed with a ProgrammingError!")
+        return (0, "Elliptical heliocentric orbit added")
+
+    def add_parabolic_orbit(self, orbit_params):
+        """
+
+        Args:
+            orbit_params: dict
+                required: 'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
+                     'perihelion_o' (arg. of perihelion), 'q' (perihelion distance), 'D' (equinox year),
+                     'M1', 'M2' (first and second components of magnitude model)
+                optional: 's' (angular size at 1 AU)
+        Returns:
+
+        """
+        # TODO: query associated table for object already existing, test
+        orb_keys = list(orbit_params.keys())
+        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                    'M1', 'M2', 'object_id']:
+            if key not in orb_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not orbit_params[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(orb_keys):
+            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                           'M1', 'M2', 's', 'object_id']:
+                orb_keys.remove(key)
+        orb_sql = generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
+        try:
+            self.execute_sql(orb_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_parabolic_orbit sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_parabolic_orbit sql command failed with a ProgrammingError!")
+        return (0, "Parabolic heliocentric orbit added")
+
+    def add_hyperbolic_orbit(self, orbit_params):
+        """
+
+        Args:
+            orbit_params: dict
+
+                required: 'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
+                     'perihelion_o' (arg. of perihelion), 'e' (eccentricity), 'q' (perihelion distance AU),
+                     'D' (equinox year), 'M1', 'M2' (first and second components of magnitude model)
+                optional: 's' (angular size at 1 AU)
+
+        Returns:
+
+        """
+        # TODO: query associated table for object already existing, test
+        orb_keys = list(orbit_params.keys())
+        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                    'M1', 'M2', 'object_id']:
+            if key not in orb_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not orbit_params[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(orb_keys):
+            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                           'M1', 'M2', 's', 'object_id']:
+                orb_keys.remove(key)
+        orb_sql = generate_insert_sql(orbit_params, orb_keys, 'hyperbolic_heliocentric')
+        try:
+            self.execute_sql(orb_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_hyperbolic_orbit sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_hyperbolic_orbit sql command failed with a ProgrammingError!")
+        return (0, "Hyperbolic heliocentric orbit added")
+
+    def add_earth_satellite_orbit(self, orbit_params):
+        """
+        Args:
+            orbit_params: dict
+                required: 'object_id', ' T' (epoch of other fields), 'inclination', 'ra' (ra of ascending node),
+                          'e' (eccentricity), 'pedigree' (arg. of pedigree), 'M' (mean anomaly),
+                          'n' (mean motion, revs/day), 'decay' (orbit decay rate, rev/day^2),
+                          'reforbit' (integral reference orbit number at epoch),
+                optional: 'drag' (drag coefficient, 1/(Earth radii))
+
+        Returns:
+
+        """
+        # TODO: query associated table for object already existing, test
+        orb_keys = list(orbit_params.keys())
+        for key in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
+                    'decay', 'reforbit', 'object_id']:
+            if key not in orb_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not orbit_params[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(orb_keys):
+            if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
+                           'decay', 'reforbit', 'drag', 'object_id']:
+                orb_keys.remove(key)
+        orb_sql = generate_insert_sql(orbit_params, orb_keys, 'earth_satellite')
+        try:
+            self.execute_sql(orb_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_earth_satellite_orbit sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_earth_satellite_orbit sql command failed with a ProgrammingError!")
+        return (0, "Earth satellite orbit added")
+
+    def add_planet_satellite_orbit(self, orbit_params):
+        raise NotImplementedError
+        # TODO: actually implement? maybe let higher level do this
+        # TODO: query ??? for if it already exists
+
+    def get_object_id(self, object_name):
+        """
+        finds the id of an object given its name
+        Args:
+            object_name: str
+
+        Returns:
+            id, full name if one object is found
+            list of all (id, full name) if multiple matches are found for the name
+            None if the object is not found
+        """
+        object_name = object_name.lower()
+        sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
+        obj = self.execute_sql(sql)
+        if not obj:
+            return None
+        elif len(obj) > 1:
+            return obj
+        else:
+            return obj[0]  # the sql returns ((id, name),)
+
+    def add_object(self, pardic):  # TODO: separate
+        """
+        Creates a new object
         Args:
             pardic: dict
-                requred: 'name', 'typedesig'
-                        (, 'ra', 'dec', 'epoch' OR 'marshal_id' for fixed object)
-                        (, 'iauname' for non-fixed objects if no orbit_params)
+                required: 'name', 'typedesig'(, 'ra', 'dec', 'epoch' for a fixed object)
                 optional: 'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
                 NOTE: 'typedesig' should be one of:
                             'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
                             'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
-                      'iauname' should be '# name' for minor planet names
-            orbit_params: dict (different required parameters needed for each typedesig)
-                'f' or 'P' (or if pardic['name'] is in .edb file): none needed
-                'e': 'inclination', 'longascnode_0' (lon. of ascending node), 'perihelion_o' (arg. of perihelion),
-                     'a' (mean distance AU), 'n' (mean daily motion deg/day), 'e' (eccentricity),
-                     'M' (mean anomaly), 'mjdepoch' (epoch, time of 'M'), 'D' (equinox year),
-                     'M1', 'M2' (first and second components of magnitude model), 's' (angular size at 1 AU)
-                'h': 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
-                     'perihelion_o' (arg. of perihelion), 'e' (eccentricity), 'q' (perihelion distance AU),
-                     'D' (equinox year), 'M1', 'M2' (first and second components of magnitude model),
-                     's' (angular size at 1 AU)
-                'p': 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
-                     'perihelion_o' (arg. of perihelion), 'q' (perihelion distance), 'D' (equinox year),
-                     'M1', 'M2' (first and second components of magnitude model), 's' (angular size at 1 AU)
-                'E': 'T' (date), 'inclination', 'ra' (ra of ascending node), 'e' (eccentricity),
-                     'pedigree' (arg. of pedigree), 'M' (mean anomaly), 'n' (mean motion, revs/day),
-                     'decay' (orbit decay rate, rev/day^2), 'reforbit' (integral reference orbit number at epoch),
-                     'drag' (drag coefficient, 1/(Earth radii))
 
         Returns:
             (-1, "ERROR: ...") if it failed to add
             (0, "Object added") if the object is added successfully
         """
-
-        """
-          Creates a new object in the db with the characterisstics given by the dictionary of parameters: pardic.
-          It shall create a new object in periodic or any of the solar system objects (SSO) if necessary.
-            The parameters will be specified in the objparams dictionary.
-          In case of a SSO, the user has the option to specify only the name if the object is know.
-          The function shall check the parameters of the object from the .edb XEphem files and fill the table
-            corresponding to the orbital parameters of the object.
-          The return of the function can be as follows:
-
-          (CODE, MESSAGE)
-
-          i.e.
-          (0, "Object added")
-          (-1, "ERROR: the orbital parameters for the SSO are now tabulated. Please, introduce them manually.")
-          """
-        # TODO: for each typedesig, handle "name" and search the .edb for it (instead of requiring orbit_params)
-        # TODO: test for each different case of typedesig
         # TODO: have it update existing object if it already exists?
-        # TODO: set orbit_params default to None?
         if 'marshal_id' in pardic.keys():
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
                 return (-1, "ERROR: object exists!")
         # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
-
-        # format array([# name, typedesig, ... same ordering as table
-        asteroids = np.genfromtxt('/home/sedm/kpy/ephem/asteroids.edb',
-                                  skip_header=4, delimiter=',', dtype='S25')
-        # TODO: get other dbs (e.g. JPL's ELEMENTS.COMET) in comma-separated format
         obj_keys = list(pardic.keys())
 
         for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
@@ -290,10 +410,13 @@ class SedmDB:
         for key in reversed(obj_keys):  # remove any extraneous keys
             if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
                 obj_keys.remove(key)
-
+        pardic['name'] = pardic['name'].lower()  # make all of the names the same format for consistant searching
         if pardic['typedesig'] == 'f':
-            if not ('marshal_id' in obj_keys or ('ra' in obj_keys and 'dec' in obj_keys and 'epoch' in obj_keys)):
-                return (-1, "ERROR: typedesig=f but neither marshal_id nor coordinates were provided!")
+            for key in ['ra', 'dec', 'epoch']:
+                if key not in obj_keys:
+                    return (-1, "ERROR: %s not provided!" % (key,))
+                elif not pardic[key]:
+                    return(-1, "ERROR: no value provided for %s!" % (key,))
 
             obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -303,128 +426,19 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             return (0, "Fixedd object added")
-
-        elif pardic['typedesig'] == 'P':
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-
-            # TODO, use the planet/satellite name (.edb XEphem) to generate the orbit
-            obj_name = pardic['name']
-
-            pass
-
-        elif not pardic['iauname'] and not orbit_params:  # if not fixed or default, need identifier
-            return (-1, "ERROR: need iauname or orbit_params for non-fixed objects!")
-        elif not orbit_params:
-            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
-        # TODO: in each one somehow generate orbit_params from iauname/remove above
-
-        elif pardic['typedesig'] == 'e':
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
-
-            orbit_params['object_id'] = object_id
-            orb_keys = list(orbit_params.keys())
-            for key in reversed(orb_keys):
-                if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
-                               'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
-                    orb_keys.remove(key)
-            orb_sql = generate_insert_sql(orbit_params, orb_keys, 'elliptical_heliocentric')
-            try:
-                self.execute_sql(orb_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object 'e' sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object 'e' sql command failed with a ProgrammingError!")
-            return (0, "Elliptical heliocentric object added")
-
-        elif pardic['typedesig'] == 'h':
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
-
-            orbit_params['object_id'] = object_id
-            orb_keys = list(orbit_params.keys())
-            for key in reversed(orb_keys):
-                if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
-                               'M1', 'M2', 's', 'object_id']:
-                    orb_keys.remove(key)
-            orb_sql = generate_insert_sql(orbit_params, orb_keys, 'hyperbolic_heliocentric')
-            try:
-                self.execute_sql(orb_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object 'h' sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object 'h' sql command failed with a ProgrammingError!")
-            return (0, "Hyperbolic heliocentric object added")
-
-        elif pardic['typedesig'] == 'p':
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
-
-            orbit_params['object_id'] = object_id
-            orb_keys = list(orbit_params.keys())
-            for key in reversed(orb_keys):
-                if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
-                               'M1', 'M2', 's', 'object_id']:
-                    orb_keys.remove(key)
-            orb_sql = generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
-            try:
-                self.execute_sql(orb_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object 'p' sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object 'p' sql command failed with a ProgrammingError!")
-            return (0, "Parabolic heliocentric object added")
-
-        elif pardic['typedesig'] == 'E':
-            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
-            try:
-                self.execute_sql(obj_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            object_id = self.execute_sql("SELECT id FROM object WHERE marshal_id = %s" % (pardic['marshal_id'],))[0]
-
-            orbit_params['object_id'] = object_id
-            orb_keys = list(orbit_params.keys())
-            for key in reversed(orb_keys):
-                if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
-                               'decay', 'reforbit', 'drag', 'object_id']:
-                    orb_keys.remove(key)
-            orb_sql = generate_insert_sql(orbit_params, orb_keys, 'earth_satellite')
-            try:
-                self.execute_sql(orb_sql)
-            except exc.IntegrityError:
-                return (-1, "ERROR: add_object 'E' sql command failed with an IntegrityError!")
-            except exc.ProgrammingError:
-                return (-1, "ERROR: add_object 'E' sql command failed with a ProgrammingError!")
-            return (0, "Earth satellite object added")
         else:
-            return (-1, "ERROR: typedesig provided was not 'f', 'P', 'e', 'h', 'p', nor 'E'!")
+            obj_sql = generate_insert_sql(pardic, obj_keys, 'object')
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
+
+#        elif not pardic['iauname'] and not orbit_params:  # if not fixed or default, need identifier
+#            return (-1, "ERROR: need iauname or orbit_params for non-fixed objects!")
+#        elif not orbit_params:
+#            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
 
     def add_request(self, pardic):
         """
@@ -504,12 +518,7 @@ class SedmDB:
             return (-1, "ERROR: add_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: add_request sql command failed with a ProgrammingError!")
-        self_id = max([id_no[0] for id_no in self.execute_sql('SELECT id FROM request')])
-        atomic_requests = self.create_request_atomic_requests(self_id)
-        if atomic_requests[0] == -1:
-            return (0, "Request added, atomicrequests returned %s" % (atomic_requests,))
-        else:
-            return (0, "Request added, atomic requests created")
+        return (0, "Request added")
         # TODO: test ...
 
     def update_request(self, pardic):
@@ -671,62 +680,6 @@ class SedmDB:
             return (-1, "ERROR: add_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Request added")
 
-    def create_request_atomic_requests(self, request_id):
-        """
-        create atomicrequest entries for a given request
-        Args:
-            request_id: int
-                id of the request that needs atomicrequests
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Added (#) atomic requests for request (#)") if it was successful
-        """
-        status =  self.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
-        if not status:
-            return (-1, "ERROR: request does not exist!")
-        elif status == 'CANCELED':
-            return (-1, "ERROR: request has been canceled!")
-        elif status == 'EXPIRED':
-            return (-1, "ERROR: request has expired!")
-
-        if self.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
-            return (-1, "ERROR: atomicrequests already exist for that request!")
-        request = self.execute_sql("SELECT object_id, exptime, priority, inidate, enddate,"
-                                   "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
-                                   "FROM request WHERE id='%s';" % (request_id,))[0]
-        # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
-        pardic = {'object_id': request[0], 'priority': request[2], 'inidate': request[3],
-                  'enddate': request[4], 'request_id': request_id}
-        obs_order = []
-        if request[10]:
-            for num_fil in request[10]:
-                for n in range(int(num_fil[0])):  # the number should be single digit
-                    obs_order.append(num_fil[1:])
-        elif request[9]:
-            for filter_idx in range(len(request[8])):
-                for n in range(request[9][filter_idx]):
-                    obs_order.append(request[8][filter_idx])
-        else:
-            return (-1, "ERROR: request contains neither nexposures nor ordering!")  # add_request should prevevnt this
-        ifus = np.where(np.array(obs_order) == 'ifu')[0]
-        if len(ifus) == 2:  # TODO: check if a/b is the only way of having 2 ifu
-            obs_order[ifus[0]] = 'ifu_a'
-            obs_order[ifus[1]] = 'ifu_b'
-        if any([(filt not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']) for filt in obs_order]):
-            return (-1, "ERROR: either filters or ordering has an invalid entry!")
-        for n, filter_des in enumerate(obs_order):
-            pardic['filter'] = filter_des
-            pardic['order_id'] = n
-            # TODO: do exptime modifications here per filter and ab vs single exposure or in `add_atomic_request`?
-            if 'ifu' in filter_des:
-                pardic['exptime'] = request[1][0]  # TODO: make sure the sql returns the proper format
-            else:
-                pardic['exptime'] = request[1][1]
-            add_return = self.add_atomic_request(pardic)
-            if add_return[0] == -1:
-                return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n+1, filter_des))
-        return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
-
     def update_atomic_request(self, pardic):
         """
         Updates an atomic request with the parameters from the dictionary
@@ -761,7 +714,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Atomic request updated")
 
-    def get_request_atomic_requests(self, request_id):
+    def get_request_atomicrequests(self, request_id):
         """
         return the atomicreqests associated with a single request
 
@@ -770,46 +723,53 @@ class SedmDB:
                 The request_id of the desired request
 
         Returns:
-            all atomicreqests associated with the desired request
+            (id, object_id, order_id, exptime, filter, status, priority )
+                    for all atomicreqests associated with the desired request
         """
         # TODO: test
-        atomic_requests = self.execute_sql("SELECT id, object_id, request_id, order_id, exptime, filter, priority "
+        atomic_requests = self.execute_sql("SELECT id, object_id, order_id, exptime, filter, status, priority "
                                            "FROM atomicrequest WHERE request_id = %s" % (request_id,))
         return atomic_requests
 
-    def add_observation_fits(self, fitsfile):
+    def add_observation_fits(self, header_dict, tel_stats):
         """
-         Receives the fits file path.
-         The code shall be able to read the header of the fits file and create an instance in the observation table.
 
-         Whenever this observation is added, the code updates the table "schedule" and marks the scheduled request
-         as "observed".
+        Args:
+            header_dict:
+            tel_stats:
 
+        Returns:
 
-         The code also checks if all the scheduled requests associated with a general request has been observed.
-         If it is the case, it shall change the status of the general request to "COMPLETED".
-
-         Finally, using the fits keywords related to telescope status, the function also creates a new register
-         in the telescope_stats table.
-         """
-        hdulist = fits.open(fitsfile)
-        header = hdulist[0].header
-        # atomic_id = header['ATOM_ID']  # TODO: add ATOM_ID to the header
-        atomic_id = 1
-        request_id = 1
-        object_id = 1
-        # request_id, object_id = self.execute_sql("SELECT request_id, object_id FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
+        """
+        if 'atomicrequest_id' in header_dict.keys():
+            if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
+                return (-1, "ERROR: atomicrequest does not exist!")
+            if self.execute_sql("SELECT * FROM observation WHERE atomicrequest_id='%s'"
+                                % (header_dict['atomicrequest_id'],)):
+                return self.update_observation(header_dict)  # TODO: write update_observation
+        atomic_id = header_dict['atomicrequest_id']  # TODO: add ATOM_ID to the header
+        # request_id, object_id = self.execute_sql("SELECT request_id, object_id "
+        #                                          "FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
+        # header_dict['request_id'] = request_id
+        # header_dict['object_id'] = object_id
+        if 'request_id' not in header_dict:  # for testing purposes
+            request_id = 1
+        if 'object_id' not in header_dict:
+            object_id = 1
         # TODO: uncomment above and remove the "request_id=1 and object_id=1" once implemented
-        header_dict = {'object_id': object_id, 'request_id': request_id, 'atomicrequest_id': atomic_id,
-                       'mjd': header['JD']-2400000.5, 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
-                       'fitsfile': fitsfile, 'lst': header['LST'], 'ra': ra_to_decimal(header['RA']), 
-                       'dec': dec_to_decimal(header['DEC']), 'tel_ra': header['TEL_RA'], 'tel_dec': header['TEL_DEC'],
-                       'tel_az': header['TEL_AZ'], 'tel_el': header['TEL_EL'], 'tel_pa': header['TEL_PA'], 
-                       'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME']}
-        # TODO: add 'imtype', generate from fitsfile name?
-        # generate string describing the columns
-        columns = list(header_dict.keys())
-        sql = generate_insert_sql(header_dict, columns, 'observation')
+        header_keys = list(header_dict.keys())
+        for key in ['object_id', 'request_id', 'atomicrequest_id', 'mjd', 'airmass', 'exptime', 'fitsfile', 'lst',
+                    'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off']:
+            if key not in header_keys:
+                return (01, "ERROR: %s not provided!" % (key,))
+            elif not header_dict[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(header_keys):
+            if key not in ['object_id', 'request_id', 'atomicrequest_id', 'mjd', 'airmass', 'exptime',
+                           'fitsfile', 'imtype', 'lst', 'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az',
+                           'tel_el', 'tel_pa', 'ra_off', 'dec_off', 'camera']:
+                header_keys.remove(key)
+        sql = generate_insert_sql(header_dict, header_keys, 'observation')
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -821,16 +781,15 @@ class SedmDB:
         observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'"
                           % (header_dict['atomicrequest_id'],)))[0][0]
 
-        tel_stats = {'date': header['OBSDATE'], 'dome_status': header['DOMEST'], 'in_temp': header['IN_AIR'],
-                     'in_humidity': header['IN_HUM'], 'in_dew': header['IN_DEW'], 'out_temp': header['OUT_AIR'],
-                     'out_humidity': header['OUT_HUM'], 'out_dew': header['OUT_HUM'], 'wind_dir': header['WIND_DIR'], 
-                     'wsp_cur': header['WSP_CUR'], 'wsp_avg': header['WSP_AVG'], 'mir_temp': header['MIR_TEMP'],
-                     'top_air': header['TOP_AIR'], 'pri_temp': header['PRI_TEMP'], 'sec_temp': header['SEC_TEMP'],
-                     'flo_temp': header['FLO_TEMP'], 'bot_temp': header['BOT_TEMP'], 'mid_temp': header['MID_TEMP'],
-                     'top_temp': header['TOP_TEMP'], 'observation_id': int(observation_id)}
-        # perform the same sql-creation as above
-        stat_columns = list(tel_stats.keys())
-        stat_sql = generate_insert_sql(tel_stats, stat_columns, 'telescope_stats')
+        stat_keys = list(tel_stats.keys())
+        for key in reversed(stat_keys):
+            if key not in ['date', 'dome_status', 'in_temp', 'in_humidity', 'in_dew', 'out_temp', 'out_humidity',
+                           'out_dew', 'wind_dir', 'wsp_cur', 'wsp_avg', 'mir_temp', 'top_air', 'pri_temp', 'sec_temp',
+                           'flo_temp', 'bot_temp', 'mid_temp', 'top_temp']:
+                header_keys.remove(key)
+        tel_stats['observation_id'] = int(observation_id)
+
+        stat_sql = generate_insert_sql(tel_stats, stat_keys, 'telescope_stats')
         try:
             self.execute_sql(stat_sql)
         except exc.IntegrityError:
@@ -847,6 +806,7 @@ class SedmDB:
         # TODO: add other returns for failure cases?
         return (0, "Observation added")
         # TODO: test with actual fits files
+# TODO: write update_observation() and update_telescope_stats()
 
     def add_reduced_photometry(self, pardic):
         """
@@ -1241,11 +1201,3 @@ def generate_update_sql(pardic, param_list, table, lastmodified=False):
     return sql
 
 
-def ra_to_decimal(ra):
-    hms = ra.split(':')
-    return float(hms[0])*15+float(hms[1])/4+float(hms[2])/240
-
-
-def dec_to_decimal(dec):
-    dms = dec.split(':')
-    return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
