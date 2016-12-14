@@ -427,9 +427,8 @@ def to_makefile(objs, calibs):
                 if pred in Stds.Standards:
                     standard = pred
 
-                    for ix, obsfile in enumerate(obsfiles):
-                        m, a = MF_standard(objname, "%i_%i" % (obsnum, ix),
-                                           obsfile,
+                    for obsfile in obsfiles:
+                        m, a = MF_standard(objname, "%i" % obsnum, obsfile,
                                            standard=standard)
                         MF += m
                         # don't need these in all: dependants of target "stds"
@@ -439,9 +438,8 @@ def to_makefile(objs, calibs):
                 else:
                     standard = None
 
-                    for ix, obsfile in enumerate(obsfiles):
-                        m, a = MF_single(objname, "%i_%i" % (obsnum, ix),
-                                         obsfile,
+                    for obsfile in obsfiles:
+                        m, a = MF_single(objname, "%i" % obsnum, obsfile,
                                          standard=standard)
                         MF += m
                         oth += "sp_" + a + " "
@@ -461,11 +459,10 @@ def to_makefile(objs, calibs):
                     else:
                         oth += "sp_" + a + " "
             else:
-                for obsfilenum, obsfile in enumerate(obsfiles):
+                for obsfile in obsfiles:
                     standard = None
 
-                    m, a = MF_single(objname, "%i_%i" % (obsnum, obsfilenum),
-                                     obsfile)
+                    m, a = MF_single(objname, "%i" % obsnum, obsfile)
 
                     if standard is not None:
                         stds += "corr_%s " % a
