@@ -74,10 +74,7 @@ def report():
             lostexp += expt
 
         if '_obs' in objname:
-            if len(objname.split('_')) > 3:
-                objname = "_".join(objname.split('_')[1:-2])
-            else:
-                objname = "_".join(objname.split('_')[1:-1])
+            objname = "_".join(objname.split('_')[1:-1])
         else:
             objname = "_".join(objname.split('_')[1:])
 
