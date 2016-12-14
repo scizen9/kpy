@@ -363,6 +363,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Add reducer and save spectrum
     res[0]['reducer'] = reducer
+    print "Reducer: %s" % reducer
     np.save(specname, res)
 
     # Save fig to file

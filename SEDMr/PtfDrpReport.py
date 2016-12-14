@@ -16,7 +16,7 @@ def report():
     out.write("\nReport generated on %s\n\n" % time.strftime("%c"))
     totexpt = 0.
     lostexp = 0.
-    out.write("Object                     Obs Method  Exptime Qual Skysb Airmass\n")
+    out.write("Object                     Obs Method  Exptime Qual Skysb Airmass Reducer\n")
 
     objects = []
 
@@ -37,6 +37,11 @@ def report():
                 objects.append(objname.replace("PTF", ""))
         else:
             qual = 0
+
+        if 'reducer' in sp:
+            reducer = sp['reducer']
+        else:
+            reducer = '-'
 
         if 'sky_subtraction' in sp:
             skysub = sp['sky_subtraction']
@@ -81,9 +86,9 @@ def report():
         else:
             lostexp += expt
 
-        out.write("%-25s %4s %6s   %6.1f %4d %5s  %5.3f\n" %
+        out.write("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %s\n" %
                   (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
-                   air))
+                   air, reducer))
 
     if len(objects) > 0:
         out.write("\n")
