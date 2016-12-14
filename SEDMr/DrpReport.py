@@ -36,9 +36,9 @@ def report():
         else:
             skysub = 1
         if '_obs' in f:
-            if len(objname.split('_')) > 3:
-                obs = objname.split('_')[-2]
-            elif len(objname.split('_')) == 3:
+            if len(objname.split('_')) > 2:
+                obs = objname.split('_')[-1]
+            elif len(objname.split('_')) == 2:
                 obs = objname.split('_')[-1]
             else:
                 obs = "obs1"
