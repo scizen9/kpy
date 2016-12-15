@@ -34,11 +34,42 @@ for d in dlist:
         ef = ss['efficiency']*100.
         wl = ss['nm']
 
-        ef1.append(np.nanmean(ef[(wl > 400) * (wl < 500)]))
-        ef2.append(np.nanmean(ef[(wl > 500) * (wl < 600)]))
-        ef3.append(np.nanmean(ef[(wl > 600) * (wl < 700)]))
-        ef4.append(np.nanmean(ef[(wl > 700) * (wl < 800)]))
-        ef5.append(np.nanmean(ef[(wl > 800) * (wl < 900)]))
+        # Check each 100 nm bin
+
+        # 400 - 500 nm
+        e = np.nanmean(ef[(wl > 400) * (wl < 500)])
+        if e > 100:
+            continue
+        ef1.append(e)
+
+        # 500 - 600 nm
+        e = np.nanmean(ef[(wl > 500) * (wl < 600)])
+        if e > 100:
+            continue
+        ef2.append(e)
+
+        # 600 - 700 nm
+        e = np.nanmean(ef[(wl > 600) * (wl < 700)])
+        if e > 100:
+            continue
+        ef3.append(e)
+
+        # 700 - 800 nm
+        e = np.nanmean(ef[(wl > 700) * (wl < 800)])
+        if e > 100:
+            continue
+        ef4.append(e)
+
+        # 800 - 900 nm
+        e = np.nanmean(ef[(wl > 800) * (wl < 900)])
+        if e > 100:
+            continue
+        ef5.append(e)
+
+        # ef2.append(np.nanmean(ef[(wl > 500) * (wl < 600)]))
+        # ef3.append(np.nanmean(ef[(wl > 600) * (wl < 700)]))
+        # ef4.append(np.nanmean(ef[(wl > 700) * (wl < 800)]))
+        # ef5.append(np.nanmean(ef[(wl > 800) * (wl < 900)]))
 
         jd.append(dtime.jd)
 
