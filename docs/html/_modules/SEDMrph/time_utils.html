@@ -47,19 +47,27 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">astropy.time</span> <span class="kn">import</span> <span class="n">Time</span>
-
+<span class="kn">import</span> <span class="nn">datetime</span>
 
 <div class="viewcode-block" id="utc2mjd"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.utc2mjd">[docs]</a><span class="k">def</span> <span class="nf">utc2mjd</span><span class="p">(</span><span class="n">times</span><span class="p">):</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;isot&#39;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s1">&#39;utc&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">mjd</span></div>
     
-<div class="viewcode-block" id="mjd2utc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.mjd2utc">[docs]</a><span class="k">def</span> <span class="nf">mjd2utc</span><span class="p">(</span><span class="n">mjd</span><span class="p">):</span>
+<div class="viewcode-block" id="mjd2utc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.mjd2utc">[docs]</a><span class="k">def</span> <span class="nf">mjd2utc</span><span class="p">(</span><span class="n">mjd</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">mjd</span><span class="o">+</span><span class="mf">2400000.5</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;jd&#39;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s2">&quot;utc&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">iso</span></div>
     
-<div class="viewcode-block" id="jd2utc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.jd2utc">[docs]</a><span class="k">def</span> <span class="nf">jd2utc</span><span class="p">(</span><span class="n">jd</span><span class="p">):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">string</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">iso</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">iso</span><span class="p">,</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>  </div>
+    
+<div class="viewcode-block" id="jd2utc"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.jd2utc">[docs]</a><span class="k">def</span> <span class="nf">jd2utc</span><span class="p">(</span><span class="n">jd</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">jd</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;jd&#39;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s2">&quot;utc&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">iso</span></div>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="n">string</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">iso</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">iso</span><span class="p">,</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S.</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span> </div>
     
 <div class="viewcode-block" id="utc2jd"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.time_utils.utc2jd">[docs]</a><span class="k">def</span> <span class="nf">utc2jd</span><span class="p">(</span><span class="n">times</span><span class="p">):</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s1">&#39;iso&#39;</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="s1">&#39;utc&#39;</span><span class="p">)</span>

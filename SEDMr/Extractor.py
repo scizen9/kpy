@@ -935,19 +935,43 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         refl (float): Telescope reflectance factor (assuming .90 for P60)
         area (float): Telescope area (assuming 18000. cm^2 for P60)
 
-    Returns:
-        The extracted spectrum, a dictionary:
-        {'ph_10m_nm': Observed flux in photon / 10 m / nm integrated
-        'nm': Wavelength solution in nm
-        'N_spax': Total number of spaxels that created ph_10m_nm
-        'skyph': Sky flux in photon / 10 m / nanometer / spaxel
-        'std-correction': ratio of observed to reference flux
-        'std-maxnm': maximum reference wavelength in nm
-        'radius_as': Extraction radius in arcsec
-        'pos': X/Y extraction location of spectrum in arcsec}
-
     Raises:
         None
+
+    Note:
+        The extracted spectrum dictionary is written to ``outname``.npy::
+
+            'doc': docstring description
+            'ph_10m_nm': Flux in photon/10min/nm integrated
+            'spectra': Individual spaxel spectra
+            'coefficients': Coefficients of wavelength fit
+            'nm': Wavelengths in nm
+            'std-correction': Correction to standard flux
+            'std-maxnm': Maximum wavelength that was calibrated
+            'reflectance': Input reflectance ratio (< 1.0)
+            'area': Telescope effective area in cm^2
+            'ea': Effective area of instrument
+            'efficiency': Overall efficiency of Sky + Telescope + Instrument
+            'dXnm': Flexure x offset in nm
+            'dYpix': Flexure y offset in pixels
+            'xfwhm': Fit FWHM of sky line used to estimate flexure
+            'yfwhm': Average FWHM of spaxel trace in y direction
+            'exptime': Total exposure time of observation in seconds
+            'extinction_corr': Extinction correction for observation
+            'skyph': Sky flux in photon/10min/nm/spaxel
+            'skynm': Sky wavelengths in nm
+            'var': Variance spectrum
+            'radius_as': Extraction radius in arcsec
+            'position': Position offset relative to center in arcsec
+            'N_spax': Number of spaxels summed for target
+            'meta': Metadata dictionary for extractions
+            'object_spaxel_ids': Object spaxel IDs for target
+            'sky_spaxel_ids': Sky spaxel IDS for target
+            'sky_spectra': Individual sky spaxel spectra
+            'sky_subtraction': False if no sky subtraction else True
+            'quality': Estimate of spectral quality (1 = best)
+            'dlam': Wavelength offsets between samples in nm
+
     """
 
     # Load wavelength/spatial solution
@@ -1232,16 +1256,39 @@ def handle_single(imfile, fine, outname=None, offset=None,
         interact (Boolean): Interactively set the quality of the extraction?
 
     Returns:
-        The extracted spectrum, a dictionary:
-        {'ph_10m_nm': Flux in photon / 10 m / nanometer integrated
-        'nm': Wavelength solution in nm
-        'N_spax': Total number of spaxels that created ph_10m_nm
-        'skyph': Sky flux in photon / 10 m / nanometer / spaxel
-        'radius_as': Extraction radius in arcsec
-        'pos': X/Y extraction location of spectrum in arcsec}
+        None
 
     Raises:
         None
+
+    Note:
+        The extracted spectrum dictionary is written to ``outname``.npy::
+
+            'doc': docstring description
+            'ph_10m_nm': Flux in photon/10min/nm integrated
+            'spectra': Individual spaxel spectra
+            'coefficients': Coefficients of wavelength fit
+            'nm': Wavelengths in nm
+            'dXnm': Flexure x offset in nm
+            'dYpix': Flexure y offset in pixels
+            'xfwhm': Fit FWHM of sky line used to estimate flexure
+            'yfwhm': Average FWHM of spaxel trace in y direction
+            'exptime': Total exposure time of observation in seconds
+            'extinction_corr': Extinction correction for observation
+            'skyph': Sky flux in photon/10min/nm/spaxel
+            'skynm': Sky wavelengths in nm
+            'var': Variance spectrum
+            'radius_as': Extraction radius in arcsec
+            'position': Position offset relative to center in arcsec
+            'N_spax': Number of spaxels summed for target
+            'meta': Metadata dictionary for extractions
+            'object_spaxel_ids': Object spaxel IDs for target
+            'sky_spaxel_ids': Sky spaxel IDS for target
+            'sky_spectra': Individual sky spaxel spectra
+            'sky_subtraction': False if no sky subtraction else True
+            'quality': Estimate of spectral quality (1 = best)
+            'dlam': Wavelength offsets between samples in nm
+
     """
 
     # Load wavelength/spatial solution
@@ -1526,7 +1573,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         fine (string): filename of NumPy file with locations + wavelength soln.
         outname (string): filename to write results to
         offset (2tuple): X (nm)/Y (pix) shift to apply for flexure correction
-        radius (float): Extraction radius in arcsecond
+        radius (float): Extraction radius in arcseconds
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
         nosky (Boolean): if True don't subtract sky, merely sum in aperture
@@ -1536,18 +1583,40 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         interact (Boolean): Interactively set the quality of the extraction?
 
     Returns:
-        The extracted spectrum, a dictionary:
-        {'ph_10m_nm': Flux in photon / 10 m / nanometer integrated
-        'var'
-        'nm': Wavelength solution in nm
-        'N_spaxA': Total number of "A" spaxels
-        'N_spaxB': Total number of "B" spaxels
-        'skyph': Sky flux in photon / 10 m / nanometer / spaxel
-        'radius_as': Extraction radius in arcsec
-        'pos': X/Y extraction location of spectrum in arcsec}
+        None
 
     Raises:
         None
+
+    Note:
+        The extracted spectrum dictionary is written to ``outname``.npy::
+
+            'doc': docstring description
+            'ph_10m_nm': Flux in photon/10min/nm integrated
+            'nm': Wavelengths in nm
+            'dXnm': Flexure x offset in nm
+            'dYpix': Flexure y offset in pixels
+            'xfwhm': Fit FWHM of sky line used to estimate flexure
+            'yfwhm': Average FWHM of spaxel trace in y direction
+            'exptime': Total exposure time of observation in seconds
+            'extinction_corr_A': Extinction correction for A observation
+            'extinction_corr_B': Extinction correction for B observation
+            'skyph': Sky spectrum
+            'var': Variance spectrum
+            'radius_as': Extraction radius in arcseconds
+            'positionA': Position offset relative to center of A in arcsec
+            'positionB': Position offset relative to center of B in arcsec
+            'N_spaxA': Total number of "A" spaxels
+            'N_spaxB': Total number of "B" spaxels
+            'meta': Metadata dictionary for extractions
+            'object_spaxel_ids_A': Object spaxel IDs for A target
+            'sky_spaxel_ids_A': Sky spaxel IDs for A target
+            'object_spaxel_ids_B': Object spaxel IDs for B target
+            'sky_spaxel_ids_B': Sky spaxel IDS for B target
+            'sky_subtraction': False if no sky subtraction else True
+            'quality': Estimate of spectral quality (1 = best)
+            'dlam': Wavelength offsets between samples in nm
+
     """
 
     fine, fmeta = np.load(fine)

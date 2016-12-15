@@ -431,6 +431,17 @@
     <span class="n">header</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">par</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
     <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
     
+<div class="viewcode-block" id="update_pars"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.update_pars">[docs]</a><span class="k">def</span> <span class="nf">update_pars</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">pardic</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Updates the fits files with the new parameter.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">hdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">myfits</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+    
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">pardic</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="n">hdu</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+    
 <div class="viewcode-block" id="has_par"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.fitsutils.has_par">[docs]</a><span class="k">def</span> <span class="nf">has_par</span><span class="p">(</span><span class="n">myfits</span><span class="p">,</span> <span class="n">par</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Updates the fits files with the new parameter.</span>
