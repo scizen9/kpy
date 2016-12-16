@@ -140,6 +140,30 @@ class SedmDB:
         else:
             return (-1, "ERROR: username or id required!")
 
+    def select_from_users(self, values, where_dict):
+        """
+        select values from `users`
+        Args:
+            values: list of str
+                values to be returned
+            where_dict: dict
+                'param':'value' to be used as WHERE clauses
+            values/keys options: ['id', 'username', 'name', 'email']
+        Returns:
+            list: tuples containing the values for each user matching the criteria, empty if no results
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = ['id', 'username', 'name', 'email']
+        sql = generate_select_sql(values, where_dict, allowed_params, 'users')
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_group(self, pardic):
         """
         Adds a new group. Checks for duplicates in name
@@ -256,9 +280,34 @@ class SedmDB:
 #        elif not orbit_params:
 #            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
 
-    def get_object_id(self, object_name):
+    def select_from_objects(self, values, where_dict):
         """
-        finds the id of an object given its name
+        select values from `objects`
+        Args:
+            values: list of str
+                values to be returned
+            where_dict: dict
+                'param':'value' to be used as WHERE clauses
+            values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
+        Returns:
+            list: tuples containing the values for each user matching the criteria, empty if no results
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
+        sql = generate_select_sql(values, where_dict, allowed_params, 'object')
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
+# TODO: have get_object for ra/dec
+    def get_object_id_from_name(self, object_name):
+        """
+        finds the id of an object given its name or part of its name
         Args:
             object_name: str
 
@@ -559,6 +608,34 @@ class SedmDB:
 
         return (0, "Requests and atomicrequests updated")
 
+    def select_from_requests(self, values, where_dict):
+        """
+        select values from `objects`
+        Args:
+            values: list of str
+                values to be returned
+            where_dict: dict
+                'param':'value' to be used as WHERE clauses
+            values/keys options: ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority',
+                                  'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence', 'phasesamples',
+                                  'sampletolerance', 'nexposures', 'ordering', 'creationdate', 'lastmodified']
+        Returns:
+            list: tuples containing the values for each user matching the criteria, empty if no results
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority', 'inidate',
+                          'enddate', 'marshal_id', 'maxairmass', 'cadence', 'phasesamples', 'sampletolerance',
+                          'nexposures', 'ordering', 'creationdate', 'lastmodified']
+        sql = generate_select_sql(values, where_dict, allowed_params, 'request')
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def get_active_requests(self):
         """
         Returns active requests
@@ -567,6 +644,7 @@ class SedmDB:
              sampletolerance, filters, nexposures, ordering) for each request
         """
         # TODO: test?
+        # TODO: move to logic layer
         sql = ("SELECT object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, "
                "phasesamples, sampletolerance, filters, nexposures, ordering FROM request WHERE status='ACTIVE';")
         active_requests = self.execute_sql(sql)
@@ -577,6 +655,7 @@ class SedmDB:
         Updates the request table. For all the active requests that were not completed,
             and had an expiry date before than NOW(), are marked as "EXPIRED".
         """
+        # TODO: move to logic layer? (requires sql "knowledge")
         # tests written
         sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
         self.execute_sql(sql)
@@ -596,23 +675,6 @@ class SedmDB:
         self.execute_sql("UPDATE atomicrequest SET status='CANCELED' WHERE request_id='%s'" % (requestid,))
         self.update_request({'id': requestid, 'status': 'CANCELED'})
         return (0, "Request canceled")
-
-    def update_scheduled_request(self, requestid):
-        # TODO: find what this was supposed to be
-        """
-        Updates the scheduled request with new parameters "CANCELED"
-        """
-
-        pass
-
-    def cancel_scheduled_between(self, initime, endtime):
-        # TODO: find if this means scheduled or requested
-        """
-        Cancels all the scheduled requests that were scheduled between the ini and end time.
-        Their status should be changed to "CANCELED".
-        """
-
-        pass    
 
     def add_atomic_request(self, pardic):
         """
@@ -1128,6 +1190,43 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: update_classification sql command failed with a ProgrammingError!")
         return (0, "Classification updated")
+
+
+def generate_select_sql(values, where_dict, allowed_params, table):
+    """
+    generate the sql for a select query
+    Args:
+        values: list of str
+            list of values to return
+        where_dict: dict
+            {'param':'value',...} adds WHERE param='value'...
+        allowed_params: list
+            the parameters of the table to be queried
+        table: str
+            name of the table
+
+    Returns:
+        str (sql select query)
+    """
+    for value in values:
+        if value not in allowed_params:
+            values.remove(value)
+    where_keys = list(where_dict.keys())
+    for param in where_keys:
+        if param not in allowed_params:
+            where_keys.remove(param)
+    values_str = ''
+    for value in values:
+        values_str += value+', '
+    values_str = values_str[:-2]
+
+    sql = "SELECT %s FROM %s" % (values_str, table)
+    if where_keys:
+        sql += "WHERE"
+        for key in where_keys:
+            sql += " %s = '%s' AND" % (key, where_dict[key])
+        sql = sql [:-4]
+    return sql
 
 
 def generate_insert_sql(pardic, param_list, table):

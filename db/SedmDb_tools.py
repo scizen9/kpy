@@ -5,6 +5,10 @@ from astropy.io import fits
 db = SedmDb.SedmDB()
 
 
+# TODO: write a function to get object+orbit data for an object
+
+
+
 def create_atomic_requests():
     """
     Finds requests without atomicrequets and creates their atomicrequests
