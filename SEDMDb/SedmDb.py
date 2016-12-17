@@ -85,12 +85,16 @@ class SedmDB:
     def add_user(self, pardic):
         """
         adds a new user
-        Args:
-            pardic: dict
-                required: 'username' (unique), 'name', 'email'
-        Returns:
-            (-1, "ERROR: Username exists") if the username is a duplicate
-            (0, "User added") if the user was added
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'username' (unique), 'name', 'email'
+
+        Returns
+        -------
+        (-1, "ERROR: Username exists") if the username is a duplicate
+        (0, "User added") if the user was added
         """
         keys = list(pardic.keys())
         if 'username' not in keys:
@@ -114,13 +118,16 @@ class SedmDB:
     def remove_user(self, pardic):
         """
         Removes an existing user
-        Args:
-            pardic: dict
-                required: 'username' (recommended) OR 'id'
 
-        Returns:
-            (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
-            (0, "User removed") if the removal was successful
+        Parameters
+        ----------
+        pardic: dict
+            required: 'username' (recommended) OR 'id'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
+        (0, "User removed") if the removal was successful
         """
         if 'username' in pardic.keys():
             user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))
@@ -143,14 +150,18 @@ class SedmDB:
     def select_from_users(self, values, where_dict):
         """
         select values from `users`
-        Args:
-            values: list of str
-                values to be returned
-            where_dict: dict
-                'param':'value' to be used as WHERE clauses
-            values/keys options: ['id', 'username', 'name', 'email']
-        Returns:
-            list: tuples containing the values for each user matching the criteria, empty if no results
+
+        Parameters
+        ----------
+        values: list of str
+            values to be returned
+        where_dict: dict
+            'param':'value' to be used as WHERE clauses
+        values/keys options: ['id', 'username', 'name', 'email']
+
+        Returns
+        -------
+        list: tuples containing the values for each user matching the criteria, empty if no results
         """
         # TODO: test, reconsider return styles
         allowed_params = ['id', 'username', 'name', 'email']
@@ -167,13 +178,16 @@ class SedmDB:
     def add_group(self, pardic):
         """
         Adds a new group. Checks for duplicates in name
-        Args:
-            pardic: dict
-                required: 'designator'
 
-        Returns:
-            (-1, "ERROR: ...") if no designator was provided or there is already a group with it
-            (0, "Group added") if the adding was successful
+        Parameters
+        ----------
+        pardic: dict
+            required: 'designator'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if no designator was provided or there is already a group with it
+        (0, "Group added") if the adding was successful
         """
         if 'designator' not in pardic.keys():
             return (-1, 'ERROR: no group designator provided!')
@@ -193,15 +207,18 @@ class SedmDB:
     def add_to_group(self, user, group):
         """
         Adds the user as member of the group. Checks for duplicates in name.
-        Args:
-            user: int
-                id of the user in the 'users' Table
-            group: int
-                id of the group in the 'groups' Table
 
-        Returns:
-            (-1, "ERROR: ...") if there was areason for failure
-            (0, "User added to group") if the adding was successful
+        Parameters
+        ----------
+        user: int
+            id of the user in the 'users' Table
+        group: int
+            id of the group in the 'groups' Table
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was areason for failure
+        (0, "User added to group") if the adding was successful
         """
         if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
             return (-1, "ERROR: user does not exist!")
@@ -223,17 +240,22 @@ class SedmDB:
     def add_object(self, pardic):
         """
         Creates a new object
-        Args:
-            pardic: dict
-                required: 'name', 'typedesig'(, 'ra', 'dec', 'epoch' for a fixed object)
-                optional: 'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
-                NOTE: 'typedesig' should be one of:
-                            'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
-                            'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
 
-        Returns:
-            (-1, "ERROR: ...") if it failed to add
-            (0, "Object added") if the object is added successfully
+        Parameters
+        ----------
+        pardic: dict
+            required:
+                'name', 'typedesig'(, 'ra', 'dec', 'epoch' for a fixed object)
+            optional:
+                'iauname', 'marshal_id', 'epoch', 'ra', 'dec'
+            'typedesig' should be one of:
+                'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
+                'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if it failed to add
+        (0, "Object added") if the object is added successfully
         """
         # TODO: have it update existing object if it already exists?
         if 'marshal_id' in pardic.keys():
@@ -283,14 +305,18 @@ class SedmDB:
     def select_from_objects(self, values, where_dict):
         """
         select values from `objects`
-        Args:
-            values: list of str
-                values to be returned
-            where_dict: dict
-                'param':'value' to be used as WHERE clauses
-            values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
-        Returns:
-            list: tuples containing the values for each user matching the criteria, empty if no results
+
+        Parameters
+        ----------
+        values: list of str
+            values to be returned
+        where_dict: dict
+            'param':'value' to be used as WHERE clauses
+        values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
+
+        Returns
+        -------
+        list: tuples containing the values for each user matching the criteria, empty if no results
         """
         # TODO: test, reconsider return styles
         allowed_params = ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
@@ -308,13 +334,16 @@ class SedmDB:
     def get_object_id_from_name(self, object_name):
         """
         finds the id of an object given its name or part of its name
-        Args:
-            object_name: str
 
-        Returns:
-            id, full name if one object is found
-            list of all (id, full name) if multiple matches are found for the name
-            None if the object is not found
+        Parameters
+        ----------
+        object_name: str
+
+        Returns
+        -------
+        id, full name if one object is found
+        list of all (id, full name) if multiple matches are found for the name
+        None if the object is not found
         """
         object_name = object_name.lower()
         sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
@@ -332,14 +361,20 @@ class SedmDB:
     def add_elliptical_orbit(self, orbit_params):
         """
         Adds the orbit parameters for an object
-        Args:
-            orbit_params: dict
-                required: 'object_id', 'inclination', 'longascnode_0' (lon. of ascending node),
-                          'perihelion_o' (arg. of perihelion), 'a' (mean distance AU), 'n' (mean daily motion deg/day),
-                          'e' (eccentricity), 'M' (mean anomaly), 'mjdepoch' (epoch, time of 'M'), 'D' (equinox year),
-                          'M1', 'M2' (first and second components of magnitude model)
-                optional: 's' (angular size at 1 AU)
-        Returns:
+
+        Parameters
+        ----------
+        orbit_params: dict
+            required:
+                'object_id', 'inclination', 'longascnode_0' (lon. of ascending node),
+                'perihelion_o' (arg. of perihelion), 'a' (mean distance AU), 'n' (mean daily motion deg/day),
+                'e' (eccentricity), 'M' (mean anomaly), 'mjdepoch' (epoch, time of 'M'), 'D' (equinox year),
+                'M1', 'M2' (first and second components of magnitude model)
+
+            optional: 's' (angular size at 1 AU)
+
+        Returns
+        -------
 
         """
         # TODO: query associated table for object already existing, test
@@ -367,13 +402,19 @@ class SedmDB:
     def add_parabolic_orbit(self, orbit_params):
         """
 
-        Args:
-            orbit_params: dict
-                required: 'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
-                     'perihelion_o' (arg. of perihelion), 'q' (perihelion distance), 'D' (equinox year),
-                     'M1', 'M2' (first and second components of magnitude model)
-                optional: 's' (angular size at 1 AU)
-        Returns:
+
+        Parameters
+        ----------
+        orbit_params: dict
+            required:
+                'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
+                'perihelion_o' (arg. of perihelion), 'q' (perihelion distance), 'D' (equinox year),
+                'M1', 'M2' (first and second components of magnitude model)
+
+            optional: 's' (angular size at 1 AU)
+
+        Returns
+        -------
 
         """
         # TODO: query associated table for object already existing, test
@@ -400,16 +441,18 @@ class SedmDB:
     def add_hyperbolic_orbit(self, orbit_params):
         """
 
-        Args:
-            orbit_params: dict
+        Parameters
+        ----------
+        orbit_params: dict
+            required:
+                'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
+                'perihelion_o' (arg. of perihelion), 'e' (eccentricity), 'q' (perihelion distance AU),
+                'D' (equinox year), 'M1', 'M2' (first and second components of magnitude model)
 
-                required: 'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
-                     'perihelion_o' (arg. of perihelion), 'e' (eccentricity), 'q' (perihelion distance AU),
-                     'D' (equinox year), 'M1', 'M2' (first and second components of magnitude model)
-                optional: 's' (angular size at 1 AU)
+            optional: 's' (angular size at 1 AU)
 
-        Returns:
-
+        Returns
+        -------
         """
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
@@ -434,15 +477,20 @@ class SedmDB:
 
     def add_earth_satellite_orbit(self, orbit_params):
         """
-        Args:
-            orbit_params: dict
-                required: 'object_id', ' T' (epoch of other fields), 'inclination', 'ra' (ra of ascending node),
-                          'e' (eccentricity), 'pedigree' (arg. of pedigree), 'M' (mean anomaly),
-                          'n' (mean motion, revs/day), 'decay' (orbit decay rate, rev/day^2),
-                          'reforbit' (integral reference orbit number at epoch),
-                optional: 'drag' (drag coefficient, 1/(Earth radii))
 
-        Returns:
+        Parameters
+        ----------
+        orbit_params: dict
+            required:
+                'object_id', ' T' (epoch of other fields), 'inclination', 'ra' (ra of ascending node),
+                'e' (eccentricity), 'pedigree' (arg. of pedigree), 'M' (mean anomaly),
+                'n' (mean motion, revs/day), 'decay' (orbit decay rate, rev/day^2),
+                'reforbit' (integral reference orbit number at epoch),
+
+            optional: 'drag' (drag coefficient, 1/(Earth radii))
+
+        Returns
+        -------
 
         """
         # TODO: query associated table for object already existing, test
@@ -474,22 +522,30 @@ class SedmDB:
     def add_request(self, pardic):
         """
         Add a request
-        Args:
-            pardic: dict
-                required: 'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
-                          'priority', 'inidate' (start of observing window), 'enddate' (end of observing window)
-                     and one of 'nexposures' or 'ordering' described below
-                optional: 'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
-                          'cadence' (,
-                          'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
-                          the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
-                          'ordering' (string e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 g, then 3  r, then 1 i, 1 ifu, 1 i)
-                Notes: the numbers in 'ordering' must be single digit,
-                       spec/phot_duration should be duration per exp
-        Returns:
-            (-1, "ERROR: ...") if there is an issue with the input
-            (0, "Request added") if there are no errors
-            (0, "Request added, atomicrequests returned ...") if there was an issue with atomicrequest creation
+
+        Parameters
+        ----------
+        pardic: dict
+            required:
+                'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
+                'priority', 'inidate' (start of observing window), 'enddate' (end of observing window),
+                (one of 'nexposures' or 'ordering' described below)
+
+            optional:
+                'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
+                'cadence' (,
+                'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
+                the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
+                'ordering' (string e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 g, then 3  r, then 1 i, 1 ifu, 1 i)
+
+            Notes: the numbers in 'ordering' must be single digit,
+                   spec/phot_duration should be duration per exp
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there is an issue with the input
+        (0, "Request added") if there are no errors
+        (0, "Request added, atomicrequests returned ...") if there was an issue with atomicrequest creation
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
 
@@ -555,15 +611,19 @@ class SedmDB:
     def update_request(self, pardic):
         """
         Updates the request table with the parameters from the dictionary.
-        Args:
-            pardic: dict
-                required: 'id'
-                optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate'
-                Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
-        Returns:
-            (-1, "ERROR: ...") if there was an issue with the updating
-            (0, "Requests updated") if the update was successful
-            (0, "Requests and atomicrequests updated") if atomicrequests were also updated
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'id'
+            optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate'
+            Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue with the updating
+        (0, "Requests updated") if the update was successful
+        (0, "Requests and atomicrequests updated") if atomicrequests were also updated
         """
         # TODO: if exptime is allowed, significant changes are needed to the atomicrequest update
         # TODO: determine which parameters shouldn't be changed
@@ -611,16 +671,21 @@ class SedmDB:
     def select_from_requests(self, values, where_dict):
         """
         select values from `objects`
-        Args:
-            values: list of str
-                values to be returned
-            where_dict: dict
-                'param':'value' to be used as WHERE clauses
-            values/keys options: ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority',
-                                  'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence', 'phasesamples',
-                                  'sampletolerance', 'nexposures', 'ordering', 'creationdate', 'lastmodified']
-        Returns:
-            list: tuples containing the values for each user matching the criteria, empty if no results
+
+        Parameters
+        ----------
+        values: list of str
+            values to be returned
+        where_dict: dict
+            'param':'value' to be used as WHERE clauses
+        values/keys options:
+            ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority',
+             'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence', 'phasesamples',
+             'sampletolerance', 'nexposures', 'ordering', 'creationdate', 'lastmodified']
+
+        Returns
+        -------
+        list: tuples containing the values for each user matching the criteria, empty if no results
         """
         # TODO: test, reconsider return styles
         allowed_params = ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority', 'inidate',
@@ -639,8 +704,9 @@ class SedmDB:
     def get_active_requests(self):
         """
         Returns active requests
-        Returns: list
-            (object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, phasesamples,
+        Returns
+        -------
+        list : (object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, phasesamples,
              sampletolerance, filters, nexposures, ordering) for each request
         """
         # TODO: test?
@@ -679,15 +745,21 @@ class SedmDB:
     def add_atomic_request(self, pardic):
         """
         Adds an atomicrequest
-        Args:
-            pardic: dict
-                required: 'request_id', 'exptime' (duration based on magnitude),
-                          'filter', 'priority', 'inidate', 'enddate'
-                optional: 'object_id', 'order_id' (index of observation order for the request e.g. 0)
-                filter options: 'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
-        Returns:
-            (-1, "ERROR: ...") if there is an issue
-            (0, "Request added") if it succeeded
+
+        Parameters
+        ----------
+        pardic: dict
+            required:
+                'request_id', 'exptime' (duration based on magnitude), 'filter', 'priority', 'inidate', 'enddate'
+            optional:
+                'object_id', 'order_id' (index of observation order for the request e.g. 0)
+            filter options:
+                'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there is an issue
+        (0, "Request added") if it succeeded
         """
         # TODO: better description of 'order_id'
         # TODO: determine whether this should handle filter modifications to exptime?
@@ -727,14 +799,19 @@ class SedmDB:
     def update_atomic_request(self, pardic):
         """
         Updates an atomic request with the parameters from the dictionary
-        Args:
-            pardic: dict
-                required: 'id'
-                optional: 'status', 'priority', 'inidate', 'enddate', 'exptime'
-                NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Atomic request updated") if it completed successfully
+
+        Parameters
+        ----------
+        pardic : dict
+            required: 'id'
+            optional:
+                'status', 'priority', 'inidate', 'enddate', 'exptime'
+            NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Atomic request updated") if it completed successfully
         """
         # TODO: test, determine which parameters are allowed to be changed
         keys = list(pardic.keys())
@@ -762,13 +839,15 @@ class SedmDB:
         """
         return the atomicreqests associated with a single request
 
-        Args:
-            request_id: int
-                The request_id of the desired request
+        Parameters
+        ----------
+        request_id: int
+            The request_id of the desired request
 
-        Returns:
-            (id, object_id, order_id, exptime, filter, status, priority )
-                    for all atomicreqests associated with the desired request
+        Returns
+        -------
+        (id, object_id, order_id, exptime, filter, status, priority )
+                for all atomicreqests associated with the desired request
         """
         # TODO: test
         atomic_requests = self.execute_sql("SELECT id, object_id, order_id, exptime, filter, status, priority "
@@ -778,11 +857,13 @@ class SedmDB:
     def add_observation_fits(self, header_dict, tel_stats):
         """
 
-        Args:
-            header_dict:
-            tel_stats:
+        Parameters
+        ----------
+        header_dict:
+        tel_stats:
 
-        Returns:
+        Returns
+        -------
 
         """
         if 'atomicrequest_id' in header_dict.keys():
@@ -848,15 +929,19 @@ class SedmDB:
     def add_reduced_photometry(self, pardic):
         """
         Creates a new object in the phot table
-        Args:
-            pardic: dict
-                required: 'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
-                          'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id'
 
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Photometry added") if the photometry was added successfully
-            (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
+        Parameters
+        ----------
+        pardic: dict
+            required:
+                'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
+                'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Photometry added") if the photometry was added successfully
+        (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
         # TODO: test
         keys = list(pardic.keys())
@@ -918,15 +1003,19 @@ class SedmDB:
     def add_reduced_spectrum(self, pardic):
         """
         Creates a new object in the spec table
-        Args:
-            pardic: dict
-                required: 'observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset',
-                          'quality', 'cubefile', 'standardfile', 'skysub
 
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Spectrum added")  if the spectrum was added successfully
-            (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
+        Parameters
+        ----------
+        pardic: dict
+            required:
+                'observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset',
+                'quality', 'cubefile', 'standardfile', 'skysub
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Spectrum added")  if the spectrum was added successfully
+        (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
         # TODO: which parameters are required? test
         # TODO: update schedule table indicating reduction?
@@ -982,13 +1071,17 @@ class SedmDB:
     def add_metrics_phot(self, pardic):
         """
         Creates an entry in metrics_phot or updates an existing metrics entry
-        Args:
-            pardic: dict
-                required: 'phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources'
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
-            (0, "Photometry metrics added") if the metrics were added successfully
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
+        (0, "Photometry metrics added") if the metrics were added successfully
         """
         # TODO: which parameters are required? test
         keys = list(pardic.keys())
@@ -1073,12 +1166,16 @@ class SedmDB:
     def add_flexure(self, pardic):
         """
         Creates a new object in the flexure table.
-        Args:
-            pardic: dict
-                required: 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2'
-        Returns:
-            (-1, "ERROR: ...") if there was an issue
-            (0, "Flexure added")
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Flexure added")
         """
         # TODO: test
         # TODO: find out what the 'rms' is here
@@ -1105,13 +1202,17 @@ class SedmDB:
     def add_classification(self, pardic):
         """
         Creates a classification object attached to the reduced spectrum.
-        Args:
-            pardic: dict
-                required: 'spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score'
-                optional: 'phase', 'phase_err'
-        Returns:
-            (-1, "ERROR: ...") if there is an issue
-            (0, 'Classification added") if it was successful
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score'
+            optional: 'phase', 'phase_err'
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there is an issue
+        (0, 'Classification added") if it was successful
         """
         # TODO: clean up the required parameters, test
         keys = list(pardic.keys())
@@ -1143,14 +1244,19 @@ class SedmDB:
     def update_classification(self, pardic):
         """
         Update a classification
-        Args:
-            pardic: dict
-                required: 'id' OR ('spec_id', 'classifier')
-                optional: 'classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score'
-                Note: this function will not modify id, spec_id, classifier or object_id
-        Returns:
-            (-1, "ERROR: ...") if there is an issue
-            (0, "Classification updated") if it was successful
+
+        Parameters
+        ----------
+        pardic: dict
+            required: 'id' OR ('spec_id', 'classifier')
+            optional:
+                'classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score'
+            Note: this function will not modify id, spec_id, classifier or object_id
+
+        Returns
+        -------
+        (-1, "ERROR: ...") if there is an issue
+        (0, "Classification updated") if it was successful
         """
         # TODO: test, determine which parameters should be allowed
         keys = list(pardic.keys())
@@ -1195,18 +1301,21 @@ class SedmDB:
 def generate_select_sql(values, where_dict, allowed_params, table):
     """
     generate the sql for a select query
-    Args:
-        values: list of str
-            list of values to return
-        where_dict: dict
-            {'param':'value',...} adds WHERE param='value'...
-        allowed_params: list
-            the parameters of the table to be queried
-        table: str
-            name of the table
 
-    Returns:
-        str (sql select query)
+    Parameters
+    ----------
+    values: list of str
+        list of values to return
+    where_dict: dict
+        {'param':'value',...} adds WHERE param='value'...
+    allowed_params: list
+        the parameters of the table to be queried
+    table: str
+        name of the table
+
+    Returns
+    -------
+    str (sql select query)
     """
     for value in values:
         if value not in allowed_params:
@@ -1232,13 +1341,16 @@ def generate_select_sql(values, where_dict, allowed_params, table):
 def generate_insert_sql(pardic, param_list, table):
     """
     generate the sql for an insert command
-    Args:
-        pardic: dict (same as given to upper function)
-        param_list: list (list of parameters to insert)
-        table: string (name of table)
 
-    Returns:
-        sql string
+    Parameters
+    ----------
+    pardic: dict (same as given to upper function)
+    param_list: list (list of parameters to insert)
+    table: string (name of table)
+
+    Returns
+    -------
+    sql string
     """
     # TODO: test, re-write insert functions
     columns = "("
@@ -1256,13 +1368,17 @@ def generate_insert_sql(pardic, param_list, table):
 def generate_update_sql(pardic, param_list, table, lastmodified=False):
     """
     generate the sql for an update command
-    Args:
-        pardic: dict (same as given to upper function) (must contain 'id')
-        param_list: list (list of parameters to update)
-        table: string (name of table)
-        lastmodified: bool (if the table has a lastmodified column)
-    Returns:
-        sql string
+
+    Parameters
+    ----------
+    pardic: dict (same as given to upper function) (must contain 'id')
+    param_list: list (list of parameters to update)
+    table: string (name of table)
+    lastmodified: bool (if the table has a lastmodified column)
+
+    Returns
+    -------
+    sql string
     """
     # TODO: test, re-write update functions
     sql = "UPDATE %s SET " % (table,)

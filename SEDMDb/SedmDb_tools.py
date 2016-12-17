@@ -12,8 +12,10 @@ db = SedmDb.SedmDB()
 def create_atomic_requests():
     """
     Finds requests without atomicrequets and creates their atomicrequests
-    Returns:
-        (0, "...") containing a list of the requests and which, if any, failed
+
+    Returns
+    -------
+    (0, "...") containing a list of the requests and which, if any, failed
     """
     # get the ids of the requests with no atomicrequest
     request_ids = db.execute_sql('SELECT id FROM request WHERE NOT EXISTS '
@@ -35,12 +37,16 @@ def create_atomic_requests():
 def create_request_atomic_requests(request_id):
     """
     create atomicrequest entries for a given request
-    Args:
-        request_id: int
-            id of the request that needs atomicrequests
-    Returns:
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Added (#) atomic requests for request (#)") if it was successful
+
+    Parameters
+    ----------
+    request_id: int
+        id of the request that needs atomicrequests
+
+    Returns
+    -------
+    (-1, "ERROR: ...") if there was an issue
+    (0, "Added (#) atomic requests for request (#)") if it was successful
     """
     status = db.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
     if not status:
@@ -93,8 +99,10 @@ def add_observation_fitsfile(fitsfile):
     """
     Adds an observation from a fitsfile, sets the atomicobservation to 'OBSERVED'. Checks if all the atomicobservations
     associated with its request are observed, if so it sets the request's status to 'COMPLETED'.
-    Args:
-        fitsfile: str (fits file path)
+
+    Parameters
+    ----------
+    fitsfile: str (fits file path)
     """
     hdulist = fits.open(fitsfile)
     header = hdulist[0].header
