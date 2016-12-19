@@ -24,7 +24,8 @@ Contents:
    SEDM: SEDM general Software <SEDM>
    SEDMr: IFU-specific DRP Software <SEDMr>
    SEDMrph: RCam-specific DRP Software <SEDMrph>
-
+   guider: guider routines <guider>
+   SEDMDb: SEDM database software <SEDMDb>
 
 Indices and tables
 ==================

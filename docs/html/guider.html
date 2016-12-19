@@ -1,0 +1,176 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>5. guider package &mdash; SEDM Pipeline 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="SEDM Pipeline 0.1 documentation" href="index.html" />
+    <link rel="prev" title="4. SEDMrph package" href="SEDMrph.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="guider-package">
+<h1>5. guider package<a class="headerlink" href="#guider-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="guider-guider-module">
+<h2>5.1. guider.guider module<a class="headerlink" href="#guider-guider-module" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="guider-sedmtools-module">
+<h2>5.2. guider.sedmtools module<a class="headerlink" href="#guider-sedmtools-module" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-guider.sedmtools"></span><dl class="function">
+<dt id="guider.sedmtools.convolve">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">convolve</code><span class="sig-paren">(</span><em>image1</em>, <em>image2</em>, <em>MinPad=True</em>, <em>pad=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.convolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Not so simple convolution</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.extractBands">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">extractBands</code><span class="sig-paren">(</span><em>img</em>, <em>runType='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#extractBands"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.extractBands" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.findstar">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">findstar</code><span class="sig-paren">(</span><em>img</em>, <em>m=25</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#findstar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.findstar" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.fitgaussian">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">fitgaussian</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#fitgaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.fitgaussian" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.focusfind">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">focusfind</code><span class="sig-paren">(</span><em>focus_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#focusfind"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.focusfind" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.gaussian">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">gaussian</code><span class="sig-paren">(</span><em>height</em>, <em>center_x</em>, <em>center_y</em>, <em>width_x</em>, <em>width_y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.gaussian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a gaussian function with the given parameters</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.getImgList">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">getImgList</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#getImgList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.getImgList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.getTime">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">getTime</code><span class="sig-paren">(</span><em>fits</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#getTime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.getTime" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.getfwhm">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">getfwhm</code><span class="sig-paren">(</span><em>img</em>, <em>c=(-1</em>, <em>-1)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#getfwhm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.getfwhm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.getshift">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">getshift</code><span class="sig-paren">(</span><em>img1</em>, <em>img2</em>, <em>n=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#getshift"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.getshift" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.moments">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">moments</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#moments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.moments" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="guider.sedmtools.quadratic">
+<code class="descclassname">guider.sedmtools.</code><code class="descname">quadratic</code><span class="sig-paren">(</span><em>x</em>, <em>a</em>, <em>b</em>, <em>c</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/guider/sedmtools.html#quadratic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#guider.sedmtools.quadratic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="guider-seeinghistogram-module">
+<h2>5.3. guider.seeingHistogram module<a class="headerlink" href="#guider-seeinghistogram-module" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">5. guider package</a><ul>
+<li><a class="reference internal" href="#guider-guider-module">5.1. guider.guider module</a></li>
+<li><a class="reference internal" href="#guider-sedmtools-module">5.2. guider.sedmtools module</a></li>
+<li><a class="reference internal" href="#guider-seeinghistogram-module">5.3. guider.seeingHistogram module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="SEDMrph.html" title="previous chapter">4. SEDMrph package</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/guider.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Nick Konidaris, Don Neill, Nadia Blagorodnova.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/guider.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

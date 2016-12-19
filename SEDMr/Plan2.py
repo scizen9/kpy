@@ -297,8 +297,9 @@ sp_%(outname)s: %(outname)s
 \t$(PLOT) --spec %(specnam)s --savespec --savefig %(interact)s
 
 redo_%(name)s:
-\ttouch %(outname)s
-\t@echo ready to re-make sp_%(outname)s
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -342,10 +343,6 @@ sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 %(specplot)s
 
-redo_%(name)s:
-\ttouch %(outname)s
-\t@echo ready to re-make sp_%(outname)s
-
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 """ % tp
@@ -385,8 +382,10 @@ sp_%(outname)s: %(outname)s
 \t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 redo_%(name)s:
-\ttouch %(outname)s
-\t@echo ready to re-make sp_%(outname)s\n\n""" % tp, "%(outname)s" % tp
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
+\n\n""" % tp, "%(outname)s" % tp
 
 
 def to_makefile(objs, calibs):

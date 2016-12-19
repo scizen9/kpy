@@ -75,9 +75,14 @@
         <span class="n">decparams</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
     <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot; &quot;</span> <span class="ow">in</span> <span class="n">dec</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
         <span class="n">decparams</span> <span class="o">=</span> <span class="n">dec</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+       
+    <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="ow">in</span> <span class="n">decparams</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="mf">1.</span>
         
-    <span class="n">decparams</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">decparams</span><span class="p">]</span>
-    <span class="k">return</span>  <span class="n">getDegDec</span><span class="p">(</span><span class="o">*</span><span class="nb">tuple</span><span class="p">(</span><span class="n">decparams</span><span class="p">))</span></div>
+    <span class="n">decparams</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">r</span><span class="p">))</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">decparams</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">sign</span> <span class="o">*</span>  <span class="n">getDegDec</span><span class="p">(</span><span class="o">*</span><span class="nb">tuple</span><span class="p">(</span><span class="n">decparams</span><span class="p">))</span></div>
  
 <div class="viewcode-block" id="getDegRa"><a class="viewcode-back" href="../../SEDMrph.html#SEDMrph.coordinates_conversor.getDegRa">[docs]</a><span class="k">def</span> <span class="nf">getDegRa</span><span class="p">(</span><span class="n">hh</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">ss</span><span class="p">):</span>
 	<span class="k">return</span>  <span class="mi">15</span><span class="o">*</span><span class="p">(</span><span class="n">hh</span> <span class="o">+</span> <span class="n">mm</span><span class="o">/</span><span class="mf">60.</span> <span class="o">+</span> <span class="n">ss</span><span class="o">/</span><span class="mf">3600.</span><span class="p">)</span></div>

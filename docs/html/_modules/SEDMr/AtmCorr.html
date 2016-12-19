@@ -82,7 +82,7 @@
 <span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebfit</span>
 <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
 
-<span class="kn">import</span> <span class="nn">NPK.Standards</span> <span class="kn">as</span> <span class="nn">SS</span>
+<span class="kn">import</span> <span class="nn">NPK.Standards</span> <span class="kn">as</span> <span class="nn">Stds</span>
 <span class="kn">import</span> <span class="nn">Wavelength</span>
 
 
@@ -98,7 +98,7 @@
     <span class="n">erg_s_cm2_ang</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s1">&#39;std-correction&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-16</span>
     <span class="n">maxnm</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span>
 
-    <span class="nb">object</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">objname</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
@@ -111,9 +111,9 @@
 
         <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Wavelength [nm]&quot;</span><span class="p">)</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Correction [erg/s/cm cm/Ang]&quot;</span><span class="p">)</span>
-        <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;ph/10 m/nm to erg/s/cm2/Ang from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">object</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;ph/10 m/nm to erg/s/cm2/Ang from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">objname</span><span class="p">)</span>
 
-        <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;corr_&quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.pdf&quot;</span><span class="p">)</span>
+        <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;corr_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.pdf&quot;</span><span class="p">)</span>
 
     <span class="c1"># Construct result</span>
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
@@ -129,7 +129,7 @@
             <span class="s2">&quot;files&quot;</span><span class="p">:</span> <span class="n">filename</span><span class="p">,</span>
             <span class="s2">&quot;when&quot;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getlogin</span><span class="p">()</span>
-        <span class="p">}</span>
+            <span class="p">}</span>
 
     <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outname</span><span class="p">,</span> <span class="p">[</span><span class="n">res</span><span class="p">])</span></div>
 
@@ -183,6 +183,11 @@
         <span class="k">except</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Not able to load </span><span class="si">%s</span><span class="s2">. &quot;</span> <span class="o">%</span> <span class="n">ifile</span><span class="p">)</span>
 
+        <span class="c1"># Check quality of extraction</span>
+        <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s2">&quot;Bad std extraction in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span>
+            <span class="k">continue</span>
+
         <span class="c1"># Check for calculated correction</span>
         <span class="k">if</span> <span class="s2">&quot;std-correction&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">print</span> <span class="s2">&quot;No std-correction vector in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span>
@@ -194,20 +199,20 @@
             <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">maxnm</span><span class="p">:</span>
                 <span class="n">maxnm</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span>
         <span class="c1"># Convert file named sp_STD-nnnn_obs* to a name compaitable</span>
-        <span class="c1"># with Standards.py</span>
-        <span class="n">pred</span> <span class="o">=</span> <span class="n">ifile</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;sp_STD-&quot;</span><span class="p">)</span>
+        <span class="c1"># with Standards.py.  First strip of &quot;sp_STD-&quot;</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">ifile</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
-        <span class="k">print</span> <span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">SS</span><span class="o">.</span><span class="n">Standards</span>
+        <span class="k">print</span> <span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span>
         <span class="c1"># Are we in our list of standard stars?</span>
-        <span class="k">if</span> <span class="n">pred</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SS</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">pred</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;File named &#39;</span><span class="si">%s</span><span class="s2">&#39; is reduced to &#39;</span><span class="si">%s</span><span class="s2">&#39; and no such standard &quot;</span>
                   <span class="s2">&quot;seems to exist.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">))</span>
             <span class="k">continue</span>
         <span class="c1"># Record median correction in ROI</span>
-        <span class="n">ROI</span> <span class="o">=</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&gt;</span> <span class="mi">600</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="mi">850</span><span class="p">)</span>
-        <span class="n">corr_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">correction</span><span class="p">[</span><span class="n">ROI</span><span class="p">]))</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&gt;</span> <span class="mi">600</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="mi">850</span><span class="p">)</span>
+        <span class="n">corr_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">correction</span><span class="p">[</span><span class="n">roi</span><span class="p">]))</span>
         <span class="c1"># Normalize each correction by the median value</span>
         <span class="n">correction</span> <span class="o">/=</span> <span class="n">corr_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">corrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">correction</span><span class="p">)</span>

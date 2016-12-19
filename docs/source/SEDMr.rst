@@ -50,6 +50,22 @@ SEDMr.DivideFlat module
     :undoc-members:
     :show-inheritance:
 
+SEDMr.DrpReport module
+-----------------------
+
+.. automodule:: SEDMr.DrpReport
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+SEDMr.EffTrend module
+-----------------------
+
+.. automodule:: SEDMr.EffTrend
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 SEDMr.Extraction module
 -----------------------
 
@@ -134,6 +150,14 @@ SEDMr.Plan module
 -----------------
 
 .. automodule:: SEDMr.Plan
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+SEDMr.PtfDrpReport module
+-----------------
+
+.. automodule:: SEDMr.PtfDrpReport
     :members:
     :undoc-members:
     :show-inheritance:

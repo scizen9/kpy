@@ -25,6 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="SEDM Pipeline 0.1 documentation" href="index.html" />
+    <link rel="next" title="5. guider package" href="guider.html" />
     <link rel="prev" title="3. SEDMr package" href="SEDMr.html" />
    
   
@@ -43,24 +44,8 @@
 <div class="section" id="sedmrph-acq-image-tracker-module">
 <h2>4.1. SEDMrph.acq_image_tracker module<a class="headerlink" href="#sedmrph-acq-image-tracker-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-SEDMrph.app_phot">
-<span id="sedmrph-app-phot-module"></span><h2>4.2. SEDMrph.app_phot module<a class="headerlink" href="#module-SEDMrph.app_phot" title="Permalink to this headline">¶</a></h2>
-<p>Created on Sat May 23 18:23:02 2015</p>
-<p>&#64;author: nadiablago</p>
-<dl class="function">
-<dt id="SEDMrph.app_phot.get_app_phot">
-<code class="descclassname">SEDMrph.app_phot.</code><code class="descname">get_app_phot</code><span class="sig-paren">(</span><em>coords</em>, <em>image</em>, <em>plot_only=False</em>, <em>store=True</em>, <em>wcsin='world'</em>, <em>fwhm=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/app_phot.html#get_app_phot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.app_phot.get_app_phot" title="Permalink to this definition">¶</a></dt>
-<dd><p>coords: files:
-wcsin: can be &#8220;world&#8221;, &#8220;logic&#8221;</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.app_phot.get_app_phot_target">
-<code class="descclassname">SEDMrph.app_phot.</code><code class="descname">get_app_phot_target</code><span class="sig-paren">(</span><em>image</em>, <em>plot_only=False</em>, <em>store=True</em>, <em>wcsin='world'</em>, <em>fwhm=2</em>, <em>box=20</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/app_phot.html#get_app_phot_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.app_phot.get_app_phot_target" title="Permalink to this definition">¶</a></dt>
-<dd><p>coords: files:
-wcsin: can be &#8220;world&#8221;, &#8220;logic&#8221;</p>
-</dd></dl>
-
+<div class="section" id="sedmrph-app-phot-module">
+<h2>4.2. SEDMrph.app_phot module<a class="headerlink" href="#sedmrph-app-phot-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-SEDMrph.coordinates_conversor">
 <span id="sedmrph-coordinates-conversor-module"></span><h2>4.3. SEDMrph.coordinates_conversor module<a class="headerlink" href="#module-SEDMrph.coordinates_conversor" title="Permalink to this headline">¶</a></h2>
@@ -237,16 +222,15 @@ Avaialable modes: (sum, average, median)</p>
 <dd><p>Updates the fits files with the new parameter.</p>
 </dd></dl>
 
-</div>
-<div class="section" id="module-SEDMrph.flatfield">
-<span id="sedmrph-flatfield-module"></span><h2>4.7. SEDMrph.flatfield module<a class="headerlink" href="#module-SEDMrph.flatfield" title="Permalink to this headline">¶</a></h2>
-<p>Created on Thu Mar  3 15:34:47 2016</p>
-<p>&#64;author: nadiablago</p>
 <dl class="function">
-<dt id="SEDMrph.flatfield.get_flats_counts">
-<code class="descclassname">SEDMrph.flatfield.</code><code class="descname">get_flats_counts</code><span class="sig-paren">(</span><em>directory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/flatfield.html#get_flats_counts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.flatfield.get_flats_counts" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="SEDMrph.fitsutils.update_pars">
+<code class="descclassname">SEDMrph.fitsutils.</code><code class="descname">update_pars</code><span class="sig-paren">(</span><em>myfits</em>, <em>pardic</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/fitsutils.html#update_pars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.fitsutils.update_pars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates the fits files with the new parameter.</p>
+</dd></dl>
 
+</div>
+<div class="section" id="sedmrph-flatfield-module">
+<h2>4.7. SEDMrph.flatfield module<a class="headerlink" href="#sedmrph-flatfield-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="sedmrph-listener-module">
 <h2>4.8. SEDMrph.listener module<a class="headerlink" href="#sedmrph-listener-module" title="Permalink to this headline">¶</a></h2>
@@ -300,127 +284,11 @@ Format OFFSET,A or AB,Filename</p>
 <dd></dd></dl>
 
 </div>
-<div class="section" id="module-SEDMrph.rcred">
-<span id="sedmrph-rcred-module"></span><h2>4.11. SEDMrph.rcred module<a class="headerlink" href="#module-SEDMrph.rcred" title="Permalink to this headline">¶</a></h2>
-<p>Created on Sun Jun 14 13:11:52 2015</p>
-<p>&#64;author: nadiablago</p>
-<dl class="function">
-<dt id="SEDMrph.rcred.clean_cosmic">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">clean_cosmic</code><span class="sig-paren">(</span><em>f</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#clean_cosmic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.clean_cosmic" title="Permalink to this definition">¶</a></dt>
-<dd><p>From lacosmic.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.copy_ref_calib">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">copy_ref_calib</code><span class="sig-paren">(</span><em>curdir</em>, <em>calib='Flat'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#copy_ref_calib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.copy_ref_calib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reference master Bias and master Flat are stored in the refphot folder.
-The files are copied if they are not found in the folder where the photometry is being reduced.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.create_masterbias">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">create_masterbias</code><span class="sig-paren">(</span><em>biasdir=None</em>, <em>channel='rc'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#create_masterbias"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.create_masterbias" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combines slow and fast readout mode biases for the specified channel.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.create_masterflat">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">create_masterflat</code><span class="sig-paren">(</span><em>flatdir=None</em>, <em>biasdir=None</em>, <em>channel='rc'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#create_masterflat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.create_masterflat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a masterflat from both dome flats and sky flats if the number of counts in the given filter
-is not saturated and not too low (between 3000 and 40000).</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.get_masked_image">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">get_masked_image</code><span class="sig-paren">(</span><em>img</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#get_masked_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.get_masked_image" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.get_overscan_bias_rc">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">get_overscan_bias_rc</code><span class="sig-paren">(</span><em>img</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#get_overscan_bias_rc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.get_overscan_bias_rc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bias from overscan region.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.get_sequential_name">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">get_sequential_name</code><span class="sig-paren">(</span><em>target_dir</em>, <em>name</em>, <em>i=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#get_sequential_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.get_sequential_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets a sequential name if we have a file with the same object name imaged several times.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.is_on_target">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">is_on_target</code><span class="sig-paren">(</span><em>image</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#is_on_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.is_on_target" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add as a parameter whether the image is on target or not.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.make_mask_cross">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">make_mask_cross</code><span class="sig-paren">(</span><em>img</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#make_mask_cross"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.make_mask_cross" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.reduce_image">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">reduce_image</code><span class="sig-paren">(</span><em>image</em>, <em>flatdir=None</em>, <em>biasdir=None</em>, <em>cosmic=False</em>, <em>astrometry=True</em>, <em>channel='rc'</em>, <em>target_dir='reduced'</em>, <em>overwrite=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#reduce_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.reduce_image" title="Permalink to this definition">¶</a></dt>
-<dd><p>Applies Flat field and bias calibrations to the image.</p>
-<p>Steps:</p>
-<ol class="arabic simple">
-<li><ul class="first">
-<li>Solve astrometry on the entire image.</li>
-</ul>
-</li>
-<li><ul class="first">
-<li>Compute master bias (if it does not exist) and de-bias the image.</li>
-</ul>
-</li>
-<li><ul class="first">
-<li>Separate the image into 4 filters.</li>
-</ul>
-</li>
-<li><ul class="first">
-<li>Compute flat field for each filter (if it does not exist) and apply flat fielding on the image.</li>
-</ul>
-</li>
-<li><ul class="first">
-<li>Computes cosmic ray rejectionon the entire image.</li>
-</ul>
-</li>
-</ol>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.slice_rc">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">slice_rc</code><span class="sig-paren">(</span><em>img</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#slice_rc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.slice_rc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Slices the Rainbow Camera into 4 different images and adds the &#8216;filter&#8217; keyword in the fits file.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.solve_astrometry">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">solve_astrometry</code><span class="sig-paren">(</span><em>img</em>, <em>radius=1</em>, <em>with_pix=True</em>, <em>overwrite=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#solve_astrometry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.solve_astrometry" title="Permalink to this definition">¶</a></dt>
-<dd><p>img: fits image where astrometry should be solved.
-radius: radius of uncertainty on astrometric position in image.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.rcred.solve_edges">
-<code class="descclassname">SEDMrph.rcred.</code><code class="descname">solve_edges</code><span class="sig-paren">(</span><em>flat</em>, <em>band</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/rcred.html#solve_edges"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.rcred.solve_edges" title="Permalink to this definition">¶</a></dt>
-<dd><p>Finds the edges of the flat, and extends the respons of the average to the edges.</p>
-</dd></dl>
-
+<div class="section" id="sedmrph-rcred-module">
+<h2>4.11. SEDMrph.rcred module<a class="headerlink" href="#sedmrph-rcred-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-SEDMrph.realtimered">
-<span id="sedmrph-realtimered-module"></span><h2>4.12. SEDMrph.realtimered module<a class="headerlink" href="#module-SEDMrph.realtimered" title="Permalink to this headline">¶</a></h2>
-<p>Created on Thu Mar  3 19:23:29 2016</p>
-<p>&#64;author: nadiablago</p>
-<dl class="function">
-<dt id="SEDMrph.realtimered.reduce_all_dir">
-<code class="descclassname">SEDMrph.realtimered.</code><code class="descname">reduce_all_dir</code><span class="sig-paren">(</span><em>photdir</em>, <em>overwrite=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/realtimered.html#reduce_all_dir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.realtimered.reduce_all_dir" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.realtimered.reduce_on_the_fly">
-<code class="descclassname">SEDMrph.realtimered.</code><code class="descname">reduce_on_the_fly</code><span class="sig-paren">(</span><em>photdir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/realtimered.html#reduce_on_the_fly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.realtimered.reduce_on_the_fly" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="sedmrph-realtimered-module">
+<h2>4.12. SEDMrph.realtimered module<a class="headerlink" href="#sedmrph-realtimered-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="sedmrph-recenter-ifu-module">
 <h2>4.13. SEDMrph.recenter_ifu module<a class="headerlink" href="#sedmrph-recenter-ifu-module" title="Permalink to this headline">¶</a></h2>
@@ -438,6 +306,53 @@ radius: radius of uncertainty on astrometric position in image.</p>
 <dd><p>Analyses the sextractor filelist to determine the best focus.</p>
 <dl class="docutils">
 <dt>returns: A tuple containing:</dt>
+<dd><ol class="first arabic simple">
+<li><ul class="first">
+<li>Number of extracted sources.</li>
+</ul>
+</li>
+<li><ul class="first">
+<li>FWHM in arcsecs.</li>
+</ul>
+</li>
+<li><ul class="first">
+<li>Ellipticity.</li>
+</ul>
+</li>
+</ol>
+<p class="last">#   1 X_IMAGE                Object position along x                                    [pixel]
+#   2 Y_IMAGE                Object position along y                                    [pixel]
+#   3 ALPHA_J2000            Right ascension of barycenter (J2000)                      [deg]
+#   4 DELTA_J2000            Declination of barycenter (J2000)                          [deg]
+#   5 MAG_BEST               Best of MAG_AUTO and MAG_ISOCOR                            [mag]
+#   6 MAGERR_BEST            RMS error for MAG_BEST                                     [mag]
+#   7 FWHM_WORLD             FWHM assuming a gaussian core                              [deg]
+#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
+#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE
+#  10 BACKGROUND             Background at centroid position                            [count]
+#  11 FLAGS                  Extraction flags</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="SEDMrph.sextractor.analyse_sex">
+<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">analyse_sex</code><span class="sig-paren">(</span><em>sexfileslist</em>, <em>plot=True</em>, <em>interactive=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#analyse_sex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.analyse_sex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Analyses the sextractor filelist to determine the best focus.</p>
+<blockquote>
+<div>#   1 X_IMAGE                Object position along x                                    [pixel]
+#   2 Y_IMAGE                Object position along y                                    [pixel]
+#   3 ALPHA_J2000            Right ascension of barycenter (J2000)                      [deg]
+#   4 DELTA_J2000            Declination of barycenter (J2000)                          [deg]
+#   5 MAG_BEST               Best of MAG_AUTO and MAG_ISOCOR                            [mag]
+#   6 MAGERR_BEST            RMS error for MAG_BEST                                     [mag]
+#   7 FWHM_WORLD             FWHM assuming a gaussian core                              [deg]
+#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
+#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE
+#  10 BACKGROUND             Background at centroid position                            [count]
+#  11 FLAGS                  Extraction flags</div></blockquote>
+<dl class="docutils">
+<dt>returns: A tuple containing:</dt>
 <dd><ol class="first last arabic simple">
 <li><ul class="first">
 <li>The best focus values as interpolated from the images.</li>
@@ -453,9 +368,21 @@ radius: radius of uncertainty on astrometric position in image.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="SEDMrph.sextractor.analyse_sex">
-<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">analyse_sex</code><span class="sig-paren">(</span><em>sexfileslist</em>, <em>plot=True</em>, <em>interactive=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#analyse_sex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.analyse_sex" title="Permalink to this definition">¶</a></dt>
+<dt id="SEDMrph.sextractor.analyse_sex_ifu">
+<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">analyse_sex_ifu</code><span class="sig-paren">(</span><em>sexfileslist</em>, <em>plot=True</em>, <em>interactive=False</em>, <em>debug=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#analyse_sex_ifu"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.analyse_sex_ifu" title="Permalink to this definition">¶</a></dt>
 <dd><p>Analyses the sextractor filelist to determine the best focus.</p>
+<blockquote>
+<div>#   1 X_IMAGE                Object position along x                                    [pixel]
+#   2 Y_IMAGE                Object position along y                                    [pixel]
+#   3 ALPHA_J2000            Right ascension of barycenter (J2000)                      [deg]
+#   4 DELTA_J2000            Declination of barycenter (J2000)                          [deg]
+#   5 MAG_BEST               Best of MAG_AUTO and MAG_ISOCOR                            [mag]
+#   6 MAGERR_BEST            RMS error for MAG_BEST                                     [mag]
+#   7 FWHM_WORLD             FWHM assuming a gaussian core                              [deg]
+#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
+#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE
+#  10 BACKGROUND             Background at centroid position                            [count]
+#  11 FLAGS                  Extraction flags</div></blockquote>
 <dl class="docutils">
 <dt>returns: A tuple containing:</dt>
 <dd><ol class="first last arabic simple">
@@ -479,6 +406,12 @@ radius: radius of uncertainty on astrometric position in image.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="SEDMrph.sextractor.get_focus_ifu">
+<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">get_focus_ifu</code><span class="sig-paren">(</span><em>lfiles</em>, <em>plot=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#get_focus_ifu"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.get_focus_ifu" title="Permalink to this definition">¶</a></dt>
+<dd><p>Receives a list of focus ifu files and returns the best focus.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="SEDMrph.sextractor.get_image_pars">
 <code class="descclassname">SEDMrph.sextractor.</code><code class="descname">get_image_pars</code><span class="sig-paren">(</span><em>image</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#get_image_pars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.get_image_pars" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a set of statistics for a given image.</p>
@@ -486,7 +419,7 @@ radius: radius of uncertainty on astrometric position in image.</p>
 
 <dl class="function">
 <dt id="SEDMrph.sextractor.run_sex">
-<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">run_sex</code><span class="sig-paren">(</span><em>flist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#run_sex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.run_sex" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">SEDMrph.sextractor.</code><code class="descname">run_sex</code><span class="sig-paren">(</span><em>flist</em>, <em>mask=False</em>, <em>cosmics=False</em>, <em>overwrite=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/sextractor.html#run_sex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.sextractor.run_sex" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -496,12 +429,12 @@ radius: radius of uncertainty on astrometric position in image.</p>
 <p>&#64;author: nadiablago</p>
 <dl class="function">
 <dt id="SEDMrph.time_utils.jd2utc">
-<code class="descclassname">SEDMrph.time_utils.</code><code class="descname">jd2utc</code><span class="sig-paren">(</span><em>jd</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/time_utils.html#jd2utc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.time_utils.jd2utc" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">SEDMrph.time_utils.</code><code class="descname">jd2utc</code><span class="sig-paren">(</span><em>jd</em>, <em>string=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/time_utils.html#jd2utc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.time_utils.jd2utc" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="SEDMrph.time_utils.mjd2utc">
-<code class="descclassname">SEDMrph.time_utils.</code><code class="descname">mjd2utc</code><span class="sig-paren">(</span><em>mjd</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/time_utils.html#mjd2utc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.time_utils.mjd2utc" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">SEDMrph.time_utils.</code><code class="descname">mjd2utc</code><span class="sig-paren">(</span><em>mjd</em>, <em>string=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/time_utils.html#mjd2utc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.time_utils.mjd2utc" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -617,99 +550,8 @@ Source: equation 2, Eyer &amp; Bartholdi, 1998 (<a class="reference external" hr
 <dd></dd></dl>
 
 </div>
-<div class="section" id="module-SEDMrph.zeropoint">
-<span id="sedmrph-zeropoint-module"></span><h2>4.20. SEDMrph.zeropoint module<a class="headerlink" href="#module-SEDMrph.zeropoint" title="Permalink to this headline">¶</a></h2>
-<p>Created on Thu Dec  3 14:57:05 2015</p>
-<p>&#64;author: nadiablago</p>
-<dl class="function">
-<dt id="SEDMrph.zeropoint.add_to_zp_cal">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">add_to_zp_cal</code><span class="sig-paren">(</span><em>ref_stars</em>, <em>image</em>, <em>logname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#add_to_zp_cal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.add_to_zp_cal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Records the parameters and instrumental and standard star magnitudes needed for zeropoint calibration.
-ref_stars: name of the file that contains the reference stars that are present in the image.
-image: fits image with the sources in them.
-logname: name of the file where the information on reference and measurements are logged.</p>
-<p>minst = M + c0 + c1(AIRMASS) + c2(color) + c3(UT)</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.are_isolated">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">are_isolated</code><span class="sig-paren">(</span><em>rav</em>, <em>decv</em>, <em>r</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#are_isolated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.are_isolated" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a mask saying whether the stars with coordinates rav, decv are isolated in a radius of r arcsec.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.calibrate_zeropoint">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">calibrate_zeropoint</code><span class="sig-paren">(</span><em>image</em>, <em>plot=True</em>, <em>plotdir='.'</em>, <em>debug=False</em>, <em>refstars=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#calibrate_zeropoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.calibrate_zeropoint" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.extract_star_sequence">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">extract_star_sequence</code><span class="sig-paren">(</span><em>imfile</em>, <em>band</em>, <em>plot=True</em>, <em>survey='sdss'</em>, <em>debug=False</em>, <em>refstars=None</em>, <em>plotdir='.'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#extract_star_sequence"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.extract_star_sequence" title="Permalink to this definition">¶</a></dt>
-<dd><p>Given a fits image: imfile and a the name of the band which we want to extract the sources from,
-it saves the extracted sources into  &#8216;/tmp/sdss_cat_det.txt&#8217; file.
-If the band does not match the bands in the survey, a change is performed to adapt to the new band.</p>
-<p>If plotting activated, plots the USNOB1 field of stars on top of the star field image.
-Red circles are stars identified from the catalogue in the correct magnitude range.
-Yellow circles are stars that are isolated.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.find_fwhm">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">find_fwhm</code><span class="sig-paren">(</span><em>imfile</em>, <em>xpos</em>, <em>ypos</em>, <em>plot=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#find_fwhm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.find_fwhm" title="Permalink to this definition">¶</a></dt>
-<dd><p>Finds and returns the best parameters for the FWHM in arcsec for the stars marked with X, Y</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.find_zeropoint_noid">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">find_zeropoint_noid</code><span class="sig-paren">(</span><em>ref_stars</em>, <em>image</em>, <em>plot=False</em>, <em>plotdir='.'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#find_zeropoint_noid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.find_zeropoint_noid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Finds the zeropoint by comparig the magnitude of the stars measured in the image,
-vs. the magnitude of the stars from the reference catalogue.
-band: band for which we want to measure the zeropoint.
-col_band: band for the colour term we want to use.</p>
-<p>returns the zeropoint, the colour term and the standard deviation in the
-zeropoint from all the measured stars.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.lsq_test">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">lsq_test</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#lsq_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.lsq_test" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.lsq_zeropoint">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">lsq_zeropoint</code><span class="sig-paren">(</span><em>logfile</em>, <em>plotdir=None</em>, <em>plot=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#lsq_zeropoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.lsq_zeropoint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.lsq_zeropoint_partial">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">lsq_zeropoint_partial</code><span class="sig-paren">(</span><em>logfile</em>, <em>plot=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#lsq_zeropoint_partial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.lsq_zeropoint_partial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.plot_zp">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">plot_zp</code><span class="sig-paren">(</span><em>zpfile</em>, <em>plotdir=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#plot_zp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.plot_zp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.plot_zp_airmass">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">plot_zp_airmass</code><span class="sig-paren">(</span><em>zpfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#plot_zp_airmass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.plot_zp_airmass" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.twoD_Gauss_test">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">twoD_Gauss_test</code><span class="sig-paren">(</span><em>theta=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#twoD_Gauss_test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.twoD_Gauss_test" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generates a test Gaussian and fits it using the scisoft optimization software.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="SEDMrph.zeropoint.twoD_Gaussian">
-<code class="descclassname">SEDMrph.zeropoint.</code><code class="descname">twoD_Gaussian</code><span class="sig-paren">(</span><em>xdata_tuple</em>, <em>amplitude</em>, <em>xo</em>, <em>yo</em>, <em>sigma_x</em>, <em>sigma_y</em>, <em>theta</em>, <em>offset</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMrph/zeropoint.html#twoD_Gaussian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMrph.zeropoint.twoD_Gaussian" title="Permalink to this definition">¶</a></dt>
-<dd><p>Produces a 2D gaussian centered in xo, yo with the parameters specified.
-xdata_tuple: coordinates of the points where the 2D Gaussian is computed.</p>
-</dd></dl>
-
+<div class="section" id="sedmrph-zeropoint-module">
+<h2>4.20. SEDMrph.zeropoint module<a class="headerlink" href="#sedmrph-zeropoint-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-SEDMrph.zscale">
 <span id="sedmrph-zscale-module"></span><h2>4.21. SEDMrph.zscale module<a class="headerlink" href="#module-SEDMrph.zscale" title="Permalink to this headline">¶</a></h2>
@@ -754,17 +596,17 @@ returns (z1, z2)</p>
   <ul>
 <li><a class="reference internal" href="#">4. SEDMrph package</a><ul>
 <li><a class="reference internal" href="#sedmrph-acq-image-tracker-module">4.1. SEDMrph.acq_image_tracker module</a></li>
-<li><a class="reference internal" href="#module-SEDMrph.app_phot">4.2. SEDMrph.app_phot module</a></li>
+<li><a class="reference internal" href="#sedmrph-app-phot-module">4.2. SEDMrph.app_phot module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.coordinates_conversor">4.3. SEDMrph.coordinates_conversor module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.correct_old_fits">4.4. SEDMrph.correct_old_fits module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.fit_utils">4.5. SEDMrph.fit_utils module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.fitsutils">4.6. SEDMrph.fitsutils module</a></li>
-<li><a class="reference internal" href="#module-SEDMrph.flatfield">4.7. SEDMrph.flatfield module</a></li>
+<li><a class="reference internal" href="#sedmrph-flatfield-module">4.7. SEDMrph.flatfield module</a></li>
 <li><a class="reference internal" href="#sedmrph-listener-module">4.8. SEDMrph.listener module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.pharos">4.9. SEDMrph.pharos module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.pointing">4.10. SEDMrph.pointing module</a></li>
-<li><a class="reference internal" href="#module-SEDMrph.rcred">4.11. SEDMrph.rcred module</a></li>
-<li><a class="reference internal" href="#module-SEDMrph.realtimered">4.12. SEDMrph.realtimered module</a></li>
+<li><a class="reference internal" href="#sedmrph-rcred-module">4.11. SEDMrph.rcred module</a></li>
+<li><a class="reference internal" href="#sedmrph-realtimered-module">4.12. SEDMrph.realtimered module</a></li>
 <li><a class="reference internal" href="#sedmrph-recenter-ifu-module">4.13. SEDMrph.recenter_ifu module</a></li>
 <li><a class="reference internal" href="#sedmrph-sao-module">4.14. SEDMrph.sao module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.sextractor">4.15. SEDMrph.sextractor module</a></li>
@@ -772,7 +614,7 @@ returns (z1, z2)</p>
 <li><a class="reference internal" href="#module-SEDMrph.transformations">4.17. SEDMrph.transformations module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.varstats">4.18. SEDMrph.varstats module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.wave">4.19. SEDMrph.wave module</a></li>
-<li><a class="reference internal" href="#module-SEDMrph.zeropoint">4.20. SEDMrph.zeropoint module</a></li>
+<li><a class="reference internal" href="#sedmrph-zeropoint-module">4.20. SEDMrph.zeropoint module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph.zscale">4.21. SEDMrph.zscale module</a></li>
 <li><a class="reference internal" href="#module-SEDMrph">4.22. Module contents</a></li>
 </ul>
@@ -783,6 +625,7 @@ returns (z1, z2)</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="SEDMr.html" title="previous chapter">3. SEDMr package</a></li>
+      <li>Next: <a href="guider.html" title="next chapter">5. guider package</a></li>
   </ul></li>
 </ul>
 </div>

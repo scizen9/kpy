@@ -34,11 +34,39 @@ for d in dlist:
         ef = ss['efficiency']*100.
         wl = ss['nm']
 
-        ef1.append(np.nanmean(ef[(wl > 400) * (wl < 500)]))
-        ef2.append(np.nanmean(ef[(wl > 500) * (wl < 600)]))
-        ef3.append(np.nanmean(ef[(wl > 600) * (wl < 700)]))
-        ef4.append(np.nanmean(ef[(wl > 700) * (wl < 800)]))
-        ef5.append(np.nanmean(ef[(wl > 800) * (wl < 900)]))
+        # Check each 100 nm bin
+
+        # 400 - 500 nm
+        e1 = np.nanmean(ef[(wl > 400) * (wl < 500)])
+        if e1 > 100:
+            continue
+
+        # 500 - 600 nm
+        e2 = np.nanmean(ef[(wl > 500) * (wl < 600)])
+        if e2 > 100:
+            continue
+
+        # 600 - 700 nm
+        e3 = np.nanmean(ef[(wl > 600) * (wl < 700)])
+        if e3 > 100:
+            continue
+
+        # 700 - 800 nm
+        e4 = np.nanmean(ef[(wl > 700) * (wl < 800)])
+        if e4 > 100:
+            continue
+
+        # 800 - 900 nm
+        e5 = np.nanmean(ef[(wl > 800) * (wl < 900)])
+        if e5 > 100:
+            continue
+
+        # Fill efficiency vectors
+        ef1.append(e1)
+        ef2.append(e2)
+        ef3.append(e3)
+        ef4.append(e4)
+        ef5.append(e5)
 
         jd.append(dtime.jd)
 
