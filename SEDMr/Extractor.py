@@ -1475,10 +1475,12 @@ def handle_single(imfile, fine, outname=None, offset=None,
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
         print "Median airmass corr: %.4f" % np.median(extcorr)
         # Calculate output corrected spectrum
-        if nosky:
+        if stats['nosky']:
+            print "Sky subtraction off"
             # Account for airmass and aperture
             res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
         else:
+            print "Sky subtraction on"
             # Account for sky, airmass and aperture
             res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
 
@@ -1502,7 +1504,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['object_spaxel_ids'] = nsxa
         res[0]['sky_spaxel_ids'] = kixa
         res[0]['sky_spectra'] = skya[0]['spectra']
-        res[0]['sky_subtraction'] = False if nosky else True
+        res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
@@ -1829,7 +1831,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         print("Median airmass corrs A: %.4f, B: %.4f" %
               (np.median(extcorra), np.median(extcorrb)))
         # If requested merely sum in aperture, otherwise subtract sky
-        if nosky:
+        if stats['nosky']:
             print "Sky subtraction off"
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=FutureWarning)
@@ -1868,7 +1870,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['sky_spaxel_ids_A'] = kixa
         res[0]['object_spaxel_ids_B'] = nsxB
         res[0]['sky_spaxel_ids_B'] = kixb
-        res[0]['sky_subtraction'] = False if nosky else True
+        res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
