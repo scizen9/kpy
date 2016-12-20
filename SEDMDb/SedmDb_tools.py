@@ -7,6 +7,66 @@ db = SedmDb.SedmDB()
 
 # TODO: write a function to get object+orbit data for an object
 
+def get_user_requests(user_id=None, username=None, values=['id', 'object_id', 'program_id', 'status']):
+    """
+    Get the parameters for all requests associated with a user
+
+    Args:
+        user_id (int): id of the user
+        username (str): username of the user
+            only needed if user_id is not provided
+        values (list): values to be returned
+            defaults to ['id', 'object_id', 'program_id', 'status']
+
+    Returns:
+        list of tuples conaining the ``values`` for each request of the user
+        (-1, "ERROR ... ") if there was an issue
+        [] if no requests are associated with the user
+    """
+
+    if user_id:
+        where_dict = {'user_id': user_id}
+    elif username:
+        user_id = db.get_from_users(['id'], {'username': username})
+        if not user_id:
+            return (-1, 'ERROR: not user with that username!')
+        where_dict = {'user_id': user_id[0][0]}
+    else:
+        return (-1, "ERROR: neither username nor user_id were provided!")
+    user_requests = db.get_from_requests(values, where_dict)
+    return user_requests
+
+
+def get_active_requests(values=['id', 'object_id', 'user_id', 'program_id', 'marshal_id', 'exptime',
+                                'maxairmass', 'priority', 'cadence', 'phasesamples', 'sampletolerance',
+                                'filters', 'nexposures', 'ordering']):
+    """
+    Get the parameters for all 'ACTIVE' requests
+    Args:
+        values (list): the values to get for each request
+            defaults to ['id', 'object_id', 'user_id', 'program_id', 'marshal_id', 'exptime',
+                         'maxairmass', 'priority', 'cadence', 'phasesamples', 'sampletolerance',
+                         'filters', 'nexposures', 'ordering']
+    Returns:
+        list of tuples conaining the ``values`` for each active request
+        (-1, "ERROR ... ") if there was an issue
+        [] if no requests are 'ACTIVE'
+    """
+    # TODO: test?
+
+    active_requests = db.get_from_requests(values, {'status': 'ACTIVE'})
+    return active_requests
+
+
+def cancel_request(requestid):
+    """
+    Changes the status of the request and any related atomicrequests to "CANCELED"
+    """
+    db.update_request({'id': requestid, 'status': 'CANCELED'})
+    # cancel the associated atomicrequests
+    # TODO: allow more nuanced update function inputs (e.g. add a where_dict)?
+    db.execute_sql("UPDATE atomicrequest SET status='CANCELED' WHERE request_id='%s'" % (requestid,))
+    return (0, "Request canceled")
 
 
 def create_atomic_requests():

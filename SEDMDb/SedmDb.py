@@ -86,18 +86,16 @@ class SedmDB:
         """
         adds a new user
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'username': str
-                'name': str
-                'email': str
+        Args:
+            pardic (dict):
+                required:
+                    'username': str
+                    'name': str
+                    'email': str
 
-        Returns
-        -------
-        (-1, "ERROR: Username exists") if the username is a duplicate
-        (0, "User added") if the user was added
+        Returns:
+            (-1, "ERROR: Username exists") if the username is a duplicate
+            (0, "User added") if the user was added
         """
         # no need to check parameter value types as they are all strings
         keys = list(pardic.keys())
@@ -123,18 +121,16 @@ class SedmDB:
         """
         Removes an existing user
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'username': str
-                OR
-                'id': int
+        Args:
+            pardic (dict):
+                required:
+                    'username': str
+                    OR
+                    'id': int
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
-        (0, "User removed") if the removal was successful
+        Returns:
+            (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
+            (0, "User removed") if the removal was successful
         """
         if 'username' in pardic.keys():
             user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))
@@ -160,18 +156,17 @@ class SedmDB:
         """
         select values from `users`
 
-        Parameters
-        ----------
-        values: list of str
-            values to be returned
-        where_dict: dict
-            ``'param':'value'`` to be used as WHERE clauses
+        Args:
+            values: list of str
+                values to be returned
+            where_dict (dict):
+                ``'param':'value'`` to be used as WHERE clauses
 
-        values/keys options: ['id', 'username', 'name', 'email']
+            values/keys options: ['id', 'username', 'name', 'email']
 
-        Returns
-        -------
-        list: tuples containing the values for each user matching the criteria, empty if no results
+        Returns:
+            list of tuples containing the values for each user matching the criteria
+            empty list if no results
         """
 
         # TODO: test, reconsider return styles
@@ -195,15 +190,13 @@ class SedmDB:
         """
         Adds a new group. Checks for duplicates in name
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'designator'
+        Args:
+            pardic (dict):
+                required: 'designator'
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if no designator was provided or there is already a group with it
-        (0, "Group added") if the adding was successful
+        Returns:
+            (-1, "ERROR: ...") if no designator was provided or there is already a group with it
+            (0, "Group added") if the adding was successful
         """
         if 'designator' not in pardic.keys():
             return (-1, 'ERROR: no group designator provided!')
@@ -224,17 +217,15 @@ class SedmDB:
         """
         Adds the user as member of the group. Checks for duplicates in name.
 
-        Parameters
-        ----------
-        user: int
-            id of the user in the 'users' Table
-        group: int
-            id of the group in the 'groups' Table
+        Args:
+            user (int):
+                id of the user in the 'users' Table
+            group: int
+                id of the group in the 'groups' Table
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was areason for failure
-        (0, "User added to group") if the adding was successful
+        Returns (int):
+            (-1, "ERROR: ...") if there was areason for failure
+            (0, "User added to group") if the adding was successful
         """
         if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
             return (-1, "ERROR: user does not exist!")
@@ -257,28 +248,26 @@ class SedmDB:
         """
         Creates a new object
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'name' (str),
-                'typedesig' (str),
-            required for a fixed object:
-                'ra' (float),
-                'dec' (float),
-                'epoch' (float)
-            optional:
-                'iauname' (str),
-                'marshal_id' (int)
+        Args:
+            pardic (dict):
+                required:
+                    'name' (str),
+                    'typedesig' (str),
+                required for a fixed object:
+                    'ra' (float),
+                    'dec' (float),
+                    'epoch' (float)
+                optional:
+                    'iauname' (str),
+                    'marshal_id' (int)
 
-            'typedesig' should be one of:
-                'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
-                'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
+                'typedesig' should be one of:
+                    'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
+                    'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if it failed to add
-        (0, "Object added") if the object is added successfully
+        Returns:
+            (-1, "ERROR: ...") if it failed to add
+            (0, "Object added") if the object is added successfully
         """
         param_types = {'name': str, 'typedesig': str, 'ra': float, 'dec': float, 'epoch': float,
                        'iauname': str, 'marshal_id': int}
@@ -336,17 +325,16 @@ class SedmDB:
         """
         select values from `objects`
 
-        Parameters
-        ----------
-        values: list of str
-            values to be returned
-        where_dict: dict
-            'param':'value' to be used as WHERE clauses
-        values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
+        Args:
+            values: list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
 
-        Returns
-        -------
-        list: tuples containing the values for each user matching the criteria, empty if no results
+        Returns:
+            list of tuples containing the values for each user matching the criteria
+            empty list if no results
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'marshal_id': int, 'name': str, 'iauname': str, 'ra': float, 'dec': float,
@@ -368,15 +356,13 @@ class SedmDB:
         """
         finds the id of an object given its name or part of its name
 
-        Parameters
-        ----------
-        object_name: str
+        Args:
+            object_name (str):
 
-        Returns
-        -------
-        id, full name if one object is found
-        list of all (id, full name) if multiple matches are found for the name
-        None if the object is not found
+        Returns:
+            id, full name if one object is found
+            list of all (id, full name) if multiple matches are found for the name
+            None if the object is not found
         """
         object_name = object_name.lower()
         sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
@@ -401,65 +387,23 @@ class SedmDB:
                     'inclination' (float)
                     'longascnode_0' (float) (lon. of ascending node)
                     'perihelion_o' (float) (arg. of perihelion)
-                    'a' (mean distance AU)
-                    'n' (mean daily motion deg/day)
-                    'e' (eccentricity)
-                    'M' (mean anomaly)
-                    'mjdepoch' (epoch, time of 'M')
-                    'D' (equinox year)
-                    'M1'
-                    'M2' (first and second components of magnitude model)
+                    'a' (float) (mean distance AU)
+                    'n' (float) (mean daily motion deg/day)
+                    'e' (float) (eccentricity)
+                    'M' (float) (mean anomaly)
+                    'mjdepoch' (int) (epoch, time of 'M')
+                    'D' (int) (equinox year)
+                    'M1' (float)
+                    'M2' (float) (first and second components of magnitude model)
                 optional:
-                    's' (angular size at 1 AU)
+                    's' (float) (angular size at 1 AU)
 
         Returns:
 
         """
-        """
-        Adds the orbit parameters for an object
-
-        Parameters
-        ----------
-        orbit_params (dict):
-            required:
-                'object_id' (int value),
-                'inclination' (float value),
-                'longascnode_0' (float value) (lon. of ascending node),
-                'perihelion_o'  (float value) (arg. of perihelion),
-                'a' (float value) (mean distance AU),
-                'n' (float value) (mean daily motion deg/day),
-                'e' (float value) (eccentricity),
-                'M' (float value) (mean anomaly),
-                'mjdepoch' (int value) (epoch, time of 'M'),
-                'D' (int value) (equinox year),
-                'M1' (float value),
-                'M2' (float value) (first and second components of magnitude model)
-
-            optional:
-                's' (float value) (angular size at 1 AU)
-
-        Returns
-        -------
-
-        """
-        """
-        Adds the orbit parameters for an object
-
-        Parameters
-        ----------
-        orbit_params: dict
-            required:
-                'object_id', 'inclination', 'longascnode_0' (lon. of ascending node),
-                'perihelion_o' (arg. of perihelion), 'a' (mean distance AU), 'n' (mean daily motion deg/day),
-                'e' (eccentricity), 'M' (mean anomaly), 'mjdepoch' (epoch, time of 'M'), 'D' (equinox year),
-                'M1', 'M2' (first and second components of magnitude model)
-
-            optional: 's' (angular size at 1 AU)
-
-        Returns
-        -------
-
-        """
+        param_types = {'object_id': int, 'inclination': float, 'longascnode_0': float, 'perihelion_o': float,
+                       'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
+                       'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
         for key in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
@@ -472,6 +416,9 @@ class SedmDB:
             if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
                            'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
+        type_check = _data_type_check(orb_keys, orbit_params, param_types)
+        if type_check:
+            return (-1, type_check)
 
         orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'elliptical_heliocentric')
         try:
@@ -485,28 +432,28 @@ class SedmDB:
     def add_parabolic_orbit(self, orbit_params):
         """
 
+        Args:
+            orbit_params (dict):
+                required:
+                    'object_id'(int),
+                    'T' (date str),
+                    'inclination' (float),
+                    'longascnode_0' (float) (lon. of ascending node),
+                    'perihelion_o' (float) (arg. of perihelion),
+                    'e' (float) eccentricity,
+                    'q' (float) (perihelion distance),
+                    'D' (int) (equinox year),
+                    'M1' (float),
+                    'M2' (float) (first and second components of magnitude model)
 
-        Parameters
-        ----------
-        orbit_params: dict
-            required:
-                'object_id'(int)
-                'T' (date str)
-                'inclination' (float)
-                'longascnode_0' (float) (lon. of ascending node)
-                'perihelion_o' (float) (arg. of perihelion)
-                'q' (float) (perihelion distance)
-                'D' (int) (equinox year),
-                'M1' (float)
-                'M2' (float) (first and second components of magnitude model)
+                optional:
+                    's' (float) (angular size at 1 AU)
 
-            optional:
-                's' (float) (angular size at 1 AU)
-
-        Returns
-        -------
+        Returns:
 
         """
+        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'longascnode_0': float,
+                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
         for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
@@ -519,6 +466,10 @@ class SedmDB:
             if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
+        type_check = _data_type_check(orb_keys, orbit_params, param_types)
+        if type_check:
+            return (-1, type_check)
+
         orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
         try:
             self.execute_sql(orb_sql)
@@ -531,19 +482,28 @@ class SedmDB:
     def add_hyperbolic_orbit(self, orbit_params):
         """
 
-        Parameters
-        ----------
-        orbit_params: dict
-            required:
-                'object_id', 'T' (date), 'inclination', 'longascnode_0' (lon. of ascending node),
-                'perihelion_o' (arg. of perihelion), 'e' (eccentricity), 'q' (perihelion distance AU),
-                'D' (equinox year), 'M1', 'M2' (first and second components of magnitude model)
+        Args:
+            orbit_params (dict):
+                required:
+                    'object_id' (int),
+                    'T' (str date),
+                    'inclination' (float),
+                    'longascnode_0' (float) (lon. of ascending node),
+                    'perihelion_o' (float) (arg. of perihelion),
+                    'e' (float) (eccentricity),
+                    'q' (float) (perihelion distance AU),
+                    'D' (int) (equinox year),
+                    'M1' (float),
+                    'M2' (float) (first and second components of magnitude model)
 
-            optional: 's' (angular size at 1 AU)
+                optional:
+                    's' (float) (angular size at 1 AU)
 
-        Returns
-        -------
+        Returns:
+
         """
+        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'longascnode_0': float,
+                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
         for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
@@ -556,6 +516,10 @@ class SedmDB:
             if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
+        type_check = _data_type_check(orb_keys, orbit_params, param_types)
+        if type_check:
+            return (-1, type_check)
+
         orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'hyperbolic_heliocentric')
         try:
             self.execute_sql(orb_sql)
@@ -568,21 +532,28 @@ class SedmDB:
     def add_earth_satellite_orbit(self, orbit_params):
         """
 
-        Parameters
-        ----------
-        orbit_params: dict
-            required:
-                'object_id', ' T' (epoch of other fields), 'inclination', 'ra' (ra of ascending node),
-                'e' (eccentricity), 'pedigree' (arg. of pedigree), 'M' (mean anomaly),
-                'n' (mean motion, revs/day), 'decay' (orbit decay rate, rev/day^2),
-                'reforbit' (integral reference orbit number at epoch),
+        Args:
+            orbit_params (dict):
+                required:
+                    'object_id' (int),
+                    'T' (str) (epoch of other fields),
+                    'inclination' (float),
+                    'ra' (float) (ra of ascending node),
+                    'e' (float) (eccentricity),
+                    'pedigree' (float) (arg. of pedigree),
+                    'M' (float) (mean anomaly),
+                    'n' (float) (mean motion, revs/day),
+                    'decay' (float) (orbit decay rate, rev/day^2),
+                    'reforbit' (int) (integral reference orbit number at epoch),
 
-            optional: 'drag' (drag coefficient, 1/(Earth radii))
+                optional:
+                    'drag' (float) (drag coefficient, 1/(Earth radii))
 
-        Returns
-        -------
+        Returns:
 
         """
+        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'ra': float,
+                       'pedigree': float, 'M': float, 'n': float, 'decay': float, 'reforbit': int, 'drag': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
         for key in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
@@ -595,6 +566,10 @@ class SedmDB:
             if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
                            'decay', 'reforbit', 'drag', 'object_id']:
                 orb_keys.remove(key)
+        type_check = _data_type_check(orb_keys, orbit_params, param_types)
+        if type_check:
+            return (-1, type_check)
+
         orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'earth_satellite')
         try:
             self.execute_sql(orb_sql)
@@ -613,32 +588,40 @@ class SedmDB:
         """
         Add a request
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'object_id', 'user_id', 'program_id', 'exptime' (string '{spec_duration, phot_duration}'),
-                'priority', 'inidate' (start of observing window), 'enddate' (end of observing window),
-                (one of 'nexposures' or 'ordering' described below)
+        Args:
+            pardic (dict):
+                required:
+                    'object_id' (int),
+                    'user_id' (int),
+                    'program_id' (int),
+                    'exptime' (str '{spec_duration, phot_duration}'),
+                    'priority' (float),
+                    'inidate' (str date) (start of observing window),
+                    'enddate' (str date) (end of observing window),
+                    'nexposures' or 'ordering' (below)
 
-            optional:
-                'marshal_id', 'maxairmass' (max allowable airmass for observation, default 2.5),
-                'cadence' (,
-                'phasesamples' (how many samples in a period), 'sampletolerance' (how much tolerance in when
-                the samples can be taken), 'nexposures' (string '{# of ifu, # of u, # of g, # of r, # of i}'),
-                'ordering' (string e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 g, then 3  r, then 1 i, 1 ifu, 1 i)
+                optional:
+                    'marshal_id' (int),
+                    'maxairmass' (float) (max allowable airmass for observation, default 2.5),
+                    'cadence' (float) (,
+                    'phasesamples' (float) (how many samples in a period),
+                    'sampletolerance' (float) (how much tolerance in when the samples can be taken),
+                    'nexposures' (str '{# of ifu, # of u, # of g, # of r, # of i}'),
+                    'ordering' (str e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 of g, then 3 of r, then 1 i, 1 ifu, 1 i)
 
-            Notes: the numbers in 'ordering' must be single digit,
-                   spec/phot_duration should be duration per exp
+                Note:
+                    the numbers in 'ordering' must be single digit,
+                    spec/phot_duration should be duration per exp
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there is an issue with the input
-        (0, "Request added") if there are no errors
-        (0, "Request added, atomicrequests returned ...") if there was an issue with atomicrequest creation
+        Returns:
+            (-1, "ERROR: ...") if there is an issue with the input
+            (0, "Request added") if there are no errors
+            (0, "Request added, atomicrequests returned ...") if there was an issue with atomicrequest creation
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
-
+        param_types = {'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'priority': float,
+                       'inidate': str, 'enddate': str, 'marshal_id': int, 'maxairmass': float, 'cadence': float,
+                       'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'ordering': str}
         # TODO: handle exptime/magnitude in-function?
         requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
         # check program_id, issue warning if it is a repeat, but allow
@@ -688,6 +671,10 @@ class SedmDB:
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
                            'phasesamples', 'sampletolerance', 'nexposures', 'ordering']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'request')
         try:
             self.execute_sql(sql)
@@ -702,24 +689,31 @@ class SedmDB:
         """
         Updates the request table with the parameters from the dictionary.
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'id'
-            optional: 'status', 'maxairmass', 'priority', 'inidate', 'enddate'
-            Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int)
+                optional:
+                    'status' (str),
+                    'maxairmass' (float),
+                    'priority' (float),
+                    'inidate' (str date),
+                    'enddate' (str date)
+                Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue with the updating
-        (0, "Requests updated") if the update was successful
-        (0, "Requests and atomicrequests updated") if atomicrequests were also updated
+        Returns:
+            (-1, "ERROR: ...") if there was an issue with the updating
+            (0, "Requests updated") if the update was successful
+            (0, "Requests and atomicrequests updated") if atomicrequests were also updated
         """
         # TODO: if exptime is allowed, significant changes are needed to the atomicrequest update
         # TODO: determine which parameters shouldn't be changed
+        param_types = {'id': int, 'status': str, 'maxairmass': float, 'priority': float, 'inidate': str, 'enddate': str}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
+        elif not isinstance(pardic['id'], int):
+            return (-1, "ERROR: parameter id must be of type 'int'!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
             return (-1, "ERROR: request does not exist!")
         if 'status' in keys:
@@ -730,6 +724,10 @@ class SedmDB:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_update_sql(pardic, keys, 'request', True)
         try:
             self.execute_sql(sql)
@@ -762,20 +760,34 @@ class SedmDB:
         """
         select values from `objects`
 
-        Parameters
-        ----------
-        values: list of str
-            values to be returned
-        where_dict: dict
-            'param':'value' to be used as WHERE clauses
-        values/keys options:
-            ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'status', 'priority',
-             'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence', 'phasesamples',
-             'sampletolerance', 'nexposures', 'ordering', 'creationdate', 'lastmodified']
+        Args:
+            values: list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'user_id' (int),
+                'program_id' (int),
+                'exptime' (str),
+                'priority' (float),
+                'inidate' (str date),
+                'enddate' (str date),
+                'marshal_id' (int),
+                'maxairmass' (float),
+                'cadence' (float),
+                'phasesamples' (float),
+                'sampletolerance' (float),
+                'nexposures' (str),
+                'ordering' (str)
+                'status' (str),
+                'creationdate' (str date),
+                'lastmodified' (str date)
 
-        Returns
-        -------
-        list: tuples containing the values for each user matching the criteria, empty if no results
+        Returns:
+            list of tuples containing the values for each user matching the criteria
+            empty if no requests match the ``where_dict`` criteria
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
@@ -794,21 +806,6 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def get_active_requests(self):
-        """
-        Returns active requests
-        Returns
-        -------
-        list : (object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, phasesamples,
-             sampletolerance, filters, nexposures, ordering) for each request
-        """
-        # TODO: test?
-        # TODO: move to logic layer
-        sql = ("SELECT object_id, user_id, program_id, marshal_id, exptime, maxairmass, priority, cadence, "
-               "phasesamples, sampletolerance, filters, nexposures, ordering FROM request WHERE status='ACTIVE';")
-        active_requests = self.execute_sql(sql)
-        return active_requests
-
     def expire_requests(self):
         """
         Updates the request table. For all the active requests that were not completed,
@@ -823,17 +820,6 @@ class SedmDB:
                       "atomicrequest.request_id=request.id AND request.status='EXPIRED')")
         self.execute_sql(atomic_sql)
         return (0, "Requests expired")
-
-    def cancel_scheduled_request(self, requestid):
-        """
-        Changes the status of the scheduled request to "CANCELED"
-        """
-        if requestid not in [x[0] for x in self.execute_sql("SELECT id FROM request")]:
-            return (-1, "ERROR: request does not exist!")
-        # cancel the associated atomicrequests       
-        self.execute_sql("UPDATE atomicrequest SET status='CANCELED' WHERE request_id='%s'" % (requestid,))
-        self.update_request({'id': requestid, 'status': 'CANCELED'})
-        return (0, "Request canceled")
 
     def add_atomic_request(self, pardic):
         """
