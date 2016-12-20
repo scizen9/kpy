@@ -1400,6 +1400,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
             else:
                 quality = 1  # by definition
 
+            # Stats for automatic fit
             stats = {"nosky": False, "scaled": False,
                      "lmin": lmin, "lmax": lmax,
                      "cmin": None, "cmax": None}
