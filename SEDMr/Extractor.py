@@ -1400,6 +1400,10 @@ def handle_single(imfile, fine, outname=None, offset=None,
             else:
                 quality = 1  # by definition
 
+            stats = {"nosky": False, "scaled": False,
+                     "lmin": lmin, "lmax": lmax,
+                     "cmin": None, "cmax": None}
+
             # Use all sky spaxels in image
             kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
 
@@ -1451,7 +1455,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 bgd_sub=False, lmin=lmin, lmax=lmax)
+                 bgd_sub=False, lmin=lmin, lmax=lmax, cmin=stats['cmin'], cmax=stats['cmax'])
         # get the mean spectrum over the selected spaxels
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
