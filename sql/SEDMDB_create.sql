@@ -23,8 +23,8 @@ CREATE TABLE flexure (
     rms decimal(8,4)  NOT NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
-    timestamp1 TIME NOT NULL,
-    timestamp2 TIME NOT NULL,
+    timestamp1 TIMESTAMP NOT NULL,
+    timestamp2 TIMESTAMP NOT NULL,
     CONSTRAINT flexure_pk PRIMARY KEY (id)
 );
 

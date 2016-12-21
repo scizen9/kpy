@@ -7,6 +7,23 @@ db = SedmDb.SedmDB()
 
 # TODO: write a function to get object+orbit data for an object
 
+def program_time_used(start_date, end_date, program_id):
+
+    # TODO: return to SedmDb.py because of how much sql "understanding" it requires?
+    # TODO: evaluate assumption that the most recent change to the request will be setting 'status' to 'COMPLETED'
+    where_dict = {'program_id': program_id, 'lastmodified': '>' + start_date, 'lastmodified': '<' + end_date}
+    sql = ("SELECT exptime, nexposures, phasesamples FROM request WHERE program_id='%s', status='COMPLETED', "
+           "lastmodified>'%s', lastmodified<'%s';" % (program_id, start_date, end_date))
+    # TODO: fix this, it's really bad that it doesn't go through the checks of SedmDb functions
+    # TODO: allow where_dict values to be lists (if it is a list iterate through)?
+    program_requests = db.execute_sql(sql)
+    if not program_requests:
+        return 0.0
+    else:
+        raise NotImplementedError("exptime isn't guarenteed a particular format, and calculations aren't implemented")
+    # TODO: solidify what "exptime" is, then implement calculations
+
+
 def get_user_requests(user_id=None, username=None, values=['id', 'object_id', 'program_id', 'status']):
     """
     Get the parameters for all requests associated with a user
@@ -62,6 +79,7 @@ def cancel_request(requestid):
     """
     Changes the status of the request and any related atomicrequests to "CANCELED"
     """
+    # TODO: return to SedmDb.py because of how much sql "understanding" it requires?
     db.update_request({'id': requestid, 'status': 'CANCELED'})
     # cancel the associated atomicrequests
     # TODO: allow more nuanced update function inputs (e.g. add a where_dict)?
@@ -73,13 +91,12 @@ def create_atomic_requests():
     """
     Finds requests without atomicrequets and creates their atomicrequests
 
-    Returns
-    -------
-    (0, "...") containing a list of the requests and which, if any, failed
+    Returns:
+        (0, "...") containing a list of the requests and which, if any, failed
     """
     # get the ids of the requests with no atomicrequest
     request_ids = db.execute_sql('SELECT id FROM request WHERE NOT EXISTS '
-                                 '(SELECT id FROM atomicrequest WHERE request.id = atomicrequest.request_id')
+                                 '(SELECT id FROM atomicrequest WHERE request.id = atomicrequest.request_id);')
     # TODO: make this only create for requests with status 'PENDING'/'ACTIVE'?
     failed = []
     for request in request_ids:
@@ -98,15 +115,13 @@ def create_request_atomic_requests(request_id):
     """
     create atomicrequest entries for a given request
 
-    Parameters
-    ----------
-    request_id: int
-        id of the request that needs atomicrequests
+    Args:
+        request_id: int
+            id of the request that needs atomicrequests
 
-    Returns
-    -------
-    (-1, "ERROR: ...") if there was an issue
-    (0, "Added (#) atomic requests for request (#)") if it was successful
+    Returns:
+        (-1, "ERROR: ...") if there was an issue
+        (0, "Added (#) atomic requests for request (#)") if it was successful
     """
     status = db.execute_sql("SELECT status FROM request WHERE id=%s" % (request_id,))
     if not status:
@@ -146,32 +161,42 @@ def create_request_atomic_requests(request_id):
         pardic['order_id'] = n
         # TODO: do exptime modifications here per filter and ab vs single exposure
         if 'ifu' in filter_des:
-            pardic['exptime'] = request[1][0]  # TODO: make sure the sql returns the proper format
+            pardic['exptime'] = float(request[1][0])  # TODO: make sure the sql returns the proper format
         else:
-            pardic['exptime'] = request[1][1]
+            pardic['exptime'] = float(request[1][1])
         add_return = db.add_atomic_request(pardic)
         if add_return[0] == -1:
             return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n + 1, filter_des))
     return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
 
 
-def add_observation_fitsfile(fitsfile):
+def add_observation_fitsfile(fitsfile, atomicrequest_id):
     """
     Adds an observation from a fitsfile, sets the atomicobservation to 'OBSERVED'. Checks if all the atomicobservations
     associated with its request are observed, if so it sets the request's status to 'COMPLETED'.
 
-    Parameters
-    ----------
-    fitsfile: str (fits file path)
+    Args:
+        fitsfile: str (fits file path)
+        atomicrequest_id: int (temporary until it is included in the header)
     """
     hdulist = fits.open(fitsfile)
     header = hdulist[0].header
-    header_dict = {'mjd': header['JD']-2400000.5, 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
+    # TODO: make sure all of the parameters are of the right type (so SedmDb.py doesn't kill it)
+    header_dict = {'mjd': header['JD'] - 2400000.5, 'airmass': header['AIRMASS'], 'exptime': header['EXPTIME'],
                    'fitsfile': fitsfile, 'lst': header['LST'], 'ra': ra_to_decimal(header['RA']),
                    'dec': dec_to_decimal(header['DEC']), 'tel_ra': header['TEL_RA'], 'tel_dec': header['TEL_DEC'],
                    'tel_az': header['TEL_AZ'], 'tel_el': header['TEL_EL'], 'tel_pa': header['TEL_PA'],
-                   'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME']}
-    # header_dict['atomicrequest_id'] = header['ATOM_ID']
+                   'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME'],
+                   'atomicrequest_id': int(atomicrequest_id)}  # TODO: remove atomicrequest_id arg from function
+    # header_dict['atomicrequest_id'] = int(header['ATOM_ID'])
+    ids = db.get_from_atomicrequests(['request_id', 'object_id'], {'id': header_dict['atomicrequest_id']})[0]
+    if ids:
+        header_dict['request_id'] = int(ids[0][0])
+        header_dict['object_id'] = int(ids[0][1])
+    else:
+        return (-1, "ERROR: no atomicrequests found with an id matching the header's ATOM_ID!")
+
+    obs_added = db.add_observation_fits(header_dict)
     # TODO: add ATOM_ID to the header (above)
     # TODO: add 'imtype', generate from fitsfile name?
 
@@ -182,7 +207,14 @@ def add_observation_fitsfile(fitsfile):
                  'top_air': header['TOP_AIR'], 'pri_temp': header['PRI_TEMP'], 'sec_temp': header['SEC_TEMP'],
                  'flo_temp': header['FLO_TEMP'], 'bot_temp': header['BOT_TEMP'], 'mid_temp': header['MID_TEMP'],
                  'top_temp': header['TOP_TEMP']}
-    obs_added = db.add_observation_fits(header_dict, tel_stats)
+    observation_id = db.get_from_observations(['id'], {'atomicrequest_id': header_dict['atomicrequest_id']})
+    if observation_id:
+        tel_stats['observation_id'] = int(observation_id[0][0])
+    else:
+        return obs_added
+
+    stats_added = db.add_tel_stats(tel_stats)
+
     # check if all of the request's atomicrequests are 'OBSERVED', if so set the request's status to 'COMPLETED'
     # TODO: must test with connected request/atomicrequest/fitsfile
     if obs_added[0] == 0:

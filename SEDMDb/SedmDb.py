@@ -4,12 +4,11 @@ import psycopg2
 import numpy as np
 import subprocess
 import warnings
-from astropy.io import fits
+from astropy.time import Time
 
 
 # Singleton/SingletonPattern.py
 
-# noinspection PyArgumentList,SqlResolve,SqlNoDataSourceInspection,PyRedundantParentheses
 class SedmDB:
     class __SedmDB:
         def __init__(self):
@@ -89,9 +88,9 @@ class SedmDB:
         Args:
             pardic (dict):
                 required:
-                    'username': str
-                    'name': str
-                    'email': str
+                    'username' (str),
+                    'name' (str),
+                    'email'(str)
 
         Returns:
             (-1, "ERROR: Username exists") if the username is a duplicate
@@ -124,9 +123,9 @@ class SedmDB:
         Args:
             pardic (dict):
                 required:
-                    'username': str
+                    'username' (str)
                     OR
-                    'id': int
+                    'id': (str)
 
         Returns:
             (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
@@ -144,7 +143,7 @@ class SedmDB:
             if not isinstance(pardic['id'], int):
                 return (-1, "ERROR: id must be of type 'int'")
             if pardic['id'] in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
-                self.execute_sql("DELETE FROM usergroups WHERE id='%s'" % (pardic['id'],))
+                self.execute_sql("DELETE FROM usergroups WHERE user_id='%s'" % (pardic['id'],))
                 self.execute_sql("DELETE FROM users WHERE id='%s';" % (pardic['id'],))
                 return (0, "User removed")
             else:
@@ -192,7 +191,8 @@ class SedmDB:
 
         Args:
             pardic (dict):
-                required: 'designator'
+                required:
+                    'designator' (str)
 
         Returns:
             (-1, "ERROR: ...") if no designator was provided or there is already a group with it
@@ -379,21 +379,22 @@ class SedmDB:
 
     def add_elliptical_orbit(self, orbit_params):
         """
+        Adds the orbit parameters for an elliptical heliocentric orbit
 
         Args:
             orbit_params (dict):
                 required:
-                    'object_id' (int)
-                    'inclination' (float)
-                    'longascnode_0' (float) (lon. of ascending node)
-                    'perihelion_o' (float) (arg. of perihelion)
-                    'a' (float) (mean distance AU)
-                    'n' (float) (mean daily motion deg/day)
-                    'e' (float) (eccentricity)
-                    'M' (float) (mean anomaly)
-                    'mjdepoch' (int) (epoch, time of 'M')
-                    'D' (int) (equinox year)
-                    'M1' (float)
+                    'object_id' (int),
+                    'inclination' (float),
+                    'longascnode_0' (float) (lon. of ascending node),
+                    'perihelion_o' (float) (arg. of perihelion),
+                    'a' (float) (mean distance AU),
+                    'n' (float) (mean daily motion deg/day),
+                    'e' (float) (eccentricity),
+                    'M' (float) (mean anomaly),
+                    'mjdepoch' (int) (epoch, time of 'M'),
+                    'D' (int) (equinox year),
+                    'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
                 optional:
                     's' (float) (angular size at 1 AU)
@@ -431,6 +432,7 @@ class SedmDB:
 
     def add_parabolic_orbit(self, orbit_params):
         """
+        Adds the orbit parameters for an parabolic heliocentric orbit
 
         Args:
             orbit_params (dict):
@@ -452,7 +454,7 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'longascnode_0': float,
+        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
                        'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
@@ -481,12 +483,13 @@ class SedmDB:
 
     def add_hyperbolic_orbit(self, orbit_params):
         """
+        Adds the orbit parameters for an hyperbolic heliocentric orbit
 
         Args:
             orbit_params (dict):
                 required:
                     'object_id' (int),
-                    'T' (str date),
+                    'T' ('year-month-day' or `~astropy.time.Time` object),
                     'inclination' (float),
                     'longascnode_0' (float) (lon. of ascending node),
                     'perihelion_o' (float) (arg. of perihelion),
@@ -502,7 +505,7 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'longascnode_0': float,
+        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
                        'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
@@ -531,12 +534,13 @@ class SedmDB:
 
     def add_earth_satellite_orbit(self, orbit_params):
         """
+        Adds the orbit parameters for an Earth satellite orbit
 
         Args:
             orbit_params (dict):
                 required:
                     'object_id' (int),
-                    'T' (str) (epoch of other fields),
+                    'T' ('year-month-day') (epoch of other fields),
                     'inclination' (float),
                     'ra' (float) (ra of ascending node),
                     'e' (float) (eccentricity),
@@ -552,7 +556,7 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'T': str, 'e': float, 'inclination': float, 'ra': float,
+        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'ra': float,
                        'pedigree': float, 'M': float, 'n': float, 'decay': float, 'reforbit': int, 'drag': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
@@ -596,8 +600,8 @@ class SedmDB:
                     'program_id' (int),
                     'exptime' (str '{spec_duration, phot_duration}'),
                     'priority' (float),
-                    'inidate' (str date) (start of observing window),
-                    'enddate' (str date) (end of observing window),
+                    'inidate' ('year-month-day') (start of observing window),
+                    'enddate' ('year-month-day') (end of observing window),
                     'nexposures' or 'ordering' (below)
 
                 optional:
@@ -620,7 +624,7 @@ class SedmDB:
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
         param_types = {'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'priority': float,
-                       'inidate': str, 'enddate': str, 'marshal_id': int, 'maxairmass': float, 'cadence': float,
+                       'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float, 'cadence': float,
                        'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'ordering': str}
         # TODO: handle exptime/magnitude in-function?
         requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
@@ -697,8 +701,8 @@ class SedmDB:
                     'status' (str),
                     'maxairmass' (float),
                     'priority' (float),
-                    'inidate' (str date),
-                    'enddate' (str date)
+                    'inidate' ('year-month-day'),
+                    'enddate' ('year-month-day')
                 Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
 
         Returns:
@@ -708,7 +712,8 @@ class SedmDB:
         """
         # TODO: if exptime is allowed, significant changes are needed to the atomicrequest update
         # TODO: determine which parameters shouldn't be changed
-        param_types = {'id': int, 'status': str, 'maxairmass': float, 'priority': float, 'inidate': str, 'enddate': str}
+        param_types = {'id': int, 'status': str, 'maxairmass': float, 'priority': float,
+                       'inidate': 'date', 'enddate': 'date'}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
@@ -772,8 +777,8 @@ class SedmDB:
                 'program_id' (int),
                 'exptime' (str),
                 'priority' (float),
-                'inidate' (str date),
-                'enddate' (str date),
+                'inidate' ('year-month-day'),
+                'enddate' ('year-month-day'),
                 'marshal_id' (int),
                 'maxairmass' (float),
                 'cadence' (float),
@@ -782,8 +787,8 @@ class SedmDB:
                 'nexposures' (str),
                 'ordering' (str)
                 'status' (str),
-                'creationdate' (str date),
-                'lastmodified' (str date)
+                'creationdate' ('year-month-day'),
+                'lastmodified' ('year-month-day')
 
         Returns:
             list of tuples containing the values for each user matching the criteria
@@ -791,9 +796,9 @@ class SedmDB:
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
-                          'priority': float, 'inidate': str, 'enddate': str, 'marshal_id': int, 'maxairmass': float,
+                          'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float,
                           'cadence': float, 'phasesamples': float, 'sampletolerance': float, 'nexposures': str,
-                          'ordering': str, 'creationdate': str, 'lastmodified': str}
+                          'ordering': str, 'creationdate': 'date', 'lastmodified': 'date'}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -825,24 +830,30 @@ class SedmDB:
         """
         Adds an atomicrequest
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'request_id', 'exptime' (duration based on magnitude), 'filter', 'priority', 'inidate', 'enddate'
-            optional:
-                'object_id', 'order_id' (index of observation order for the request e.g. 0)
-            filter options:
-                'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
+        Args:
+            pardic (dict):
+                required:
+                    'request_id' (int),
+                    'exptime' (float) (duration based on magnitude/filter),
+                    'filter' (str),
+                    'priority' (float),
+                    'inidate' ('year-month-day'),
+                    'enddate' ('year-month-day')
+                optional:
+                    'object_id' (int),
+                    'order_id' (int) (index of observation order for the request e.g. 1)
+                filter options:
+                    'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there is an issue
-        (0, "Request added") if it succeeded
+        Returns:
+            (-1, "ERROR: ...") if there is an issue
+            (0, "Request added") if it succeeded
         """
         # TODO: better description of 'order_id'
         # TODO: determine whether this should handle filter modifications to exptime?
         # TODO: test
+        param_types = {'rquest_id': int, 'exptime': float, 'filter': str, 'priority': float, 'inidate': 'date',
+                       'enddate': 'date', 'object_id': int, 'order_id': int}
         keys = list(pardic.keys())
         for key in ['request_id', 'exptime', 'filter', 'priority', 'inidate', 'enddate']:
             if key not in keys:
@@ -866,6 +877,10 @@ class SedmDB:
             if key not in ['request_id', 'exptime', 'filter', 'priority',
                            'inidate', 'enddate', 'object_id', 'order_id']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'atomicrequest')
         try:
             self.execute_sql(sql)
@@ -879,19 +894,24 @@ class SedmDB:
         """
         Updates an atomic request with the parameters from the dictionary
 
-        Parameters
-        ----------
-        pardic : dict
-            required: 'id'
-            optional:
-                'status', 'priority', 'inidate', 'enddate', 'exptime'
-            NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int)
+                optional:
+                    'status' (str),
+                    'priority' (float),
+                    'inidate' ('year-month-day'),
+                    'enddate' ('year-month-day'),
+                    'exptime' (float)
+                NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Atomic request updated") if it completed successfully
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Atomic request updated") if it completed successfully
         """
+        param_types = {'id': int, 'exptime': float, 'priority': float, 'inidate': 'date',
+                       'enddate': 'date', 'object_id': int, 'order_id': int}
         # TODO: test, determine which parameters are allowed to be changed
         keys = list(pardic.keys())
         if 'id' not in keys:
@@ -904,6 +924,9 @@ class SedmDB:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
 
         sql = _generate_update_sql(pardic, keys, 'atomicrequest', lastmodified=True)
         try:
@@ -918,49 +941,68 @@ class SedmDB:
         """
         return the atomicreqests associated with a single request
 
-        Parameters
-        ----------
-        request_id: int
-            The request_id of the desired request
+        Args:
+            request_id: int
+                The request_id of the desired request
 
-        Returns
-        -------
-        (id, object_id, order_id, exptime, filter, status, priority )
-                for all atomicreqests associated with the desired request
+        Returns:
+            list of tuples:
+                (id, object_id, order_id, exptime, filter, status, priority)
+                for each atomicreqest associated with the desired request
+            [] if there were no atomicrequests matching the given request_id
         """
+        if not isinstance(request_id, int):
+            return []
         # TODO: test
         atomic_requests = self.execute_sql("SELECT id, object_id, order_id, exptime, filter, status, priority "
                                            "FROM atomicrequest WHERE request_id = %s" % (request_id,))
         return atomic_requests
 
-    def add_observation_fits(self, header_dict, tel_stats):
+    def add_observation_fits(self, header_dict):
         """
+        Adds an observation
 
-        Parameters
-        ----------
-        header_dict:
-        tel_stats:
+        Args:
+            header_dict (dict):
+                required:
+                    'object_id' (int),
+                    'request_id' (int),
+                    'atomicrequest_id' (int),
+                    'mjd' (float),
+                    'airmass' (float),
+                    'exptime' (float),
+                    'fitsfile' (str),
+                    'lst' (str),
+                    'ra' (float),
+                    'dec' (float),
+                    'tel_ra' (str),
+                    'tel_dec' (str),
+                    'tel_az' (float),
+                    'tel_el' (float),
+                    'tel_pa' (float),
+                    'ra_off' (float),
+                    'dec_off' (float),
+                optional:
+                    'imtype' (str),
+                    'camera' (str)
 
-        Returns
-        -------
-
+        Returns:
+            (-1, "ERROR...") if there was an issue
+            (0, "Observation added") if it completed successfully
         """
+        header_types = {'object_id': int, 'request_id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
+                        'exptime': float, 'fitsfile': str, 'lst': str, 'ra': float, 'dec': float, 'tel_ra': str,
+                        'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
+                        'dec_off': float, 'imtype': str, 'camera': str}
         if 'atomicrequest_id' in header_dict.keys():
             if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
                 return (-1, "ERROR: atomicrequest does not exist!")
-            if self.execute_sql("SELECT * FROM observation WHERE atomicrequest_id='%s'"
-                                        % (header_dict['atomicrequest_id'],)):
+            elif self.execute_sql("SELECT * FROM observation WHERE atomicrequest_id='%s'"
+                                  % (header_dict['atomicrequest_id'],)):
                 return self.update_observation(header_dict)  # TODO: write update_observation
-        atomic_id = header_dict['atomicrequest_id']  # TODO: add ATOM_ID to the header
-        # request_id, object_id = self.execute_sql("SELECT request_id, object_id "
-        #                                          "FROM atomicrequest WHERE id='%s'" % (atomic_id,))[0]
-        # header_dict['request_id'] = request_id
-        # header_dict['object_id'] = object_id
-        if 'request_id' not in header_dict:  # for testing purposes
-            request_id = 1
-        if 'object_id' not in header_dict:
-            object_id = 1
-        # TODO: uncomment above and remove the "request_id=1 and object_id=1" once implemented
+            else:
+                return (-1, "ERROR: no atomicrequest_id provided!")
+
         header_keys = list(header_dict.keys())
         for key in ['object_id', 'request_id', 'atomicrequest_id', 'mjd', 'airmass', 'exptime', 'fitsfile', 'lst',
                     'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off']:
@@ -973,6 +1015,10 @@ class SedmDB:
                            'fitsfile', 'imtype', 'lst', 'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az',
                            'tel_el', 'tel_pa', 'ra_off', 'dec_off', 'camera']:
                 header_keys.remove(key)
+        type_check = _data_type_check(header_keys, header_dict, header_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(header_dict, header_keys, 'observation')
         try:
             self.execute_sql(sql)
@@ -981,17 +1027,55 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: adding observation sql command failed with a ProgrammingError!")
 
-        # TODO: see if OUTPUT is able to be used instead of the following
-        observation_id = (self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id = '%s'"
-                                           % (header_dict['atomicrequest_id'],)))[0][0]
+        # TODO: add other returns for failure cases?
+        return (0, "Observation added")
 
+    def add_tel_stats(self, tel_stats):
+        """
+        Adds telescope stats associated with an observation
+
+        Args:
+            tel_stats:
+                required:
+                    'observation_id' (int),
+                    'date' ('year-month-day'),
+                    'dome_status' (str),
+                    'in_temp' (float),
+                    'in_humidity' (float),
+                    'in_dew' (float),
+                    'out_temp' (float),
+                    'out_humidity' (float),
+                    'out_dew' (float),
+                    'wind_dir' (float),
+                    'wsp_cur' (float),
+                    'wsp_avg' (float),
+                    'mir_temp' (float),
+                    'top_air' (float),
+                    'pri_temp' (float),
+                    'sec_temp' (float),
+                    'flo_temp' (float),
+                    'bot_temp' (float),
+                    'mid_temp' (float),
+                    'top_temp' (float)
+
+        Returns:
+            (-1, "ERROR...") if an issue occurs
+            (0, "Telescope stats added") if successful
+        """
+        telstat_types = {'date': 'date', 'dome_status': str, 'in_temp': float, 'in_humidity': float, 'in_dew': float,
+                         'out_temp': float, 'out_humidity': float, 'out_dew': float, 'wind_dir': float,
+                         'wsp_cur': float, 'wsp_avg': float, 'mir_temp': float, 'top_air': float, 'pri_temp': float,
+                         'sec_temp': float, 'flo_temp': float, 'bot_temp': float, 'mid_temp': float, 'top_temp': float,
+                         'observation_id': int}
         stat_keys = list(tel_stats.keys())
         for key in reversed(stat_keys):
             if key not in ['date', 'dome_status', 'in_temp', 'in_humidity', 'in_dew', 'out_temp', 'out_humidity',
                            'out_dew', 'wind_dir', 'wsp_cur', 'wsp_avg', 'mir_temp', 'top_air', 'pri_temp', 'sec_temp',
-                           'flo_temp', 'bot_temp', 'mid_temp', 'top_temp']:
-                header_keys.remove(key)
-        tel_stats['observation_id'] = int(observation_id)
+                           'flo_temp', 'bot_temp', 'mid_temp', 'top_temp', 'observation_id']:
+                stat_keys.remove(key)
+        type_check = _data_type_check(stat_keys, tel_stats, telstat_types)
+        if type_check:
+            return (-1, type_check)
 
         stat_sql = _generate_insert_sql(tel_stats, stat_keys, 'telescope_stats')
         try:
@@ -1001,28 +1085,35 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: adding tel_stats sql command failed with a ProgrammingError!")
 
-        # TODO: add other returns for failure cases?
-        return (0, "Observation added")
+        return (0, "Telescope stats added")
 
     # TODO: write update_observation() and update_telescope_stats()
 
     def add_reduced_photometry(self, pardic):
         """
-        Creates a new object in the phot table
+        Adds photometry or, if the observation already has photometry, updates it
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
-                'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id'
+        Args:
+            pardic (dict):
+                required:
+                    'observation_id' (int),
+                    'astrometry' (bool),
+                    'filter' (str),
+                    'reducedfile' (str),
+                    'sexfile' (str),
+                    'biasfile' (str),
+                    'maskfile' (str),
+                    'flatfile' (str),
+                    'pipeline' (str),
+                    'marshal_phot_id' (int)
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Photometry added") if the photometry was added successfully
-        (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Photometry added") if the photometry was added successfully
+            (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
+        param_types = {'observation_id': int, 'astrometry': bool, 'filter': str, 'reducedfile': str, 'sexfile': str,
+                       'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int}
         # TODO: test
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
@@ -1034,6 +1125,10 @@ class SedmDB:
                                'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
                     keys.remove(key)
             pardic['id'] = phot_id[0][0]
+            type_check = _data_type_check(keys, pardic, param_types)
+            if type_check:
+                return (-1, type_check)
+
             update_sql = _generate_insert_sql(pardic, keys, 'spec')
             try:
                 self.execute_sql(update_sql)
@@ -1061,6 +1156,10 @@ class SedmDB:
             if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                            'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'phot')
         try:
             self.execute_sql(sql)
@@ -1082,21 +1181,29 @@ class SedmDB:
 
     def add_reduced_spectrum(self, pardic):
         """
-        Creates a new object in the spec table
+        Adds the specutrm or, if the observation already has a spectrum, updates it
 
-        Parameters
-        ----------
-        pardic: dict
-            required:
-                'observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset',
-                'quality', 'cubefile', 'standardfile', 'skysub
+        Args:
+            pardic (dict):
+                required:
+                    'observation_id' (int),
+                    'reducedfile' (str),
+                    'sexfile' (str),
+                    'biasfile' (str),
+                    'flatfile' (str),
+                    'imgset' (str),
+                    'quality' (int),
+                    'cubefile' (str),
+                    'standardfile' (str),
+                    'skysub' (bool)
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Spectrum added")  if the spectrum was added successfully
-        (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Spectrum added")  if the spectrum was added successfully
+            (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
+        param_types = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
+                       'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': bool}
         # TODO: which parameters are required? test
         # TODO: update schedule table indicating reduction?
         keys = list(pardic.keys())
@@ -1130,6 +1237,10 @@ class SedmDB:
                            'cubefile',
                            'standardfile', 'marshal_spec_id', 'skysub']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'spec')
         try:
             self.execute_sql(sql)
@@ -1153,17 +1264,24 @@ class SedmDB:
         """
         Creates an entry in metrics_phot or updates an existing metrics entry
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources'
+        Args:
+            pardic (dict):
+                required:
+                    'phot_id' (int),
+                    'fwhm' (float),
+                    'background' (float),
+                    'zp' (float),
+                    'zperr' (float),
+                    'ellipticity' (float),
+                    'nsources' (int)
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
-        (0, "Photometry metrics added") if the metrics were added successfully
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
+            (0, "Photometry metrics added") if the metrics were added successfully
         """
+        param_types = {'phot_id': int, 'fwhm': float, 'background': float, 'zp': float,
+                       'zperr': float, 'ellipticity': float, 'nsources': int}
         # TODO: which parameters are required? test
         keys = list(pardic.keys())
         if 'phot_id' not in keys:
@@ -1174,6 +1292,10 @@ class SedmDB:
                 if key not in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
                     keys.remove(key)
             pardic['id'] = metric_id[0][0]
+            type_check = _data_type_check(keys, pardic, param_types)
+            if type_check:
+                return (-1, type_check)
+
             update_sql = _generate_insert_sql(pardic, keys, 'metrics_phot')
             try:
                 self.execute_sql(update_sql)
@@ -1192,6 +1314,10 @@ class SedmDB:
         for key in reversed(keys):
             if key not in ['phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'metrics_phot')
         try:
             self.execute_sql(sql)
@@ -1204,9 +1330,22 @@ class SedmDB:
     def add_metrics_spec(self, pardic):
         """
         Creates a new object in the metrics spec stats table with the parameters specified in the dictionary.
-        Only one metric shall exist for each observation. If the reduction exists, an update
-        is made.
+        Only one metric exists for each observation. If the reduction exists, an update is made.
+
+        Args:
+            pardic:
+                required:
+                    'spec_id' (int)
+                optional:
+                    'fwhm' (float),
+                    'background' (float),
+                    'line_fwhm' (int)
+
+        Returns:
+            (-1: "ERROR...") if there is an issue
+            (0, "Spectrum metrics added") if it completes successfully
         """
+        param_types = {'spec_id': int, 'fwhm': float, 'background': float, 'line_fwhm': int}
         # TODO: which parameters are required? test
         keys = list(pardic.keys())
         if 'spec_id' not in keys:
@@ -1217,6 +1356,10 @@ class SedmDB:
                 if key not in ['fwhm', 'background', 'line_fwhm']:
                     keys.remove(key)
             pardic['id'] = metric_id[0][0]
+            type_check = _data_type_check(keys, pardic, param_types)
+            if type_check:
+                return (-1, type_check)
+
             update_sql = _generate_insert_sql(pardic, keys, 'metrics_spec')
             try:
                 self.execute_sql(update_sql)
@@ -1235,6 +1378,10 @@ class SedmDB:
         for key in reversed(keys):
             if key not in ['fwhm', 'background', 'line_fwhm']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'metrics_spec')
         try:
             self.execute_sql(sql)
@@ -1248,16 +1395,21 @@ class SedmDB:
         """
         Creates a new object in the flexure table.
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2'
+        Args:
+            pardic (dict):
+                required:
+                    'rms' (float),
+                    'spec_id_1' (int),
+                    'spec_id_2' (int),
+                    'timestamp1' ('year-month-day hour:minute:second'),
+                    'timestamp2' ('year-month-day hour:minute:second')
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there was an issue
-        (0, "Flexure added")
+        Returns:
+            (-1, "ERROR: ...") if there was an issue
+            (0, "Flexure added")
         """
+        param_types = {'rms': float, 'spec_id_1': int, 'spec_id_2': int,
+                       'timestamp1': 'datetime', 'timestamp2': 'datetime'}
         # TODO: test
         # TODO: find out what the 'rms' is here
         # TODO: not require timestamp1 and timestamp2, derive them from spec info?
@@ -1271,6 +1423,10 @@ class SedmDB:
         for key in reversed(keys):
             if key not in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'flexure')
         try:
             self.execute_sql(sql)
@@ -1284,17 +1440,26 @@ class SedmDB:
         """
         Creates a classification object attached to the reduced spectrum.
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'spec_id', 'object_id', 'classification', 'redshift', 'redshift_err',  'classifier', 'score'
-            optional: 'phase', 'phase_err'
+        Args:
+            pardic (dict):
+                required:
+                    'spec_id' (int),
+                    'object_id' (int),
+                    'classification' (str),
+                    'redshift' (float),
+                    'redshift_err' (float),
+                    'classifier' (str),
+                    'score' (float)
+                optional:
+                    'phase' (float),
+                    'phase_err' (float)
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there is an issue
-        (0, 'Classification added") if it was successful
+        Returns:
+            (-1, "ERROR: ...") if there is an issue
+            (0, 'Classification added") if it was successful
         """
+        param_types = {'spec_id': int, 'object_id': int, 'classification': str, 'redshift': float,
+                       'redshift_err': float, 'classifier': str, 'score': float, 'phase': float, 'phase_err': float}
         # TODO: clean up the required parameters, test
         keys = list(pardic.keys())
         for key in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score']:
@@ -1313,6 +1478,10 @@ class SedmDB:
             if key not in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score',
                            'phase', 'phase_err']:
                 keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_insert_sql(pardic, keys, 'classification')
         try:
             self.execute_sql(sql)
@@ -1326,18 +1495,25 @@ class SedmDB:
         """
         Update a classification
 
-        Parameters
-        ----------
-        pardic: dict
-            required: 'id' OR ('spec_id', 'classifier')
-            optional:
-                'classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score'
-            Note: this function will not modify id, spec_id, classifier or object_id
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int)
+                     OR
+                     'spec_id' (int),
+                     'classifier' (str)
+                optional:
+                    'classification' (str),
+                    'redshift' (float),
+                    'redshift_err' (float),
+                    'phase' (float),
+                    'phase_err' (float),
+                    'score' (float)
+                Note: this function will not modify id, spec_id, classifier or object_id
 
-        Returns
-        -------
-        (-1, "ERROR: ...") if there is an issue
-        (0, "Classification updated") if it was successful
+        Returns:
+            (-1, "ERROR: ...") if there is an issue
+            (0, "Classification updated") if it was successful
         """
         # TODO: test, determine which parameters should be allowed
         keys = list(pardic.keys())
@@ -1381,21 +1557,31 @@ class SedmDB:
 
 def _data_type_check(keys, pardic, value_types):
     """
+    make sure the values given match the data types required in the database
 
-    Parameters
-    ----------
-    keys: list of keys to be tested
-    pardic: dict with the keys' values
-    value_types: dict with the types the values should be (e.g. {'ra': float})
+    Args:
+        keys (list): keys to be tested
+        pardic (dict): keys and keys' values
+        value_types (dict): keys and types the values should be (e.g. {'ra': float})
 
-    Returns
-    -------
-    "ERROR: parameter ... must be of <type '...'>" if a value was of the wrong type
-    None
+    Returns:
+        "ERROR: parameter ... must be of <type '...'>" if a value was of the wrong type
+        None
     """
     for key in keys:
         if value_types[key] == str:
             pass  # all values are added to the queries as strings anyway
+        elif value_types[key] == 'date':
+            # TODO: find a better way to check this? does it actually modify pardic for the function?
+            try:
+                pardic[key] = str(Time(pardic[key])).split(' ')[0]
+            except ValueError:
+                return "ERROR: %s must be of the format 'year-month-day'!" % (key,)
+        elif value_types[key] == 'datetime':
+            try:
+                pardic[key] = str(Time(pardic[key]))
+            except ValueError:
+                return "ERROR: %s must be of the format 'year-month-day hour:minute:second'!" % (key,)
         elif not isinstance(pardic[key], value_types[key]):
             return "ERROR: parameter %s must be of %s!" % (key, str(value_types[key])[1:-1])
     return None
@@ -1405,20 +1591,18 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
     """
     generate the sql for a select query
 
-    Parameters
-    ----------
-    values: list of str
-        list of values to return
-    where_dict: dict
-        {'param':'value',...} adds WHERE param='value'...
-    allowed_params: dict
-        the parameters of the table to be queried and their type {'param':type,...}
-    table: str
-        name of the table
+    Args:
+        values (list): list of names of values
+            list of values to return
+        where_dict (dict):
+            {'param':'value',...} adds WHERE param='value'...
+        allowed_params (dict):
+            the parameters of the table to be queried and their type {'param':type,...}
+        table (str):
+            name of the table
 
-    Returns
-    -------
-    str (sql select query)
+    Returns:
+        str (sql select query)
     """
     for value in values:
         if value not in allowed_params.keys():
@@ -1448,15 +1632,13 @@ def _generate_insert_sql(pardic, param_list, table):
     """
     generate the sql for an insert command
 
-    Parameters
-    ----------
-    pardic: dict (same as given to upper function)
-    param_list: list (list of parameters to insert)
-    table: string (name of table)
+    Args:
+        pardic (dict): (same as given to calling function)
+        param_list (list): list of names of parameters to insert
+        table (str): name of table
 
-    Returns
-    -------
-    sql string
+    Returns:
+        sql string
     """
     # TODO: test, re-write insert functions
     columns = "("
@@ -1475,16 +1657,14 @@ def _generate_update_sql(pardic, param_list, table, lastmodified=False):
     """
     generate the sql for an update command
 
-    Parameters
-    ----------
-    pardic: dict (same as given to upper function) (must contain 'id')
-    param_list: list (list of parameters to update)
-    table: string (name of table)
-    lastmodified: bool (if the table has a lastmodified column)
+    Args:
+        pardic (dict): (same as given to upper function) (must contain 'id')
+        param_list (list): list of names of parameters to update
+        table (str): name of table
+        lastmodified (bool): if the table has a lastmodified column
 
-    Returns
-    -------
-    sql string
+    Returns:
+        sql string
     """
     # TODO: test, re-write update functions
     sql = "UPDATE %s SET " % (table,)
