@@ -93,7 +93,8 @@ class SedmDB:
                     'email'(str)
 
         Returns:
-            (-1, "ERROR: Username exists") if the username is a duplicate
+            (-1, "ERROR...") if there is an issue
+
             (0, "User added") if the user was added
         """
         # no need to check parameter value types as they are all strings
@@ -128,7 +129,8 @@ class SedmDB:
                     'id': (str)
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue (user doesn't exist, not enough information in pardic)
+            (-1, "ERROR...") if there was an issue (user doesn't exist, not enough information in pardic)
+
             (0, "User removed") if the removal was successful
         """
         if 'username' in pardic.keys():
@@ -165,7 +167,10 @@ class SedmDB:
 
         Returns:
             list of tuples containing the values for each user matching the criteria
-            empty list if no results
+            
+            empty list if no users match ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
         """
 
         # TODO: test, reconsider return styles
@@ -187,7 +192,7 @@ class SedmDB:
 
     def add_group(self, pardic):
         """
-        Adds a new group. Checks for duplicates in name
+        Adds a new group. Checks for duplicates in designator
 
         Args:
             pardic (dict):
@@ -195,7 +200,8 @@ class SedmDB:
                     'designator' (str)
 
         Returns:
-            (-1, "ERROR: ...") if no designator was provided or there is already a group with it
+            (-1, "ERROR...") if no designator was provided or there is already a group with it
+
             (0, "Group added") if the adding was successful
         """
         if 'designator' not in pardic.keys():
@@ -224,7 +230,8 @@ class SedmDB:
                 id of the group in the 'groups' Table
 
         Returns (int):
-            (-1, "ERROR: ...") if there was areason for failure
+            (-1, "ERROR...") if there was areason for failure
+
             (0, "User added to group") if the adding was successful
         """
         if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
@@ -266,7 +273,8 @@ class SedmDB:
                     'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
 
         Returns:
-            (-1, "ERROR: ...") if it failed to add
+            (-1, "ERROR...") if it failed to add
+
             (0, "Object added") if the object is added successfully
         """
         param_types = {'name': str, 'typedesig': str, 'ra': float, 'dec': float, 'epoch': float,
@@ -326,7 +334,7 @@ class SedmDB:
         select values from `objects`
 
         Args:
-            values: list of str
+            values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
@@ -334,7 +342,10 @@ class SedmDB:
 
         Returns:
             list of tuples containing the values for each user matching the criteria
-            empty list if no results
+
+            empty list if no objects match ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'marshal_id': int, 'name': str, 'iauname': str, 'ra': float, 'dec': float,
@@ -361,7 +372,9 @@ class SedmDB:
 
         Returns:
             id, full name if one object is found
+
             list of all (id, full name) if multiple matches are found for the name
+
             None if the object is not found
         """
         object_name = object_name.lower()
@@ -618,8 +631,10 @@ class SedmDB:
                     spec/phot_duration should be duration per exp
 
         Returns:
-            (-1, "ERROR: ...") if there is an issue with the input
+            (-1, "ERROR...") if there is an issue with the input
+
             (0, "Request added") if there are no errors
+
             (0, "Request added, atomicrequests returned ...") if there was an issue with atomicrequest creation
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
@@ -706,8 +721,10 @@ class SedmDB:
                 Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue with the updating
+            (-1, "ERROR...") if there was an issue with the updating
+
             (0, "Requests updated") if the update was successful
+
             (0, "Requests and atomicrequests updated") if atomicrequests were also updated
         """
         # TODO: if exptime is allowed, significant changes are needed to the atomicrequest update
@@ -763,10 +780,10 @@ class SedmDB:
 
     def get_from_requests(self, values, where_dict):
         """
-        select values from `objects`
+        select values from `request`
 
         Args:
-            values: list of str
+            values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
@@ -791,8 +808,11 @@ class SedmDB:
                 'lastmodified' ('year-month-day')
 
         Returns:
-            list of tuples containing the values for each user matching the criteria
-            empty if no requests match the ``where_dict`` criteria
+            list of tuples containing the values for each user matching the criteria,
+
+            empty list if no requests match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
@@ -846,13 +866,14 @@ class SedmDB:
                     'u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b'
 
         Returns:
-            (-1, "ERROR: ...") if there is an issue
+            (-1, "ERROR...") if there is an issue
+
             (0, "Request added") if it succeeded
         """
         # TODO: better description of 'order_id'
         # TODO: determine whether this should handle filter modifications to exptime?
         # TODO: test
-        param_types = {'rquest_id': int, 'exptime': float, 'filter': str, 'priority': float, 'inidate': 'date',
+        param_types = {'request_id': int, 'exptime': float, 'filter': str, 'priority': float, 'inidate': 'date',
                        'enddate': 'date', 'object_id': int, 'order_id': int}
         keys = list(pardic.keys())
         for key in ['request_id', 'exptime', 'filter', 'priority', 'inidate', 'enddate']:
@@ -907,7 +928,8 @@ class SedmDB:
                 NOTE: 'status' can be 'PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED' or 'CANCELED'
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue
+            (-1, "ERROR...") if there was an issue
+
             (0, "Atomic request updated") if it completed successfully
         """
         param_types = {'id': int, 'exptime': float, 'priority': float, 'inidate': 'date',
@@ -937,26 +959,52 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Atomic request updated")
 
-    def get_request_atomicrequests(self, request_id):
+    def get_from_atomicrequests(self, values, where_dict):
         """
-        return the atomicreqests associated with a single request
+        select values from `atomicrequest`
 
         Args:
-            request_id: int
-                The request_id of the desired request
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'request_id' (int),
+                'order_id' (int),
+                'exptime' (str),
+                'filter' (str),
+                'status' (str),
+                'priority' (float),
+                'inidate' ('year-month-day'),
+                'enddate' ('year-month-day'),
+                'creationdate' ('year-month-day'),
+                'lastmodified' ('year-month-day')
 
         Returns:
-            list of tuples:
-                (id, object_id, order_id, exptime, filter, status, priority)
-                for each atomicreqest associated with the desired request
-            [] if there were no atomicrequests matching the given request_id
+            list of tuples containing the values for each user matching the criteria
+
+            empty list if no atomicrequests match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
         """
-        if not isinstance(request_id, int):
-            return []
-        # TODO: test
-        atomic_requests = self.execute_sql("SELECT id, object_id, order_id, exptime, filter, status, priority "
-                                           "FROM atomicrequest WHERE request_id = %s" % (request_id,))
-        return atomic_requests
+        # TODO: test, reconsider return styles
+        allowed_params = {'id': int, 'object_id': int, 'request_id': int, 'order_id': int, 'exptime': float,
+                          'filter': str, 'status': str, 'priority': float, 'inidate': 'date', 'enddate': 'date',
+                          'creationdate': 'date', 'lastmodified': 'date'}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'request')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
     def add_observation_fits(self, header_dict):
         """
@@ -988,6 +1036,7 @@ class SedmDB:
 
         Returns:
             (-1, "ERROR...") if there was an issue
+
             (0, "Observation added") if it completed successfully
         """
         header_types = {'object_id': int, 'request_id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
@@ -1060,6 +1109,7 @@ class SedmDB:
 
         Returns:
             (-1, "ERROR...") if an issue occurs
+
             (0, "Telescope stats added") if successful
         """
         telstat_types = {'date': 'date', 'dome_status': str, 'in_temp': float, 'in_humidity': float, 'in_dew': float,
@@ -1108,8 +1158,10 @@ class SedmDB:
                     'marshal_phot_id' (int)
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue
+            (-1, "ERROR...") if there was an issue
+
             (0, "Photometry added") if the photometry was added successfully
+
             (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
         param_types = {'observation_id': int, 'astrometry': bool, 'filter': str, 'reducedfile': str, 'sexfile': str,
@@ -1198,8 +1250,10 @@ class SedmDB:
                     'skysub' (bool)
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue
+            (-1, "ERROR...") if there was an issue
+
             (0, "Spectrum added")  if the spectrum was added successfully
+
             (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
         param_types = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
@@ -1276,8 +1330,10 @@ class SedmDB:
                     'nsources' (int)
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue
+            (-1, "ERROR...") if there was an issue
+
             (0, "Photometry metrics updated for phot_id ...") if it updated existing metrics
+
             (0, "Photometry metrics added") if the metrics were added successfully
         """
         param_types = {'phot_id': int, 'fwhm': float, 'background': float, 'zp': float,
@@ -1343,6 +1399,7 @@ class SedmDB:
 
         Returns:
             (-1: "ERROR...") if there is an issue
+
             (0, "Spectrum metrics added") if it completes successfully
         """
         param_types = {'spec_id': int, 'fwhm': float, 'background': float, 'line_fwhm': int}
@@ -1405,7 +1462,8 @@ class SedmDB:
                     'timestamp2' ('year-month-day hour:minute:second')
 
         Returns:
-            (-1, "ERROR: ...") if there was an issue
+            (-1, "ERROR...") if there was an issue
+
             (0, "Flexure added")
         """
         param_types = {'rms': float, 'spec_id_1': int, 'spec_id_2': int,
@@ -1453,9 +1511,9 @@ class SedmDB:
                 optional:
                     'phase' (float),
                     'phase_err' (float)
-
         Returns:
-            (-1, "ERROR: ...") if there is an issue
+            (-1, "ERROR...") if there is an issue
+
             (0, 'Classification added") if it was successful
         """
         param_types = {'spec_id': int, 'object_id': int, 'classification': str, 'redshift': float,
@@ -1512,7 +1570,8 @@ class SedmDB:
                 Note: this function will not modify id, spec_id, classifier or object_id
 
         Returns:
-            (-1, "ERROR: ...") if there is an issue
+            (-1, "ERROR...") if there is an issue
+
             (0, "Classification updated") if it was successful
         """
         # TODO: test, determine which parameters should be allowed
@@ -1565,8 +1624,9 @@ def _data_type_check(keys, pardic, value_types):
         value_types (dict): keys and types the values should be (e.g. {'ra': float})
 
     Returns:
-        "ERROR: parameter ... must be of <type '...'>" if a value was of the wrong type
-        None
+        "ERROR..." if a value was of the wrong type
+
+        None if all matched
     """
     for key in keys:
         if value_types[key] == str:
@@ -1603,6 +1663,8 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
 
     Returns:
         str (sql select query)
+
+        "ERROR..." if they type_check fails
     """
     for value in values:
         if value not in allowed_params.keys():

@@ -170,6 +170,31 @@ def create_request_atomic_requests(request_id):
     return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
 
 
+def get_request_atomicrequests(request_id, values):
+    """
+    return the atomicreqests associated with a single request
+
+    Args:
+        request_id (int):
+            The request_id of the desired request
+        values (list):
+            list of values to be retreived about each atomicrequest
+
+    Returns:
+        list of tuples:
+            (id, object_id, order_id, exptime, filter, status, priority)
+            for each atomicreqest associated with the desired request
+        [] if there were no atomicrequests matching the given request_id
+        (-1, "ERROR...") if there was an issue
+
+    """
+    if not isinstance(request_id, int):
+        return []
+    # TODO: test
+    atomic_requests = db.get_from_atomicrequests(values, {'request_id': request_id})
+    return atomic_requests
+
+
 def add_observation_fitsfile(fitsfile, atomicrequest_id):
     """
     Adds an observation from a fitsfile, sets the atomicobservation to 'OBSERVED'. Checks if all the atomicobservations
