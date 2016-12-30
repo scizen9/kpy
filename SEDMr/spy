@@ -49,6 +49,9 @@ else
         case "effplot":
             python $SEDMPATH/SEDMr/EffTrend.py
             breaksw
+        case "posplot":
+            python $SEDMPATH/SEDMr/PosTrend.py
+            breaksw
         default
             python -u $*
             breaksw
