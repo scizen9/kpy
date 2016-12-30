@@ -21,7 +21,7 @@ for d in dlist:
     ddate = d.split('/')[-1]
     dtime = Time(ddate[0:4]+'-'+ddate[4:6]+'-'+ddate[6:])
 
-    fspec = os.path.join(d, 'sp_*_obs1*.npy')
+    fspec = os.path.join(d, 'sp_STD-*_obs1*.npy')
     slist = glob.glob(fspec)
 
     for s in slist:
