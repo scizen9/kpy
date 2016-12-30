@@ -1400,6 +1400,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
             else:
                 quality = 1  # by definition
 
+            # Stats for automatic fit
+            stats = {"nosky": False, "scaled": False,
+                     "lmin": lmin, "lmax": lmax,
+                     "cmin": None, "cmax": None}
+
             # Use all sky spaxels in image
             kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
 
@@ -1451,7 +1456,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 bgd_sub=False, lmin=lmin, lmax=lmax)
+                 bgd_sub=False, lmin=lmin, lmax=lmax, cmin=stats['cmin'], cmax=stats['cmax'])
         # get the mean spectrum over the selected spaxels
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
@@ -1522,10 +1527,12 @@ def handle_single(imfile, fine, outname=None, offset=None,
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
         print "Median airmass corr: %.4f" % np.median(extcorr)
         # Calculate output corrected spectrum
-        if nosky:
+        if stats['nosky']:
+            print "Sky subtraction off"
             # Account for airmass and aperture
             res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
         else:
+            print "Sky subtraction on"
             # Account for sky, airmass and aperture
             res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
 
@@ -1549,7 +1556,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['object_spaxel_ids'] = nsxa
         res[0]['sky_spaxel_ids'] = kixa
         res[0]['sky_spectra'] = skya[0]['spectra']
-        res[0]['sky_subtraction'] = False if nosky else True
+        res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
@@ -1898,7 +1905,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         print("Median airmass corrs A: %.4f, B: %.4f" %
               (np.median(extcorra), np.median(extcorrb)))
         # If requested merely sum in aperture, otherwise subtract sky
-        if nosky:
+        if stats['nosky']:
             print "Sky subtraction off"
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=FutureWarning)
@@ -1937,7 +1944,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['sky_spaxel_ids_A'] = kixa
         res[0]['object_spaxel_ids_B'] = nsxB
         res[0]['sky_spaxel_ids_B'] = kixb
-        res[0]['sky_subtraction'] = False if nosky else True
+        res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)

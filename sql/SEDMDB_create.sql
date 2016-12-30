@@ -23,8 +23,8 @@ CREATE TABLE flexure (
     rms decimal(8,4)  NOT NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
-    timestamp1 TIME NOT NULL,
-    timestamp2 TIME NOT NULL,
+    timestamp1 TIMESTAMP NOT NULL,
+    timestamp2 TIMESTAMP NOT NULL,
     CONSTRAINT flexure_pk PRIMARY KEY (id)
 );
 
@@ -136,14 +136,14 @@ CREATE TABLE parabolic_heliocentric (
     object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
     T date,
-    -- eccentricity (<1)
-    e decimal(10,8),
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
     longascnode_O decimal(10,8),
     -- argument of perihelion
     perihelion_o decimal(10,8),
+    -- eccentricity (<1)
+    e decimal(10,8),
     -- perihelion distance, AU
     q decimal(10,8),
     -- equinox year
