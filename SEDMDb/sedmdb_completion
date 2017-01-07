@@ -1,0 +1,33 @@
+Table                   insert      update      select
+                    (- for none, \ for partial, x for written) (funcion/test)
+classification          x-          x-          x-
+flexure                 x-          --          --
+metrics_phot            x-          \-          x-
+metrics_spec            x-          \-          x-
+object                  x-          --          x-
+elliptical_heliocentric x-          --          x-
+parabolic_heliocentric  x-          --          x-
+hyperbolic_heliocentric x-          --          x-
+earth_satellite         x-          --          x-
+periodic                --          --          --
+observation             x-          x-          x-
+spec                    x-          \-          x-
+phot                    x-          \-          x-
+ref_stars               --          --          --
+request                 x\          x\          x-
+atomicrequest           x\          x           x-
+telescope_stats         x-          --          x-
+users                   xx          --          x-
+groups                  xx          --          --
+usergroups              x-          --          --
+
+special functions:
+find object id from partial name (get_object_id_from_name) x
+remove_user xx
+program_time_used --
+get_user_requests x-
+get_active_requests x-
+cancel_request x-
+create_atomic_requests x-
+create_request_atomic_requests x-
+
