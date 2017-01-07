@@ -1,4 +1,5 @@
 import SedmDb
+import SedmDb_tools as db_tools
 import numpy as np
 
 
@@ -127,28 +128,20 @@ def test_cancel_request():
     assert 'CANCELED' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
     assert db.cancel_scheduled_request(0) == (-1, "ERROR: request does not exist!")
 
-atomic_dict = {}
+atomic_dict = {'exptime': 0.0, 'filter': 'f', 'priority': 32., 'inidate': '2016-12-12',
+               'enddate': '2017-1-12', 'object_id': 1, 'order_id': 1, 'when': '54'}
+# 'when' should do nothing (if it does something sql will error)
+# lack of 'request_id' should cause a failure
+
 
 def test_atomicrequest_manipulation():
-    # TODO: change parameters to work for atomicrequests rather than requests
     # TODO: test for add
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: nexposures and ordering are inconsistent!")
-    atomic_dict.pop('nexposures', None)
-    db.add_atomic_request(atomic_dict)  # this re-adds nexposures by generating from ordering
-    assert db.execute_sql("SELECT id FROM request WHERE nexposures = '{1,0,4,4,0}' AND status != 'EXPIRED'")
-    atomic_dict.pop('ordering', None)
-    atomic_dict.pop('nexposures', None)
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: nexposures or ordering is required!")
-    atomic_dict['ordering'] = '{2g,2r,1ifu,2g,2r}'  # return ordering to the dict
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id is not provided!")
+    atomic_dict['request_id'] = 3.2
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
+    atomic_dict['request_id'] = db.get_from_atomicrequests(['request_id'], {'object_id': 1})
+    assert db.add_atomic_request(atomic_dict)[0] == 0
 
-    atomic_dict.pop('priority', None)
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: priority not in dictionary!")
-    atomic_dict['priority'] = 3.5  # re-add it to the dict
-
-    atomic_dict['object_id'] = 0
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: object does not exist!")
-    atomic_dict['object_id'] = 1
-    
 
     # TODO: test for update
     pass
@@ -156,7 +149,7 @@ def test_atomicrequest_manipulation():
 
 def test_request_atomic_requests():
     # create_request_atomic_requests is called by add_request already, so its tests above test valid cases
-    assert db.create_request_atomic_requests(0) == (-1, "ERROR: request does not exist!")
+    assert db_tools.create_request_atomic_requests(0) == (-1, "ERROR: request does not exist!")
     # TODO: find a way to test other situations that doesn't run into (atomicrequests for that request already exist)?
 
 
@@ -166,7 +159,7 @@ def test_get_request_atomic_requests():
 
 def test_fits_header_parse():
     fitsfile = '/scr2/sedm/phot/20161012/rc20161012_12_36_34.fits'
-    db.add_observation_fits(fitsfile)
+    db_tools.add_observation_fitsfile(fitsfile)
 
 
 def test_add_phot_and_metrics():
@@ -202,4 +195,5 @@ if __name__ == '__main__':
     test_request_manipulation()
     test_request_update()
     test_request_expiration()
+    test_atomicrequest_manipulation()
 

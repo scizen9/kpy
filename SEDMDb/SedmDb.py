@@ -163,7 +163,11 @@ class SedmDB:
             where_dict (dict):
                 ``'param':'value'`` to be used as WHERE clauses
 
-            values/keys options: ['id', 'username', 'name', 'email']
+            values/keys options:
+                'id' (int),
+                'username' (str),
+                'name' (str),
+                'email' (str)]
 
         Returns:
             list of tuples containing the values for each user matching the criteria
@@ -175,10 +179,6 @@ class SedmDB:
 
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'username': str, 'name': str, 'email': str}
-        if 'id' in where_dict.keys():
-            if not isinstance(where_dict['id'], int):
-                return (-1, "ERROR: parameter id must be of type 'int'!")
-        # TODO: generalize
         sql = _generate_select_sql(values, where_dict, allowed_params, 'users')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -443,56 +443,53 @@ class SedmDB:
             return (-1, "ERROR: add_elliptical_orbit sql command failed with a ProgrammingError!")
         return (0, "Elliptical heliocentric orbit added")
 
-    def add_parabolic_orbit(self, orbit_params):
+    def get_elliptical_orbit(self, values, where_dict):
         """
-        Adds the orbit parameters for an parabolic heliocentric orbit
+        select values from `elliptical_heliocentric`
 
         Args:
-            orbit_params (dict):
-                required:
-                    'object_id'(int),
-                    'T' (date str),
-                    'inclination' (float),
-                    'longascnode_0' (float) (lon. of ascending node),
-                    'perihelion_o' (float) (arg. of perihelion),
-                    'e' (float) eccentricity,
-                    'q' (float) (perihelion distance),
-                    'D' (int) (equinox year),
-                    'M1' (float),
-                    'M2' (float) (first and second components of magnitude model)
-
-                optional:
-                    's' (float) (angular size at 1 AU)
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'inclination' (float),
+                'longascnode_0' (float) (lon. of ascending node),
+                'perihelion_o' (float) (arg. of perihelion),
+                'a' (float) (mean distance AU),
+                'n' (float) (mean daily motion deg/day),
+                'e' (float) (eccentricity),
+                'M' (float) (mean anomaly),
+                'mjdepoch' (int) (epoch, time of 'M'),
+                'D' (int) (equinox year),
+                'M1' (float),
+                'M2' (float) (first and second components of magnitude model),
+                's' (float) (angular size at 1 AU)
 
         Returns:
+            list of tuples containing the values for each orbit matching the criteria,
 
+            empty list if no orbits match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
         """
-        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
-                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
-        # TODO: query associated table for object already existing, test
-        orb_keys = list(orbit_params.keys())
-        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
-                    'M1', 'M2', 'object_id']:
-            if key not in orb_keys:
-                return (-1, "ERROR: %s not provided!" % (key,))
-            elif not orbit_params[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
-        for key in reversed(orb_keys):
-            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
-                           'M1', 'M2', 's', 'object_id']:
-                orb_keys.remove(key)
-        type_check = _data_type_check(orb_keys, orbit_params, param_types)
-        if type_check:
-            return (-1, type_check)
+        # TODO: test, reconsider return styles
+        allowed_params = {'object_id': int, 'inclination': float, 'longascnode_0': float, 'perihelion_o': float,
+                          'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
+                          'M2': float, 's': float, 'id': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'elliptical_heliocentric')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
 
-        orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
         try:
-            self.execute_sql(orb_sql)
+            results = self.execute_sql(sql)
         except exc.IntegrityError:
-            return (-1, "ERROR: add_parabolic_orbit sql command failed with an IntegrityError!")
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
-            return (-1, "ERROR: add_parabolic_orbit sql command failed with a ProgrammingError!")
-        return (0, "Parabolic heliocentric orbit added")
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
     def add_hyperbolic_orbit(self, orbit_params):
         """
@@ -545,6 +542,145 @@ class SedmDB:
             return (-1, "ERROR: add_hyperbolic_orbit sql command failed with a ProgrammingError!")
         return (0, "Hyperbolic heliocentric orbit added")
 
+    def get_hyperbolic_orbit(self, values, where_dict):
+        """
+        select values from `hyperbolic_heliocentric`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'T' ('year-month-day' or `~astropy.time.Time` object),
+                'inclination' (float),
+                'longascnode_0' (float) (lon. of ascending node),
+                'perihelion_o' (float) (arg. of perihelion),
+                'e' (float) (eccentricity),
+                'q' (float) (perihelion distance AU),
+                'D' (int) (equinox year),
+                'M1' (float),
+                'M2' (float) (first and second components of magnitude model),
+                's' (float) (angular size at 1 AU)
+
+        Returns:
+            list of tuples containing the values for each orbit matching the criteria,
+
+            empty list if no orbits match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
+                          'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'hyperbolic_heliocentric')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
+    def add_parabolic_orbit(self, orbit_params):
+        """
+        Adds the orbit parameters for an parabolic heliocentric orbit
+
+        Args:
+            orbit_params (dict):
+                required:
+                    'object_id'(int),
+                    'T' (date str),
+                    'inclination' (float),
+                    'perihelion_o' (float) (arg. of perihelion),
+                    'q' (float) (perihelion distance),
+                    'longascnode_0' (float) (lon. of ascending node),
+                    'D' (int) (equinox year),
+                    'M1' (float),
+                    'M2' (float) (first and second components of magnitude model)
+
+                optional:
+                    's' (float) (angular size at 1 AU)
+
+        Returns:
+
+        """
+        param_types = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_0': float,
+                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
+        # TODO: query associated table for object already existing, test
+        orb_keys = list(orbit_params.keys())
+        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                    'M1', 'M2', 'object_id']:
+            if key not in orb_keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+            elif not orbit_params[key]:
+                return (-1, "ERROR: no value provided for %s!" % (key,))
+        for key in reversed(orb_keys):
+            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                           'M1', 'M2', 's', 'object_id']:
+                orb_keys.remove(key)
+        type_check = _data_type_check(orb_keys, orbit_params, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        orb_sql = _generate_insert_sql(orbit_params, orb_keys, 'parabolic_heliocentric')
+        try:
+            self.execute_sql(orb_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_parabolic_orbit sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_parabolic_orbit sql command failed with a ProgrammingError!")
+        return (0, "Parabolic heliocentric orbit added")
+
+    def get_parabolic_orbit(self, values, where_dict):
+        """
+        select values from `parabolic_heliocentric`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id'(int),
+                'T' (date str),
+                'inclination' (float),
+                'perihelion_o' (float) (arg. of perihelion),
+                'q' (float) (perihelion distance),
+                'longascnode_0' (float) (lon. of ascending node),
+                'D' (int) (equinox year),
+                'M1' (float),
+                'M2' (float) (first and second components of magnitude model),
+                's' (float) (angular size at 1 AU)
+
+        Returns:
+            list of tuples containing the values for each orbit matching the criteria,
+
+            empty list if no orbits match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_0': float,
+                          'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'parabolic_heliocentric')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_earth_satellite_orbit(self, orbit_params):
         """
         Adds the orbit parameters for an Earth satellite orbit
@@ -595,6 +731,52 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: add_earth_satellite_orbit sql command failed with a ProgrammingError!")
         return (0, "Earth satellite orbit added")
+
+    def get_earth_satellite_orbit(self, values, where_dict):
+        """
+        select values from `earth_satellite`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'T' ('year-month-day') (epoch of other fields),
+                'inclination' (float),
+                'ra' (float) (ra of ascending node),
+                'e' (float) (eccentricity),
+                'pedigree' (float) (arg. of pedigree),
+                'M' (float) (mean anomaly),
+                'n' (float) (mean motion, revs/day),
+                'decay' (float) (orbit decay rate, rev/day^2),
+                'reforbit' (int) (integral reference orbit number at epoch),
+                'drag' (float) (drag coefficient, 1/(Earth radii))
+
+        Returns:
+            list of tuples containing the values for each orbit matching the criteria,
+
+            empty list if no orbits match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'ra': float,
+                          'pedigree': float, 'M': float, 'n': float, 'decay': float, 'reforbit': int,
+                          'drag': float, 'id': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'earth_satellite')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
     def add_planet_satellite_orbit(self, orbit_params):
         raise NotImplementedError
@@ -808,7 +990,7 @@ class SedmDB:
                 'lastmodified' ('year-month-day')
 
         Returns:
-            list of tuples containing the values for each user matching the criteria,
+            list of tuples containing the values for each request matching the criteria,
 
             empty list if no requests match the ``where_dict`` criteria
 
@@ -983,7 +1165,7 @@ class SedmDB:
                 'lastmodified' ('year-month-day')
 
         Returns:
-            list of tuples containing the values for each user matching the criteria
+            list of tuples containing the values for each atomicrequest matching the criteria
 
             empty list if no atomicrequests match the ``where_dict`` criteria
 
@@ -994,7 +1176,7 @@ class SedmDB:
                           'filter': str, 'status': str, 'priority': float, 'inidate': 'date', 'enddate': 'date',
                           'creationdate': 'date', 'lastmodified': 'date'}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'request')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'atomicrequest')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1079,6 +1261,125 @@ class SedmDB:
         # TODO: add other returns for failure cases?
         return (0, "Observation added")
 
+    def update_observation(self, pardic):
+        """
+
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int)
+                    OR
+                    'atomicrequest_id' (int)
+                optional:
+                    'mjd' (float),
+                    'airmass' (float),
+                    'exptime' (float),
+                    'fitsfile' (str),
+                    'lst' (str),
+                    'ra' (float),
+                    'dec' (float),
+                    'tel_ra' (str),
+                    'tel_dec' (str),
+                    'tel_az' (float),
+                    'tel_el' (float),
+                    'tel_pa' (float),
+                    'ra_off' (float),
+                    'dec_off' (float),
+                    'imtype' (str),
+                    'camera' (str)
+
+        Returns:
+
+        """
+        # TODO: reconsider allowed parameters
+        param_types = {'id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
+                       'exptime': float, 'fitsfile': str, 'lst': str, 'ra': float, 'dec': float, 'tel_ra': str,
+                       'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
+                       'dec_off': float, 'imtype': str, 'camera': str}
+        keys = list(pardic.keys())
+        if 'id' not in keys and 'atomicrequest_id' not in keys:
+            return (-1, "ERROR: neither id nor atomicrequest_id provided!")
+        elif 'id' not in keys:
+            obs = self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id='%s'"
+                                   % (pardic['atomicrequest_id'],))
+            if not obs:
+                return (-1, "ERROR: there is no observation with that atomicrequest_id")
+            pardic['id'] = obs[0][0]
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM observation;')]:
+            return (-1, "ERROR: observation does not exist!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['mjd', 'airmass', 'exptime', 'fitsfile', 'lst', 'ra', 'dec', 'tel_ra',
+                           'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off', 'imtype', 'camera']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'observation')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_observation sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_observation sql command failed with a ProgrammingError!")
+
+    def get_from_observation(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'object_id' (int),
+                'request_id' (int),
+                'atomicrequest_id' (int),
+                'mjd' (float),
+                'airmass' (float),
+                'exptime' (float),
+                'fitsfile' (str),
+                'lst' (str),
+                'ra' (float),
+                'dec' (float),
+                'tel_ra' (str),
+                'tel_dec' (str),
+                'tel_az' (float),
+                'tel_el' (float),
+                'tel_pa' (float),
+                'ra_off' (float),
+                'dec_off' (float),
+                'imtype' (str),
+                'camera' (str)
+
+        Returns:
+            list of tuples containing the values for each observation matching the criteria
+
+            empty list if no observations match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'object_id': int, 'request_id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
+                          'exptime': float, 'fitsfile': str, 'lst': str, 'ra': float, 'dec': float, 'tel_ra': str,
+                          'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
+                          'dec_off': float, 'imtype': str, 'camera': str, 'id': 'int'}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'observation')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_tel_stats(self, tel_stats):
         """
         Adds telescope stats associated with an observation
@@ -1138,6 +1439,61 @@ class SedmDB:
         return (0, "Telescope stats added")
 
     # TODO: write update_observation() and update_telescope_stats()
+
+    def get_from_telescope_stats(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'observation_id' (int),
+                'date' ('year-month-day'),
+                'dome_status' (str),
+                'in_temp' (float),
+                'in_humidity' (float),
+                'in_dew' (float),
+                'out_temp' (float),
+                'out_humidity' (float),
+                'out_dew' (float),
+                'wind_dir' (float),
+                'wsp_cur' (float),
+                'wsp_avg' (float),
+                'mir_temp' (float),
+                'top_air' (float),
+                'pri_temp' (float),
+                'sec_temp' (float),
+                'flo_temp' (float),
+                'bot_temp' (float),
+                'mid_temp' (float),
+                'top_temp' (float)
+
+        Returns:
+            list of tuples containing the values for telescope stats matching the criteria
+
+            empty list if no telescope_stats entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'date': 'date', 'dome_status': str, 'in_temp': float, 'in_humidity': float, 'in_dew': float,
+                          'out_temp': float, 'out_humidity': float, 'out_dew': float, 'wind_dir': float,
+                          'wsp_cur': float, 'wsp_avg': float, 'mir_temp': float, 'top_air': float, 'pri_temp': float,
+                          'sec_temp': float, 'flo_temp': float, 'bot_temp': float, 'mid_temp': float, 'top_temp': float,
+                          'observation_id': int, 'id': int}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'telescope_stats')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
     def add_reduced_photometry(self, pardic):
         """
@@ -1231,6 +1587,49 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
         return (0, "Photometry added")
 
+    def get_from_phot(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'observation_id' (int),
+                'astrometry' (bool),
+                'filter' (str),
+                'reducedfile' (str),
+                'sexfile' (str),
+                'biasfile' (str),
+                'maskfile' (str),
+                'flatfile' (str),
+                'pipeline' (str),
+                'marshal_phot_id' (int)
+
+        Returns:
+            list of tuples containing the values for phot entries matching the criteria
+
+            empty list if no phot entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'observation_id': int, 'astrometry': bool, 'filter': str, 'reducedfile': str, 'sexfile': str,
+                          'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int,
+                          'id': int}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'phot')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_reduced_spectrum(self, pardic):
         """
         Adds the specutrm or, if the observation already has a spectrum, updates it
@@ -1314,6 +1713,49 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_spectrum sql command failed with a ProgrammingError!")
         return (0, "Spectrum added")
 
+    def get_from_spec(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'observation_id' (int),
+                'reducedfile' (str),
+                'sexfile' (str),
+                'biasfile' (str),
+                'flatfile' (str),
+                'imgset' (str),
+                'quality' (int),
+                'cubefile' (str),
+                'standardfile' (str),ear
+                'skysub' (bool)
+
+        Returns:
+            list of tuples containing the values for spectra matching the criteria
+
+            empty list if no spec entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
+                          'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str,
+                          'skysub': bool, 'id': int}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'spec')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_metrics_phot(self, pardic):
         """
         Creates an entry in metrics_phot or updates an existing metrics entry
@@ -1383,6 +1825,45 @@ class SedmDB:
             return (-1, "ERROR: add_metrics_phot sql command failed with a ProgrammingError!")
         return (0, "Photometry metrics added")
 
+    def get_from_metrics_phot(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'phot_id' (int),
+                'fwhm' (float),
+                'background' (float),
+                'zp' (float),
+                'zperr' (float),
+                'ellipticity' (float),
+                'nsources' (int)
+
+        Returns:
+            list of tuples containing the values for metrics matching the criteria
+
+            empty list if no metrics_phot entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'phot_id': int, 'fwhm': float, 'background': float, 'zp': float,
+                          'zperr': float, 'ellipticity': float, 'nsources': int, 'id': int}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'metrics_phot')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_metrics_spec(self, pardic):
         """
         Creates a new object in the metrics spec stats table with the parameters specified in the dictionary.
@@ -1448,6 +1929,41 @@ class SedmDB:
             return (-1, "ERROR: add_metrics_spec sql command failed with a ProgrammingError!")
         return (0, "Spectrum metrics added")
 
+    def get_from_metrics_spec(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'spec_id' (int),
+                'fwhm' (float),
+                'background' (float),
+                'line_fwhm' (int)
+
+        Returns:
+            list of tuples containing the values for metrics matching the criteria
+
+            empty list if no metrics_spec entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'spec_id': int, 'fwhm': float, 'background': float, 'line_fwhm': int, 'id': int}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'metrics_spec')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_flexure(self, pardic):
         """
         Creates a new object in the flexure table.
@@ -1493,6 +2009,43 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: add_flexure sql command failed with a ProgrammingError!")
         return (0, "Flexure added")
+
+    def get_from_flexure(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'rms' (float),
+                'spec_id_1' (int),
+                'spec_id_2' (int),
+                'timestamp1' ('year-month-day hour:minute:second'),
+                'timestamp2' ('year-month-day hour:minute:second')
+
+        Returns:
+            list of tuples containing the values for flexure matching the criteria
+
+            empty list if no flexure entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'id': int, 'rms': float, 'spec_id_1': int, 'spec_id_2': int,
+                          'timestamp1': 'datetime', 'timestamp2': 'datetime'}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'flexure')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
     def add_classification(self, pardic):
         """
@@ -1574,6 +2127,8 @@ class SedmDB:
 
             (0, "Classification updated") if it was successful
         """
+        param_types = {'id': int, 'spec_id': int, 'classifier': str, 'classification': str, 'redshift': float,
+                       'redshift_err': float, 'phase': float, 'phase_err': float, 'score': float}
         # TODO: test, determine which parameters should be allowed
         keys = list(pardic.keys())
         if 'id' in keys:
@@ -1604,6 +2159,10 @@ class SedmDB:
 
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
         sql = _generate_update_sql(pardic, keys, 'classification')
         try:
             self.execute_sql(sql)
@@ -1612,6 +2171,46 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: update_classification sql command failed with a ProgrammingError!")
         return (0, "Classification updated")
+
+    def get_from_classification(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'id' (int),
+                'spec_id' (int),
+                'classifier' (str),
+                'classification' (str),
+                'redshift' (float),
+                'redshift_err' (float),
+                'phase' (float),
+                'phase_err' (float),
+                'score' (float)
+
+        Returns:
+            list of tuples containing the values for classifications matching the criteria
+
+            empty list if no classification entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'spec_id': int, 'object_id': int, 'classification': str, 'redshift': float, 'id': int,
+                          'redshift_err': float, 'classifier': str, 'score': float, 'phase': float, 'phase_err': float}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'classification')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
 
 
 def _data_type_check(keys, pardic, value_types):
