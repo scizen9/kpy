@@ -5,7 +5,76 @@ from astropy.io import fits
 db = SedmDb.SedmDB()
 
 
-# TODO: write a function to get object+orbit data for an object
+def get_object_parameters(object_id):
+    """
+    Takes an object_id and returns the object's information and orbit parameters for SSO
+    Args:
+        object_id (int): id of the object
+
+    Returns:
+        (-1, "ERROR...") if an error occurred
+
+        [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), None] for fixed objects, or if there are
+        no orbit parameters in the database
+
+        [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), (orbit params arranged in ephem ordering)]
+    """  # TODO: test if the orbit_params can be input directly into an ephem call
+    object = db.get_from_objects(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
+                                 {'id': object_id})
+    if not object:
+        return (-1, "ERROR: no object found matching the given object_id")
+    elif object[0] == -1:  # object[0] should be positive or empty if successful
+        return object  # this should carry the error message
+    # format the response depending on the typedesig
+    if object[0][5] == 'f':
+        return [object[0], None]
+
+    elif object[0][5] == 'e':
+        orbit_params = db.get_elliptical_orbit(['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e', 'M',
+                                                'mjdepoch', 'D', 'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'h':
+        orbit_params = db.get_hyperbolic_orbit(['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                                                'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'p':
+        orbit_params = db.get_parabolic_orbit(['T', 'inclination', 'perihelion_o', 'q', 'longascnode_0', 'D',
+                                               'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'E':
+        orbit_params = db.get_earth_satellite_orbit(['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n', 'decay',
+                                                     'reforbit', 'drag'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'P':
+        raise NotImplementedError  # TODO: add this
+
+    else:
+        return (-1, "ERROR: object has an invalid typedesig '%s'" % (object[0][5],))
+
 
 def program_time_used(start_date, end_date, program_id):
 
@@ -221,7 +290,7 @@ def add_observation_fitsfile(fitsfile, atomicrequest_id):
     else:
         return (-1, "ERROR: no atomicrequests found with an id matching the header's ATOM_ID!")
 
-    obs_added = db.add_observation_fits(header_dict)
+    obs_added = db.add_observation(header_dict)
     # TODO: add ATOM_ID to the header (above)
     # TODO: add 'imtype', generate from fitsfile name?
 
