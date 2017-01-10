@@ -134,8 +134,10 @@ class SedmDB:
             (0, "User removed") if the removal was successful
         """
         if 'username' in pardic.keys():
-            user_id = self.execute_sql("SELECT id FROM users WHERE username='%s'" % (pardic['username'],))
+            user_id = self.get_from_users(['id'], {'username': pardic['username']})
             if user_id:
+                if user_id[0] == -1:  # if get_from_users failed
+                    return user_id
                 self.execute_sql("DELETE FROM usergroups WHERE user_id='%s'" % (user_id[0][0],))
                 self.execute_sql("DELETE FROM users WHERE id='%s';" % (user_id[0][0],))
                 return (0, "User removed")
@@ -1060,12 +1062,13 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
-        if not isinstance(request_id, int):
 
-        req_obj_stat = self.execute_sql("SELECT object_id, status FROM request "
-                                        "WHERE id='%s'" % (pardic['request_id']))
+        req_obj_stat = self.get_from_requests(['object_id', 'status'], {'id': pardic['request_id']})
         if not req_obj_stat:  # if there is no request with the id given
             return (-1, "ERROR: request does not exist!")
+        elif req_obj_stat[0] == -1:
+            return req_obj_stat
+
         if 'object_id' not in keys:
             pardic['object_id'] = req_obj_stat[0][0]
         else:
@@ -1226,7 +1229,7 @@ class SedmDB:
                         'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
                         'dec_off': float, 'imtype': str, 'camera': str}
         if 'atomicrequest_id' in header_dict.keys():
-            if not isinstance(header_dict['atomicrequest_id'], int):
+            if not isinstance(header_dict['atomicrequest_id'], int):  # prevent the select sql from failing
                 return (-1, "ERROR: atomicrequest must be of type 'int'!")
             if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
                 return (-1, "ERROR: atomicrequest does not exist!")
@@ -1302,10 +1305,11 @@ class SedmDB:
         if 'id' not in keys and 'atomicrequest_id' not in keys:
             return (-1, "ERROR: neither id nor atomicrequest_id provided!")
         elif 'id' not in keys:
-            obs = self.execute_sql("SELECT id FROM observation WHERE atomicrequest_id='%s'"
-                                   % (pardic['atomicrequest_id'],))
+            obs = self.get_from_observation(['id'], {'atomic_request_id': pardic['atomicrequest_id']})
             if not obs:
                 return (-1, "ERROR: there is no observation with that atomicrequest_id")
+            elif obs[0] == -1:
+                return obs
             pardic['id'] = obs[0][0]
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM observation;')]:
@@ -1528,8 +1532,10 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
             return (-1, "ERROR: observation_id not provided!")
-        phot_id = self.execute_sql("SELECT id FROM phot WHERE observation_id='%s'" % (pardic['observation_id']))
+        phot_id = self.get_from_phot(['id'], {'observation_id': pardic['observation_id']})
         if phot_id:  # if there is already an entry for that observation, update instead
+            if phot_id[0] == -1:
+                return phot_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
                                'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
@@ -1548,9 +1554,11 @@ class SedmDB:
                 return (-1, "ERROR: add_reduced_photometry update sql command failed with a ProgrammingError!")
             return (0, "Photometry updated for observation_id %s" % (pardic['observation_id'],))
 
-        obs = self.execute_sql("SELECT fitsfile FROM observation WHERE id='%s'" % (pardic['observation_id'],))
+        obs = self.get_from_observation(['fitsfile'], {'id': pardic['observation_id']})
         if not obs:
             return (-1, "ERROR: no observation with the observation_id")
+        elif obs[0] == -1:
+            return obs
         else:
             pass
             # TODO: generate the filter here?
@@ -1664,8 +1672,10 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
             return (-1, "ERROR: observation_id not provided!")
-        spec_id = self.execute_sql("SELECT id FROM spec WHERE observation_id='%s'" % (pardic['observation_id']))
+        spec_id = self.get_from_spec(['id'], {'observation_id': pardic['observation_id']})
         if spec_id:  # if there is already an entry for that observation, update instead
+            if spec_id[0] == -1:
+                return spec_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
                                'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
@@ -1786,8 +1796,10 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'phot_id' not in keys:
             return (-1, "ERROR: phot_id not provided!")
-        metric_id = self.execute_sql("SELECT id FROM metrics_phot WHERE phot_id='%s'" % (pardic['phot_id']))
+        metric_id = self.get_from_metrics_phot(['id'], {'phot_id': pardic['phot_id']})
         if metric_id:  # if there is already an entry for that observation, update instead
+            if metric_id[0] == -1:
+                return metric_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
                     keys.remove(key)
@@ -1890,8 +1902,10 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'spec_id' not in keys:
             return (-1, "ERROR: spec_id not provided!")
-        metric_id = self.execute_sql("SELECT id FROM metrics_spec WHERE spec_id='%s'" % (pardic['spec_id']))
+        metric_id = self.get_from_metrics_spec(['id'], {'spec_id': pardic['spec_id']})
         if metric_id:  # if there is already an entry for that observation, update instead
+            if metric_id[0] == -1:
+                return metric_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['fwhm', 'background', 'line_fwhm']:
                     keys.remove(key)
@@ -2080,13 +2094,14 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
-        classified = self.execute_sql("SELECT classification, redshift, redshift_err FROM classification "
-                                      "WHERE spec_id = '%s' AND classifier = '%s';" % (pardic['spec_id'],
-                                                                                       pardic['classification']))
+        classified = self.get_from_classification(['classification', 'redshift', 'redshift_err'],
+                                     {'spec_id': pardic['spec_id'], 'classifier': pardic['classifier']})
         if classified:
-            return (-1, "ERROR: entry exists for that spectra and classifier with classification %s, redshift %s, "
-                        "redshift_err %s. Use `update_classification` if necessary." % (classified[0], classified[1],
-                                                                                        classified[2]))
+            if classified[0] == -1:
+                return classified
+            return (-1, "ERROR: entry exists for that spectrum and classifier with classification %s, redshift %s, "
+                        "redshift_err %s. Use `update_classification` if necessary."
+                        % (classified[0][0], classified[0][1], classified[0][2]))
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score',
                            'phase', 'phase_err']:
@@ -2134,23 +2149,25 @@ class SedmDB:
         # TODO: test, determine which parameters should be allowed
         keys = list(pardic.keys())
         if 'id' in keys:
-            try:
-                spec_id, classifier = self.execute("SELECT spec_id, classifier FROM classification WHERE id='%s';"
-                                                   % (pardic['id']))[0]
-            except IndexError:
-                return (-1, "ERROR: no classification entry with the given id")
+            id_classifier = self.get_from_classification(['spec_id', 'classifier'], {'id': pardic['id']})
+            if not id_classifier:
+                return (-1, "ERROR: no classification entry with the given id!")
+            elif id_classifier[0] == -1:
+                return id_classifier
+
             if 'classifier' in keys:
-                if not pardic['classifier'] == classifier:
-                    return (-1, "ERROR: classifier provided does not match classification id")
+                if not pardic['classifier'] == id_classifier[0][1]:
+                    return (-1, "ERROR: classifier provided does not match classification id!")
             if 'spec_id' in keys:
-                if not pardic['spec_id'] == spec_id:
-                    return (-1, "ERROR: spec_id provided does not match classification id")
+                if not pardic['spec_id'] == id_classifier[0][0]:
+                    return (-1, "ERROR: spec_id provided does not match classification id!")
         elif 'spec_id' in keys and 'classifier' in keys:
-            try:
-                id = self.execute_sql("SELECT id FROM classification WHERE spec_id='%s' AND "
-                                      "classifier='%s'" % (pardic['spec_id'], pardic['classifier']))[0]
-            except IndexError:
-                return (-1, "ERROR: no classification entry with the given spec_id and classifier")
+            id = self.get_from_classification(['id'], {'spec_id': pardic['spec_id'],
+                                                       'classifier': pardic['classifier']})
+            if not id:
+                return (-1, "ERROR: no classification entry with the given spec_id and classifier!")
+            elif id[0] == -1:
+                return id
             pardic['id'] = id[0][0]
         else:
             return (-1, "ERROR: needs id or both spec_id and classifier")
