@@ -233,7 +233,7 @@ def create_request_atomic_requests(request_id):
             pardic['exptime'] = float(request[1][0])  # TODO: make sure the sql returns the proper format
         else:
             pardic['exptime'] = float(request[1][1])
-        add_return = db.add_atomic_request(pardic)
+        add_return = db.add_atomicrequest(pardic)
         if add_return[0] == -1:
             return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n + 1, filter_des))
     return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
@@ -312,7 +312,7 @@ def add_observation_fitsfile(fitsfile, atomicrequest_id):
     # check if all of the request's atomicrequests are 'OBSERVED', if so set the request's status to 'COMPLETED'
     # TODO: must test with connected request/atomicrequest/fitsfile
     if obs_added[0] == 0:
-        print db.update_atomic_request({'id': header_dict['atomicrequest_id'], 'status': 'OBSERVED'})  # better way than print?
+        print db.update_atomicrequest({'id': header_dict['atomicrequest_id'], 'status': 'OBSERVED'})  # better way than print?
         request_id = db.execute_sql("SELECT request_id FROM atomicrequest WHERE id='%s'"
                                     % (header_dict['atomicrequest_id'],))
         atomic_requests = db.get_request_atomicrequests(request_id)

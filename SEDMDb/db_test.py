@@ -130,12 +130,12 @@ atomic_dict = {'exptime': 1800.0, 'filter': 'f', 'priority': 32., 'inidate': '20
 
 def test_atomicrequest_manipulation():
     # TODO: test for add
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id not provided!")
+    assert db.add_atomicrequest(atomic_dict) == (-1, "ERROR: request_id not provided!")
     atomic_dict['request_id'] = 3.2
-    print db.add_atomic_request(atomic_dict)
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
+    print db.add_atomicrequest(atomic_dict)
+    assert db.add_atomicrequest(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
     atomic_dict['request_id'] = db.get_from_atomicrequests(['request_id'], {'object_id': 1})
-    assert db.add_atomic_request(atomic_dict)[0] == 0
+    assert db.add_atomicrequest(atomic_dict)[0] == 0
 
 
     # TODO: test for update

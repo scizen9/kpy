@@ -1027,7 +1027,7 @@ class SedmDB:
         self.execute_sql(atomic_sql)
         return (0, "Requests expired")
 
-    def add_atomic_request(self, pardic):
+    def add_atomicrequest(self, pardic):
         """
         Adds an atomicrequest
 
@@ -1096,7 +1096,7 @@ class SedmDB:
             return (-1, "ERROR: add_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Request added")
 
-    def update_atomic_request(self, pardic):
+    def update_atomicrequest(self, pardic):
         """
         Updates an atomic request with the parameters from the dictionary
 
@@ -1191,7 +1191,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_observation_fits(self, header_dict):
+    def add_observation(self, header_dict):
         """
         Adds an observation
 
