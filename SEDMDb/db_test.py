@@ -8,14 +8,10 @@ db = SedmDb.SedmDB()
 # TODO: make tests that cause IntegrityError (giving a value in of the wrong format e.g. string for a decimal parameter) and ProgrammingError (attempting to insert/update a column that doesn't exist)
 # TODO: make the functions reject pardic keys that aren't columns
 
-user_dict = {'group_id': 1, 'username': 'test_user', 'name': 'nmo', 'email': 'dodo'}
+user_dict = {'username': 'test_user', 'name': 'nmo', 'email': 'dodo'}
 
-if not db.execute_sql("SELECT id FROM groups WHERE id='2'"):  # make sure there are two groups to use
-    db.add_group({'designator': 'default group'})
-    db.add_group({'designator': 'second default group'})
-db.add_user({'group_id': 1, 'username': 'default_user', 'name': 'apo', 'email': 'kiwi'})  # create a user to tie to the requests
-default_user_id = db.execute_sql("SELECT id FROM users WHERE username='default_user'")[0][0]
-
+# there are groups 'default group' and 'second default group'
+# (user_id = 1, username=default_user) can be tied to the requests
 
 def test_add_group():  # add_to_group is tested below
     assert db.add_group({'designator': 'default group'}) == (-1, "ERROR: group exists!")
@@ -32,6 +28,7 @@ def test_user_manipulation():
     assert added[0] == 0
     assert [user[0] for user in db.execute_sql("SELECT username FROM users WHERE username='test_user';")]
     user_id = db.execute_sql("SELECT id FROM users WHERE username='test_user';")[0][0]
+    db.add_to_group(user_id, 1)  # add the user to the default group
     # check that it was properly added to its group
     assert (user_id, 1) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check other aspects of adding to groups
@@ -59,19 +56,15 @@ def test_user_manipulation():
     assert db.remove_user({}) == (-1, "ERROR: username or id required!")
     
 # TODO: more robust testing of the objects
-fixed_object = {'marshal_id': 90, 'name': 'test_obj', 'ra': 20, 'dec': 40, 'typedesig': 'f', 'epoch': 2000}
-
-if not db.execute_sql("SELECT * FROM object WHERE id='1'"):  # make sure there is a object
-    db.add_object(fixed_object)
-    fixed_object['marshal_id'] = 60
+fixed_object = {'marshal_id': 60, 'name': 'test_obj', 'ra': 20., 'dec': 40., 'typedesig': 'f', 'epoch': 2000.}
 
 def test_object_creation():
     # TODO: test all types of objects
-    db.add_object(fixed_object, {})
+    db.add_object(fixed_object)
 
 
-request_dict = {'object_id': 1, 'user_id': default_user_id, 'program_id': 1, 'marshal_id': 90, 
-                'exptime': '{2700, 600}', 'maxairmass': '3.5', 'priority': 3.5, 'inidate': '2016-11-10',
+request_dict = {'object_id': 2, 'user_id': 1, 'program_id': 1, 'marshal_id': 90, 
+                'exptime': '{2700, 600}', 'maxairmass': 3.5, 'priority': 3.5, 'inidate': '2016-11-10',
                 'enddate': '2016-11-14', 'nexposures': '{1,2,1,2,0}', 'ordering': '{2g,2r,1ifu,2g,2r}'}
 # TODO: add to request_dict to test empty and invalid keys
 
@@ -96,13 +89,14 @@ def test_request_manipulation():
 
 def test_request_update():
     obj, status, priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")[0]
-    db.update_request({'id': 1, 'object_id': obj+1, 'status': 'NEW', 'priority': priority+1})
+    db.update_request({'id': 1, 'object_id': int(obj+1), 'status': 'NEW', 'priority': float(priority+1)})
     new_obj, new_stat, new_priority = db.execute_sql("SELECT object_id, status, priority FROM request WHERE id='1'")[0]
     # object_id isn't allowed to be updated and the given status isn't valid
     assert new_obj == obj and new_stat == status and new_priority == priority+1
     assert db.update_request({'object_id': obj+1, 'status': 'ACTIVE'}) == (-1, "ERROR: no id provided!")
     assert db.update_request({'id': 0, 'maxairmass': 3}) == (-1, "ERROR: request does not exist!")
     assert db.update_request({'id': 1, 'creationdate': '2016-02-04'}) == (-1, "ERROR: no parameters given to update!")
+    db.update_request({'id': 1, 'object_id': 1, 'status': 'PENDING', 'priority': 6.})  # reset to defaults
 
 
 def test_request_expiration():
@@ -111,10 +105,10 @@ def test_request_expiration():
         request_dict['enddate'] = '2016-11-11'
         db.add_request(request_dict)
     else:
-        db.update_request({'id': test_request[0][0], 'status': 'PENDING'})
-    assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
+        db.update_request({'id': int(test_request[0][0]), 'status': 'PENDING'})
+    assert 'PENDING' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11';")[0][0]
     db.expire_requests()
-    assert 'EXPIRED' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11'")[0][0]
+    assert 'EXPIRED' == db.execute_sql("SELECT status FROM request WHERE enddate = '2016-11-11';")[0][0]
 
 
 def test_cancel_request():
@@ -128,7 +122,7 @@ def test_cancel_request():
     assert 'CANCELED' == db.execute_sql("SELECT status FROM request WHERE id=1")[0][0]
     assert db.cancel_scheduled_request(0) == (-1, "ERROR: request does not exist!")
 
-atomic_dict = {'exptime': 0.0, 'filter': 'f', 'priority': 32., 'inidate': '2016-12-12',
+atomic_dict = {'exptime': 1800.0, 'filter': 'f', 'priority': 32., 'inidate': '2016-12-12',
                'enddate': '2017-1-12', 'object_id': 1, 'order_id': 1, 'when': '54'}
 # 'when' should do nothing (if it does something sql will error)
 # lack of 'request_id' should cause a failure
@@ -136,8 +130,9 @@ atomic_dict = {'exptime': 0.0, 'filter': 'f', 'priority': 32., 'inidate': '2016-
 
 def test_atomicrequest_manipulation():
     # TODO: test for add
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id is not provided!")
+    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id not provided!")
     atomic_dict['request_id'] = 3.2
+    print db.add_atomic_request(atomic_dict)
     assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
     atomic_dict['request_id'] = db.get_from_atomicrequests(['request_id'], {'object_id': 1})
     assert db.add_atomic_request(atomic_dict)[0] == 0

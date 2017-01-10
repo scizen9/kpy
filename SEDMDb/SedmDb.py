@@ -943,14 +943,11 @@ class SedmDB:
         update_keys = list(pardic.keys())
         for key in reversed(update_keys):
             if key not in ['priority', 'inidate', 'enddate']:
-                keys.remove(key)
+                update_keys.remove(key)
         if len(update_keys) == 0:
             return (0, "Requests updated")
-        update_sql = "UPDATE atomicrequest SET "
-        for param in update_keys:
-            if pardic[param]:  # it may be a key with nothing in it
-                update_sql += "%s = '%s', " % (param, pardic[param])
-        update_sql += "WHERE request_id = %s;" % (pardic['id'],)
+
+        update_sql = _generate_update_sql(pardic, update_keys, 'atomicrequest')
         try:
             self.execute_sql(update_sql)
         except exc.IntegrityError:
@@ -1060,9 +1057,11 @@ class SedmDB:
         keys = list(pardic.keys())
         for key in ['request_id', 'exptime', 'filter', 'priority', 'inidate', 'enddate']:
             if key not in keys:
-                return (01, "ERROR: %s not provided!" % (key,))
+                return (-1, "ERROR: %s not provided!" % (key,))
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
+        if not isinstance(request_id, int):
+
         req_obj_stat = self.execute_sql("SELECT object_id, status FROM request "
                                         "WHERE id='%s'" % (pardic['request_id']))
         if not req_obj_stat:  # if there is no request with the id given
@@ -1081,6 +1080,7 @@ class SedmDB:
                            'inidate', 'enddate', 'object_id', 'order_id']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
+        print type_check
         if type_check:
             return (-1, type_check)
 
@@ -1226,19 +1226,21 @@ class SedmDB:
                         'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
                         'dec_off': float, 'imtype': str, 'camera': str}
         if 'atomicrequest_id' in header_dict.keys():
+            if not isinstance(header_dict['atomicrequest_id'], int):
+                return (-1, "ERROR: atomicrequest must be of type 'int'!")
             if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
                 return (-1, "ERROR: atomicrequest does not exist!")
             elif self.execute_sql("SELECT * FROM observation WHERE atomicrequest_id='%s'"
                                   % (header_dict['atomicrequest_id'],)):
                 return self.update_observation(header_dict)  # TODO: write update_observation
-            else:
-                return (-1, "ERROR: no atomicrequest_id provided!")
+        else:
+            return (-1, "ERROR: no atomicrequest_id provided!")
 
         header_keys = list(header_dict.keys())
         for key in ['object_id', 'request_id', 'atomicrequest_id', 'mjd', 'airmass', 'exptime', 'fitsfile', 'lst',
                     'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off']:
             if key not in header_keys:
-                return (01, "ERROR: %s not provided!" % (key,))
+                return (-1, "ERROR: %s not provided!" % (key,))
             elif not header_dict[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(header_keys):
@@ -2265,11 +2267,11 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
 
         "ERROR..." if they type_check fails
     """
-    for value in values:
+    for value in reversed(values):
         if value not in allowed_params.keys():
             values.remove(value)
     where_keys = list(where_dict.keys())
-    for param in where_keys:
+    for param in reversed(where_keys):
         if param not in allowed_params:
             where_keys.remove(param)
     type_check = _data_type_check(where_keys, where_dict, allowed_params)
@@ -2328,11 +2330,13 @@ def _generate_update_sql(pardic, param_list, table, lastmodified=False):
         sql string
     """
     # TODO: test, re-write update functions
-    sql = "UPDATE %s SET " % (table,)
+    sql = "UPDATE %s SET" % (table,)
     for param in param_list:
         if pardic[param]:  # it may be a key with nothing in it
-            sql += "%s = '%s', " % (param, pardic[param])
+            sql += " %s = '%s'," % (param, pardic[param])
     if lastmodified:
-        sql += "lastmodified = 'NOW()' "
-    sql += "WHERE id = %s;" % (pardic['id'],)
+        sql += " lastmodified = 'NOW()'"
+    else:
+        sql = sql[:-1]
+    sql += " WHERE id = %s;" % (pardic['id'],)
     return sql
