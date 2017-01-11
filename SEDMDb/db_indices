@@ -1,21 +1,21 @@
 table               option 1            option 2        option 3...
 
-classification      object_id           spec_id         score           classifier
+classification      object_id           spec_id         classification redshift
 flexure             timestamp1
-metrics_phot        phot_id             fwhm
-metrics_spec        spec_id             fwhm            line_fwhm
+metrics_phot        phot_id             
+metrics_spec        spec_id             
 object              coords(q3c)*        name            marshal_id
 orbit_params        object_id*
 periodic            object_id*
-observation         atomicrequest_id    id              request_id      object_id
+observation         atomicrequest_id    id              request_id      object_id 
 spec                observation_id      marshal_spec_id
 phot                observation_id      marshal_phot_id
 ref_stars           coords(q3c)         mag             filter
 request             id*                 object_id       status
-atomicrequest       request_id*         id              object_id
-telescope_stats     observation_id      date (should it be a timestamp instead?)
-users               username            no index
-groups              designator          no index
+atomicrequest       request_id*         id              object_id	inidate	enddate
+telescope_stats     observation_id      date (should it be a timestamp instead?) --> Yes, date shall be a timestamp
+users               username            
+groups              designator          
 usergroups          no index
 
 
