@@ -285,6 +285,38 @@ class SedmDB:
                 return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User removed from group")
 
+    def get_from_usergroups(self, values, where_dict):
+        """
+        select values from `objects`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options: ['user_id', 'group_id']
+
+        Returns:
+            list of tuples containing the values for each user matching the criteria
+
+            empty list if no objects match ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+                """
+        # TODO: test, reconsider return styles
+        allowed_params = {'user_id': int, 'group_d': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'usergroups')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def add_object(self, pardic):
         """
         Creates a new object

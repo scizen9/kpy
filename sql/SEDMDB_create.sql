@@ -17,6 +17,22 @@ CREATE TABLE classification (
     CONSTRAINT classification_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON classification(
+    object_id
+);
+
+CREATE INDEX ON classification(
+    spec_id
+);
+
+CREATE INDEX ON classification(
+    classification
+);
+
+CREATE INDEX ON classification(
+    redshift
+);
+
 -- Table: flexure
 CREATE TABLE flexure (
     id BIGSERIAL,
@@ -26,6 +42,10 @@ CREATE TABLE flexure (
     timestamp1 TIMESTAMP NOT NULL,
     timestamp2 TIMESTAMP NOT NULL,
     CONSTRAINT flexure_pk PRIMARY KEY (id)
+);
+
+CREATE INDEX ON flexure(
+    spec_id_1
 );
 
 -- Table: metrics_phot
@@ -41,6 +61,10 @@ CREATE TABLE metrics_phot (
     CONSTRAINT metrics_phot_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON metrics_phot(
+    phot_id
+);
+
 -- Table: metrics_spec
 CREATE TABLE metrics_spec (
     id BIGSERIAL,
@@ -49,6 +73,10 @@ CREATE TABLE metrics_spec (
     background decimal(5,2)  NULL,
     line_fwhm int  NULL,
     CONSTRAINT metrics_spec_pk PRIMARY KEY (id)
+);
+
+CREATE INDEX ON metrics_spec(
+    spec_id
 );
 
 -- Table: object
@@ -73,6 +101,14 @@ CREATE TABLE object (
 
 CREATE INDEX ON object(
     q3c_ang2ipix(ra, dec)
+);
+
+CREATE INDEX ON object(
+    name
+);
+
+CREATE INDEX ON object(
+    marshal_id
 );
 
 --parameters from http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501
@@ -232,6 +268,22 @@ CREATE TABLE observation (
     CONSTRAINT observation_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON observation(
+    atomicrequest_id
+);
+
+CREATE INDEX ON observation(
+    id
+);
+
+CREATE INDEX ON observation(
+    request_id
+);
+
+CREATE INDEX ON observation(
+    object_id
+);
+
 -- Table: spec
 CREATE TABLE spec (
     id BIGSERIAL,
@@ -247,6 +299,14 @@ CREATE TABLE spec (
     marshal_spec_id bigint  NULL,
     skysub boolean  NOT NULL,
     CONSTRAINT spec_pk PRIMARY KEY (id)
+);
+
+CREATE INDEX ON spec(
+    observation_id
+);
+
+CREATE INDEX ON spec(
+    marshal_spec_id
 );
 
 -- Table: phot
@@ -265,6 +325,14 @@ CREATE TABLE phot (
     CONSTRAINT phot_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON phot(
+    observation_id
+);
+
+CREATE INDEX ON phot(
+    marshal_phot_id
+);
+
 -- Table: ref_stars
 CREATE TABLE ref_stars (
     id BIGSERIAL,
@@ -281,6 +349,18 @@ CREATE TABLE ref_stars (
     x int  NOT NULL,
     y int  NOT NULL,
     CONSTRAINT ref_stars_pk PRIMARY KEY (id)
+);
+
+CREATE INDEX ON ref_stars(
+    q3c_ang2ipix(ra, dec)
+);
+
+CREATE INDEX ON ref_stars(
+    mag
+);
+
+CREATE INDEX ON ref_stars(
+    filter
 );
 
 -- Table: request
@@ -311,6 +391,14 @@ CREATE INDEX ON request(
     id
 );
 
+CREATE INDEX ON request(
+    object_id
+);
+
+CREATE INDEX ON request(
+    status
+);
+
 CREATE TABLE atomicrequest (
     id BIGSERIAL,
     object_id bigint NOT NULL,
@@ -329,6 +417,22 @@ CREATE TABLE atomicrequest (
 
 CREATE INDEX ON atomicrequest(
     request_id
+);
+
+CREATE INDEX ON atomicrequest(
+    id
+);
+
+CREATE INDEX ON atomicrequest(
+    object_id
+);
+
+CREATE INDEX ON atomicrequest(
+    inidate
+);
+
+CREATE INDEX ON atomicrequest(
+    enddate
 );
 
 -- Table: telescope_stats
@@ -357,6 +461,14 @@ CREATE TABLE telescope_stats (
     CONSTRAINT telescope_stats_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON telescope_stats(
+    observation_id
+);
+
+CREATE INDEX ON telescope_stats(
+    date
+);
+
 -- Table: users
 CREATE TABLE users (
     id BIGSERIAL,
@@ -366,11 +478,19 @@ CREATE TABLE users (
     CONSTRAINT users_pk PRIMARY KEY (id)
 );
 
+CREATE INDEX ON users(
+    username
+);
+
 -- Table: groups
 CREATE TABLE groups (
     id BIGSERIAL,
     designator text NOT NULL UNIQUE,
     CONSTRAINT groups_pk PRIMARY KEY (id)
+);
+
+CREATE INDEX ON groups(
+    designator
 );
 
 -- Table: groups
