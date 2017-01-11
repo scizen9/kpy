@@ -253,6 +253,38 @@ class SedmDB:
                 return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User added to group")
 
+    def remove_from_group(self, user, group):
+        """
+        removes the user from the group.
+
+        Args:
+            user (int):
+                id of the user in the 'users' Table
+            group: int
+                id of the group in the 'groups' Table
+
+        Returns (int):
+            (-1, "ERROR...") if there was areason for failure
+
+            (0, "User removed from group") if the removal was successful
+        """
+        if user not in [user_id[0] for user_id in self.execute_sql('SELECT id FROM users')]:
+            return (-1, "ERROR: user does not exist!")
+        if group not in [group_id[0] for group_id in self.execute_sql('SELECT id FROM groups')]:
+            return (-1, "ERROR: group does not exist!")
+        usergroups = self.execute_sql('SELECT user_id, group_id FROM usergroups')
+        if (user, group) not in usergroups:
+            return (-1, "ERROR: user not in group!")
+        else:
+            sql = "DELETE FROM usergroups WHERE user_id='%s', group_id='%s'" % (user, group)
+            try:
+                self.execute_sql(sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_to_group sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
+            return (0, "User removed from group")
+
     def add_object(self, pardic):
         """
         Creates a new object
