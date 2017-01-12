@@ -202,12 +202,11 @@ def create_request_atomic_requests(request_id):
 
     if db.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
         return (-1, "ERROR: atomicrequests already exist for that request!")
-    request = db.execute_sql("SELECT object_id, exptime, priority, inidate, enddate,"
-                             "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
-                             "FROM request WHERE id='%s';" % (request_id,))[0]
+    request = db.get_from_requests(['object_id', 'exptime', 'priority', 'inidate', 'enddate', 'cadence', 'phasesamples',
+                                    'sampletolerance', 'filters', 'nexposures', 'ordering'], {'id': request_id})[0]
     # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
-    pardic = {'object_id': request[0], 'priority': request[2], 'inidate': request[3],
-              'enddate': request[4], 'request_id': request_id}
+    pardic = {'object_id': int(request[0]), 'priority': float(request[2]), 'inidate': str(request[3]),
+              'enddate': str(request[4]), 'request_id': int(request_id)}
     obs_order = []
     if request[10]:
         for num_fil in request[10]:
@@ -235,7 +234,8 @@ def create_request_atomic_requests(request_id):
             pardic['exptime'] = float(request[1][1])
         add_return = db.add_atomicrequest(pardic)
         if add_return[0] == -1:
-            return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n + 1, filter_des))
+            return (-1, "ERROR: adding atomicrequest #%s, filter:%s failed with message, '%s'!" 
+                    % (n + 1, filter_des, add_return))
     return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
 
 

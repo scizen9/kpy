@@ -51,8 +51,7 @@ def test_user_manipulation():
     # test get_from_usergroups
     assert usergroups == db.get_from_usergroups(['user_id', 'group_id'], {})
     assert not db.get_from_usergroups(['user_id'], {'user_id': 0})
-    assert not db.get_from_usergroups(['id'], {})
-
+    assert db.get_from_usergroups(['id'], {}) == (-1, "ERROR: no valid values requested!")
     # test unsuccessful add_to_group
     assert db.add_to_group(1, 2) == (-1, "ERROR: user already in group!")
     assert db.add_to_group(1, 0) == (-1, "ERROR: group does not exist!")
@@ -63,5 +62,10 @@ def test_user_manipulation():
     assert not db.execute_sql("SELECT user_id, group_id FROM usergroups WHERE user_id=1")
     # test unsuccessful remove_from_group
     assert db.remove_from_group(0, 1) == (-1, "ERROR: user does not exist!")
-    assert db.remove_from_group(1, 1) == (-1, "ERROR: group does not exist!")
+    assert db.remove_from_group(1, 0) == (-1, "ERROR: group does not exist!")
     assert db.remove_from_group(1, 1) == (-1, "ERROR: user not in group!")
+
+if __name__ == '__main__':
+    test_add_group()
+    test_user_manipulation()
+

@@ -276,7 +276,7 @@ class SedmDB:
         if (user, group) not in usergroups:
             return (-1, "ERROR: user not in group!")
         else:
-            sql = "DELETE FROM usergroups WHERE user_id='%s', group_id='%s'" % (user, group)
+            sql = "DELETE FROM usergroups WHERE user_id='%s' AND group_id='%s'" % (user, group)
             try:
                 self.execute_sql(sql)
             except exc.IntegrityError:
@@ -304,7 +304,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
                 """
         # TODO: test, reconsider return styles
-        allowed_params = {'user_id': int, 'group_d': int}
+        allowed_params = {'user_id': int, 'group_id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'usergroups')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -1046,6 +1046,7 @@ class SedmDB:
                 'cadence' (float),
                 'phasesamples' (float),
                 'sampletolerance' (float),
+                'filters' (str),
                 'nexposures' (str),
                 'ordering' (str)
                 'status' (str),
@@ -1062,7 +1063,7 @@ class SedmDB:
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
                           'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float,
-                          'cadence': float, 'phasesamples': float, 'sampletolerance': float, 'nexposures': str,
+                          'cadence': float, 'phasesamples': float, 'sampletolerance': float, 'filters': str, 'nexposures': str,
                           'ordering': str, 'creationdate': 'date', 'lastmodified': 'date'}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -2358,6 +2359,9 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
     type_check = _data_type_check(where_keys, where_dict, allowed_params)
     if type_check:
         return type_check
+    if not values:
+        return "ERROR: no valid values requested!"
+
     values_str = ''
     for value in values:
         values_str += value + ', '
@@ -2365,10 +2369,10 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
 
     sql = "SELECT %s FROM %s" % (values_str, table)
     if where_keys:
-        sql += "WHERE"
+        sql += " WHERE"
         for key in where_keys:
             sql += " %s = '%s' AND" % (key, where_dict[key])
-        sql = sql[:-4]
+        sql = sql[:-4] + ";"
     return sql
 
 
