@@ -4,6 +4,11 @@ from astropy.io import fits
 
 db = SedmDb.SedmDB()
 
+class db_tools(object):
+    def __init__(self, db_class):
+        self.db = db_class
+    # TODO: refactor and move functions into the class
+
 
 def get_object_parameters(object_id):
     """

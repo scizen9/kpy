@@ -435,6 +435,7 @@ class SedmDB:
     def get_objects_near(self, ra, dec, radius):
         """
         get object entries with coordinates within a radius
+
         Args:
             ra (float or int): ra in degrees of the object
             dec (float or int): dec in degrees of the object
