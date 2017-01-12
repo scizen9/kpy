@@ -28,14 +28,14 @@ def test_user_manipulation():
     assert added[0] == 0
     assert [user[0] for user in db.execute_sql("SELECT username FROM users WHERE username='test_user';")]
     user_id = db.execute_sql("SELECT id FROM users WHERE username='test_user';")[0][0]
-    db.add_to_group(user_id, 1)  # add the user to the default group
+    db.add_usergroup(user_id, 1)  # add the user to the default group
     # check that it was properly added to its group
     assert (user_id, 1) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check other aspects of adding to groups
-    assert db.add_to_group(user_id, 1) == (-1, "ERROR: user already in group!")
-    assert db.add_to_group(user_id, 0) == (-1, "ERROR: group does not exist!")
-    assert db.add_to_group(0, 1) == (-1, "ERROR: user does not exist!")
-    db.add_to_group(user_id, 2)  # multiple groups per user
+    assert db.add_usergroup(user_id, 1) == (-1, "ERROR: user already in group!")
+    assert db.add_usergroup(user_id, 0) == (-1, "ERROR: group does not exist!")
+    assert db.add_usergroup(0, 1) == (-1, "ERROR: user does not exist!")
+    db.add_usergroup(user_id, 2)  # multiple groups per user
     assert (user_id, 2) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
     # check that it can't create another user with the same username
     add_again = db.add_user(user_dict)
@@ -134,7 +134,7 @@ def test_atomicrequest_manipulation():
     atomic_dict['request_id'] = 3.2
     print db.add_atomicrequest(atomic_dict)
     assert db.add_atomicrequest(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
-    atomic_dict['request_id'] = db.get_from_atomicrequests(['request_id'], {'object_id': 1})
+    atomic_dict['request_id'] = db.get_from_atomicrequest(['request_id'], {'object_id': 1})
     assert db.add_atomicrequest(atomic_dict)[0] == 0
 
 

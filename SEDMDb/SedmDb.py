@@ -221,7 +221,7 @@ class SedmDB:
         else:
             return (-1, "ERROR: group exists!")
 
-    def add_to_group(self, user, group):
+    def add_usergroup(self, user, group):
         """
         Adds the user as member of the group. Checks for duplicates in name.
 
@@ -327,8 +327,8 @@ class SedmDB:
                     'name' (str),
                     'typedesig' (str),
                 required for a fixed object:
-                    'ra' (float),
-                    'dec' (float),
+                    'ra' (float) ra in degrees,
+                    'dec' (float) dec in degrees,
                     'epoch' (float)
                 optional:
                     'iauname' (str),
@@ -351,7 +351,6 @@ class SedmDB:
         if 'marshal_id' in obj_keys:
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
                 return (-1, "ERROR: object exists!")
-        # TODO: when q3c added to database, search of object withing 1 arcsecond radius (consider anything inside it as duplicate)
 
         for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
             if key not in obj_keys:
@@ -372,6 +371,11 @@ class SedmDB:
                     return (-1, "ERROR: %s not provided!" % (key,))
                 elif not pardic[key]:
                     return (-1, "ERROR: no value provided for %s!" % (key,))
+            dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
+                                   % (pardic['ra'], pardic['dec']))
+            if dup:  # if there is already an object within an arcsecond
+                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+                            "id: %s, name: %s" % (object[0][0], object[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -395,7 +399,7 @@ class SedmDB:
 #        elif not orbit_params:
 #            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
 
-    def get_from_objects(self, values, where_dict):
+    def get_from_object(self, values, where_dict):
         """
         select values from `objects`
 
@@ -428,7 +432,32 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    # TODO: have get_object for ra/dec
+    def get_objects_near(self, ra, dec, radius):
+        """
+        get object entries with coordinates within a radius
+        Args:
+            ra (float or int): ra in degrees of the object
+            dec (float or int): dec in degrees of the object
+            radius (float or int): radius in arcseconds
+
+        Returns:
+            list of tuples [(id, name, epoch)] for each object in the radius
+
+            [] if there are no objects found
+
+            (-1, "ERROR...") if there is an issue
+        """
+        if not (isinstance(ra, float) or isinstance(ra, int)):
+            return (-1, "ERROR: parameter ra must be of type 'float' or type 'int'!")
+        if not (isinstance(dec, float) or isinstance(dec, int)):
+            return (-1, "ERROR: parameter dec must be of type 'float' or type 'int'!")
+        if not (isinstance(radius, float) or isinstance(radius, int)):
+            return (-1, "ERROR: parameter radius must be of type 'float' or type 'int'!")
+
+        objects = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', '%s')"
+                                   % (ra, dec, .000278*radius))
+        return objects
+
     def get_object_id_from_name(self, object_name):
         """
         finds the id of an object given its name or part of its name
@@ -456,7 +485,7 @@ class SedmDB:
         # TODO: move following below add_object
         # TODO: query associated table for object already existing
 
-    def add_elliptical_orbit(self, orbit_params):
+    def add_elliptical_heliocentric(self, orbit_params):
         """
         Adds the orbit parameters for an elliptical heliocentric orbit
 
@@ -509,7 +538,7 @@ class SedmDB:
             return (-1, "ERROR: add_elliptical_orbit sql command failed with a ProgrammingError!")
         return (0, "Elliptical heliocentric orbit added")
 
-    def get_elliptical_orbit(self, values, where_dict):
+    def get_from_elliptical_heliocentric(self, values, where_dict):
         """
         select values from `elliptical_heliocentric`
 
@@ -557,7 +586,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_hyperbolic_orbit(self, orbit_params):
+    def add_hyperbolic_heliocentric(self, orbit_params):
         """
         Adds the orbit parameters for an hyperbolic heliocentric orbit
 
@@ -608,7 +637,7 @@ class SedmDB:
             return (-1, "ERROR: add_hyperbolic_orbit sql command failed with a ProgrammingError!")
         return (0, "Hyperbolic heliocentric orbit added")
 
-    def get_hyperbolic_orbit(self, values, where_dict):
+    def get_from_hyperbolic_heliocentric(self, values, where_dict):
         """
         select values from `hyperbolic_heliocentric`
 
@@ -653,7 +682,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_parabolic_orbit(self, orbit_params):
+    def add_parabolic_heliocentric(self, orbit_params):
         """
         Adds the orbit parameters for an parabolic heliocentric orbit
 
@@ -703,7 +732,7 @@ class SedmDB:
             return (-1, "ERROR: add_parabolic_orbit sql command failed with a ProgrammingError!")
         return (0, "Parabolic heliocentric orbit added")
 
-    def get_parabolic_orbit(self, values, where_dict):
+    def get_from_parabolic_heliocentric(self, values, where_dict):
         """
         select values from `parabolic_heliocentric`
 
@@ -747,7 +776,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_earth_satellite_orbit(self, orbit_params):
+    def add_earth_satellite(self, orbit_params):
         """
         Adds the orbit parameters for an Earth satellite orbit
 
@@ -798,7 +827,7 @@ class SedmDB:
             return (-1, "ERROR: add_earth_satellite_orbit sql command failed with a ProgrammingError!")
         return (0, "Earth satellite orbit added")
 
-    def get_earth_satellite_orbit(self, values, where_dict):
+    def get_from_earth_satellite(self, values, where_dict):
         """
         select values from `earth_satellite`
 
@@ -844,7 +873,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_planet_satellite_orbit(self, orbit_params):
+    def _add_planet_satellite_orbit(self, orbit_params):
         raise NotImplementedError
         # TODO: actually implement? maybe let higher level do this
         # TODO: query ??? for if it already exists
@@ -1023,7 +1052,7 @@ class SedmDB:
 
         return (0, "Requests and atomicrequests updated")
 
-    def get_from_requests(self, values, where_dict):
+    def get_from_request(self, values, where_dict):
         """
         select values from `request`
 
@@ -1128,7 +1157,7 @@ class SedmDB:
             elif not pardic[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
 
-        req_obj_stat = self.get_from_requests(['object_id', 'status'], {'id': pardic['request_id']})
+        req_obj_stat = self.get_from_request(['object_id', 'status'], {'id': pardic['request_id']})
         if not req_obj_stat:  # if there is no request with the id given
             return (-1, "ERROR: request does not exist!")
         elif req_obj_stat[0] == -1:
@@ -1209,7 +1238,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Atomic request updated")
 
-    def get_from_atomicrequests(self, values, where_dict):
+    def get_from_atomicrequest(self, values, where_dict):
         """
         select values from `atomicrequest`
 
@@ -1451,7 +1480,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_tel_stats(self, tel_stats):
+    def add_telescope_stats(self, tel_stats):
         """
         Adds telescope stats associated with an observation
 
@@ -1566,9 +1595,10 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_reduced_photometry(self, pardic):
+    # TODO: separate add_phot/spec and update_phot/spec
+    def add_phot(self, pardic):
         """
-        Adds photometry or, if the observation already has photometry, updates it
+        Adds reduced photometry or, if the observation already has photometry, updates it
 
         Args:
             pardic (dict):
@@ -1705,9 +1735,9 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def add_reduced_spectrum(self, pardic):
+    def add_spec(self, pardic):
         """
-        Adds the specutrm or, if the observation already has a spectrum, updates it
+        Adds the reduced spectrum or, if the observation already has a spectrum, updates it
 
         Args:
             pardic (dict):

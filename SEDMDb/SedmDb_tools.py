@@ -19,8 +19,8 @@ def get_object_parameters(object_id):
 
         [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), (orbit params arranged in ephem ordering)]
     """  # TODO: test if the orbit_params can be input directly into an ephem call
-    object = db.get_from_objects(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
-                                 {'id': object_id})
+    object = db.get_from_object(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
+                                {'id': object_id})
     if not object:
         return (-1, "ERROR: no object found matching the given object_id")
     elif object[0] == -1:  # object[0] should be positive or empty if successful
@@ -119,7 +119,7 @@ def get_user_requests(user_id=None, username=None, values=['id', 'object_id', 'p
         where_dict = {'user_id': user_id[0][0]}
     else:
         return (-1, "ERROR: neither username nor user_id were provided!")
-    user_requests = db.get_from_requests(values, where_dict)
+    user_requests = db.get_from_request(values, where_dict)
     return user_requests
 
 
@@ -140,7 +140,7 @@ def get_active_requests(values=['id', 'object_id', 'user_id', 'program_id', 'mar
     """
     # TODO: test?
 
-    active_requests = db.get_from_requests(values, {'status': 'ACTIVE'})
+    active_requests = db.get_from_request(values, {'status': 'ACTIVE'})
     return active_requests
 
 
@@ -202,7 +202,7 @@ def create_request_atomic_requests(request_id):
 
     if db.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
         return (-1, "ERROR: atomicrequests already exist for that request!")
-    request = db.get_from_requests(['object_id', 'exptime', 'priority', 'inidate', 'enddate', 'cadence', 'phasesamples',
+    request = db.get_from_request(['object_id', 'exptime', 'priority', 'inidate', 'enddate', 'cadence', 'phasesamples',
                                     'sampletolerance', 'filters', 'nexposures', 'ordering'], {'id': request_id})[0]
     # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
     pardic = {'object_id': int(request[0]), 'priority': float(request[2]), 'inidate': str(request[3]),
@@ -260,7 +260,7 @@ def get_request_atomicrequests(request_id, values):
     if not isinstance(request_id, int):
         return []
     # TODO: test
-    atomic_requests = db.get_from_atomicrequests(values, {'request_id': request_id})
+    atomic_requests = db.get_from_atomicrequest(values, {'request_id': request_id})
     return atomic_requests
 
 
@@ -283,7 +283,7 @@ def add_observation_fitsfile(fitsfile, atomicrequest_id):
                    'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME'],
                    'atomicrequest_id': int(atomicrequest_id)}  # TODO: remove atomicrequest_id arg from function
     # header_dict['atomicrequest_id'] = int(header['ATOM_ID'])
-    ids = db.get_from_atomicrequests(['request_id', 'object_id'], {'id': header_dict['atomicrequest_id']})[0]
+    ids = db.get_from_atomicrequest(['request_id', 'object_id'], {'id': header_dict['atomicrequest_id']})[0]
     if ids:
         header_dict['request_id'] = int(ids[0][0])
         header_dict['object_id'] = int(ids[0][1])
