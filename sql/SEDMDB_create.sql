@@ -99,7 +99,7 @@ CREATE TABLE object (
     CONSTRAINT object_pk PRIMARY KEY (id)
 );
 
-CREATE INDEX ON object(
+CREATE INDEX coords_q3c ON object(
     q3c_ang2ipix(ra, dec)
 );
 
@@ -113,7 +113,7 @@ CREATE INDEX ON object(
 
 --parameters from http://www.clearskyinstitute.com/xephem/help/xephem.html#mozTocId468501
 CREATE TABLE elliptical_heliocentric (
-    id bigint not null,
+    id BIGSERIAL,
     object_id bigint not null UNIQUE,
     --inclination
     inclination decimal(10,8),
@@ -146,7 +146,7 @@ CREATE INDEX ON elliptical_heliocentric(
 );
 
 CREATE TABLE hyperbolic_heliocentric (
-    id bigint not null,
+    id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
     T date,
@@ -175,7 +175,7 @@ CREATE INDEX ON hyperbolic_heliocentric(
 );
 
 CREATE TABLE parabolic_heliocentric (
-    id bigint not null,
+    id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
     T date,
@@ -202,7 +202,7 @@ CREATE INDEX ON parabolic_heliocentric(
 );
 
 CREATE TABLE earth_satellite (
-    id bigint not null,
+    id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- first date the elements are valid
     T date,
@@ -232,7 +232,7 @@ CREATE INDEX ON earth_satellite(
 );
 
 CREATE TABLE periodic (
-    id bigint not null,
+    id BIGSERIAL,
     object_id bigint not null,
     mjd0 decimal (10,8),
     phasedays decimal(10,8),

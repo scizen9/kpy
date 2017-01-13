@@ -371,11 +371,11 @@ class SedmDB:
                     return (-1, "ERROR: %s not provided!" % (key,))
                 elif not pardic[key]:
                     return (-1, "ERROR: no value provided for %s!" % (key,))
-            dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
-                                   % (pardic['ra'], pardic['dec']))
-            if dup:  # if there is already an object within an arcsecond
-                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+            # dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
+            #                        % (pardic['ra'], pardic['dec']))
+            # if dup:  # if there is already an object within an arcsecond
+            #     return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+            #                 "id: %s, name: %s" % (object[0][0], object[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -384,7 +384,7 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            return (0, "Fixedd object added")
+            return (0, "Fixed object added")
         else:
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -448,6 +448,8 @@ class SedmDB:
 
             (-1, "ERROR...") if there is an issue
         """
+        return (-1, "ERROR: q3c is not working")
+        
         if not (isinstance(ra, float) or isinstance(ra, int)):
             return (-1, "ERROR: parameter ra must be of type 'float' or type 'int'!")
         if not (isinstance(dec, float) or isinstance(dec, int)):
@@ -495,7 +497,7 @@ class SedmDB:
                 required:
                     'object_id' (int),
                     'inclination' (float),
-                    'longascnode_0' (float) (lon. of ascending node),
+                    'longascnode_O' (float) (lon. of ascending node),
                     'perihelion_o' (float) (arg. of perihelion),
                     'a' (float) (mean distance AU),
                     'n' (float) (mean daily motion deg/day),
@@ -511,19 +513,19 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'inclination': float, 'longascnode_0': float, 'perihelion_o': float,
+        param_types = {'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
                        'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
                        'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
-        for key in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
+        for key in ['inclination', 'longascnode_O', 'perihelion_o', 'a', 'n', 'e',
                     'M', 'mjdepoch', 'D', 'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not orbit_params[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
-            if key not in ['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e',
+            if key not in ['inclination', 'longascnode_O', 'perihelion_o', 'a', 'n', 'e',
                            'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
@@ -552,7 +554,7 @@ class SedmDB:
                 'id' (int),
                 'object_id' (int),
                 'inclination' (float),
-                'longascnode_0' (float) (lon. of ascending node),
+                'longascnode_O' (float) (lon. of ascending node),
                 'perihelion_o' (float) (arg. of perihelion),
                 'a' (float) (mean distance AU),
                 'n' (float) (mean daily motion deg/day),
@@ -572,7 +574,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
-        allowed_params = {'object_id': int, 'inclination': float, 'longascnode_0': float, 'perihelion_o': float,
+        allowed_params = {'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
                           'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
                           'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'elliptical_heliocentric')
@@ -597,7 +599,7 @@ class SedmDB:
                     'object_id' (int),
                     'T' ('year-month-day' or `~astropy.time.Time` object),
                     'inclination' (float),
-                    'longascnode_0' (float) (lon. of ascending node),
+                    'longascnode_O' (float) (lon. of ascending node),
                     'perihelion_o' (float) (arg. of perihelion),
                     'e' (float) (eccentricity),
                     'q' (float) (perihelion distance AU),
@@ -611,18 +613,18 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
+        param_types = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_O': float,
                        'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
-        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+        for key in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                     'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not orbit_params[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
-            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+            if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
@@ -652,7 +654,7 @@ class SedmDB:
                 'object_id' (int),
                 'T' ('year-month-day' or `~astropy.time.Time` object),
                 'inclination' (float),
-                'longascnode_0' (float) (lon. of ascending node),
+                'longascnode_O' (float) (lon. of ascending node),
                 'perihelion_o' (float) (arg. of perihelion),
                 'e' (float) (eccentricity),
                 'q' (float) (perihelion distance AU),
@@ -669,7 +671,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
-        allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_0': float,
+        allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_O': float,
                           'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'hyperbolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -695,7 +697,7 @@ class SedmDB:
                     'inclination' (float),
                     'perihelion_o' (float) (arg. of perihelion),
                     'q' (float) (perihelion distance),
-                    'longascnode_0' (float) (lon. of ascending node),
+                    'longascnode_O' (float) (lon. of ascending node),
                     'D' (int) (equinox year),
                     'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
@@ -706,18 +708,18 @@ class SedmDB:
         Returns:
 
         """
-        param_types = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_0': float,
+        param_types = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_O': float,
                        'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
-        for key in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+        for key in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                     'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
             elif not orbit_params[key]:
                 return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
-            if key not in ['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+            if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
@@ -749,7 +751,7 @@ class SedmDB:
                 'inclination' (float),
                 'perihelion_o' (float) (arg. of perihelion),
                 'q' (float) (perihelion distance),
-                'longascnode_0' (float) (lon. of ascending node),
+                'longascnode_O' (float) (lon. of ascending node),
                 'D' (int) (equinox year),
                 'M1' (float),
                 'M2' (float) (first and second components of magnitude model),
@@ -763,7 +765,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
-        allowed_params = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_0': float,
+        allowed_params = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_O': float,
                           'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'parabolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -1165,7 +1167,8 @@ class SedmDB:
             return req_obj_stat
 
         if 'object_id' not in keys:
-            pardic['object_id'] = req_obj_stat[0][0]
+            pardic['object_id'] = int(req_obj_stat[0][0])
+            keys.append('object_id')
         else:
             if not pardic['object_id'] == req_obj_stat[0][0]:  # check for mismatch of given object_id and request_id
                 return (-1, "ERROR: object_id given doesn't match request_id!")
@@ -1178,11 +1181,11 @@ class SedmDB:
                            'inidate', 'enddate', 'object_id', 'order_id']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
-        print type_check
         if type_check:
             return (-1, type_check)
-
+        print pardic, keys
         sql = _generate_insert_sql(pardic, keys, 'atomicrequest')
+        print sql
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -1212,8 +1215,8 @@ class SedmDB:
 
             (0, "Atomic request updated") if it completed successfully
         """
-        param_types = {'id': int, 'exptime': float, 'priority': float, 'inidate': 'date',
-                       'enddate': 'date', 'object_id': int, 'order_id': int}
+        param_types = {'id': int, 'exptime': float, 'status': str, 'priority': float, 'inidate': 'date',
+                       'enddate': 'date'}
         # TODO: test, determine which parameters are allowed to be changed
         keys = list(pardic.keys())
         if 'id' not in keys:
@@ -1467,7 +1470,7 @@ class SedmDB:
         allowed_params = {'object_id': int, 'request_id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
                           'exptime': float, 'fitsfile': str, 'lst': str, 'ra': float, 'dec': float, 'tel_ra': str,
                           'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
-                          'dec_off': float, 'imtype': str, 'camera': str, 'id': 'int'}
+                          'dec_off': float, 'imtype': str, 'camera': str, 'id': int}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, 'observation')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -1777,7 +1780,8 @@ class SedmDB:
                                'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
                     keys.remove(key)
             pardic['id'] = spec_id[0][0]
-            update_sql = _generate_insert_sql(pardic, keys, 'spec')
+            update_sql = _generate_update_sql(pardic, keys, 'spec')
+            print update_sql
             try:
                 self.execute_sql(update_sql)
             except exc.IntegrityError:
@@ -1785,6 +1789,11 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
             return (0, "Spectrum updated for observation_id %s" % (pardic['observation_id'],))
+        obs_id = self.get_from_observation(['id'], {'id': pardic['observation_id']})
+        if not obs_id:
+            return (-1, "ERROR: no observation exists with the given id!")
+        elif obs_id[0] == -1:
+            return obs_id
 
         for key in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
                     'standardfile', 'skysub']:
@@ -1811,7 +1820,7 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_spectrum sql command failed with a ProgrammingError!")
         # set the atomicrequest's status to 'REDUCED'
         reduced_sql = ("UPDATE atomicrequest SET status='REDUCED' WHERE EXISTS (SELECT id FROM observation "
-                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s';"
+                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s');"
                        % (pardic['observation_id'],))  # TODO: test this monstrosity, otherwise can do 2 queries
         try:
             self.execute_sql(reduced_sql)
@@ -1912,6 +1921,11 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_metrics_phot update sql command failed with a ProgrammingError!")
             return (0, "Photometry metrics updated for phot_id %s" % (pardic['phot_id'],))
+        ph_id = self.get_from_phot(['id'], {'id': pardic['phot_id']})
+        if not ph_id:
+            return (-1, "ERROR: no photometry exists with the given id!")
+        elif ph_id[0] == -1:
+            return ph_id
 
         for key in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:  # phot_id already tested
             if key not in keys:
@@ -2018,6 +2032,11 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_metrics_spec update sql command failed with a ProgrammingError!")
             return (0, "Spectrum metrics updated for spec_id %s" % (pardic['spec_id'],))
+        sp_id = self.get_from_spec(['id'], {'id': pardic['spec_id']})
+        if not sp_id:
+            return (-1, "ERROR: no spectrum exists with the given id!")
+        elif sp_id[0] == -1:
+            return sp_id
 
         for key in ['fwhm', 'background', 'line_fwhm']:  # phot_id already tested
             if key not in keys:
@@ -2109,6 +2128,17 @@ class SedmDB:
         for key in reversed(keys):
             if key not in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
                 keys.remove(key)
+        sp1_id = self.get_from_spec(['id'], {'id': pardic['spec_id_1']})
+        if not sp1_id:
+            return (-1, "ERROR: no spectrum exists with the given spec_id_1!")
+        elif sp1_id[0] == -1:
+            return sp1_id
+        sp2_id = self.get_from_spec(['id'], {'id': pardic['spec_id_2']})
+        if not sp2_id:
+            return (-1, "ERROR: no spectrum exists with the given spec_id_2!")
+        elif sp2_id[0] == -1:
+            return sp2_id
+
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2202,6 +2232,8 @@ class SedmDB:
             if key not in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score',
                            'phase', 'phase_err']:
                 keys.remove(key)
+        
+
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2277,6 +2309,17 @@ class SedmDB:
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
+
+        sp_id = self.get_from_spec(['id'], {'id': pardic['spec_id']})
+        if not sp_id:
+            return (-1, "ERROR: no spectrum exists with the given spec_id!")
+        elif sp_id[0] == -1:
+            return sp_id
+        obj_id = self.get_from_object(['id'], {'id': pardic['object_id']})
+        if not obj_id:
+            return (-1, "ERROR: no object exists with the given object_id!")
+        elif obj_id[0] == -1:
+            return obj_id
 
         sql = _generate_update_sql(pardic, keys, 'classification')
         try:
