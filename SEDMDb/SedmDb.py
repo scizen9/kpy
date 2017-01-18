@@ -355,8 +355,6 @@ class SedmDB:
         for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
             if key not in obj_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(obj_keys):  # remove any extraneous keys
             if key not in ['name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
                 obj_keys.remove(key)
@@ -369,8 +367,6 @@ class SedmDB:
             for key in ['ra', 'dec', 'epoch']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
-                elif not pardic[key]:
-                    return (-1, "ERROR: no value provided for %s!" % (key,))
             # dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
             #                        % (pardic['ra'], pardic['dec']))
             # if dup:  # if there is already an object within an arcsecond
@@ -522,8 +518,6 @@ class SedmDB:
                     'M', 'mjdepoch', 'D', 'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not orbit_params[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
             if key not in ['inclination', 'longascnode_O', 'perihelion_o', 'a', 'n', 'e',
                            'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
@@ -621,8 +615,6 @@ class SedmDB:
                     'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not orbit_params[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
             if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
@@ -716,8 +708,6 @@ class SedmDB:
                     'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not orbit_params[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
             if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
@@ -811,8 +801,6 @@ class SedmDB:
                     'decay', 'reforbit', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not orbit_params[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(orb_keys):
             if key not in ['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
                            'decay', 'reforbit', 'drag', 'object_id']:
@@ -865,6 +853,7 @@ class SedmDB:
                           'pedigree': float, 'M': float, 'n': float, 'decay': float, 'reforbit': int,
                           'drag': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'earth_satellite')
+        print sql
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -963,8 +952,6 @@ class SedmDB:
         for param in default_params:  # check that all required values are provided
             if param not in keys:
                 return (-1, "ERROR: %s not in dictionary!" % (param,))
-            if not pardic[param]:
-                return (-1, "ERROR: no value provided for %s!" % (param,))
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
@@ -1157,8 +1144,6 @@ class SedmDB:
         for key in ['request_id', 'exptime', 'filter', 'priority', 'inidate', 'enddate']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
 
         req_obj_stat = self.get_from_request(['object_id', 'status'], {'id': pardic['request_id']})
         if not req_obj_stat:  # if there is no request with the id given
@@ -1183,9 +1168,7 @@ class SedmDB:
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
-        print pardic, keys
         sql = _generate_insert_sql(pardic, keys, 'atomicrequest')
-        print sql
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -1342,8 +1325,6 @@ class SedmDB:
                     'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off']:
             if key not in header_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not header_dict[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(header_keys):
             if key not in ['object_id', 'request_id', 'atomicrequest_id', 'mjd', 'airmass', 'exptime',
                            'fitsfile', 'imtype', 'lst', 'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az',
@@ -1666,8 +1647,6 @@ class SedmDB:
                     'maskfile', 'flatfile', 'pipeline']:  # include 'marshal_phot_id'?
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
 
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
@@ -1799,8 +1778,6 @@ class SedmDB:
                     'standardfile', 'skysub']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
 
         for key in reversed(keys):
             if key not in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
@@ -1930,8 +1907,6 @@ class SedmDB:
         for key in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:  # phot_id already tested
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
 
         for key in reversed(keys):
             if key not in ['phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
@@ -2038,11 +2013,9 @@ class SedmDB:
         elif sp_id[0] == -1:
             return sp_id
 
-        for key in ['fwhm', 'background', 'line_fwhm']:  # phot_id already tested
+        for key in []:  # phot_id already tested
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
 
         for key in reversed(keys):
             if key not in ['fwhm', 'background', 'line_fwhm']:
@@ -2123,8 +2096,6 @@ class SedmDB:
         for key in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         for key in reversed(keys):
             if key not in ['rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
                 keys.remove(key)
@@ -2218,8 +2189,6 @@ class SedmDB:
         for key in ['spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
-            elif not pardic[key]:
-                return (-1, "ERROR: no value provided for %s!" % (key,))
         classified = self.get_from_classification(['classification', 'redshift', 'redshift_err'],
                                      {'spec_id': pardic['spec_id'], 'classifier': pardic['classifier']})
         if classified:
@@ -2387,7 +2356,10 @@ def _data_type_check(keys, pardic, value_types):
     """
     for key in keys:
         if value_types[key] == str:
-            pass  # all values are added to the queries as strings anyway
+            if value_types is not None:
+                pass  # all values are added to the queries as strings anyway
+            else:
+                return "ERROR: %s must not be None!" % (key,)
         elif value_types[key] == 'date':
             # TODO: find a better way to check this? does it actually modify pardic for the function?
             try:
