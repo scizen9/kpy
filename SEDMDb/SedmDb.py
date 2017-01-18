@@ -1734,7 +1734,7 @@ class SedmDB:
                     'quality' (int),
                     'cubefile' (str),
                     'standardfile' (str),
-                    'skysub' (bool)
+                    'skysub' ('true' or 'false')
 
         Returns:
             (-1, "ERROR...") if there was an issue
@@ -1744,7 +1744,7 @@ class SedmDB:
             (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
         param_types = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
-                       'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': bool}
+                       'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': 'bool'}
         # TODO: which parameters are required? test
         # TODO: update schedule table indicating reduction?
         keys = list(pardic.keys())
@@ -1825,7 +1825,7 @@ class SedmDB:
                 'quality' (int),
                 'cubefile' (str),
                 'standardfile' (str),ear
-                'skysub' (bool)
+                'skysub' ('true' or 'false')
 
         Returns:
             list of tuples containing the values for spectra matching the criteria
@@ -1836,7 +1836,7 @@ class SedmDB:
         """
         allowed_params = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
                           'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str,
-                          'skysub': bool, 'id': int}
+                          'skysub': 'bool', 'id': int}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, 'spec')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -2349,6 +2349,8 @@ def _data_type_check(keys, pardic, value_types):
         pardic (dict): keys and keys' values
         value_types (dict): keys and types the values should be (e.g. {'ra': float})
 
+        types are: str, float, int, 'date', 'datetime', 'bool'
+
     Returns:
         "ERROR..." if a value was of the wrong type
 
@@ -2356,10 +2358,20 @@ def _data_type_check(keys, pardic, value_types):
     """
     for key in keys:
         if value_types[key] == str:
-            if value_types is not None:
+            if pardic[key] is not None:
                 pass  # all values are added to the queries as strings anyway
             else:
                 return "ERROR: %s must not be None!" % (key,)
+        elif value_types[key] == float:
+            try:
+                pardic[key] = float(pardic[key])
+            except ValueError:
+                return "ERROR: %s must be of %s!" % (key, str(float)[1:-1])
+        elif value_types[key] == int:
+            try:
+                pardic[key] = int(pardic[key])
+            except ValueError:
+                return "ERROR: %s must be of %s!" % (key, str(int)[1:-1])
         elif value_types[key] == 'date':
             # TODO: find a better way to check this? does it actually modify pardic for the function?
             try:
@@ -2371,6 +2383,9 @@ def _data_type_check(keys, pardic, value_types):
                 pardic[key] = str(Time(pardic[key]))
             except ValueError:
                 return "ERROR: %s must be of the format 'year-month-day hour:minute:second'!" % (key,)
+        elif value_types[key] == 'bool':
+            if not (pardic[key] == 'false' or pardic[key] == 'true'):
+                return "ERROR: %s must be either 'true' or 'false'"
         elif not isinstance(pardic[key], value_types[key]):
             return "ERROR: parameter %s must be of %s!" % (key, str(value_types[key])[1:-1])
     return None
