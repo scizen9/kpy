@@ -123,34 +123,35 @@ def baseline_tests():
     # db.add_usergroup
     # db.get_from_usergroups
     # db.remove_from_group
-#   print db.add_object({'name': 'test_obj', 'ra': 40., 'dec': 30., 'epoch': 2000., 'typedesig': 'f'})
-#   print db.get_from_object(['ra', 'dec'], {'name': 'test_obj'}) , (40, 30)
-#   print db.get_object_id_from_name('defa') , 2
-#   print db.add_elliptical_heliocentric({'object_id': 1, 'inclination': 0.1, 'perihelion_o': 0.5, 'a': 3.2, 'n': 20,
-#                                         'e': 0.01, 'M': 1., 'mjdepoch': 2000, 'D': 2009, 'M1': 1., 'M2': 2.,
-#                                         'longascnode_O': 3.})
-    print db.get_from_elliptical_heliocentric(['e', 'mjdepoch'], {'D': 2009}), (0, 2000)
-#   print db.add_hyperbolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
-#                                        'perihelion_o': 2., 'e': 3.2, 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
-#   print db.get_from_hyperbolic_heliocentric(['e', 'q'], {'D': 2009}), (3.2, 20)
-#   print db.add_parabolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
-#                                        'perihelion_o': 2., 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
-    print db.get_from_parabolic_heliocentric(['object_id', 'inclination'], {'M1': 1.}), (1, 0.1)
-#   print db.add_earth_satellite({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'ra': 0.5, 'pedigree': 2.,
-#                                 'perihelion_o': 2., 'M': 3.2, 'n': 20., 'decay': 1., 'reforbit': 10})
-    print db.get_from_earth_satellite(['object_id', 'M'], {'n': 20.}), (1, 3.2)
 
-#   print db.add_request({'object_id': 1, 'user_id': 1, 'program_id': 1, 'exptime': '{2500, 300}', 'priority': 3.,
-#                         'inidate': '2017-01-01', 'enddate': '2017-01-02', 'ordering': '{1ifu, 1g, 1r, 1i}'})
+#    print db.add_object({'name': 'test_obj', 'ra': 40., 'dec': 30., 'epoch': 2000., 'typedesig': 'f'})
+#    print db.get_from_object(['ra', 'dec'], {'name': 'test_obj'}) , (40, 30)
+#    print db.get_object_id_from_name('defa') , 2
+#    print db.add_elliptical_heliocentric({'object_id': 1, 'inclination': 0.1, 'perihelion_o': 0.5, 'a': 3.2, 'n': 20,
+#                                          'e': 0.01, 'M': 1., 'mjdepoch': 2000, 'D': 2009, 'M1': 1., 'M2': 2.,
+#                                          'longascnode_O': 3.})
+#    print db.get_from_elliptical_heliocentric(['e', 'mjdepoch'], {'D': 2009}), (0, 2000)
+#    print db.add_hyperbolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
+#                                         'perihelion_o': 2., 'e': 3.2, 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
+#    print db.get_from_hyperbolic_heliocentric(['e', 'q'], {'D': 2009}), (3.2, 20)
+#    print db.add_parabolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
+#                                         'perihelion_o': 2., 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
+#    print db.get_from_parabolic_heliocentric(['object_id', 'inclination'], {'M1': 1.}), (1, 0.1)
+#    print db.add_earth_satellite({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'ra': 0.5, 'e': 2., 'pedigree': 2.,
+#                                  'M': 3.2, 'n': 20., 'decay': 1., 'reforbit': 10})
+#    print db.get_from_earth_satellite(['object_id', 'M'], {'n': 20.}), (1, 3.2)
+
+    print db.add_request({'object_id': 1, 'user_id': 1, 'program_id': 1, 'exptime': '{2500, 300}', 'priority': 3.,
+                          'inidate': '2017-01-01', 'enddate': '2017-01-02', 'ordering': '{1ifu, 1g, 1r, 1i}'})
     ids = db.get_from_request(['id'], {'enddate': '2017-01-02'})
     print ids
     print db.update_request({'id': int(ids[0][0]), 'priority': 5.})
     print db.get_from_request(['priority'], {'id': int(ids[0][0])})
-#   print db.expire_requests()
-#   print db.get_from_request(['status'], {'enddate': '2017-01-02'})
+    print db.expire_requests()
+    print db.get_from_request(['status'], {'enddate': '2017-01-02'})
 
-#   print db.add_atomicrequest({'request_id': 1, 'exptime': 300., 'filter': 'g', 'priority': 5., 'inidate':'2017-01-01',
-#                               'enddate': '2017-04-03'})
+    print db.add_atomicrequest({'request_id': 1, 'exptime': 300., 'filter': 'g', 'priority': 5., 'inidate':'2017-01-01',
+                                'enddate': '2017-04-03'})
     ids = db.get_from_atomicrequest(['id'], {'enddate': '2017-04-03'})
     print ids
     print db.update_atomicrequest({'id': ids[0][0], 'status': 'CANCELED'})  # why doesn't have 'id' long fail?
@@ -162,16 +163,16 @@ def baseline_tests():
     print db.add_observation(obs_dict)
     # TODO: find out why it returned None
     print db.update_observation
-#   print db.get_from_observation(['fitsfile'], {'dec_off': .2})
+    print db.get_from_observation(['fitsfile'], {'dec_off': .2})
     print db.add_telescope_stats
     print db.get_from_telescope_stats
 
-    print db.add_phot({'observation_id': 1, 'astrometry': False, 'filter': 'g', 'reducedfile': 'nofile', 'sexfile': 'c',
+    print db.add_phot({'observation_id': 1, 'astrometry': 'false', 'filter': 'g', 'reducedfile': 'nofile', 'sexfile': 'c',
                        'biasfile': 'd', 'maskfile': 'e', 'flatfile': 'f', 'pipeline': 'phot', 'marshal_phot_id': 1})
     # test add_phot as update
     print db.get_from_phot(['biasfile'], {'filger': 'g'})
-#   print db.add_spec({'observation_id': 1, 'reducedfile': 'a', 'sexfile': 'b', 'biasfile': 'c', 'flatfile': 'd',
-#                      'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': True})
+    print db.add_spec({'observation_id': 1, 'reducedfile': 'a', 'sexfile': 'b', 'biasfile': 'c', 'flatfile': 'd',
+                       'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': 'true'})
     # tested add_spec as update as well
     print db.get_from_spec(['imgset', 'skysub'], {'sexfile': 'b'})
 
@@ -182,10 +183,10 @@ def baseline_tests():
     print db.add_metrics_spec({'spec_id': 1, 'fwhm': 2., 'background': 1.})
     # test add_metrics_spec as update
     print db.get_from_metrics_spec(['life_fwhm', 'background'], {'spec_id': 1})
-    obs_dict['atomicrequest_id': 2]
+    obs_dict['atomicrequest_id']= 2
     db.add_observation(obs_dict)
     db.add_spec({'observation_id': 2, 'reducedfile': 'a', 'sexfile': 'b', 'biasfile': 'c', 'flatfile': 'd',
-                 'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': True})
+                 'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': 'true'})
     print db.add_flexure({'rms': 1., 'spec_id_1': 1, 'spec_id_2': 2, 'timestamp1': '2017-01-12 10:20:20',
                           'timestamp2': '2017-01-12 10:20:40'})
     print db.get_from_flexure(['rms'], {'spec_id_1': 1})

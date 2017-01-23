@@ -704,12 +704,12 @@ class SedmDB:
                        'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
         # TODO: query associated table for object already existing, test
         orb_keys = list(orbit_params.keys())
-        for key in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
+        for key in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'q', 'D',
                     'M1', 'M2', 'object_id']:
             if key not in orb_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(orb_keys):
-            if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
+            if key not in ['T', 'inclination', 'longascnode_O', 'perihelion_o', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
                 orb_keys.remove(key)
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
@@ -1009,7 +1009,7 @@ class SedmDB:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate', 'exptime']:
+            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate']:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -1589,7 +1589,7 @@ class SedmDB:
             pardic (dict):
                 required:
                     'observation_id' (int),
-                    'astrometry' (bool),
+                    'astrometry' ('true' or 'false'),
                     'filter' (str),
                     'reducedfile' (str),
                     'sexfile' (str),
@@ -1606,7 +1606,7 @@ class SedmDB:
 
             (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
-        param_types = {'observation_id': int, 'astrometry': bool, 'filter': str, 'reducedfile': str, 'sexfile': str,
+        param_types = {'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
                        'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int}
         # TODO: test
         keys = list(pardic.keys())
@@ -1665,7 +1665,7 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
         # set the atomicrequest's status to 'REDUCED'
         reduced_sql = ("UPDATE atomicrequest SET status='REDUCED' WHERE EXISTS (SELECT id FROM observation "
-                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s';"
+                       "WHERE observation.atomicrequest_id = atomicrequest.id AND observation.id = '%s'"
                        % (pardic['observation_id'],))  # TODO: test this monstrosity, otherwise can do 2 queries
         try:
             self.execute_sql(reduced_sql)
@@ -1685,7 +1685,7 @@ class SedmDB:
             values/keys options:
                 'id' (int),
                 'observation_id' (int),
-                'astrometry' (bool),
+                'astrometry' ('true' or 'false'),
                 'filter' (str),
                 'reducedfile' (str),
                 'sexfile' (str),
@@ -1702,7 +1702,7 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'observation_id': int, 'astrometry': bool, 'filter': str, 'reducedfile': str, 'sexfile': str,
+        allowed_params = {'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
                           'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int,
                           'id': int}
 
@@ -2013,18 +2013,19 @@ class SedmDB:
         elif sp_id[0] == -1:
             return sp_id
 
-        for key in []:  # phot_id already tested
+        for key in []:  # spec_id already tested
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):
-            if key not in ['fwhm', 'background', 'line_fwhm']:
+            if key not in ['spec_id', 'fwhm', 'background', 'line_fwhm']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
 
         sql = _generate_insert_sql(pardic, keys, 'metrics_spec')
+        print sql, type_check
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -2385,7 +2386,7 @@ def _data_type_check(keys, pardic, value_types):
                 return "ERROR: %s must be of the format 'year-month-day hour:minute:second'!" % (key,)
         elif value_types[key] == 'bool':
             if not (pardic[key] == 'false' or pardic[key] == 'true'):
-                return "ERROR: %s must be either 'true' or 'false'"
+                return "ERROR: %s must be either 'true' or 'false'" % (key,)
         elif not isinstance(pardic[key], value_types[key]):
             return "ERROR: parameter %s must be of %s!" % (key, str(value_types[key])[1:-1])
     return None
