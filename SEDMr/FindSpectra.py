@@ -123,7 +123,7 @@ def find_segments_helper(seg_cnt):
         n_el = span[1].x - span[0].x
 
         # Don't fit short traces, but flag them by setting "ok" to False
-        if n_el < 10:
+        if n_el < 50:
 
             # Flag the sigma with zero
             sig = 0.
@@ -167,9 +167,9 @@ def find_segments_helper(seg_cnt):
             else:
                 poly = np.array(np.nan)
 
-            tracefit = gfit1d(trace_profile,
+            trace_fit = gfit1d(trace_profile,
                               par=[0, len(trace_profile) / 2., 1.7], quiet=1)
-            sig = np.abs(tracefit.params[2])
+            sig = np.abs(trace_fit.params[2])
 
             tr = {
                 "seg_cnt": seg_cnt,
@@ -177,11 +177,8 @@ def find_segments_helper(seg_cnt):
                 "mean_ys": np.array(means),
                 "coeff_ys": poly,
                 "trace_sigma": sig,
-                "ok": True
+                "ok": (np.count_nonzero(nans) <= 0 & np.isfinite(poly[0]))
             }
-
-        if n_el < 50:
-            tr['ok'] = False
 
         outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
                                                            sig * 2.355, tr['ok'])
