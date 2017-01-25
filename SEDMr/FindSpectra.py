@@ -123,7 +123,7 @@ def find_segments_helper(seg_cnt):
         n_el = span[1].x - span[0].x
 
         # Don't fit short traces, but flag them by setting "ok" to False
-        if n_el < 50:
+        if n_el < 10:
 
             # Flag the sigma with zero
             sig = 0.
@@ -159,7 +159,13 @@ def find_segments_helper(seg_cnt):
 
             xs = np.arange(n_el) + span[0].x
 
-            poly = np.array(np.polyfit(xs, means, polyorder))
+            nans = ~np.isfinite(means)
+            ok = np.isfinite(means)
+
+            if np.count_nonzero(nans) < 5:
+                poly = np.array(np.polyfit(xs[ok], means[ok], polyorder))
+            else:
+                poly = np.array(np.nan)
 
             tracefit = gfit1d(trace_profile,
                               par=[0, len(trace_profile) / 2., 1.7], quiet=1)
@@ -173,6 +179,9 @@ def find_segments_helper(seg_cnt):
                 "trace_sigma": sig,
                 "ok": True
             }
+
+        if n_el < 50:
+            tr['ok'] = False
 
         outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
                                                            sig * 2.355, tr['ok'])
@@ -211,7 +220,7 @@ def find_segments(segmap=None, obj=None, order=2):
     polyorder = order
 
     # First segment begins at 1
-    segrange = xrange(1, max(segdat.flatten()))
+    segrange = xrange(1, max(segdat.flatten())+1)
 
     p = Pool(8)
     traces = p.map(find_segments_helper, segrange)
@@ -257,7 +266,7 @@ def write_segments(segments):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
                                      """
-    FindSegments.py
+    FindSpectra.py
     """)
 
     parser.add_argument("segmap_fits", type=str,
