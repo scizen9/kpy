@@ -4,8 +4,82 @@ from astropy.io import fits
 
 db = SedmDb.SedmDB()
 
+class db_tools(object):
+    def __init__(self, db_class):
+        self.db = db_class
+    # TODO: refactor and move functions into the class
 
-# TODO: write a function to get object+orbit data for an object
+
+def get_object_parameters(object_id):
+    """
+    Takes an object_id and returns the object's information and orbit parameters for SSO
+    Args:
+        object_id (int): id of the object
+
+    Returns:
+        (-1, "ERROR...") if an error occurred
+
+        [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), None] for fixed objects, or if there are
+        no orbit parameters in the database
+
+        [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), (orbit params arranged in ephem ordering)]
+    """  # TODO: test if the orbit_params can be input directly into an ephem call
+    object = db.get_from_object(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
+                                {'id': object_id})
+    if not object:
+        return (-1, "ERROR: no object found matching the given object_id")
+    elif object[0] == -1:  # object[0] should be positive or empty if successful
+        return object  # this should carry the error message
+    # format the response depending on the typedesig
+    if object[0][5] == 'f':
+        return [object[0], None]
+
+    elif object[0][5] == 'e':
+        orbit_params = db.get_elliptical_orbit(['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e', 'M',
+                                                'mjdepoch', 'D', 'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'h':
+        orbit_params = db.get_hyperbolic_orbit(['T', 'inclination', 'longascnode_0', 'perihelion_o', 'e', 'q', 'D',
+                                                'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'p':
+        orbit_params = db.get_parabolic_orbit(['T', 'inclination', 'perihelion_o', 'q', 'longascnode_0', 'D',
+                                               'M1', 'M2', 's'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'E':
+        orbit_params = db.get_earth_satellite_orbit(['T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n', 'decay',
+                                                     'reforbit', 'drag'], {'object_id': object_id})
+        if not orbit_params:
+            return [object[0], None]
+        elif orbit_params[0] == -1:  # without an error orbit_params[0] should be a tuple
+            return orbit_params
+        else:
+            return [object[0], orbit_params[0]]
+
+    elif object[0][5] == 'P':
+        raise NotImplementedError  # TODO: add this
+
+    else:
+        return (-1, "ERROR: object has an invalid typedesig '%s'" % (object[0][5],))
+
 
 def program_time_used(start_date, end_date, program_id):
 
@@ -50,7 +124,7 @@ def get_user_requests(user_id=None, username=None, values=['id', 'object_id', 'p
         where_dict = {'user_id': user_id[0][0]}
     else:
         return (-1, "ERROR: neither username nor user_id were provided!")
-    user_requests = db.get_from_requests(values, where_dict)
+    user_requests = db.get_from_request(values, where_dict)
     return user_requests
 
 
@@ -71,7 +145,7 @@ def get_active_requests(values=['id', 'object_id', 'user_id', 'program_id', 'mar
     """
     # TODO: test?
 
-    active_requests = db.get_from_requests(values, {'status': 'ACTIVE'})
+    active_requests = db.get_from_request(values, {'status': 'ACTIVE'})
     return active_requests
 
 
@@ -133,12 +207,11 @@ def create_request_atomic_requests(request_id):
 
     if db.execute_sql("SELECT id FROM atomicrequest WHERE request_id='%s';" % (request_id,)):
         return (-1, "ERROR: atomicrequests already exist for that request!")
-    request = db.execute_sql("SELECT object_id, exptime, priority, inidate, enddate,"
-                             "cadence, phasesamples, sampletolerance, filters, nexposures, ordering "
-                             "FROM request WHERE id='%s';" % (request_id,))[0]
+    request = db.get_from_request(['object_id', 'exptime', 'priority', 'inidate', 'enddate', 'cadence', 'phasesamples',
+                                    'sampletolerance', 'filters', 'nexposures', 'ordering'], {'id': request_id})[0]
     # TODO: implement cadence/phasesamples/sampletolerance (I have no idea how they interact with nexposures)
-    pardic = {'object_id': request[0], 'priority': request[2], 'inidate': request[3],
-              'enddate': request[4], 'request_id': request_id}
+    pardic = {'object_id': int(request[0]), 'priority': float(request[2]), 'inidate': str(request[3]),
+              'enddate': str(request[4]), 'request_id': int(request_id)}
     obs_order = []
     if request[10]:
         for num_fil in request[10]:
@@ -164,10 +237,36 @@ def create_request_atomic_requests(request_id):
             pardic['exptime'] = float(request[1][0])  # TODO: make sure the sql returns the proper format
         else:
             pardic['exptime'] = float(request[1][1])
-        add_return = db.add_atomic_request(pardic)
+        add_return = db.add_atomicrequest(pardic)
         if add_return[0] == -1:
-            return (-1, "ERROR: adding atomicrequest (# %s, filter %s) failed." % (n + 1, filter_des))
+            return (-1, "ERROR: adding atomicrequest #%s, filter:%s failed with message, '%s'!" 
+                    % (n + 1, filter_des, add_return))
     return (0, "Added %s atomic requests for request %s" % (len(obs_order), request_id))
+
+
+def get_request_atomicrequests(request_id, values):
+    """
+    return the atomicreqests associated with a single request
+
+    Args:
+        request_id (int):
+            The request_id of the desired request
+        values (list):
+            list of values to be retreived about each atomicrequest
+
+    Returns:
+        list of tuples:
+            (id, object_id, order_id, exptime, filter, status, priority)
+            for each atomicreqest associated with the desired request
+        [] if there were no atomicrequests matching the given request_id
+        (-1, "ERROR...") if there was an issue
+
+    """
+    if not isinstance(request_id, int):
+        return []
+    # TODO: test
+    atomic_requests = db.get_from_atomicrequest(values, {'request_id': request_id})
+    return atomic_requests
 
 
 def add_observation_fitsfile(fitsfile, atomicrequest_id):
@@ -189,14 +288,14 @@ def add_observation_fitsfile(fitsfile, atomicrequest_id):
                    'ra_off': header['RA_OFF'], 'dec_off': header['DEC_OFF'], 'camera': header['CAM_NAME'],
                    'atomicrequest_id': int(atomicrequest_id)}  # TODO: remove atomicrequest_id arg from function
     # header_dict['atomicrequest_id'] = int(header['ATOM_ID'])
-    ids = db.get_from_atomicrequests(['request_id', 'object_id'], {'id': header_dict['atomicrequest_id']})[0]
+    ids = db.get_from_atomicrequest(['request_id', 'object_id'], {'id': header_dict['atomicrequest_id']})[0]
     if ids:
         header_dict['request_id'] = int(ids[0][0])
         header_dict['object_id'] = int(ids[0][1])
     else:
         return (-1, "ERROR: no atomicrequests found with an id matching the header's ATOM_ID!")
 
-    obs_added = db.add_observation_fits(header_dict)
+    obs_added = db.add_observation(header_dict)
     # TODO: add ATOM_ID to the header (above)
     # TODO: add 'imtype', generate from fitsfile name?
 
@@ -218,7 +317,7 @@ def add_observation_fitsfile(fitsfile, atomicrequest_id):
     # check if all of the request's atomicrequests are 'OBSERVED', if so set the request's status to 'COMPLETED'
     # TODO: must test with connected request/atomicrequest/fitsfile
     if obs_added[0] == 0:
-        print db.update_atomic_request({'id': header_dict['atomicrequest_id'], 'status': 'OBSERVED'})  # better way than print?
+        print db.update_atomicrequest({'id': header_dict['atomicrequest_id'], 'status': 'OBSERVED'})  # better way than print?
         request_id = db.execute_sql("SELECT request_id FROM atomicrequest WHERE id='%s'"
                                     % (header_dict['atomicrequest_id'],))
         atomic_requests = db.get_request_atomicrequests(request_id)
