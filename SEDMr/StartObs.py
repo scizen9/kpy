@@ -586,7 +586,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 exptime = hdr['EXPTIME']
                 # Check for dome exposures
                 if 'dome' in obj:
-                    if exptime > 100. and ('Hal' in obj and 
+                    if exptime > 100. and ('dome' in obj and
                                            'Xe' not in obj and
                                            'Hg' not in obj and 
                                            'Cd' not in obj):
