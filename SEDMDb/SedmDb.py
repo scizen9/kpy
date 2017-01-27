@@ -144,7 +144,7 @@ class SedmDB:
             else:
                 return (-1, "ERROR: no user with that username!")
         elif 'id' in pardic.keys():
-            if not isinstance(pardic['id'], int):
+            if not (isinstance(pardic['id'], int) or isinstance(pardic['id'], long)):
                 return (-1, "ERROR: id must be of type 'int'")
             if pardic['id'] in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
                 self.execute_sql("DELETE FROM usergroups WHERE user_id='%s'" % (pardic['id'],))
@@ -889,7 +889,7 @@ class SedmDB:
                 optional:
                     'marshal_id' (int),
                     'maxairmass' (float) (max allowable airmass for observation, default 2.5),
-                    'cadence' (float) (,
+                    'cadence' (float) (time between periods),
                     'phasesamples' (float) (how many samples in a period),
                     'sampletolerance' (float) (how much tolerance in when the samples can be taken),
                     'nexposures' (str '{# of ifu, # of u, # of g, # of r, # of i}'),
@@ -919,6 +919,8 @@ class SedmDB:
             # TODO: require interaction to continue?
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
             return (-1, "ERROR: object does not exist!")
+        if pardic['user_id'] not in [user[0] for user in self.execute_sql('SELECT id FROM users;')]:
+            return (-1, "ERROR: user does not exist!")
         # TODO: set default inidate/enddate?
 
         if 'ordering' in pardic.keys():
@@ -1001,7 +1003,7 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
-        elif not isinstance(pardic['id'], int):
+        elif not (isinstance(pardic['id'], int) or isinstance(pardic['id'], long)):
             return (-1, "ERROR: parameter id must be of type 'int'!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
             return (-1, "ERROR: request does not exist!")
@@ -1081,9 +1083,10 @@ class SedmDB:
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
-                          'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float,
-                          'cadence': float, 'phasesamples': float, 'sampletolerance': float, 'filters': str, 'nexposures': str,
-                          'ordering': str, 'creationdate': 'date', 'lastmodified': 'date'}
+                          'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int,
+                          'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
+                          'filters': str, 'nexposures': str, 'ordering': str, 'creationdate': 'date',
+                          'lastmodified': 'date'}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -1100,6 +1103,9 @@ class SedmDB:
         """
         Updates the request table. For all the active requests that were not completed,
             and had an expiry date before than NOW(), are marked as "EXPIRED".
+
+        Returns:
+            (0, "Requests expired")
         """
         # TODO: move to logic layer? (requires sql "knowledge")
         # tests written
@@ -1204,6 +1210,9 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM atomicrequest;')]:
+            return (-1, "ERROR: atomicrequest does not exist!")
+
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED', 'CANCELED']:
                 keys.remove('status')  # TODO: remove it, return a -1, or print/warn?
@@ -1223,7 +1232,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
-        return (0, "Atomic request updated")
+        return (0, "Atomicrequest updated")
 
     def get_from_atomicrequest(self, values, where_dict):
         """
@@ -1310,7 +1319,8 @@ class SedmDB:
                         'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
                         'dec_off': float, 'imtype': str, 'camera': str}
         if 'atomicrequest_id' in header_dict.keys():
-            if not isinstance(header_dict['atomicrequest_id'], int):  # prevent the select sql from failing
+            if not (isinstance(header_dict['atomicrequest_id'], int) or
+                        isinstance(header_dict['atomicrequest_id'], long)):  # prevent the select sql from failing
                 return (-1, "ERROR: atomicrequest must be of type 'int'!")
             if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
                 return (-1, "ERROR: atomicrequest does not exist!")
