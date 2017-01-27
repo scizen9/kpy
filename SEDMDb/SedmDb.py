@@ -144,7 +144,7 @@ class SedmDB:
             else:
                 return (-1, "ERROR: no user with that username!")
         elif 'id' in pardic.keys():
-            if not isinstance(pardic['id'], int):
+            if not (isinstance(pardic['id'], int) or isinstance(pardic['id'], long)):
                 return (-1, "ERROR: id must be of type 'int'")
             if pardic['id'] in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
                 self.execute_sql("DELETE FROM usergroups WHERE user_id='%s'" % (pardic['id'],))
@@ -1003,7 +1003,7 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
-        elif not isinstance(pardic['id'], int):
+        elif not (isinstance(pardic['id'], int) or isinstance(pardic['id'], long)):
             return (-1, "ERROR: parameter id must be of type 'int'!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
             return (-1, "ERROR: request does not exist!")
@@ -1083,9 +1083,10 @@ class SedmDB:
         """
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
-                          'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float,
-                          'cadence': float, 'phasesamples': float, 'sampletolerance': float, 'filters': str, 'nexposures': str,
-                          'ordering': str, 'creationdate': 'date', 'lastmodified': 'date'}
+                          'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int,
+                          'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
+                          'filters': str, 'nexposures': str, 'ordering': str, 'creationdate': 'date',
+                          'lastmodified': 'date'}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -1318,7 +1319,8 @@ class SedmDB:
                         'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
                         'dec_off': float, 'imtype': str, 'camera': str}
         if 'atomicrequest_id' in header_dict.keys():
-            if not isinstance(header_dict['atomicrequest_id'], int):  # prevent the select sql from failing
+            if not (isinstance(header_dict['atomicrequest_id'], int) or
+                        isinstance(header_dict['atomicrequest_id'], long)):  # prevent the select sql from failing
                 return (-1, "ERROR: atomicrequest must be of type 'int'!")
             if not self.execute_sql("SELECT * FROM atomicrequest WHERE id='%s'" % (header_dict['atomicrequest_id'],)):
                 return (-1, "ERROR: atomicrequest does not exist!")

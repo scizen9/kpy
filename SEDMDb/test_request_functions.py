@@ -23,12 +23,12 @@ def test_request_manipulation():
     id = db.get_from_request(['id'], {'enddate': '2017-04-25'})
     upd = {'id': id[0][0], 'status': 'ACTIVE', 'maxairmass': 2.2, 'user_id': 2} # user_id isn't allowed
     assert db.update_request(upd) == (0, "Requests updated")
-    assert (db.get_from_request(['status', 'airmass', 'user_id'], {'enddate': '2017-04-17'})[0] ==
+    assert (db.get_from_request(['status', 'maxairmass', 'user_id'], {'enddate': '2017-04-25'})[0] ==
             ('ACTIVE', 2.2, 1))
     # test get_from failures
     assert db.get_from_request([], {})[0] == (-1, "ERROR: no valid values requested!")
     assert db.get_from_request(['greetings'], {})[0] == (-1, "ERROR: no valid values requested!")
-    assert db.get_from_request(['status'], {'airmass': 'r'}) == (-1, "ERROR: airmass must be of type 'float'!")
+    assert db.get_from_request(['status'], {'maxairmass': 'r'}) == (-1, "ERROR: maxairmass must be of type 'float'!")
     # test add_request failure
     req['object_id'] = 0
     assert db.add_request(req) == (-1, "ERROR: object does not exist!")
@@ -42,7 +42,7 @@ def test_request_manipulation():
     upd = {'id': id[0][0], 'user_id': 2, 'object_id': 3}
     assert db.update_request(upd) == (-1, "ERROR: no parameters given to update!")
     upd = {'id': id[0][0], 'maxairmass': 'r'}
-    assert db.update_request(upd) == (-1, "ERROR: airmass must be of type 'int'!")
+    assert db.update_request(upd) == (-1, "ERROR: maxairmass must be of type 'float'!")
     # test expire_requests
     req['inidate'] = '2016-02-03'
     req['enddate'] = '2016-04-25'
