@@ -889,7 +889,7 @@ class SedmDB:
                 optional:
                     'marshal_id' (int),
                     'maxairmass' (float) (max allowable airmass for observation, default 2.5),
-                    'cadence' (float) (,
+                    'cadence' (float) (time between periods),
                     'phasesamples' (float) (how many samples in a period),
                     'sampletolerance' (float) (how much tolerance in when the samples can be taken),
                     'nexposures' (str '{# of ifu, # of u, # of g, # of r, # of i}'),
@@ -919,6 +919,8 @@ class SedmDB:
             # TODO: require interaction to continue?
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
             return (-1, "ERROR: object does not exist!")
+        if pardic['user_id'] not in [user[0] for user in self.execute_sql('SELECT id FROM users;')]:
+            return (-1, "ERROR: user does not exist!")
         # TODO: set default inidate/enddate?
 
         if 'ordering' in pardic.keys():
@@ -1100,6 +1102,9 @@ class SedmDB:
         """
         Updates the request table. For all the active requests that were not completed,
             and had an expiry date before than NOW(), are marked as "EXPIRED".
+
+        Returns:
+            (0, "Requests expired")
         """
         # TODO: move to logic layer? (requires sql "knowledge")
         # tests written
@@ -1204,6 +1209,9 @@ class SedmDB:
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM atomicrequest;')]:
+            return (-1, "ERROR: atomicrequest does not exist!")
+
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'OBSERVED', 'REDUCED', 'EXPIRED', 'CANCELED']:
                 keys.remove('status')  # TODO: remove it, return a -1, or print/warn?
@@ -1223,7 +1231,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
-        return (0, "Atomic request updated")
+        return (0, "Atomicrequest updated")
 
     def get_from_atomicrequest(self, values, where_dict):
         """
