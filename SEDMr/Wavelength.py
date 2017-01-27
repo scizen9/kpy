@@ -114,14 +114,14 @@ def hg_to_kdtree(assoc_hg_spec):
     xs = []
     ys = []
     ids = []
-    for id,f in enumerate(assoc_hg_spec):
+    for id, f in enumerate(assoc_hg_spec):
         if not f.has_key(546.1): continue
         xs.append(f[546.1])
         ff = np.poly1d(f['coeff_ys'])
         ys.append(ff(xs[-1]))
         ids.append(f['seg_cnt'])
 
-    data = np.array([xs,ys])
+    data = np.array([xs, ys])
     return KDTree(data.T), np.array(ids)
 
 
@@ -129,7 +129,7 @@ def fiducial_wavelength():
     return 565.3
 
 
-def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
+def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., npx=265):
     """Return a typical SED Machine spectrum, use for interpolating on grid
 
     Reference:
@@ -141,10 +141,10 @@ def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., len=265):
     Args:
         lamstart(float): default is 1050 nm
         lamratio(float): default is 239/240, good for SEDM
-        len(int): default of 265 yields a spectrum that goes to ~ 350 nm
+        npx(int): default of 265 yields a spectrum that goes to ~ 350 nm
     """
 
-    xx = np.arange(len)
+    xx = np.arange(npx)
 
     return lamstart * lamratio**xx
 
@@ -153,7 +153,8 @@ def assoc_hg_with_flats_helper(idx):
     global domedat, hgcat, guess_offset, wavetrees
 
     spec_pos = domedat[idx]
-    if not spec_pos['ok']: return None
+    if not spec_pos['ok'] and not spec_pos['bkg_ok']:
+        return None
     tracefun = np.poly1d(spec_pos['coeff_ys'])
     minx = spec_pos['xs'][0]
 
@@ -161,13 +162,13 @@ def assoc_hg_with_flats_helper(idx):
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        for wavelen,v in wavetrees.iteritems():
+        for wavelen, v in wavetrees.iteritems():
             offset = guess_offset[wavelen]
             pt = (minx + offset, tracefun(minx+offset))
             results = v.query_ball_point(pt, 15)
 
             for res in results:
-                x_hg,y_hg = v.data[res]
+                x_hg, y_hg = v.data[res]
                 y_trace = tracefun(x_hg)
 
                 if np.abs(y_hg - y_trace) < 3:
@@ -181,7 +182,7 @@ def assoc_hg_with_flats_helper(idx):
 
 
 def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par={365.0: 231,
-    404.6:214, 435.8:193, 546.1: 133, 578.00: 110}, outname='assoc_Hg'):
+    404.6: 214, 435.8: 193, 546.1: 133, 578.00: 110}, outname='assoc_Hg'):
 
     """Given a set of functions defining the ridgeline of dome flats
     and a list of positions of mercury lamps, provide a crude wavelength
@@ -198,7 +199,7 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par={365.0: 231,
     guess_offset = guess_offset_par
 
     wavetrees = {}
-    for k,v in hgcat.iteritems():
+    for k, v in hgcat.iteritems():
         wavetrees[k] = KDTree(v)
 
     print "SgID   Nlines"
@@ -243,7 +244,6 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     kdt = KDTree(data)
 
     reg = ""
-    ratios = []
     hg546 = []
     hg578 = []
     hg436 = []
@@ -253,25 +253,26 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     print "Finding Hg lines in each spectrum"
     update_rate = len(lines) / (Bar.setup(toolbar_width=74)) + 1
     for CNT, line in enumerate(lines):
-        if CNT % update_rate == 0: Bar.update()
+        if CNT % update_rate == 0:
+            Bar.update()
 
         point = [line['X_IMAGE'], line['Y_IMAGE']]
         results = kdt.query_ball_point(point, 38)
         X, Y = point
-        num = line['NUMBER']
         flux = float(line['FLUX_ISO'])
         mean_flux = np.median(flux)/2
 
         for resix in results:
             resX, resY = data[resix]
             resFlux = float(lines[resix]['FLUX_ISO'])
-            dist = np.abs(resX-X)
             dX = resX - X
 
             dY = np.abs(resY - Y)
-            if dY > dYlimit: continue
+            if dY > dYlimit:
+                continue
 
-            if resFlux < 500: continue
+            if resFlux < 500:
+                continue
 
             ratio = flux/resFlux
             bright = (flux > mean_flux)
@@ -280,19 +281,19 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
             if (2 < ratio < 7) and (-16 < dX < -12) and bright:
                 reg += 'circle(%s,%s, 3) # color=red\n' % (X, Y)
                 reg += 'circle(%s,%s, 3) # color=magenta\n' % (resX, resY)
-                hg546.append((X,Y))
-                hg578.append((resX,resY))
+                hg546.append((X, Y))
+                hg578.append((resX, resY))
                 continue
 
             if (1/6. < ratio < 2) and (-24 < dX < -18) and resbright:
-                hg405.append((X,Y))
-                hg436.append((resX,resY))
+                hg405.append((X, Y))
+                hg436.append((resX, resY))
                 reg += 'circle(%s,%s, 3) # color=green\n' % (X, Y)
                 reg += 'circle(%s,%s, 3) # color=yellow\n' % (resX, resY)
                 continue
 
             if (4 < ratio < 70) and (20 < dX < 38) and bright and (not resbright):
-                hg365.append((resX,resY))
+                hg365.append((resX, resY))
                 reg += 'circle(%s,%s, 3) # color=blue\n' % (resX, resY)
                 continue
 
@@ -398,7 +399,7 @@ def wavelength_extract_helper(SS):
         if Y < 0:
             Y = 0
         if Y > 2046:
-            Y=2046
+            Y = 2046
         if not np.isfinite(X) or not np.isfinite(Y):
             continue
 
@@ -414,8 +415,7 @@ def wavelength_extract_helper(SS):
             np.max((0, np.round(Y)+flexure_y_corr_pix-extract_width-1)),
             np.min((np.round(Y)+flexure_y_corr_pix+extract_width+2, 2047)))
 
-
-        res[i] = np.sum(dat[Ys,X])
+        res[i] = np.sum(dat[Ys, X])
 
         profile = make_profile(Ys, sigma2=sigma2)
         resw[i] = np.sum(dat[Ys, X]*profile)
@@ -446,7 +446,7 @@ def wavelength_extract_helper(SS):
         ex.lamrms = ss.lamrms
         ex.lamnrms = ss.lamnrms
 
-    if ss.__dict__.has_key('mdn_coeff') and ss.mdn_coeff is not None:
+    if 'mdn_coeff' in ss.__dict__ and ss.mdn_coeff is not None:
         ex.mdn_coeff = ss.mdn_coeff.copy()
         ex.mdn_coeff[0] -= flexure_x_corr_nm
         ex.lamrms = ss.lamrms
@@ -509,9 +509,10 @@ def extract_helper(ss):
     if n_done % update_rate == 0:
         Bar.update()
 
-    if not ss['ok']:
+    if not ss['ok'] and not ss['bkg_ok']:
         return Extraction.Extraction(seg_id=ss['seg_cnt'],
-                                     trace_sigma=ss['trace_sigma'], ok=False)
+                                     trace_sigma=ss['trace_sigma'],
+                                     bkg_ok=False, ok=False)
 
     minx = np.max((0, ss['xs'][0]-5))
     maxx = np.min((minx + 265, 2047))
@@ -556,11 +557,12 @@ def extract_helper(ss):
         if type(wave) is float:
             hg_lines[wave] = pix-minx-1
 
-    return Extraction.Extraction(xrange=(minx,maxx),
+    return Extraction.Extraction(xrange=(minx, maxx),
                                  yrange=(yfun(xpos[0]), yfun(xpos[-1])),
                                  poly=ss['coeff_ys'], spec=res, specw=resw,
                                  hg_lines=hg_lines, seg_id=ss['seg_cnt'],
-                                 ok=True, trace_sigma=ss['trace_sigma'])
+                                 bkg_ok=ss['bkg_ok'], ok=ss['ok'],
+                                 trace_sigma=ss['trace_sigma'])
 
 
 def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
@@ -611,7 +613,6 @@ def median_fine_grid(fine, doPlot=False):
     KD = KDTree(dat)
 
     assert(len(ids) == len(fine))
-    ixs = np.arange(0, 265, 1)
     update_rate = len(fine) / (Bar.setup(toolbar_width=74)) + 1
     for idx, spec in enumerate(fine):
         if idx % update_rate == 0:
@@ -625,7 +626,6 @@ def median_fine_grid(fine, doPlot=False):
 
         lls = []
         num_in = 0
-        shifts = []
         for nearest in nearest_ixs[1:]:
             if nearest is None:
                 continue
@@ -790,12 +790,10 @@ def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
             import pdb
             pdb.set_trace()
         lls = np.array(lls)
-        if idx > 500:
-            import pdb
-            pdb.set_trace()
+
         try:
             new_lls = scipy.stats.nanmedian(lls, 0)
-            new_lls_std = scipy.stats.nanstd(lls, 0)
+            # new_lls_std = scipy.stats.nanstd(lls, 0)
         except:
             import pdb
             pdb.set_trace()
@@ -890,7 +888,7 @@ def stretch_fit_helper(specno):
 
     # Step 5
     fc = chebfit(fid_ix, tofit, 2)
-    xc = (xcs1[slope1, square1] + xcs2[slope2, square2] ) / np.nansum(fs1)
+    xc = (xcs1[slope1, square1] + xcs2[slope2, square2]) / np.nansum(fs1)
 
     # outstr = "\r%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e" % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])
     # print outstr,
@@ -1104,11 +1102,11 @@ def snap_solution_into_place(PARS):
 
                 # Initial guess for fit
                 parguess = [
-                    {'value': sct.max()-sct.min()},  # Scale
-                    {'value': xct[sct.argmax()]}, # Centroid!!
-                    {'value': 1.2}, # Sigma
-                    {'value': sct.min()},# offset
-                    {'value': 0}]  # slope
+                    {'value': sct.max()-sct.min()},     # Scale
+                    {'value': xct[sct.argmax()]},       # Centroid!!
+                    {'value': 1.2},                     # Sigma
+                    {'value': sct.min()},               # offset
+                    {'value': 0}]                       # slope
 
                 # Do the fitting
                 pars = NPK.Fit.mpfit_do(resfun, xct, sct, parguess,
@@ -1316,11 +1314,11 @@ def fit_known_lines(SS, guesses, plot, Ncutout):
 
         # Initial guess at fit parameters
         parguess = [
-            {'value': sct.max()-sct.min()},  # Scale
-            {'value': xct[sct.argmax()]}, # Centroid!!
-            {'value': 1.3}, # Sigma
-            {'value': sct.min()},# offset
-            {'value': 0}]  # slope
+            {'value': sct.max()-sct.min()},     # Scale
+            {'value': xct[sct.argmax()]},       # Centroid!!
+            {'value': 1.3},                     # Sigma
+            {'value': sct.min()},               # offset
+            {'value': 0}]                       # slope
 
         # Do the peak fitting
         pars = NPK.Fit.mpfit_do(resfun, xct, sct, parguess)
@@ -1620,7 +1618,6 @@ def plot_grid(grid, Xes=None):
         pl.figure(2)
         pl.plot(ix, g.specw+add, 'x')
 
-        # if index > 500: break
     pl.show()
 
     pl.figure(3)
@@ -1634,7 +1631,8 @@ def rough_grid_helper(ix):
 
     ex = extractions[ix]
 
-    if not ex.ok: return
+    if not ex.ok and not ex.bkg_ok:
+        return
 
     xs = []
     ys = []
@@ -1656,13 +1654,11 @@ def rough_grid_helper(ix):
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", np.polynomial.polyutils.RankWarning)
-        coef = chebfit(xs,ys,2)
+        coef = chebfit(xs, ys, 2)
         vals = chebval(xs, coef)
 
     ex.hgcoef = coef
     err = (vals - ys)
-
-    ix = np.arange(len(ex.specw))
 
     rough_std = np.std(err)
     tot_std += rough_std
@@ -1721,12 +1717,11 @@ def fit_spectra_Hg_Xe(Hgs, Xes, kdtree, kdseg_ids, plot=False,
         pl.clf()
         pl.figure(1)
 
-    ixs = np.arange(0,260,.01)
-    hg_segids = [x.seg_id for x in Hgs]
+    ixs = np.arange(0, 260, .01)
     for spec_ix in xrange(len(Hgs)):
         hg = Hgs[spec_ix]
         xe = Xes[spec_ix]
-        seg_id = hg.seg_id
+        # seg_id = hg.seg_id
 
         coeff = hg.hgcoef
         if coeff is None:
@@ -1739,11 +1734,11 @@ def fit_spectra_Hg_Xe(Hgs, Xes, kdtree, kdseg_ids, plot=False,
 
             offsets = measure_offsets(hg.specw+xe.specw, coeff, plot=False)
 
-            keys = np.array(offsets.keys())
-            vals = np.array(offsets.values())
+            # keys = np.array(offsets.keys())
+            # vals = np.array(offsets.values())
             # print np.sort(keys+vals)
 
-            lams = chebval(ixs,coeff)
+            lams = chebval(ixs, coeff)
             pixs = []
             meas = []
 
@@ -1788,7 +1783,6 @@ def fit_spectra_Hg_Xe(Hgs, Xes, kdtree, kdseg_ids, plot=False,
         Hgs[spec_ix].lamcoeff = coeff
         Hgs[spec_ix].lamrms = rms
         print "-- %4.0i %6.3f" % (spec_ix, rms)
-        # if rms > 3: pdb.set_trace()
 
     if plot:
         pl.show()
@@ -1813,12 +1807,11 @@ def measure_offsets(spec, coeff, plot=False):
     resfun830 = NPK.Fit.mpfit_residuals(xe_830nm, preffun=preffun)
 
     # Preference function is designed to bias against adjusting the 
-    preffun = lambda x: (np.abs(x[0]-100)/100 + np.abs(x[1])/30 + \
+    preffun = lambda x: (np.abs(x[0]-100)/100 + np.abs(x[1])/30 +
                          np.abs(x[4]-100)/100)/3e4 + 1.0
     resfun890 = NPK.Fit.mpfit_residuals(xe_890nm, preffun=preffun)
     resfung = NPK.Fit.mpfit_residuals(NPK.Fit.gaussian5)
 
-    # pk_pxs = SG.find_peaks_cwt(spec, np.arange(8,25))
     pk_pxs = SG.argrelmax(spec, order=10)[0]
     pk_lam = chebval(pk_pxs, coeff)
     ix = np.arange(len(spec))
@@ -1841,26 +1834,23 @@ def measure_offsets(spec, coeff, plot=False):
 
         toll = ll[roi]
         tofit = spec[roi]
-        if len(toll) == 0: continue
+        if len(toll) == 0:
+            continue
         offset = np.min(tofit)
         slope = 0
         sigma = 2.5
         scale = np.max(tofit)-offset
 
-        p = [scale, lam, sigma, offset, slope]
-        parinfo=[{'value': scale, 'limited': [1, 0], 'limits':[0, 0]},
-            {'value': lam, 'limited': [1, 1], 'limits':[lam-15, lam+15]},
-            {'value': sigma, 'limited': [1, 1], 'limits': [1.5, 3.5]},
-            {'value': offset, 'limited': [1, 0], 'limits': [0, 0]},
-            {'value': slope}]
+        parinfo = [{'value': scale, 'limited': [1, 0], 'limits':[0, 0]},
+                   {'value': lam, 'limited': [1, 1], 'limits':[lam-15, lam+15]},
+                   {'value': sigma, 'limited': [1, 1], 'limits': [1.5, 3.5]},
+                   {'value': offset, 'limited': [1, 0], 'limits': [0, 0]},
+                   {'value': slope}]
         res = NPK.Fit.mpfit_do(resfung, toll, tofit, parinfo)
 
         if res.status > 0:
             offsets[lam] = lam-res.params[1]
 
-    # 830
-    guess_pos = np.argmin(np.abs(pk_lam - 830))
-    guess_lam = pk_lam[guess_pos]
     guess_lam = pk_lam[1]
     ok = ((guess_lam-35) < ll) & (ll < (guess_lam+45))
 
@@ -1869,13 +1859,11 @@ def measure_offsets(spec, coeff, plot=False):
         lamoffset = guess_lam-830
         offset = np.min(spec[ok])
         peak = np.max(spec[ok]) - offset
-        p = [sigma,lamoffset,offset,peak]
 
         parinfo = [{'value': sigma, 'limited': [1, 1], 'limits': [25, 250]},
-                        {'value': lamoffset, 'limited': [1, 1],
-                            'limits': [-50, 50]},
-                        {'value': offset, 'limited': [1, 0], 'limits': [0, 0]},
-                        {'value': peak, 'limited': [1, 0], 'limits': [0, 0]}]
+                   {'value': lamoffset, 'limited': [1, 1], 'limits': [-50, 50]},
+                   {'value': offset, 'limited': [1, 0], 'limits': [0, 0]},
+                   {'value': peak, 'limited': [1, 0], 'limits': [0, 0]}]
 
         res = NPK.Fit.mpfit_do(resfun830, ll[ok], spec[ok], parinfo)
         thell = ll[ok]
@@ -1888,9 +1876,6 @@ def measure_offsets(spec, coeff, plot=False):
         if plot:
             pl.plot(ll[ok], xe_830nm(res.params, ll[ok]), 'x-')
 
-    # Now 920
-    guess_pos = np.argmin(np.abs(pk_lam - 920))
-    guess_lam = pk_lam[guess_pos]
     guess_lam = pk_lam[0]
     ok = ((guess_lam-55) < ll) & (ll < (guess_lam+100))
 
@@ -1903,7 +1888,6 @@ def measure_offsets(spec, coeff, plot=False):
             lamoffset = -5
         offset = np.min(spec[ok])
         peak = np.max(spec[ok]) - offset
-        p = [sigma, lamoffset, offset, peak, 500]
         p930 = 500
 
         parinfo = [{'value': sigma, 'limited': [1, 1], 'limits': [25, 260]},
@@ -1916,7 +1900,6 @@ def measure_offsets(spec, coeff, plot=False):
 
         thell = ll[ok]
         ps = res.params.copy()
-        # ps[1] = 0
         thespec = xe_890nm(ps, thell)
         cl = np.sum(thespec*thell)/np.sum(thespec)
         offsets[cl] = -res.params[1]
@@ -1959,9 +1942,7 @@ def xe_830nm(p, lam):
 
 def save_fitted_ds9(fitted, outname='fine'):
 
-    xs = []
-    ys = []
-    ds9  = 'physical\n'
+    ds9 = 'physical\n'
     for ix,S in enumerate(fitted):
         if S.lamcoeff is None: continue
         if S.xrange is None: continue
@@ -1971,8 +1952,6 @@ def save_fitted_ds9(fitted, outname='fine'):
         res = chebval(xvals, S.lamcoeff)
         invcoeffs = chebfit(res, xvals, 4)
         pxs = chebval([400., 500., 600., 656.3, 700., 800., 900.], invcoeffs)
-
-        startx = S.xrange[0]
 
         for ix, px in enumerate(pxs):
             X = px

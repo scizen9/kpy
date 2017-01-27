@@ -97,15 +97,17 @@ def find_segments_helper(seg_cnt):
 
     # Test for tiny segment
     test = the_seg.nonzero()
+    # trace data
+    tr = {
+        "seg_cnt": seg_cnt,
+        "xs": np.array(np.nan),
+        "mean_ys": np.array(np.nan),
+        "coeff_ys": np.array(np.nan),
+        "trace_sigma": np.array(np.nan),
+        "ok": False,
+        "bkg_ok": False
+    }
     if len(test[0]) < 10 or len(test[1]) < 10:
-        tr = {
-            "seg_cnt": seg_cnt,
-            "xs": np.array(np.nan),
-            "mean_ys": np.array(np.nan),
-            "coeff_ys": np.array(np.nan),
-            "trace_sigma": np.array(np.nan),
-            "ok": False
-        }
         outstr = '\r%4.4i: %4.4i, TINY SEGMENT, %-5s' % (seg_cnt, len(test[0]),
                                                          tr['ok'])
         print outstr
@@ -127,16 +129,7 @@ def find_segments_helper(seg_cnt):
 
             # Flag the sigma with zero
             sig = 0.
-
-            # Load up the trace with NaNs
-            tr = {
-                "seg_cnt": seg_cnt,
-                "xs": np.array(np.nan),
-                "mean_ys": np.array(np.nan),
-                "coeff_ys": np.array(np.nan),
-                "trace_sigma": np.array(np.nan),
-                "ok": False
-            }
+            tr["trace_sigma"] = sig
 
         # Trace is long enough, so let's fit it!
         else:
@@ -168,20 +161,19 @@ def find_segments_helper(seg_cnt):
                 poly = np.array(np.nan)
 
             trace_fit = gfit1d(trace_profile,
-                              par=[0, len(trace_profile) / 2., 1.7], quiet=1)
+                               par=[0, len(trace_profile) / 2., 1.7], quiet=1)
             sig = np.abs(trace_fit.params[2])
 
-            tr = {
-                "seg_cnt": seg_cnt,
-                "xs": np.array(xs),
-                "mean_ys": np.array(means),
-                "coeff_ys": poly,
-                "trace_sigma": sig,
-                "ok": (np.count_nonzero(nans) <= 0 & np.isfinite(poly[0]))
-            }
+            tr["xs"] = np.array(xs[ok])
+            tr["mean_ys"] = np.array(means[ok])
+            tr["coeff_ys"] = poly
+            tr["trace_sigma"] = sig
+            tr["bkg_ok"] = True
+            tr["ok"] = (np.count_nonzero(nans) <= 0 & np.isfinite(poly[0]))
 
         outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
-                                                           sig * 2.355, tr['ok'])
+                                                           sig * 2.355,
+                                                           tr['ok'])
         print outstr,
         sys.stdout.flush()
 

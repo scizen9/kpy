@@ -433,7 +433,7 @@ extract: To extract the cube (one for each observation)
     if step == 'make':
         print "\nMAKING cube from %s " % infile
         ext = np.load(infile)
-        cube = extraction_to_cube(ext, outname=args.outname)
+        extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
         print "\nEXTRACTING from %s " % infile
         ext,meta = np.load(infile)
