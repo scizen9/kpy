@@ -77,7 +77,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
 
     # loop over each trace
     for ff in fine:
-        if not ff.ok:
+        if not ff.ok and not ff.bkg_ok:
             continue
         if ff.xrange is None:
             continue
@@ -126,7 +126,13 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
 
     # insert iterative smoothed object pixels
     data[nans] = bkg[nans]
-    # write out result if requested
+
+    # any remaining nans?
+    nans = ~np.isfinite(data)
+    # fill them in with median value
+    if np.count_nonzero(nans) > 0:
+        data[nans] = np.median(data[oks])
+    # write out intermediate result if requested
     if outint:
         fname = os.path.join(os.path.dirname(outname),
                              "lf_" + os.path.basename(outname))

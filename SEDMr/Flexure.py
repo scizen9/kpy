@@ -44,7 +44,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     spec_ixs = np.arange(500, 1200, 10)
     # fiducial wavelength grid
     lamgrid = Wavelength.fiducial_spectrum(lamstart=lamstart,
-                                           lamratio=lamratio, len=lamlen)
+                                           lamratio=lamratio, npx=lamlen)
     # initialize grid of spaxel spectra
     specgrid = np.zeros((len(lamgrid), len(spec_ixs)))
 
