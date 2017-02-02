@@ -255,7 +255,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
         inell[3] = 0.
         print "Loaded ellipse parameters from %s" % elfl[0]
     else:
-        inell = (radius, radius*(3./5.), 0., 0., 20.5)
+        inell = (radius, radius, 0., 0., 20.5)
         print "Using default ellipse parameters"
     print "\nStarting with a %s arcsec semimajor axis" % radius
 
@@ -482,18 +482,22 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         vmax = cmax
 
     pl.clf()
-    pl.ylim(-20, 20)
-    pl.xlim(-22, 20)
+
+    pl.ylim(-14, 14)
+    pl.xlim(14, -14)
+    sym_size = 70
     pl.grid(True)
+
+    print "scaling output image between %d and %d" % (vmin, vmax)
+    pl.scatter(xs, ys, c=vs, s=sym_size, marker='H', linewidth=0,
+               vmin=vmin, vmax=vmax)
+
     if posa is not None:
         pl.axvline(posa[0], color='black', linewidth=.5)
         pl.axhline(posa[1], color='black', linewidth=.5)
     if posb is not None:
         pl.axvline(posb[0], color='black', linewidth=.5)
         pl.axhline(posb[1], color='black', linewidth=.5)
-    print "scaling output image between %d and %d" % (vmin, vmax)
-    pl.scatter(xs, ys, c=vs, s=50, marker='H', linewidth=0,
-               vmin=vmin, vmax=vmax)
 
     if ellipse is not None:
         xys = get_ellipse_xys(ellipse)
@@ -507,8 +511,8 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         for p in adcpos:
             pl.plot(p[0], p[1], 'rx')
 
-    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
-    pl.ylabel("Y [as]")
+    pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
+    pl.ylabel("Dec offset [asec]")
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
@@ -823,7 +827,7 @@ def subtract(a, b, outname):
 
     a, b = gunzip(a, b)
     imarith(a, "-", b, outname, doairmass=True)
-    a, b = gzip(a, b)
+    gzip(a, b)
 
     return pf.open(outname)
 
@@ -1125,8 +1129,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         xys = get_ellipse_xys(ellipse)
         pl.plot(xys[:, 0], xys[:, 1], 'g.-')
 
-    pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
-    pl.ylabel("Y [as]")
+    pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
+    pl.ylabel("Dec offset [asec]")
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
@@ -1456,7 +1460,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         # Make an image of the spaxels for the record
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 bgd_sub=False, lmin=lmin, lmax=lmax, cmin=stats['cmin'], cmax=stats['cmax'])
+                 bgd_sub=False, lmin=lmin, lmax=lmax,
+                 cmin=stats['cmin'], cmax=stats['cmax'])
         # get the mean spectrum over the selected spaxels
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
@@ -1489,8 +1494,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
             xys = get_ellipse_xys(ellipse)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
 
-        pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
-        pl.ylabel("Y [as]")
+        pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
+        pl.ylabel("Dec offset [asec]")
         pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
         pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
         tlab = "%d selected spaxels for %s" % (len(xsa), objname)
@@ -1847,8 +1852,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             xys = get_ellipse_xys(ellipseb)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
 
-        pl.xlabel("X [as] @ %6.1f nm" % meta['fiducial_wavelength'])
-        pl.ylabel("Y [as]")
+        pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
+        pl.ylabel("Dec offset [asec]")
         tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
                                                meta['outname'])
         air = (meta['airmass1'] + meta['airmass2']) / 2.
@@ -1972,7 +1977,7 @@ Handles a single A image and A+B pair as well as flat extraction.
     parser.add_argument('--Aoffset', type=str,
                         help='Name of "A" flexure offset correction file')
     parser.add_argument('--radius_as', type=float,
-                        help='Extraction radius in arcseconds', default=4)
+                        help='Extraction radius in arcseconds', default=2)
     parser.add_argument('--flat_correction', type=str,
                         help='Name of flat field .npy file', default=None)
     parser.add_argument('--nosky', action="store_true", default=False,

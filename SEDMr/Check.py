@@ -97,12 +97,12 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.figure(1)
     pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
     pl.title("Hexagonal Grid of Cube Positions")
-    pl.xlim(-25, 25)
-    pl.ylim(-25, 25)
+    pl.xlim(15, -15)
+    pl.ylim(-15, 15)
 
     pl.colorbar(label=cbtitle)
-    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
-    pl.ylabel("Y position [as]")
+    pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
+    pl.ylabel("Dec offset [asec]")
     pl.grid(True)
     pl.ioff()
     if savefig:
@@ -261,7 +261,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         print "Ref offset (Ref - Obs): %6.2f mag" % ratmag
 
         # Apply offset for plotting
-        spec = spec / rat
+        spec /= rat
 
     # Set wavelength range
     ok = (lam > 3800) & (lam < maxwl)
@@ -309,7 +309,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.plot(slam, sflx)
 
         # Remove plotting offset
-        spec = spec * rat
+        spec *= rat
 
     # Add legend
     pl.legend(legend)

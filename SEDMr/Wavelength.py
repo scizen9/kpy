@@ -374,7 +374,8 @@ def wavelength_extract_helper(SS):
         return Extraction.Extraction(seg_id=ss.seg_id, ok=False,
                                      trace_sigma=ss.trace_sigma,
                                      Q_ix=ss.Q_ix, R_ix=ss.R_ix,
-                                     X_as=ss.X_as, Y_as=ss.Y_as)
+                                     X_as=ss.X_as, Y_as=ss.Y_as,
+                                     X_pix=ss.X_pix,Y_pix=ss.Y_pix)
 
     minx = np.max((0, ss.xrange[0]-5))
     maxx = np.min((minx + 265, 2047))
@@ -438,7 +439,8 @@ def wavelength_extract_helper(SS):
                                specwf=reswf/fc,
                                seg_id=ss.seg_id, exptime=exptime, ok=True,
                                trace_sigma=ss.trace_sigma, Q_ix=ss.Q_ix,
-                               R_ix=ss.R_ix, X_as=ss.X_as, Y_as=ss.Y_as)
+                               R_ix=ss.R_ix, X_as=ss.X_as, Y_as=ss.Y_as,
+                               X_pix=ss.X_pix, Y_pix=ss.Y_pix)
 
     if 'lamcoeff' in ss.__dict__ and ss.lamcoeff is not None:
         ex.lamcoeff = ss.lamcoeff.copy()

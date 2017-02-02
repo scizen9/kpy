@@ -145,36 +145,36 @@ class PositionPicker(object):
     def draw_cube(self):
 
         if self.scaled:
-            dVmin = self.cmin
-            dVmax = self.cmax
+            dv_min = self.cmin
+            dv_max = self.cmax
         else:
             # get middle value
             if self.bgd_sub:
-                Vmid = 0.
+                v_mid = 0.
             else:
-                Vmid = np.median(self.Vs)
+                v_mid = np.median(self.Vs)
 
             # get standard deviation
-            Vstd = np.nanstd(self.Vs)
-            if 0 < Vstd < 100:
-                dVmin = Vmid - 3.0 * Vstd
-                dVmax = Vmid + 3.0 * Vstd
+            v_std = np.nanstd(self.Vs)
+            if 0 < v_std < 100:
+                dv_min = v_mid - 3.0 * v_std
+                dv_max = v_mid + 3.0 * v_std
             else:
-                dVmin = -300
-                dVmax = 300
+                dv_min = -300
+                dv_max = 300
 
         # plot (may want to use cmap=pl.cm.Spectral)
-        print "scaling image display between %d and %d" % (dVmin, dVmax)
+        print "scaling image display between %d and %d" % (dv_min, dv_max)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
-                   vmin=dVmin, vmax=dVmax)
+                   vmin=dv_min, vmax=dv_max)
 
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
         pl.xlabel("-RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
         pl.colorbar()
 
-        c = Cursor(self.figure.gca(), useblit=True)
+        # c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
                            nosky=self.nosky)
@@ -246,21 +246,21 @@ class ScaleCube(object):
             self.Vs -= np.median(self.Vs)
 
         # get standard deviation
-        Vstd = np.nanstd(self.Vs)
+        v_std = np.nanstd(self.Vs)
 
         # get middle value
         if self.bgd_sub:
-            Vmid = 0.
-            if 0 < Vstd < 100:
-                self.cmin = Vmid - 3.0 * Vstd
-                self.cmax = Vmid + 3.0 * Vstd
+            v_mid = 0.
+            if 0 < v_std < 100:
+                self.cmin = v_mid - 3.0 * v_std
+                self.cmax = v_mid + 3.0 * v_std
             else:
                 self.cmin = -300
                 self.cmax = 300
         else:
-            Vmid = np.median(self.Vs)
-            self.cmin = Vmid - 3.0 * Vstd
-            self.cmax = Vmid + 3.0 * Vstd
+            v_mid = np.median(self.Vs)
+            self.cmin = v_mid - 3.0 * v_std
+            self.cmax = v_mid + 3.0 * v_std
 
         pl.ioff()
 
@@ -279,9 +279,9 @@ class ScaleCube(object):
         self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
                                linewidth=0, vmin=self.cmin, vmax=self.cmax)
 
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
-        pl.xlabel("-RA offset [asec]")
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
+        pl.xlabel("RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
         self.cb = self.figure.colorbar(self.scat)
         pl.show()
@@ -397,11 +397,11 @@ class WaveFixer(object):
         self.X1, self.X2, self.Y1 = map(np.array, [self.X1, self.X2,
                                                    self.Y1])
 
-        OK = (np.abs(self.X1 - self.X2) < 2) & np.isfinite(self.X2) & \
+        ok = (np.abs(self.X1 - self.X2) < 2) & np.isfinite(self.X2) & \
              np.isfinite(self.Y1)
 
-        self.good_cube = self.cube[OK]
-        locs = np.array([self.X2[OK], self.Y1[OK]]).T
+        self.good_cube = self.cube[ok]
+        locs = np.array([self.X2[ok], self.Y1[ok]]).T
         self.KT = scipy.spatial.KDTree(locs)
 
         assert (len(locs) == len(self.good_cube))
@@ -494,7 +494,8 @@ class WaveFixer(object):
             print self.X2[self.picked], self.Y1[self.picked]
 
             self.ax_cube.plot([self.X2[self.picked]],
-                              [self.Y1[self.picked]], 'o', ms=12, color='yellow',
+                              [self.Y1[self.picked]],
+                              'o', ms=12, color='yellow',
                               alpha=0.4, visible=True)
 
         tit = "State: %s | Press ? for help" % self.state

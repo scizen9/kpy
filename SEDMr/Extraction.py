@@ -11,7 +11,7 @@ from numpy.polynomial.chebyshev import chebval
 import numpy as np
 
 
-class Extraction():
+class Extraction:
     """SED machine spectral extraction class.
 
     Generally there are several thousand such Extractions that are held for
@@ -64,6 +64,8 @@ class Extraction():
             X location is the estimated position of Halpha on the detector.
         Y_pix(float): The absolute CCD position of the spaxel in pixel.
             Y location is based on the segmentation map.
+        Xhex_as(float): The hex projected X coord in arcsec
+        Yhex_as(float): The hex projected Y coord in arcsec
 
     Examples:
         You should use the values as follows:
@@ -107,6 +109,8 @@ class Extraction():
 
     Q_ix = None
     R_ix = None
+    Xhex_as = None
+    Yhex_as = None
     X_as = None
     Y_as = None
     X_pix = None
@@ -196,7 +200,7 @@ class Extraction():
                  yrange=None, poly=None, spec=None, specw=None, specf=None,
                  specwf=None, exptime=exptime, trace_sigma=None, hg_lines=None,
                  X_as=None, Y_as=None, Q_ix=None, R_ix=None, X_pix=None,
-                 Y_pix=None):
+                 Y_pix=None, Xhex_as=None, Yhex_as=None):
 
         self.seg_id = seg_id
         self.ok = ok
@@ -221,3 +225,5 @@ class Extraction():
         self.X_pix = X_pix
         self.Y_pix = Y_pix
         self.R_ix = R_ix
+        self.Xhex_as = Xhex_as
+        self.Yhex_as = Yhex_as
