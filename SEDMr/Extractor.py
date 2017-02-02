@@ -1118,8 +1118,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     pl.figure()
     pl.clf()
-    pl.ylim(-20, 20)
-    pl.xlim(-22, 20)
+    pl.ylim(-14, 14)
+    pl.xlim(14, -14)
     pl.grid(True)
 
     if posa is not None:
@@ -1483,8 +1483,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         pl.figure()
         pl.clf()
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
         pl.grid(True)
 
         if posa is not None:
@@ -1833,8 +1833,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         pl.figure()
         pl.clf()
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
         pl.grid(True)
 
         if posa is not None:
