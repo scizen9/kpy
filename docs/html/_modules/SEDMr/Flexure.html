@@ -85,7 +85,7 @@
     <span class="n">spec_ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
     <span class="c1"># fiducial wavelength grid</span>
     <span class="n">lamgrid</span> <span class="o">=</span> <span class="n">Wavelength</span><span class="o">.</span><span class="n">fiducial_spectrum</span><span class="p">(</span><span class="n">lamstart</span><span class="o">=</span><span class="n">lamstart</span><span class="p">,</span>
-                                           <span class="n">lamratio</span><span class="o">=</span><span class="n">lamratio</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">lamlen</span><span class="p">)</span>
+                                           <span class="n">lamratio</span><span class="o">=</span><span class="n">lamratio</span><span class="p">,</span> <span class="n">npx</span><span class="o">=</span><span class="n">lamlen</span><span class="p">)</span>
     <span class="c1"># initialize grid of spaxel spectra</span>
     <span class="n">specgrid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lamgrid</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">spec_ixs</span><span class="p">)))</span>
 

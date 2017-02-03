@@ -260,7 +260,7 @@ spectrum.</p>
 <dl class="docutils">
 <dt>Functions:</dt>
 <dd><ul class="first last simple">
-<li><a class="reference internal" href="#SEDMr.Cube.QR_to_img" title="SEDMr.Cube.QR_to_img"><code class="xref py py-func docutils literal"><span class="pre">QR_to_img()</span></code></a> convert cube to an image</li>
+<li><code class="xref py py-func docutils literal"><span class="pre">QR_to_img()</span></code> convert cube to an image</li>
 <li><a class="reference internal" href="#SEDMr.Cube.extraction_to_cube" title="SEDMr.Cube.extraction_to_cube"><code class="xref py py-func docutils literal"><span class="pre">extraction_to_cube()</span></code></a> calculates sky positions</li>
 <li><a class="reference internal" href="#SEDMr.Cube.reject_outliers" title="SEDMr.Cube.reject_outliers"><code class="xref py py-func docutils literal"><span class="pre">reject_outliers()</span></code></a> trims data values of outliers</li>
 </ul>
@@ -296,28 +296,6 @@ spectrum.</p>
 </div>
 </div>
 <dl class="function">
-<dt id="SEDMr.Cube.QR_to_img">
-<code class="descclassname">SEDMr.Cube.</code><code class="descname">QR_to_img</code><span class="sig-paren">(</span><em>exts</em>, <em>Size=4</em>, <em>outname='cube.fits'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Cube.html#QR_to_img"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Cube.QR_to_img" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a data cube to a fits image</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>exts</strong> (<em>list of Extraction</em>) &#8211; extractions to convert (see Extraction.py)</li>
-<li><strong>Size</strong> (<em>int</em>) &#8211; expansion factor, defaults to 4</li>
-<li><strong>outname</strong> (<em>str</em>) &#8211; output fits file name, defaults to cube.fits</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
 <dt id="SEDMr.Cube.extraction_to_cube">
 <code class="descclassname">SEDMr.Cube.</code><code class="descname">extraction_to_cube</code><span class="sig-paren">(</span><em>exts</em>, <em>outname='G.npy'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Cube.html#extraction_to_cube"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Cube.extraction_to_cube" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert the extraction to sky coordinates</p>
@@ -342,17 +320,40 @@ spectrum.</p>
 <ul class="simple">
 <li>X_as: X position in arcsec</li>
 <li>Y_as: Y position in arcsec</li>
-<li>Z_as: Z position in arcsec (the Z coordinate runs 45 degrees to X and is not a <cite>3rd</cite> dimension).</li>
-<li>Q_ix: The axial Q coordinate in integral units</li>
-<li>R_ix: The axial R coordinate in integral units</li>
+<li>Z_as: Z position in arcsec</li>
 </ul>
+<p>(the Z coordinate runs 45 degrees to X and is not a <cite>3rd</cite> dimension).
+* Q_ix: The axial Q coordinate in integral units
+* R_ix: The axial R coordinate in integral units</p>
 <p>The relationship of Q/R to X/Y is defined through the pixel mapping
 matrix times the rotation matrix:</p>
 <ul class="last simple">
 <li>P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])</li>
-<li>Rot (22 degree)</li>
+<li>rot (22 degree)</li>
 </ul>
 </div>
+</dd></dl>
+
+<dl class="function">
+<dt id="SEDMr.Cube.qr_to_img">
+<code class="descclassname">SEDMr.Cube.</code><code class="descname">qr_to_img</code><span class="sig-paren">(</span><em>exts</em>, <em>size=4</em>, <em>outname='cube.fits'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Cube.html#qr_to_img"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Cube.qr_to_img" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a data cube to a fits image</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>exts</strong> (<em>list of Extraction</em>) &#8211; extractions to convert (see Extraction.py)</li>
+<li><strong>size</strong> (<em>int</em>) &#8211; expansion factor, defaults to 4</li>
+<li><strong>outname</strong> (<em>str</em>) &#8211; output fits file name, defaults to cube.fits</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
@@ -498,7 +499,7 @@ matrix times the rotation matrix:</p>
 <p>This class is an abstract wrapper around the extraction</p>
 <dl class="class">
 <dt id="SEDMr.Extraction.Extraction">
-<em class="property">class </em><code class="descclassname">SEDMr.Extraction.</code><code class="descname">Extraction</code><span class="sig-paren">(</span><em>seg_id=None</em>, <em>ok=None</em>, <em>xrange=None</em>, <em>yrange=None</em>, <em>poly=None</em>, <em>spec=None</em>, <em>specw=None</em>, <em>specf=None</em>, <em>specwf=None</em>, <em>exptime=None</em>, <em>trace_sigma=None</em>, <em>hg_lines=None</em>, <em>X_as=None</em>, <em>Y_as=None</em>, <em>Q_ix=None</em>, <em>R_ix=None</em>, <em>X_pix=None</em>, <em>Y_pix=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Extraction.html#Extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Extraction.Extraction" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">SEDMr.Extraction.</code><code class="descname">Extraction</code><span class="sig-paren">(</span><em>seg_id=None</em>, <em>ok=None</em>, <em>bkg_ok=None</em>, <em>xrange=None</em>, <em>yrange=None</em>, <em>poly=None</em>, <em>spec=None</em>, <em>specw=None</em>, <em>specf=None</em>, <em>specwf=None</em>, <em>exptime=None</em>, <em>trace_sigma=None</em>, <em>hg_lines=None</em>, <em>X_as=None</em>, <em>Y_as=None</em>, <em>Q_ix=None</em>, <em>R_ix=None</em>, <em>X_pix=None</em>, <em>Y_pix=None</em>, <em>Xhex_as=None</em>, <em>Yhex_as=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Extraction.html#Extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Extraction.Extraction" title="Permalink to this definition">¶</a></dt>
 <dd><p>SED machine spectral extraction class.</p>
 <p>Generally there are several thousand such Extractions that are held for
 a single 2k x 2k frame.</p>
@@ -510,6 +511,7 @@ a single 2k x 2k frame.</p>
 <li><strong>seg_id</strong> (<em>int</em>) &#8211; Number from 1 to the maximum segment number. The segment
 number is generated by sextractor.</li>
 <li><strong>ok</strong> (<em>bool</em>) &#8211; Flag indicating the success of wavelength solutions.</li>
+<li><strong>bkg_ok</strong> (<em>bool</em>) &#8211; Flag indicating if the trace can be used for background.</li>
 <li><strong>is_sky</strong> (<em>bool</em>) &#8211; Flag indicating if spectrum is a sky spectrum.</li>
 <li><strong>is_obj</strong> (<em>bool</em>) &#8211; Flag indicating if spectrum is an object spectrum.</li>
 <li><strong>is_host</strong> (<em>bool</em>) &#8211; Flag indicating if spectrum is an host spectrum.</li>
@@ -552,6 +554,8 @@ solution.</li>
 X location is the estimated position of Halpha on the detector.</li>
 <li><strong>Y_pix</strong> (<em>float</em>) &#8211; The absolute CCD position of the spaxel in pixel.
 Y location is based on the segmentation map.</li>
+<li><strong>Xhex_as</strong> (<em>float</em>) &#8211; The hex projected X coord in arcsec</li>
+<li><strong>Yhex_as</strong> (<em>float</em>) &#8211; The hex projected Y coord in arcsec</li>
 </ul>
 </td>
 </tr>
@@ -586,6 +590,11 @@ wavelength = chebval(pixel, extraction.lamcoeff)</p>
 <dd></dd></dl>
 
 <dl class="attribute">
+<dt id="SEDMr.Extraction.Extraction.Xhex_as">
+<code class="descname">Xhex_as</code><em class="property"> = None</em><a class="headerlink" href="#SEDMr.Extraction.Extraction.Xhex_as" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
 <dt id="SEDMr.Extraction.Extraction.Y_as">
 <code class="descname">Y_as</code><em class="property"> = None</em><a class="headerlink" href="#SEDMr.Extraction.Extraction.Y_as" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -593,6 +602,16 @@ wavelength = chebval(pixel, extraction.lamcoeff)</p>
 <dl class="attribute">
 <dt id="SEDMr.Extraction.Extraction.Y_pix">
 <code class="descname">Y_pix</code><em class="property"> = None</em><a class="headerlink" href="#SEDMr.Extraction.Extraction.Y_pix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="SEDMr.Extraction.Extraction.Yhex_as">
+<code class="descname">Yhex_as</code><em class="property"> = None</em><a class="headerlink" href="#SEDMr.Extraction.Extraction.Yhex_as" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="SEDMr.Extraction.Extraction.bkg_ok">
+<code class="descname">bkg_ok</code><em class="property"> = None</em><a class="headerlink" href="#SEDMr.Extraction.Extraction.bkg_ok" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -2437,18 +2456,13 @@ a new raw directory every 10 minutes.</p>
 <span id="sedmr-subtractbackground-module"></span><h2>3.29. SEDMr.SubtractBackground module<a class="headerlink" href="#module-SEDMr.SubtractBackground" title="Permalink to this headline">¶</a></h2>
 <p>Subtract background from ifu images.</p>
 <dl class="function">
-<dt id="SEDMr.SubtractBackground.estimateBackground">
-<code class="descclassname">SEDMr.SubtractBackground.</code><code class="descname">estimateBackground</code><span class="sig-paren">(</span><em>fine</em>, <em>infile</em>, <em>gausswidth=100</em>, <em>outname=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/SubtractBackground.html#estimateBackground"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.SubtractBackground.estimateBackground" title="Permalink to this definition">¶</a></dt>
+<dt id="SEDMr.SubtractBackground.estimate_background">
+<code class="descclassname">SEDMr.SubtractBackground.</code><code class="descname">estimate_background</code><span class="sig-paren">(</span><em>fine</em>, <em>infile</em>, <em>gausswidth=100</em>, <em>outname=None</em>, <em>outint=False</em>, <em>fft_filt=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/SubtractBackground.html#estimate_background"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.SubtractBackground.estimate_background" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
-<dt id="SEDMr.SubtractBackground.remove">
-<code class="descclassname">SEDMr.SubtractBackground.</code><code class="descname">remove</code><span class="sig-paren">(</span><em>fname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/SubtractBackground.html#remove"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.SubtractBackground.remove" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="SEDMr.SubtractBackground.weaveConvolve">
-<code class="descclassname">SEDMr.SubtractBackground.</code><code class="descname">weaveConvolve</code><span class="sig-paren">(</span><em>image</em>, <em>kernel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/SubtractBackground.html#weaveConvolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.SubtractBackground.weaveConvolve" title="Permalink to this definition">¶</a></dt>
+<dt id="SEDMr.SubtractBackground.weave_convolve">
+<code class="descclassname">SEDMr.SubtractBackground.</code><code class="descname">weave_convolve</code><span class="sig-paren">(</span><em>image</em>, <em>kernel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/SubtractBackground.html#weave_convolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.SubtractBackground.weave_convolve" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -2547,7 +2561,7 @@ Functionallity is repeated.</p>
 
 <dl class="function">
 <dt id="SEDMr.Wavelength.fiducial_spectrum">
-<code class="descclassname">SEDMr.Wavelength.</code><code class="descname">fiducial_spectrum</code><span class="sig-paren">(</span><em>lamstart=1050.0</em>, <em>lamratio=0.9958333333333333</em>, <em>len=265</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Wavelength.html#fiducial_spectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Wavelength.fiducial_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">SEDMr.Wavelength.</code><code class="descname">fiducial_spectrum</code><span class="sig-paren">(</span><em>lamstart=1050.0</em>, <em>lamratio=0.9958333333333333</em>, <em>npx=265</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/Wavelength.html#fiducial_spectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.Wavelength.fiducial_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a typical SED Machine spectrum, use for interpolating on grid</p>
 <dl class="docutils">
 <dt>Reference:</dt>
@@ -2565,7 +2579,7 @@ Functionallity is repeated.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>lamstart</strong> (<em>float</em>) &#8211; default is 1050 nm</li>
 <li><strong>lamratio</strong> (<em>float</em>) &#8211; default is 239/240, good for SEDM</li>
-<li><strong>len</strong> (<em>int</em>) &#8211; default of 265 yields a spectrum that goes to ~ 350 nm</li>
+<li><strong>npx</strong> (<em>int</em>) &#8211; default of 265 yields a spectrum that goes to ~ 350 nm</li>
 </ul>
 </td>
 </tr>

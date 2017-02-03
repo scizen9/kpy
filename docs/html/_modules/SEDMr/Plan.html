@@ -494,9 +494,14 @@
                 <span class="k">if</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
                     <span class="n">standard</span> <span class="o">=</span> <span class="n">pred</span>
 
+                    <span class="n">obs</span> <span class="o">=</span> <span class="n">obsnum</span>
+
                     <span class="k">for</span> <span class="n">obsfile</span> <span class="ow">in</span> <span class="n">obsfiles</span><span class="p">:</span>
-                        <span class="n">m</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="n">MF_standard</span><span class="p">(</span><span class="n">objname</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obsnum</span><span class="p">,</span> <span class="n">obsfile</span><span class="p">,</span>
+                        <span class="n">m</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="n">MF_standard</span><span class="p">(</span><span class="n">objname</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obs</span><span class="p">,</span> <span class="n">obsfile</span><span class="p">,</span>
                                            <span class="n">standard</span><span class="o">=</span><span class="n">standard</span><span class="p">)</span>
+                        <span class="c1"># in case we have a STD A/B pair, we break them</span>
+                        <span class="c1"># up into two separate observations</span>
+                        <span class="n">obs</span> <span class="o">+=</span> <span class="mi">1</span>
                         <span class="n">MF</span> <span class="o">+=</span> <span class="n">m</span>
                         <span class="c1"># don&#39;t need these in all: dependants of target &quot;stds&quot;</span>
                         <span class="c1"># all += a + &quot; &quot;</span>

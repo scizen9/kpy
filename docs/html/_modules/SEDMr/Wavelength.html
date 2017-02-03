@@ -155,14 +155,14 @@
     <span class="n">xs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">ys</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">ids</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="nb">id</span><span class="p">,</span><span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">assoc_hg_spec</span><span class="p">):</span>
+    <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">assoc_hg_spec</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="mf">546.1</span><span class="p">):</span> <span class="k">continue</span>
         <span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="mf">546.1</span><span class="p">])</span>
         <span class="n">ff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;coeff_ys&#39;</span><span class="p">])</span>
         <span class="n">ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ff</span><span class="p">(</span><span class="n">xs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
         <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;seg_cnt&#39;</span><span class="p">])</span>
 
-    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xs</span><span class="p">,</span><span class="n">ys</span><span class="p">])</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span></div>
 
 
@@ -170,7 +170,7 @@
     <span class="k">return</span> <span class="mf">565.3</span></div>
 
 
-<div class="viewcode-block" id="fiducial_spectrum"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Wavelength.fiducial_spectrum">[docs]</a><span class="k">def</span> <span class="nf">fiducial_spectrum</span><span class="p">(</span><span class="n">lamstart</span><span class="o">=</span><span class="mf">1050.0</span><span class="p">,</span> <span class="n">lamratio</span><span class="o">=</span><span class="mf">239.</span><span class="o">/</span><span class="mf">240.</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="mi">265</span><span class="p">):</span>
+<div class="viewcode-block" id="fiducial_spectrum"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Wavelength.fiducial_spectrum">[docs]</a><span class="k">def</span> <span class="nf">fiducial_spectrum</span><span class="p">(</span><span class="n">lamstart</span><span class="o">=</span><span class="mf">1050.0</span><span class="p">,</span> <span class="n">lamratio</span><span class="o">=</span><span class="mf">239.</span><span class="o">/</span><span class="mf">240.</span><span class="p">,</span> <span class="n">npx</span><span class="o">=</span><span class="mi">265</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Return a typical SED Machine spectrum, use for interpolating on grid</span>
 
 <span class="sd">    Reference:</span>
@@ -182,10 +182,10 @@
 <span class="sd">    Args:</span>
 <span class="sd">        lamstart(float): default is 1050 nm</span>
 <span class="sd">        lamratio(float): default is 239/240, good for SEDM</span>
-<span class="sd">        len(int): default of 265 yields a spectrum that goes to ~ 350 nm</span>
+<span class="sd">        npx(int): default of 265 yields a spectrum that goes to ~ 350 nm</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">)</span>
+    <span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">npx</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">lamstart</span> <span class="o">*</span> <span class="n">lamratio</span><span class="o">**</span><span class="n">xx</span></div>
 
@@ -194,7 +194,8 @@
     <span class="k">global</span> <span class="n">domedat</span><span class="p">,</span> <span class="n">hgcat</span><span class="p">,</span> <span class="n">guess_offset</span><span class="p">,</span> <span class="n">wavetrees</span>
 
     <span class="n">spec_pos</span> <span class="o">=</span> <span class="n">domedat</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">spec_pos</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">]:</span> <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">spec_pos</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">spec_pos</span><span class="p">[</span><span class="s1">&#39;bkg_ok&#39;</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">None</span>
     <span class="n">tracefun</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">spec_pos</span><span class="p">[</span><span class="s1">&#39;coeff_ys&#39;</span><span class="p">])</span>
     <span class="n">minx</span> <span class="o">=</span> <span class="n">spec_pos</span><span class="p">[</span><span class="s1">&#39;xs&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 
@@ -202,13 +203,13 @@
 
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">wavelen</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">wavetrees</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">wavelen</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">wavetrees</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
             <span class="n">offset</span> <span class="o">=</span> <span class="n">guess_offset</span><span class="p">[</span><span class="n">wavelen</span><span class="p">]</span>
             <span class="n">pt</span> <span class="o">=</span> <span class="p">(</span><span class="n">minx</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span> <span class="n">tracefun</span><span class="p">(</span><span class="n">minx</span><span class="o">+</span><span class="n">offset</span><span class="p">))</span>
             <span class="n">results</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">query_ball_point</span><span class="p">(</span><span class="n">pt</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-                <span class="n">x_hg</span><span class="p">,</span><span class="n">y_hg</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">res</span><span class="p">]</span>
+                <span class="n">x_hg</span><span class="p">,</span> <span class="n">y_hg</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">res</span><span class="p">]</span>
                 <span class="n">y_trace</span> <span class="o">=</span> <span class="n">tracefun</span><span class="p">(</span><span class="n">x_hg</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_hg</span> <span class="o">-</span> <span class="n">y_trace</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
@@ -222,7 +223,7 @@
 
 
 <div class="viewcode-block" id="assoc_hg_with_flats"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Wavelength.assoc_hg_with_flats">[docs]</a><span class="k">def</span> <span class="nf">assoc_hg_with_flats</span><span class="p">(</span><span class="n">domedat_par</span><span class="p">,</span> <span class="n">hgcat_par</span><span class="p">,</span> <span class="n">guess_offset_par</span><span class="o">=</span><span class="p">{</span><span class="mf">365.0</span><span class="p">:</span> <span class="mi">231</span><span class="p">,</span>
-    <span class="mf">404.6</span><span class="p">:</span><span class="mi">214</span><span class="p">,</span> <span class="mf">435.8</span><span class="p">:</span><span class="mi">193</span><span class="p">,</span> <span class="mf">546.1</span><span class="p">:</span> <span class="mi">133</span><span class="p">,</span> <span class="mf">578.00</span><span class="p">:</span> <span class="mi">110</span><span class="p">},</span> <span class="n">outname</span><span class="o">=</span><span class="s1">&#39;assoc_Hg&#39;</span><span class="p">):</span>
+    <span class="mf">404.6</span><span class="p">:</span> <span class="mi">214</span><span class="p">,</span> <span class="mf">435.8</span><span class="p">:</span> <span class="mi">193</span><span class="p">,</span> <span class="mf">546.1</span><span class="p">:</span> <span class="mi">133</span><span class="p">,</span> <span class="mf">578.00</span><span class="p">:</span> <span class="mi">110</span><span class="p">},</span> <span class="n">outname</span><span class="o">=</span><span class="s1">&#39;assoc_Hg&#39;</span><span class="p">):</span>
 
     <span class="sd">&quot;&quot;&quot;Given a set of functions defining the ridgeline of dome flats</span>
 <span class="sd">    and a list of positions of mercury lamps, provide a crude wavelength</span>
@@ -239,7 +240,7 @@
     <span class="n">guess_offset</span> <span class="o">=</span> <span class="n">guess_offset_par</span>
 
     <span class="n">wavetrees</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">hgcat</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hgcat</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
         <span class="n">wavetrees</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
     <span class="k">print</span> <span class="s2">&quot;SgID   Nlines&quot;</span>
@@ -284,7 +285,6 @@
     <span class="n">kdt</span> <span class="o">=</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
     <span class="n">reg</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">ratios</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">hg546</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">hg578</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">hg436</span> <span class="o">=</span> <span class="p">[]</span>
@@ -294,25 +294,26 @@
     <span class="k">print</span> <span class="s2">&quot;Finding Hg lines in each spectrum&quot;</span>
     <span class="n">update_rate</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Bar</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">toolbar_width</span><span class="o">=</span><span class="mi">74</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
     <span class="k">for</span> <span class="n">CNT</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">CNT</span> <span class="o">%</span> <span class="n">update_rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">Bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">CNT</span> <span class="o">%</span> <span class="n">update_rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">Bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 
         <span class="n">point</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;X_IMAGE&#39;</span><span class="p">],</span> <span class="n">line</span><span class="p">[</span><span class="s1">&#39;Y_IMAGE&#39;</span><span class="p">]]</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">kdt</span><span class="o">.</span><span class="n">query_ball_point</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="mi">38</span><span class="p">)</span>
         <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">point</span>
-        <span class="n">num</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="s1">&#39;NUMBER&#39;</span><span class="p">]</span>
         <span class="n">flux</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;FLUX_ISO&#39;</span><span class="p">])</span>
         <span class="n">mean_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">flux</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
 
         <span class="k">for</span> <span class="n">resix</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
             <span class="n">resX</span><span class="p">,</span> <span class="n">resY</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">resix</span><span class="p">]</span>
             <span class="n">resFlux</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">resix</span><span class="p">][</span><span class="s1">&#39;FLUX_ISO&#39;</span><span class="p">])</span>
-            <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">resX</span><span class="o">-</span><span class="n">X</span><span class="p">)</span>
             <span class="n">dX</span> <span class="o">=</span> <span class="n">resX</span> <span class="o">-</span> <span class="n">X</span>
 
             <span class="n">dY</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">resY</span> <span class="o">-</span> <span class="n">Y</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">dY</span> <span class="o">&gt;</span> <span class="n">dYlimit</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">dY</span> <span class="o">&gt;</span> <span class="n">dYlimit</span><span class="p">:</span>
+                <span class="k">continue</span>
 
-            <span class="k">if</span> <span class="n">resFlux</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">resFlux</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+                <span class="k">continue</span>
 
             <span class="n">ratio</span> <span class="o">=</span> <span class="n">flux</span><span class="o">/</span><span class="n">resFlux</span>
             <span class="n">bright</span> <span class="o">=</span> <span class="p">(</span><span class="n">flux</span> <span class="o">&gt;</span> <span class="n">mean_flux</span><span class="p">)</span>
@@ -321,19 +322,19 @@
             <span class="k">if</span> <span class="p">(</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="mi">7</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="o">-</span><span class="mi">16</span> <span class="o">&lt;</span> <span class="n">dX</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">12</span><span class="p">)</span> <span class="ow">and</span> <span class="n">bright</span><span class="p">:</span>
                 <span class="n">reg</span> <span class="o">+=</span> <span class="s1">&#39;circle(</span><span class="si">%s</span><span class="s1">,</span><span class="si">%s</span><span class="s1">, 3) # color=red</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
                 <span class="n">reg</span> <span class="o">+=</span> <span class="s1">&#39;circle(</span><span class="si">%s</span><span class="s1">,</span><span class="si">%s</span><span class="s1">, 3) # color=magenta</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">)</span>
-                <span class="n">hg546</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">))</span>
-                <span class="n">hg578</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span><span class="n">resY</span><span class="p">))</span>
+                <span class="n">hg546</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">))</span>
+                <span class="n">hg578</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">))</span>
                 <span class="k">continue</span>
 
             <span class="k">if</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mf">6.</span> <span class="o">&lt;</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="o">-</span><span class="mi">24</span> <span class="o">&lt;</span> <span class="n">dX</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">18</span><span class="p">)</span> <span class="ow">and</span> <span class="n">resbright</span><span class="p">:</span>
-                <span class="n">hg405</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">))</span>
-                <span class="n">hg436</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span><span class="n">resY</span><span class="p">))</span>
+                <span class="n">hg405</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">))</span>
+                <span class="n">hg436</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">))</span>
                 <span class="n">reg</span> <span class="o">+=</span> <span class="s1">&#39;circle(</span><span class="si">%s</span><span class="s1">,</span><span class="si">%s</span><span class="s1">, 3) # color=green</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
                 <span class="n">reg</span> <span class="o">+=</span> <span class="s1">&#39;circle(</span><span class="si">%s</span><span class="s1">,</span><span class="si">%s</span><span class="s1">, 3) # color=yellow</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">)</span>
                 <span class="k">continue</span>
 
             <span class="k">if</span> <span class="p">(</span><span class="mi">4</span> <span class="o">&lt;</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="mi">20</span> <span class="o">&lt;</span> <span class="n">dX</span> <span class="o">&lt;</span> <span class="mi">38</span><span class="p">)</span> <span class="ow">and</span> <span class="n">bright</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">resbright</span><span class="p">):</span>
-                <span class="n">hg365</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span><span class="n">resY</span><span class="p">))</span>
+                <span class="n">hg365</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">))</span>
                 <span class="n">reg</span> <span class="o">+=</span> <span class="s1">&#39;circle(</span><span class="si">%s</span><span class="s1">,</span><span class="si">%s</span><span class="s1">, 3) # color=blue</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">resX</span><span class="p">,</span> <span class="n">resY</span><span class="p">)</span>
                 <span class="k">continue</span>
 
@@ -414,7 +415,8 @@
         <span class="k">return</span> <span class="n">Extraction</span><span class="o">.</span><span class="n">Extraction</span><span class="p">(</span><span class="n">seg_id</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">seg_id</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
                                      <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">trace_sigma</span><span class="p">,</span>
                                      <span class="n">Q_ix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Q_ix</span><span class="p">,</span> <span class="n">R_ix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">R_ix</span><span class="p">,</span>
-                                     <span class="n">X_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_as</span><span class="p">,</span> <span class="n">Y_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_as</span><span class="p">)</span>
+                                     <span class="n">X_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_as</span><span class="p">,</span> <span class="n">Y_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_as</span><span class="p">,</span>
+                                     <span class="n">X_pix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_pix</span><span class="p">,</span><span class="n">Y_pix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_pix</span><span class="p">)</span>
 
     <span class="n">minx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">5</span><span class="p">))</span>
     <span class="n">maxx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">minx</span> <span class="o">+</span> <span class="mi">265</span><span class="p">,</span> <span class="mi">2047</span><span class="p">))</span>
@@ -439,7 +441,7 @@
         <span class="k">if</span> <span class="n">Y</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">Y</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="n">Y</span> <span class="o">&gt;</span> <span class="mi">2046</span><span class="p">:</span>
-            <span class="n">Y</span><span class="o">=</span><span class="mi">2046</span>
+            <span class="n">Y</span> <span class="o">=</span> <span class="mi">2046</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">Y</span><span class="p">):</span>
             <span class="k">continue</span>
 
@@ -455,8 +457,7 @@
             <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span><span class="o">+</span><span class="n">flexure_y_corr_pix</span><span class="o">-</span><span class="n">extract_width</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
             <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span><span class="o">+</span><span class="n">flexure_y_corr_pix</span><span class="o">+</span><span class="n">extract_width</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2047</span><span class="p">)))</span>
 
-
-        <span class="n">res</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">Ys</span><span class="p">,</span><span class="n">X</span><span class="p">])</span>
+        <span class="n">res</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">Ys</span><span class="p">,</span> <span class="n">X</span><span class="p">])</span>
 
         <span class="n">profile</span> <span class="o">=</span> <span class="n">make_profile</span><span class="p">(</span><span class="n">Ys</span><span class="p">,</span> <span class="n">sigma2</span><span class="o">=</span><span class="n">sigma2</span><span class="p">)</span>
         <span class="n">resw</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">Ys</span><span class="p">,</span> <span class="n">X</span><span class="p">]</span><span class="o">*</span><span class="n">profile</span><span class="p">)</span>
@@ -479,7 +480,8 @@
                                <span class="n">specwf</span><span class="o">=</span><span class="n">reswf</span><span class="o">/</span><span class="n">fc</span><span class="p">,</span>
                                <span class="n">seg_id</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">seg_id</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="n">exptime</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
                                <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">trace_sigma</span><span class="p">,</span> <span class="n">Q_ix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Q_ix</span><span class="p">,</span>
-                               <span class="n">R_ix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">R_ix</span><span class="p">,</span> <span class="n">X_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_as</span><span class="p">,</span> <span class="n">Y_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_as</span><span class="p">)</span>
+                               <span class="n">R_ix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">R_ix</span><span class="p">,</span> <span class="n">X_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_as</span><span class="p">,</span> <span class="n">Y_as</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_as</span><span class="p">,</span>
+                               <span class="n">X_pix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">X_pix</span><span class="p">,</span> <span class="n">Y_pix</span><span class="o">=</span><span class="n">ss</span><span class="o">.</span><span class="n">Y_pix</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="s1">&#39;lamcoeff&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="o">.</span><span class="n">__dict__</span> <span class="ow">and</span> <span class="n">ss</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">ex</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">lamcoeff</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -487,7 +489,7 @@
         <span class="n">ex</span><span class="o">.</span><span class="n">lamrms</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">lamrms</span>
         <span class="n">ex</span><span class="o">.</span><span class="n">lamnrms</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">lamnrms</span>
 
-    <span class="k">if</span> <span class="n">ss</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s1">&#39;mdn_coeff&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ss</span><span class="o">.</span><span class="n">mdn_coeff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s1">&#39;mdn_coeff&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="o">.</span><span class="n">__dict__</span> <span class="ow">and</span> <span class="n">ss</span><span class="o">.</span><span class="n">mdn_coeff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">ex</span><span class="o">.</span><span class="n">mdn_coeff</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">mdn_coeff</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">ex</span><span class="o">.</span><span class="n">mdn_coeff</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">flexure_x_corr_nm</span>
         <span class="n">ex</span><span class="o">.</span><span class="n">lamrms</span> <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">lamrms</span>
@@ -550,9 +552,10 @@
     <span class="k">if</span> <span class="n">n_done</span> <span class="o">%</span> <span class="n">update_rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">Bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;bkg_ok&#39;</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">Extraction</span><span class="o">.</span><span class="n">Extraction</span><span class="p">(</span><span class="n">seg_id</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;seg_cnt&#39;</span><span class="p">],</span>
-                                     <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;trace_sigma&#39;</span><span class="p">],</span> <span class="n">ok</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+                                     <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;trace_sigma&#39;</span><span class="p">],</span>
+                                     <span class="n">bkg_ok</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">ok</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
     <span class="n">minx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;xs&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">5</span><span class="p">))</span>
     <span class="n">maxx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">minx</span> <span class="o">+</span> <span class="mi">265</span><span class="p">,</span> <span class="mi">2047</span><span class="p">))</span>
@@ -597,11 +600,12 @@
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">wave</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">float</span><span class="p">:</span>
             <span class="n">hg_lines</span><span class="p">[</span><span class="n">wave</span><span class="p">]</span> <span class="o">=</span> <span class="n">pix</span><span class="o">-</span><span class="n">minx</span><span class="o">-</span><span class="mi">1</span>
 
-    <span class="k">return</span> <span class="n">Extraction</span><span class="o">.</span><span class="n">Extraction</span><span class="p">(</span><span class="nb">xrange</span><span class="o">=</span><span class="p">(</span><span class="n">minx</span><span class="p">,</span><span class="n">maxx</span><span class="p">),</span>
+    <span class="k">return</span> <span class="n">Extraction</span><span class="o">.</span><span class="n">Extraction</span><span class="p">(</span><span class="nb">xrange</span><span class="o">=</span><span class="p">(</span><span class="n">minx</span><span class="p">,</span> <span class="n">maxx</span><span class="p">),</span>
                                  <span class="n">yrange</span><span class="o">=</span><span class="p">(</span><span class="n">yfun</span><span class="p">(</span><span class="n">xpos</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">yfun</span><span class="p">(</span><span class="n">xpos</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])),</span>
                                  <span class="n">poly</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;coeff_ys&#39;</span><span class="p">],</span> <span class="n">spec</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="n">specw</span><span class="o">=</span><span class="n">resw</span><span class="p">,</span>
                                  <span class="n">hg_lines</span><span class="o">=</span><span class="n">hg_lines</span><span class="p">,</span> <span class="n">seg_id</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;seg_cnt&#39;</span><span class="p">],</span>
-                                 <span class="n">ok</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;trace_sigma&#39;</span><span class="p">])</span></div>
+                                 <span class="n">bkg_ok</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;bkg_ok&#39;</span><span class="p">],</span> <span class="n">ok</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">],</span>
+                                 <span class="n">trace_sigma</span><span class="o">=</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;trace_sigma&#39;</span><span class="p">])</span></div>
 
 
 <div class="viewcode-block" id="extract"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Wavelength.extract">[docs]</a><span class="k">def</span> <span class="nf">extract</span><span class="p">(</span><span class="n">HDUlist</span><span class="p">,</span> <span class="n">assoc_hg_spec</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;raw_extractions&#39;</span><span class="p">):</span>
@@ -652,7 +656,6 @@
     <span class="n">KD</span> <span class="o">=</span> <span class="n">KDTree</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span>
 
     <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">fine</span><span class="p">))</span>
-    <span class="n">ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">265</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">update_rate</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fine</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Bar</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">toolbar_width</span><span class="o">=</span><span class="mi">74</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
     <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">spec</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fine</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">idx</span> <span class="o">%</span> <span class="n">update_rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -666,7 +669,6 @@
 
         <span class="n">lls</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">num_in</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">shifts</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">nearest</span> <span class="ow">in</span> <span class="n">nearest_ixs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
             <span class="k">if</span> <span class="n">nearest</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
                 <span class="k">continue</span>
@@ -831,12 +833,10 @@
             <span class="kn">import</span> <span class="nn">pdb</span>
             <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
         <span class="n">lls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lls</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">:</span>
-            <span class="kn">import</span> <span class="nn">pdb</span>
-            <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
+
         <span class="k">try</span><span class="p">:</span>
             <span class="n">new_lls</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">lls</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">new_lls_std</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">lls</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># new_lls_std = scipy.stats.nanstd(lls, 0)</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="kn">import</span> <span class="nn">pdb</span>
             <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
@@ -931,7 +931,7 @@
 
     <span class="c1"># Step 5</span>
     <span class="n">fc</span> <span class="o">=</span> <span class="n">chebfit</span><span class="p">(</span><span class="n">fid_ix</span><span class="p">,</span> <span class="n">tofit</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-    <span class="n">xc</span> <span class="o">=</span> <span class="p">(</span><span class="n">xcs1</span><span class="p">[</span><span class="n">slope1</span><span class="p">,</span> <span class="n">square1</span><span class="p">]</span> <span class="o">+</span> <span class="n">xcs2</span><span class="p">[</span><span class="n">slope2</span><span class="p">,</span> <span class="n">square2</span><span class="p">]</span> <span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">fs1</span><span class="p">)</span>
+    <span class="n">xc</span> <span class="o">=</span> <span class="p">(</span><span class="n">xcs1</span><span class="p">[</span><span class="n">slope1</span><span class="p">,</span> <span class="n">square1</span><span class="p">]</span> <span class="o">+</span> <span class="n">xcs2</span><span class="p">[</span><span class="n">slope2</span><span class="p">,</span> <span class="n">square2</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">fs1</span><span class="p">)</span>
 
     <span class="c1"># outstr = &quot;\r%4.0i = %1.3e : %1.3f %+1.2e, %1.3f %+1.2e&quot; % (specno, xc,slopes[slope1], squares[square1], slopes[slope2], squares[square2])</span>
     <span class="c1"># print outstr,</span>
@@ -1145,11 +1145,11 @@
 
                 <span class="c1"># Initial guess for fit</span>
                 <span class="n">parguess</span> <span class="o">=</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">-</span><span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>  <span class="c1"># Scale</span>
-                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">xct</span><span class="p">[</span><span class="n">sct</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]},</span> <span class="c1"># Centroid!!</span>
-                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">},</span> <span class="c1"># Sigma</span>
-                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span><span class="c1"># offset</span>
-                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>  <span class="c1"># slope</span>
+                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">-</span><span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>     <span class="c1"># Scale</span>
+                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">xct</span><span class="p">[</span><span class="n">sct</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]},</span>       <span class="c1"># Centroid!!</span>
+                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">},</span>                     <span class="c1"># Sigma</span>
+                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>               <span class="c1"># offset</span>
+                    <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>                       <span class="c1"># slope</span>
 
                 <span class="c1"># Do the fitting</span>
                 <span class="n">pars</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_do</span><span class="p">(</span><span class="n">resfun</span><span class="p">,</span> <span class="n">xct</span><span class="p">,</span> <span class="n">sct</span><span class="p">,</span> <span class="n">parguess</span><span class="p">,</span>
@@ -1357,11 +1357,11 @@
 
         <span class="c1"># Initial guess at fit parameters</span>
         <span class="n">parguess</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">-</span><span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>  <span class="c1"># Scale</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">xct</span><span class="p">[</span><span class="n">sct</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]},</span> <span class="c1"># Centroid!!</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mf">1.3</span><span class="p">},</span> <span class="c1"># Sigma</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span><span class="c1"># offset</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>  <span class="c1"># slope</span>
+            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">-</span><span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>     <span class="c1"># Scale</span>
+            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">xct</span><span class="p">[</span><span class="n">sct</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]},</span>       <span class="c1"># Centroid!!</span>
+            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mf">1.3</span><span class="p">},</span>                     <span class="c1"># Sigma</span>
+            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sct</span><span class="o">.</span><span class="n">min</span><span class="p">()},</span>               <span class="c1"># offset</span>
+            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>                       <span class="c1"># slope</span>
 
         <span class="c1"># Do the peak fitting</span>
         <span class="n">pars</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_do</span><span class="p">(</span><span class="n">resfun</span><span class="p">,</span> <span class="n">xct</span><span class="p">,</span> <span class="n">sct</span><span class="p">,</span> <span class="n">parguess</span><span class="p">)</span>
@@ -1661,7 +1661,6 @@
         <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ix</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">specw</span><span class="o">+</span><span class="n">add</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">)</span>
 
-        <span class="c1"># if index &gt; 500: break</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
     <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
@@ -1675,7 +1674,8 @@
 
     <span class="n">ex</span> <span class="o">=</span> <span class="n">extractions</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">ex</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span> <span class="k">return</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ex</span><span class="o">.</span><span class="n">ok</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ex</span><span class="o">.</span><span class="n">bkg_ok</span><span class="p">:</span>
+        <span class="k">return</span>
 
     <span class="n">xs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">ys</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1697,13 +1697,11 @@
 
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">polynomial</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">RankWarning</span><span class="p">)</span>
-        <span class="n">coef</span> <span class="o">=</span> <span class="n">chebfit</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span><span class="n">ys</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">coef</span> <span class="o">=</span> <span class="n">chebfit</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
         <span class="n">vals</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">coef</span><span class="p">)</span>
 
     <span class="n">ex</span><span class="o">.</span><span class="n">hgcoef</span> <span class="o">=</span> <span class="n">coef</span>
     <span class="n">err</span> <span class="o">=</span> <span class="p">(</span><span class="n">vals</span> <span class="o">-</span> <span class="n">ys</span><span class="p">)</span>
-
-    <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">specw</span><span class="p">))</span>
 
     <span class="n">rough_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
     <span class="n">tot_std</span> <span class="o">+=</span> <span class="n">rough_std</span>
@@ -1762,12 +1760,11 @@
         <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">260</span><span class="p">,</span><span class="o">.</span><span class="mo">01</span><span class="p">)</span>
-    <span class="n">hg_segids</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">seg_id</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Hgs</span><span class="p">]</span>
+    <span class="n">ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">260</span><span class="p">,</span> <span class="o">.</span><span class="mo">01</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">spec_ix</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Hgs</span><span class="p">)):</span>
         <span class="n">hg</span> <span class="o">=</span> <span class="n">Hgs</span><span class="p">[</span><span class="n">spec_ix</span><span class="p">]</span>
         <span class="n">xe</span> <span class="o">=</span> <span class="n">Xes</span><span class="p">[</span><span class="n">spec_ix</span><span class="p">]</span>
-        <span class="n">seg_id</span> <span class="o">=</span> <span class="n">hg</span><span class="o">.</span><span class="n">seg_id</span>
+        <span class="c1"># seg_id = hg.seg_id</span>
 
         <span class="n">coeff</span> <span class="o">=</span> <span class="n">hg</span><span class="o">.</span><span class="n">hgcoef</span>
         <span class="k">if</span> <span class="n">coeff</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
@@ -1780,11 +1777,11 @@
 
             <span class="n">offsets</span> <span class="o">=</span> <span class="n">measure_offsets</span><span class="p">(</span><span class="n">hg</span><span class="o">.</span><span class="n">specw</span><span class="o">+</span><span class="n">xe</span><span class="o">.</span><span class="n">specw</span><span class="p">,</span> <span class="n">coeff</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
-            <span class="n">keys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-            <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">offsets</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="c1"># keys = np.array(offsets.keys())</span>
+            <span class="c1"># vals = np.array(offsets.values())</span>
             <span class="c1"># print np.sort(keys+vals)</span>
 
-            <span class="n">lams</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">ixs</span><span class="p">,</span><span class="n">coeff</span><span class="p">)</span>
+            <span class="n">lams</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">ixs</span><span class="p">,</span> <span class="n">coeff</span><span class="p">)</span>
             <span class="n">pixs</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">meas</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -1829,7 +1826,6 @@
         <span class="n">Hgs</span><span class="p">[</span><span class="n">spec_ix</span><span class="p">]</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="o">=</span> <span class="n">coeff</span>
         <span class="n">Hgs</span><span class="p">[</span><span class="n">spec_ix</span><span class="p">]</span><span class="o">.</span><span class="n">lamrms</span> <span class="o">=</span> <span class="n">rms</span>
         <span class="k">print</span> <span class="s2">&quot;-- </span><span class="si">%4.0i</span><span class="s2"> </span><span class="si">%6.3f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">spec_ix</span><span class="p">,</span> <span class="n">rms</span><span class="p">)</span>
-        <span class="c1"># if rms &gt; 3: pdb.set_trace()</span>
 
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -1854,12 +1850,11 @@
     <span class="n">resfun830</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_residuals</span><span class="p">(</span><span class="n">xe_830nm</span><span class="p">,</span> <span class="n">preffun</span><span class="o">=</span><span class="n">preffun</span><span class="p">)</span>
 
     <span class="c1"># Preference function is designed to bias against adjusting the </span>
-    <span class="n">preffun</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">100</span><span class="p">)</span><span class="o">/</span><span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">30</span> <span class="o">+</span> \
+    <span class="n">preffun</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">100</span><span class="p">)</span><span class="o">/</span><span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">30</span> <span class="o">+</span>
                          <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">-</span><span class="mi">100</span><span class="p">)</span><span class="o">/</span><span class="mi">100</span><span class="p">)</span><span class="o">/</span><span class="mf">3e4</span> <span class="o">+</span> <span class="mf">1.0</span>
     <span class="n">resfun890</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_residuals</span><span class="p">(</span><span class="n">xe_890nm</span><span class="p">,</span> <span class="n">preffun</span><span class="o">=</span><span class="n">preffun</span><span class="p">)</span>
     <span class="n">resfung</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_residuals</span><span class="p">(</span><span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">gaussian5</span><span class="p">)</span>
 
-    <span class="c1"># pk_pxs = SG.find_peaks_cwt(spec, np.arange(8,25))</span>
     <span class="n">pk_pxs</span> <span class="o">=</span> <span class="n">SG</span><span class="o">.</span><span class="n">argrelmax</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">10</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">pk_lam</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">pk_pxs</span><span class="p">,</span> <span class="n">coeff</span><span class="p">)</span>
     <span class="n">ix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
@@ -1882,26 +1877,23 @@
 
         <span class="n">toll</span> <span class="o">=</span> <span class="n">ll</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
         <span class="n">tofit</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="n">roi</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">toll</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">toll</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">tofit</span><span class="p">)</span>
         <span class="n">slope</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">sigma</span> <span class="o">=</span> <span class="mf">2.5</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">tofit</span><span class="p">)</span><span class="o">-</span><span class="n">offset</span>
 
-        <span class="n">p</span> <span class="o">=</span> <span class="p">[</span><span class="n">scale</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">slope</span><span class="p">]</span>
-        <span class="n">parinfo</span><span class="o">=</span><span class="p">[{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">scale</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lam</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="n">lam</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="n">lam</span><span class="o">+</span><span class="mi">15</span><span class="p">]},</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">]},</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
-            <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">slope</span><span class="p">}]</span>
+        <span class="n">parinfo</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">scale</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lam</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:[</span><span class="n">lam</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="n">lam</span><span class="o">+</span><span class="mi">15</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">slope</span><span class="p">}]</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_do</span><span class="p">(</span><span class="n">resfung</span><span class="p">,</span> <span class="n">toll</span><span class="p">,</span> <span class="n">tofit</span><span class="p">,</span> <span class="n">parinfo</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">status</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">offsets</span><span class="p">[</span><span class="n">lam</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam</span><span class="o">-</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-    <span class="c1"># 830</span>
-    <span class="n">guess_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pk_lam</span> <span class="o">-</span> <span class="mi">830</span><span class="p">))</span>
-    <span class="n">guess_lam</span> <span class="o">=</span> <span class="n">pk_lam</span><span class="p">[</span><span class="n">guess_pos</span><span class="p">]</span>
     <span class="n">guess_lam</span> <span class="o">=</span> <span class="n">pk_lam</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">ok</span> <span class="o">=</span> <span class="p">((</span><span class="n">guess_lam</span><span class="o">-</span><span class="mi">35</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ll</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">guess_lam</span><span class="o">+</span><span class="mi">45</span><span class="p">))</span>
 
@@ -1910,13 +1902,11 @@
         <span class="n">lamoffset</span> <span class="o">=</span> <span class="n">guess_lam</span><span class="o">-</span><span class="mi">830</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
         <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span> <span class="o">-</span> <span class="n">offset</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="p">[</span><span class="n">sigma</span><span class="p">,</span><span class="n">lamoffset</span><span class="p">,</span><span class="n">offset</span><span class="p">,</span><span class="n">peak</span><span class="p">]</span>
 
         <span class="n">parinfo</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">250</span><span class="p">]},</span>
-                        <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lamoffset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-                            <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">]},</span>
-                        <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
-                        <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">peak</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]}]</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lamoffset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span>
+                   <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">peak</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]}]</span>
 
         <span class="n">res</span> <span class="o">=</span> <span class="n">NPK</span><span class="o">.</span><span class="n">Fit</span><span class="o">.</span><span class="n">mpfit_do</span><span class="p">(</span><span class="n">resfun830</span><span class="p">,</span> <span class="n">ll</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">parinfo</span><span class="p">)</span>
         <span class="n">thell</span> <span class="o">=</span> <span class="n">ll</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span>
@@ -1929,9 +1919,6 @@
         <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
             <span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ll</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">xe_830nm</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">ll</span><span class="p">[</span><span class="n">ok</span><span class="p">]),</span> <span class="s1">&#39;x-&#39;</span><span class="p">)</span>
 
-    <span class="c1"># Now 920</span>
-    <span class="n">guess_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pk_lam</span> <span class="o">-</span> <span class="mi">920</span><span class="p">))</span>
-    <span class="n">guess_lam</span> <span class="o">=</span> <span class="n">pk_lam</span><span class="p">[</span><span class="n">guess_pos</span><span class="p">]</span>
     <span class="n">guess_lam</span> <span class="o">=</span> <span class="n">pk_lam</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">ok</span> <span class="o">=</span> <span class="p">((</span><span class="n">guess_lam</span><span class="o">-</span><span class="mi">55</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ll</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">guess_lam</span><span class="o">+</span><span class="mi">100</span><span class="p">))</span>
 
@@ -1944,7 +1931,6 @@
             <span class="n">lamoffset</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span>
         <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span> <span class="o">-</span> <span class="n">offset</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="p">[</span><span class="n">sigma</span><span class="p">,</span> <span class="n">lamoffset</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">peak</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>
         <span class="n">p930</span> <span class="o">=</span> <span class="mi">500</span>
 
         <span class="n">parinfo</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">sigma</span><span class="p">,</span> <span class="s1">&#39;limited&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;limits&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">260</span><span class="p">]},</span>
@@ -1957,7 +1943,6 @@
 
         <span class="n">thell</span> <span class="o">=</span> <span class="n">ll</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span>
         <span class="n">ps</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="c1"># ps[1] = 0</span>
         <span class="n">thespec</span> <span class="o">=</span> <span class="n">xe_890nm</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">thell</span><span class="p">)</span>
         <span class="n">cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">thespec</span><span class="o">*</span><span class="n">thell</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">thespec</span><span class="p">)</span>
         <span class="n">offsets</span><span class="p">[</span><span class="n">cl</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
@@ -2000,9 +1985,7 @@
 
 <div class="viewcode-block" id="save_fitted_ds9"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Wavelength.save_fitted_ds9">[docs]</a><span class="k">def</span> <span class="nf">save_fitted_ds9</span><span class="p">(</span><span class="n">fitted</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="s1">&#39;fine&#39;</span><span class="p">):</span>
 
-    <span class="n">xs</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">ys</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">ds9</span>  <span class="o">=</span> <span class="s1">&#39;physical</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="n">ds9</span> <span class="o">=</span> <span class="s1">&#39;physical</span><span class="se">\n</span><span class="s1">&#39;</span>
     <span class="k">for</span> <span class="n">ix</span><span class="p">,</span><span class="n">S</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fitted</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">S</span><span class="o">.</span><span class="n">lamcoeff</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
         <span class="k">if</span> <span class="n">S</span><span class="o">.</span><span class="n">xrange</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="k">continue</span>
@@ -2012,8 +1995,6 @@
         <span class="n">res</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">(</span><span class="n">xvals</span><span class="p">,</span> <span class="n">S</span><span class="o">.</span><span class="n">lamcoeff</span><span class="p">)</span>
         <span class="n">invcoeffs</span> <span class="o">=</span> <span class="n">chebfit</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">xvals</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="n">pxs</span> <span class="o">=</span> <span class="n">chebval</span><span class="p">([</span><span class="mf">400.</span><span class="p">,</span> <span class="mf">500.</span><span class="p">,</span> <span class="mf">600.</span><span class="p">,</span> <span class="mf">656.3</span><span class="p">,</span> <span class="mf">700.</span><span class="p">,</span> <span class="mf">800.</span><span class="p">,</span> <span class="mf">900.</span><span class="p">],</span> <span class="n">invcoeffs</span><span class="p">)</span>
-
-        <span class="n">startx</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">px</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pxs</span><span class="p">):</span>
             <span class="n">X</span> <span class="o">=</span> <span class="n">px</span>
