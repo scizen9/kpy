@@ -453,9 +453,14 @@ def to_makefile(objs, calibs):
                 if pred in Stds.Standards:
                     standard = pred
 
+                    obs = obsnum
+
                     for obsfile in obsfiles:
-                        m, a = MF_standard(objname, "%i" % obsnum, obsfile,
+                        m, a = MF_standard(objname, "%i" % obs, obsfile,
                                            standard=standard)
+                        # in case we have a STD A/B pair, we break them
+                        # up into two separate observations
+                        obs += 1
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "
