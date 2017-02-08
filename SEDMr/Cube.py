@@ -251,8 +251,8 @@ def extraction_to_cube(exts, outname="G.npy"):
         ys[ix] = np.nanmean(ex.yrange)
         ex.X_pix = xs[ix]
         ex.Y_pix = ys[ix]
-        ex.X_as = (1024.0 - xs[ix]) * 0.0128
-        ex.Y_as = (1024.0 - ys[ix]) * 0.0128
+        ex.Xccd_as = (1024.0 - xs[ix]) * 0.0128
+        ex.Yccd_as = (1024.0 - ys[ix]) * 0.0128
         if ex.xrefpix is not None:
             if ex.xrefpix < len(ll):
                 ex.xreflam = ll[ex.xrefpix]
@@ -371,12 +371,14 @@ def extraction_to_cube(exts, outname="G.npy"):
     rs = np.array([ex.R_ix for ex in exts], dtype=np.float)
 
     # convert to pixel X,Y
-    xs = np.sqrt(3) * (qs + rs/2.0)
-    ys = 3/2 * rs
+    # xs = np.sqrt(3) * (qs + rs/2.0)
+    xs = 2.1 * (qs + rs/2.2)
+    # ys = 3/2 * rs
+    ys = 1.5 * rs
 
     # t= np.radians(165.0+45)
     # Hex angle relative to positive Y pixel axis
-    t = np.radians(180+22)
+    t = np.radians(180+13.5)
     # Rotation matrix
     rot = np.array([[np.cos(t), -np.sin(t)],
                     [np.sin(t),  np.cos(t)]])
@@ -387,8 +389,11 @@ def extraction_to_cube(exts, outname="G.npy"):
         p = np.dot(rot, np.array([xs[ix], ys[ix]]))
         # Convert to RA, Dec
         # Note 0.633 is plate scale measured on 22 May 2014.
-        ex.Xhex_as = p[0] * -0.633
-        ex.Yhex_as = p[1] * 0.633
+        hex_scale = 0.315
+        ex.Xhex_as = p[0] * 0.3
+        ex.Yhex_as = p[1] * 0.355
+        ex.X_as = ex.Xhex_as
+        ex.Y_as = ex.Yhex_as
 
     # Write out the cube
     np.save(outname, [exts, meta])
