@@ -367,11 +367,11 @@ class SedmDB:
             for key in ['ra', 'dec', 'epoch']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
-            # dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
-            #                        % (pardic['ra'], pardic['dec']))
-            # if dup:  # if there is already an object within an arcsecond
-            #     return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-            #                 "id: %s, name: %s" % (object[0][0], object[0][1]))
+            dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
+                                   % (pardic['ra'], pardic['dec']))
+            if dup:  # if there is already an object within an arcsecond
+                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+                            "id: %s, name: %s" % (object[0][0], object[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -444,8 +444,6 @@ class SedmDB:
 
             (-1, "ERROR...") if there is an issue
         """
-        return (-1, "ERROR: q3c is not working")
-        
         if not (isinstance(ra, float) or isinstance(ra, int)):
             return (-1, "ERROR: parameter ra must be of type 'float' or type 'int'!")
         if not (isinstance(dec, float) or isinstance(dec, int)):
@@ -453,8 +451,8 @@ class SedmDB:
         if not (isinstance(radius, float) or isinstance(radius, int)):
             return (-1, "ERROR: parameter radius must be of type 'float' or type 'int'!")
 
-        objects = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', '%s')"
-                                   % (ra, dec, .000278*radius))
+        objects = self.execute_sql("SELECT id, name, epoch FROM object WHERE "
+                                   "q3c_radial_query(ra, dec, '%s', '%s', '%s')" % (ra, dec, .000278*radius))
         return objects
 
     def get_object_id_from_name(self, object_name):
