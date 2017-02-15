@@ -422,8 +422,8 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 
 
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
-             ellipse=None, ellipseb=None, bgd_sub=True,
-             lmin=650., lmax=700., cmin=None, cmax=None):
+             ellipse=None, ellipseb=None, sigfac=3.0, bgd_sub=True,
+             lmin=650., lmax=700., cmin=None, cmax=None, fwhm=False):
     """ Convert spectra list into image_[outname].pdf
 
     Args:
@@ -435,6 +435,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         adcpos (tuple): position offsets due to atmospheric dispersion (asec)
         ellipse (tuple): ellipse parameters for A aperture
         ellipseb (tuple): ellipse parameters for B aperture
+        sigfac (float): sigma multiplier for ellipses (def=3.0)
         bgd_sub (boolean): set to True to subtract median background
         lmin (float): minimum wavelength in nm to sum over
         lmax (float): maximum wavelength in nm to sum over
@@ -502,6 +503,11 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if ellipse is not None:
         xys = get_ellipse_xys(ellipse)
         pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+        if fwhm:
+            fell = ((ellipse[0]/sigfac) * 2.355, (ellipse[1]/sigfac) * 2.355,
+                    ellipse[2], ellipse[3], ellipse[4])
+            xys = get_ellipse_xys(fell)
+            pl.plot(xys[:, 0], xys[:, 1], 'b--')
 
     if ellipseb is not None:
         xys = get_ellipse_xys(ellipseb)
@@ -1096,7 +1102,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     # Make an image of the spaxels for the record
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-             bgd_sub=False, lmin=lmin, lmax=lmax)
+             bgd_sub=False, lmin=lmin, lmax=lmax, fwhm=True)
     # get the mean spectrum over the selected spaxels
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
