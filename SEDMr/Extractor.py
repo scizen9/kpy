@@ -170,6 +170,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     for blob in blobs:
         # Extract blob properties
         bx, by, br = blob
+        c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
+                      linewidth=1, fill=False)
+        ax.add_patch(c)
         # How bright is this blob?
         gv = grid_vs[bx, by]-grid_med
         # Exclude edge blobs and faint blobs
@@ -191,19 +194,22 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Make sure the brightest object is last
     objs.sort()
 
-    sigma_x = 2.2
-    sigma_y = 1.7
+    # Perform 2-D Gaussian fit of good (real) objects
+    sigma_x = 2.0
+    sigma_y = 2.0
     for obj in objs:
+        # Fill initial fit params
         amplitude = obj[0]
         xo = obj[1]
         yo = obj[2]
         objno = obj[3]
 
         print "\nFitting object %d" % objno
-        print("initial guess : z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
+        print("initial guess : z,a,b,x,y,theta:"
+              " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f" %
               (amplitude, sigma_x, sigma_y, xo, yo, 0.))
 
-        # create data
+        # create initial data
         initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, grid_med)
 
         try:
@@ -214,7 +220,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             print "Using initial guess"
             status = 3
             popt = initial_guess
-
+        # Fitted position
         xc = popt[1]
         yc = popt[2]
         if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
@@ -224,22 +230,22 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             yc = yo
             status = 1
         pos = (xc, yc)
-
-        # get 3-sigma extent
+        # Fitted 3-sigma extent
         a = popt[3]*sigfac
         b = popt[4]*sigfac
-        if a > 30. or b > 30.:
+        if a > 30. or b > 30. or a <= 0. or b <= 0.:
             print "ERROR: A,B out of bounds: %f, %f" % (a, b)
             print "Using initial values: %f, %f" % (sigma_x, sigma_y)
-            a = sigma_x * sigfac
-            b = sigma_y * sigfac
+            a = sigma_x
+            b = sigma_y
             status = 2
         theta = popt[5]
         z = popt[0]
 
         # report position and shape
         ellipse = (a, b, xc, yc, theta * (180. / np.pi))
-        print("PSF FIT on IFU: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f\n" %
+        print("PSF FIT on IFU: z,a,b,x,y,theta:"
+              " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f\n" %
               (z, a, b, xc, yc, theta*180./np.pi))
 
         if plotobj:
@@ -247,6 +253,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
                         color='lime', linewidth=2, fill=False)
             ax.add_patch(e)
 
+        # Account for atmospheric dispersion
         leffmic = (lmax+lmin)/2000.0    # convert to microns
 
         if prlltc is not None:
@@ -254,6 +261,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         else:
             positions = [pos]
 
+        # Gather spaxels
         all_kix = []
         for the_pos in positions:
             all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
@@ -268,7 +276,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         status = 4
 
     if plotobj:
-        pl.title("Good Objects")
+        pl.title("Found Objects")
         pl.xlabel("RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
         pl.grid(True)
@@ -674,6 +682,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         s_grid = []
         newsix = []
         lamcoeff = None
+        nrej = 0
         # for ix,spectrum in enumerate(all_spectra):
         for ix in six:
             spectrum = all_spectra[ix]
@@ -717,7 +726,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
                 s_grid.append(fl)
                 newsix.append(ix)
             else:
-                print "rejected - ix: %d, flx: %.1f" % (ix, f_test)
+                nrej += 1
+            #     print "rejected - ix: %d, flx: %.1f" % (ix, f_test)
+        print "%d spaxels rejected" % nrej
     else:
         newsix = None
 
