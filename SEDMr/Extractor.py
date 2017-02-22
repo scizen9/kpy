@@ -4,6 +4,7 @@ import os
 import glob
 import numpy as np
 import pylab as pl
+from matplotlib.patches import Ellipse
 import pyfits as pf
 import itertools
 import warnings
@@ -120,7 +121,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 
 
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
-                               airmass=1.0, sigfac=3.0):
+                               airmass=1.0, sigfac=3.0, plotobj=False):
     """ 
     Returns index of spectra picked by Guassian fit.
     
@@ -145,105 +146,135 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     points = zip(xs, ys)
     values = vs
 
+    # Create image, print stats
     grid_vs = griddata(points, values, (x, y), method='linear')
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
     grid_med = np.median(grid_vs)
-    print("grid_vs min, max, mean: %f, %f, %f" %
-          (np.nanmin(grid_vs), np.nanmax(grid_vs), np.nanmean(grid_vs)))
+    print("grid_vs min, max, mean, median: %f, %f, %f, %f\n" %
+          (np.nanmin(grid_vs), np.nanmax(grid_vs),
+           np.nanmean(grid_vs), grid_med))
 
+    # Find features in image
     blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
                              threshold=100.0)
-    fig, ax = pl.subplots(1, 1)
-    ax.imshow(grid_vs.T)
-    maxblob = 0.
+    print "Found %d blobs" % len(blobs)
+
+    if plotobj:
+        fig, ax = pl.subplots(1, 1)
+        ax.imshow(grid_vs.T, extent=[np.min(xi), np.max(xi),
+                                     np.min(yi), np.max(yi)])
     goodblob = 0
-    amplitude = 1000.
-    xo = 0.
-    yo = 0.
-    sigma_x = 1.
-    sigma_y = 1.
+
+    # Loop over found blobs
+    objs = []
     for blob in blobs:
+        # Extract blob properties
         bx, by, br = blob
+        # How bright is this blob?
         gv = grid_vs[bx, by]-grid_med
+        # Exclude edge blobs and faint blobs
         if 0 < bx < 199 and 0 < by < 199 and gv > 100.:
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
                   (goodblob, gv, bx, by, xi[bx], yi[by]))
-            c = pl.Circle((bx, by), br, color='white', linewidth=2, fill=False)
-            ax.add_patch(c)
-            pl.annotate("%d" % goodblob, xy=(bx, by), xytext=(bx+br, by+br),
-                        color='white')
-            if gv > maxblob:
-                maxblob = gv
-                xo = xi[bx]
-                yo = yi[by]
-                amplitude = maxblob
-    pl.xlim(200, 0)
-    pl.ylim(0, 200)
-    # pl.show()
+            objs.append((gv, xi[bx], yi[by], goodblob))
+            if plotobj:
+                c = pl.Circle((xi[bx], yi[by]), 2.0, color='white',
+                              linewidth=2, fill=False)
+                ax.add_patch(c)
+                pl.annotate("%d" % goodblob, xy=(xi[bx], yi[by]),
+                            xytext=(xi[bx]+2., yi[by]+2.), color='white')
 
-    print("initial guess : z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
-          (amplitude, sigma_x, sigma_y, xo, yo, 0.))
+    print "Found %d good objects" % len(objs)
+    if len(objs) <= 0:
+        objs = [(1000., 0., 0., goodblob)]
+    # Make sure the brightest object is last
+    objs.sort()
 
-    # create data
-    initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0,
-                     np.nanmean(grid_vs))
+    sigma_x = 2.2
+    sigma_y = 1.7
+    for obj in objs:
+        amplitude = obj[0]
+        xo = obj[1]
+        yo = obj[2]
+        objno = obj[3]
 
-    try:
-        popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
-                                   grid_vs.flatten(), p0=initial_guess)
-    except RuntimeError:
-        print "ERROR: unable to fit Gaussian"
-        print "Using initial guess"
-        status = 3
-        popt = initial_guess
+        print "\nFitting object %d" % objno
+        print("initial guess : z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
+              (amplitude, sigma_x, sigma_y, xo, yo, 0.))
 
-    xc = popt[1]
-    yc = popt[2]
-    if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
-        print "ERROR: X,Y out of bounds: %f, %f" % (xc, yc)
-        print "Using initial position: %f, %f" % (xo, yo)
-        xc = xo
-        yc = yo
-        status = 1
-    pos = (xc, yc)
+        # create data
+        initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, grid_med)
 
-    # get 3-sigma extent
-    a = popt[3]*sigfac
-    b = popt[4]*sigfac
-    if a > 30. or b > 30.:
-        print "ERROR: A,B out of bounds: %f, %f" % (a, b)
-        print "Using initial values: %f, %f" % (sigma_x, sigma_y)
-        a = sigma_x * sigfac
-        b = sigma_y * sigfac
-        status = 2
-    theta = popt[5]
-    z = popt[0]
+        try:
+            popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
+                                       grid_vs.flatten(), p0=initial_guess)
+        except RuntimeError:
+            print "ERROR: unable to fit Gaussian"
+            print "Using initial guess"
+            status = 3
+            popt = initial_guess
 
-    # report position and shape
-    ellipse = (a, b, xc, yc, theta * (180. / np.pi))
-    print("PSF FIT on IFU: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
-          (z, a, b, xc, yc, theta*180./np.pi))
+        xc = popt[1]
+        yc = popt[2]
+        if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
+            print "ERROR: X,Y out of bounds: %f, %f" % (xc, yc)
+            print "Using initial position: %f, %f" % (xo, yo)
+            xc = xo
+            yc = yo
+            status = 1
+        pos = (xc, yc)
 
-    leffmic = (lmax+lmin)/2000.0    # convert to microns
+        # get 3-sigma extent
+        a = popt[3]*sigfac
+        b = popt[4]*sigfac
+        if a > 30. or b > 30.:
+            print "ERROR: A,B out of bounds: %f, %f" % (a, b)
+            print "Using initial values: %f, %f" % (sigma_x, sigma_y)
+            a = sigma_x * sigfac
+            b = sigma_y * sigfac
+            status = 2
+        theta = popt[5]
+        z = popt[0]
 
-    if prlltc is not None:
-        positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
-    else:
-        positions = [pos]
+        # report position and shape
+        ellipse = (a, b, xc, yc, theta * (180. / np.pi))
+        print("PSF FIT on IFU: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f\n" %
+              (z, a, b, xc, yc, theta*180./np.pi))
 
-    all_kix = []
-    for the_pos in positions:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                   -theta)))
+        if plotobj:
+            e = Ellipse(xy=(xc, yc), width=a, height=b, angle=-theta*180./np.pi,
+                        color='lime', linewidth=2, fill=False)
+            ax.add_patch(e)
 
-    all_kix = list(itertools.chain(*all_kix))
-    kix = list(set(all_kix))
-    print "found this many spaxels: %d" % len(kix)
+        leffmic = (lmax+lmin)/2000.0    # convert to microns
+
+        if prlltc is not None:
+            positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
+        else:
+            positions = [pos]
+
+        all_kix = []
+        for the_pos in positions:
+            all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
+                                                       -theta)))
+
+        all_kix = list(itertools.chain(*all_kix))
+        kix = list(set(all_kix))
+        print "found this many spaxels: %d" % len(kix)
 
     if status == 0 and goodblob == 0:
-        print "ERROR: no good point sources found in image"
-        status = 6
+        print "ERROR: no good objects found in image"
+        status = 4
+
+    if plotobj:
+        pl.title("Good Objects")
+        pl.xlabel("RA offset [asec]")
+        pl.ylabel("Dec offset [asec]")
+        pl.grid(True)
+        pl.xlim(14, -14)
+        pl.ylim(-14, 14)
+        pl.show()
 
     return kt.good_positions[kix], pos, positions, ellipse, status
 
