@@ -24,6 +24,8 @@ import NPK.Atmosphere as Atm
 from scipy.interpolate import griddata
 import scipy.optimize as opt
 
+import skimage.feature as feature
+
 
 def reject_outliers(data, m=2.):
     d = np.abs(data - np.median(data))
@@ -134,10 +136,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Get X,Y positions (arcsec) and summed values between lmin and lmax
     xs, ys, vs = kt.to_xyv(lmin=lmin, lmax=lmax)
 
-    xi = np.linspace(np.nanmin(xs), np.nanmax(xs), 100)
+    xi = np.linspace(np.nanmin(xs), np.nanmax(xs), 200)
     yi = np.linspace(np.nanmin(ys), np.nanmax(ys), 200)
 
-    x, y = np.mgrid[np.nanmin(xs):np.nanmax(xs):100j,
+    x, y = np.mgrid[np.nanmin(xs):np.nanmax(xs):200j,
                     np.nanmin(ys):np.nanmax(ys):200j]
 
     points = zip(xs, ys)
@@ -145,19 +147,42 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     grid_vs = griddata(points, values, (x, y), method='linear')
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
+    grid_med = np.median(grid_vs)
     print("grid_vs min, max, mean: %f, %f, %f" %
           (np.nanmin(grid_vs), np.nanmax(grid_vs), np.nanmean(grid_vs)))
 
-    # pl.plot(np.nansum(grid_vs, axis=1))
-    # pl.plot(np.nansum(grid_vs, axis=0))
-    # pl.show()
-    # Initialize the first guess for the Gaussian
-    xo = xi[np.argmax(np.nansum(grid_vs, axis=1))]
-    yo = yi[np.argmax(np.nansum(grid_vs, axis=0))]
-    sigma_x = 1.3
+    blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
+                             threshold=100.0)
+    fig, ax = pl.subplots(1, 1)
+    ax.imshow(grid_vs.T)
+    maxblob = 0.
+    goodblob = 0
+    amplitude = 1000.
+    xo = 0.
+    yo = 0.
+    sigma_x = 1.
     sigma_y = 1.
-    amplitude = np.nanmax(grid_vs)
-    print("initial guess: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
+    for blob in blobs:
+        bx, by, br = blob
+        gv = grid_vs[bx, by]-grid_med
+        if 0 < bx < 199 and 0 < by < 199 and gv > 100.:
+            goodblob += 1
+            print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
+                  (goodblob, gv, bx, by, xi[bx], yi[by]))
+            c = pl.Circle((bx, by), br, color='white', linewidth=2, fill=False)
+            ax.add_patch(c)
+            pl.annotate("%d" % goodblob, xy=(bx, by), xytext=(bx+br, by+br),
+                        color='white')
+            if gv > maxblob:
+                maxblob = gv
+                xo = xi[bx]
+                yo = yi[by]
+                amplitude = maxblob
+    pl.xlim(200, 0)
+    pl.ylim(0, 200)
+    # pl.show()
+
+    print("initial guess : z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
           (amplitude, sigma_x, sigma_y, xo, yo, 0.))
 
     # create data
@@ -197,7 +222,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     # report position and shape
     ellipse = (a, b, xc, yc, theta * (180. / np.pi))
-    print("PSF FIT on IFU:  z,a,b,x,y,theta = %f, %f, %f, %f, %f, %f" %
+    print("PSF FIT on IFU: z,a,b,x,y,theta: %f, %f, %f, %f, %f, %f" %
           (z, a, b, xc, yc, theta*180./np.pi))
 
     leffmic = (lmax+lmin)/2000.0    # convert to microns
@@ -215,6 +240,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     print "found this many spaxels: %d" % len(kix)
+
+    if status == 0 and goodblob == 0:
+        print "ERROR: no good point sources found in image"
+        status = 6
 
     return kt.good_positions[kix], pos, positions, ellipse, status
 
