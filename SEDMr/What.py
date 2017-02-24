@@ -1,4 +1,4 @@
-import pyfits as pf
+import astropy.io.fits as pf
 
 
 def go(imfiles):

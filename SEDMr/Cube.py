@@ -128,7 +128,7 @@ def qr_to_img(exts, size=4, outname="cube.fits"):
         except:
             pass
 
-        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x, y)
+        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x[0], y[0])
         print outstr,
         sys.stdout.flush()
 
@@ -261,8 +261,9 @@ def extraction_to_cube(exts, outname="G.npy"):
     # Record wavelength mean and report stats
     xreflams = reject_outliers(
             np.array([ex.xreflam for ex in exts], dtype=np.float))
-    meta = {"fiducial_wavelength": np.mean(xreflams)}
-    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams), np.std(xreflams))
+    meta_data = {"fiducial_wavelength": np.mean(xreflams)}
+    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams)[0],
+                                        np.std(xreflams)[0])
 
     # make arrays
     xs = np.array(xs, dtype=np.float)
@@ -373,7 +374,6 @@ def extraction_to_cube(exts, outname="G.npy"):
     # convert to pixel X,Y
     # xs = np.sqrt(3) * (qs + rs/2.0)
     xs = 2.1 * (qs + rs/2.2)
-    # ys = 3/2 * rs
     ys = 1.5 * rs
 
     # t= np.radians(165.0+45)
@@ -389,14 +389,14 @@ def extraction_to_cube(exts, outname="G.npy"):
         p = np.dot(rot, np.array([xs[ix], ys[ix]]))
         # Convert to RA, Dec
         # Note 0.633 is plate scale measured on 22 May 2014.
-        hex_scale = 0.315
-        ex.Xhex_as = p[0] * 0.3
+        # hex_scale = 0.315
+        ex.Xhex_as = p[0] * 0.300
         ex.Yhex_as = p[1] * 0.355
         ex.X_as = ex.Xhex_as
         ex.Y_as = ex.Yhex_as
 
     # Write out the cube
-    np.save(outname, [exts, meta])
+    np.save(outname, [exts, meta_data])
     print "Wrote %s.npy" % outname
 
 
@@ -429,7 +429,8 @@ extract: To extract the cube (one for each observation)
     parser.add_argument('extracted', type=str, help='Extracted file')
     parser.add_argument('--step', type=str, default='make',
                         help='[make|extract|dump]')
-    parser.add_argument('--outname', type=str, help='Output cube name')
+    parser.add_argument('--outname', type=str, default='cube',
+                        help='Output cube name')
 
     args = parser.parse_args()
 
@@ -458,4 +459,3 @@ extract: To extract the cube (one for each observation)
         np.savetxt("%s_dump.txt" % infile, dat.T)
     else:
         print "NO STEP TO PERFORM"
-

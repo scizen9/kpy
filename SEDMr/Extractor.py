@@ -170,9 +170,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     for blob in blobs:
         # Extract blob properties
         bx, by, br = blob
-        c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
-                      linewidth=1, fill=False)
-        ax.add_patch(c)
+        if plotobj:
+            c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
+                          linewidth=1, fill=False)
+            ax.add_patch(c)
         # How bright is this blob?
         gv = grid_vs[bx, by]-grid_med
         # Exclude edge blobs and faint blobs

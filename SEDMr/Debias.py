@@ -15,7 +15,7 @@ Note:
 
 """
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 import scipy.ndimage.filters as FI
 
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         bias = pf.open(bfname)
 
         # Bias frame subtraction
-        FF[0].data -= bias[0].data
+        FF[0].data = FF[0].data - bias[0].data
 
         # Overscan subtraction
         FF[0].data = remove(FF)

@@ -3,7 +3,7 @@
 import os
 import sys
 
-import pyfits as pf
+import astropy.io.fits as pf
 
 import NPK.Bar as Bar
 import NPK.Standards as Stds

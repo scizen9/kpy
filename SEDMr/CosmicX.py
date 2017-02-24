@@ -1,4 +1,3 @@
-#!/scr2/neill/Ureka/variants/common/bin/python
 """
 
 .. module:: CosmicX
@@ -12,7 +11,7 @@ __version__ = "0.1"
 
 import argparse
 import numpy as np
-import pyfits
+import astropy.io.fits as pf
 try:
     import _lacosmicx
 except ImportError:
@@ -55,7 +54,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    f = pyfits.open(args.raw)
+    f = pf.open(args.raw)
     header = f[0].header
     array = np.array(f[0].data, dtype=np.float32)
     f.close()
@@ -68,9 +67,9 @@ if __name__ == '__main__':
         header['history'] = "LA CosmicX params: fsmode=%s psfmodel=%s psffwhm=%5.2f" % (args.fsmode, args.psfmodel, args.psffwhm)
         header['history'] = "LA CosmicX params: sepmed=%s minexptime=%f" % (args.sepmed, args.minexptime)
 
-        pyfits.writeto(args.clean, clean, header)
+        pf.writeto(args.clean, clean, header)
         mask = np.cast["uint8"](mask)
-        pyfits.writeto(args.mask, mask, header)
+        pf.writeto(args.mask, mask, header)
     else:
         header['history'] = "LA CosmicX: exptime < minexptime=%.1f" % args.minexptime
-        pyfits.writeto(args.clean, array, header)
+        pf.writeto(args.clean, array, header)
