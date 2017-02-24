@@ -262,8 +262,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     xreflams = reject_outliers(
             np.array([ex.xreflam for ex in exts], dtype=np.float))
     meta_data = {"fiducial_wavelength": np.mean(xreflams)}
-    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams)[0],
-                                        np.std(xreflams)[0])
+    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams),
+                                        np.std(xreflams))
 
     # make arrays
     xs = np.array(xs, dtype=np.float)
