@@ -43,7 +43,7 @@ Note:
 import os
 import argparse
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 from scipy.spatial import KDTree 
 
 from numpy.polynomial.chebyshev import chebval

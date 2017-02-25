@@ -9,7 +9,7 @@
 import argparse
 from collections import namedtuple
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 from multiprocessing import Pool
 import sys
 import warnings
@@ -51,7 +51,7 @@ def spanrange(locs):
 def load_data(segmapfn, objfn):
     """Returns HDUs from files segmapfn and objfn.
     
-    load_data is a thin wrapper around pyfits
+    load_data is a thin wrapper around astropy.io.fits
 
     """
 

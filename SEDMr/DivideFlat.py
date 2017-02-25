@@ -21,7 +21,7 @@ Note:
 
 import argparse
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 
 import NPK.Fit as FF
 import SEDMr.IO as IO

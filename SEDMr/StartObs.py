@@ -30,7 +30,7 @@ import shutil
 import glob
 import sys
 import os
-import pyfits as pf
+import astropy.io.fits as pf
 import argparse
 import ephem
 

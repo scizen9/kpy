@@ -229,8 +229,8 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     pl.ylabel("erg/s/cm2/ang")
 
     # Handle plot geometry
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("900x500+10+10")
+    # plm = pl.get_current_fig_manager()
+    # plm.window.wm_geometry("900x500+10+10")
 
     # See if this is a standard star
     pred = specname[7:]

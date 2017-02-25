@@ -2,7 +2,7 @@
 import argparse, os, pdb, sys
 import numpy as np
 import pylab as pl
-import pyfits as pf
+import astropy.io.fits as pf
 import scipy.signal as SG
 from scipy.spatial import KDTree 
 

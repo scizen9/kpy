@@ -1,8 +1,7 @@
 
-import argparse, os, pdb, sys
+import argparse
 import numpy as np
-import pyfits as pf
-
+import astropy.io.fits as pf
 
 
 def roll_file(infile, X, Y):
@@ -18,11 +17,7 @@ def roll_file(infile, X, Y):
     FF[0].header['ROLLX'] = (X, "Rolled in X")
     FF[0].header['ROLLY'] = (Y, "Rolled in Y")
 
-
     FF.writeto(infile, clobber=True)
-
-    
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
@@ -34,6 +29,4 @@ if __name__ == '__main__':
     parser.add_argument('--Y', type=float, default=0, help='Roll amount Y')
     args = parser.parse_args()
 
-    
     roll_file(args.infile, args.X, args.Y)
-

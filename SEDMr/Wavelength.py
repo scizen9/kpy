@@ -4,8 +4,7 @@ from multiprocessing import Pool
 import numpy as np
 import os
 import pylab as pl
-import pyfits as pf
-import scipy
+import astropy.io.fits as pf
 import sys
 import warnings
 
@@ -28,7 +27,7 @@ reload(Extraction)
 from numpy import NaN, Inf, arange, isscalar, asarray, array
 
 
-def peakdet(v, delta, x = None):
+def peakdet(v, delta, x=None):
     """
     Converted from MATLAB script at http://billauer.co.il/peakdet.html
     
@@ -353,11 +352,11 @@ def fractional_sum(FS_Y, FS_EW, FS_dat, FS_Yx1):
     return FSsum
 
 
-def make_profile(slice, sigma2=4):
+def make_profile(sl, sigma2=4):
     """ Return a gaussian profile with the same dimensions as the slice """
 
-    profile = np.arange(np.round(slice.stop)-np.round(slice.start))
-    profile -= (len(profile)-1)/2.0
+    profile = np.arange(np.round(sl.stop)-np.round(sl.start))
+    profile = profile - (len(profile)-1)/2.0
     profile = np.exp(- profile*profile/(2*sigma2))
     profile /= np.mean(profile)
 
@@ -408,13 +407,13 @@ def wavelength_extract_helper(SS):
         # slice[-2:3] will return elements -2 to +2 around 0
         # e.g. len(slice[-2:3]) == 5
         Ys = slice(
-            np.max((0, np.round(Y)+flexure_y_corr_pix-extract_width)),
-            np.min((np.round(Y)+flexure_y_corr_pix+extract_width+1, 2047)))
+            int(np.max((0, np.round(Y)+flexure_y_corr_pix-extract_width))),
+            int(np.min((np.round(Y)+flexure_y_corr_pix+extract_width+1, 2047))))
 
         # Expanded slice for fractional pixels
         Yx = slice(
-            np.max((0, np.round(Y)+flexure_y_corr_pix-extract_width-1)),
-            np.min((np.round(Y)+flexure_y_corr_pix+extract_width+2, 2047)))
+            int(np.max((0, np.round(Y)+flexure_y_corr_pix-extract_width-1))),
+            int(np.min((np.round(Y)+flexure_y_corr_pix+extract_width+2, 2047))))
 
         res[i] = np.sum(dat[Ys, X])
 
@@ -546,8 +545,8 @@ def extract_helper(ss):
         Ys = slice(np.max((0, np.int(Y)-3)), np.min((np.int(Y)+3, 2047)))
         # Expanded slice for fractional pixels
         Yx = slice(
-            np.max((0, np.round(Y)-extract_width-1)),
-            np.min((np.round(Y)+extract_width+2, 2047)))
+            int(np.max((0, np.round(Y)-extract_width-1))),
+            int(np.min((np.round(Y)+extract_width+2, 2047))))
 
         res[i] = np.sum(dat[Ys, X])
         # BUG: calling resw what should be resf, this is a cheap workaround
@@ -656,7 +655,7 @@ def median_fine_grid(fine, doPlot=False):
             continue
 
         try:
-            new_lls = scipy.stats.nanmedian(lls, 0)
+            new_lls = np.nanmedian(lls, 0)
         except:
             import pdb
             pdb.set_trace()
@@ -664,21 +663,21 @@ def median_fine_grid(fine, doPlot=False):
         diff = (lls - new_lls) / new_lls
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            stds = scipy.stats.nanstd(diff, 0)
+            stds = np.nanstd(diff, 0)
             bad = np.abs(diff/stds) > 4
         if bad.any():
             lls[bad] = np.nan
-            new_lls = scipy.stats.nanmedian(lls, 0)
+            new_lls = np.nanmedian(lls, 0)
 
         diff = (lls - new_lls) / new_lls
-        stds = scipy.stats.nanstd(diff, 0)
+        stds = np.nanstd(diff, 0)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             bad = np.abs(diff/stds) > 2
         if bad.any():
             lls[bad] = np.nan
 
-        new_lls = scipy.stats.nanmedian(lls, 0)
+        new_lls = np.nanmedian(lls, 0)
 
         spec.mdn_coeff = chebfit(np.arange(len(new_lls))+spec.xrange[0],
                                  new_lls, 3)
@@ -687,8 +686,8 @@ def median_fine_grid(fine, doPlot=False):
 
     if doPlot:
         pl.figure(3)
-        plm = pl.get_current_fig_manager()
-        plm.window.wm_geometry("+670+0")
+        #plm = pl.get_current_fig_manager()
+        #plm.window.wm_geometry("+670+0")
         pl.clf()
         pl.xlim(360, 550)
         pl.xlabel("Wave[nm]")
@@ -794,8 +793,8 @@ def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
         lls = np.array(lls)
 
         try:
-            new_lls = scipy.stats.nanmedian(lls, 0)
-            # new_lls_std = scipy.stats.nanstd(lls, 0)
+            new_lls = np.nanmedian(lls, 0)
+            # new_lls_std = np.nanstd(lls, 0)
         except:
             import pdb
             pdb.set_trace()
@@ -803,12 +802,12 @@ def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
         diff = (lls - new_lls) / new_lls
         bad = np.abs(diff) > .05
         lls[bad] = np.nan
-        new_lls = scipy.stats.nanmedian(lls, 0)
+        new_lls = np.nanmedian(lls, 0)
 
         diff = (lls - new_lls) / new_lls
         bad = np.abs(diff) > .05
         lls[bad] = np.nan
-        new_lls = scipy.stats.nanmedian(lls, 0)
+        new_lls = np.nanmedian(lls, 0)
 
         gridded[ix].mdn_hgcoef = chebfit(np.arange(len(new_lls)), new_lls, 4)
         import pdb

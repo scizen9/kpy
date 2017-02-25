@@ -1,23 +1,10 @@
 
 import argparse
-import pdb
 import numpy as np
 import pylab as pl
-import pyfits as pf
-import sys
 import warnings
 
-
 import NPK.Fit as FF
-from astropy.table import Table 
-
-
-from scipy.spatial import KDTree 
-import scipy.signal as SG
-from scipy.interpolate import interp1d
-
-
-from numpy.polynomial.chebyshev import chebfit, chebval
 
 import SEDMr.Extraction as Extraction
 import SEDMr.Wavelength as Wavelength
@@ -36,19 +23,21 @@ def measure_flat(extraction, meta,
     corrections = []
     Xs = []
     Ys = []
-    for i,e in enumerate(extraction):
+    for i, e in enumerate(extraction):
         fc = FC(seg_id=e.seg_id)
         corrections.append(fc)
 
         if not e.ok: continue
 
-        try: l,f = e.get_flambda()
-        except: continue
+        try:
+            l, f = e.get_flambda()
+        except:
+            continue
 
         Xs.append(np.nanmin(e.xrange)+e.xrefpix)
         Ys.append(np.mean(e.yrange))
 
-        ROI = (l>lamstart) & (l <= lamend)
+        ROI = (l > lamstart) & (l <= lamend)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             fc.correction = np.nanmean(f[ROI])
@@ -84,7 +73,6 @@ if __name__ == '__main__':
         """Create dome flat
 
         """, formatter_class=argparse.RawTextHelpFormatter)
-
 
     parser.add_argument('infile', type=str, help='Path to dome flat')
     parser.add_argument('--lamstart', type=float,

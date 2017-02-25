@@ -37,7 +37,6 @@ import warnings
 import numpy as np
 import pylab as pl
 import scipy.signal
-import scipy.stats
 from numpy.polynomial.chebyshev import chebfit
 from scipy.interpolate import interp1d
 
@@ -181,7 +180,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     corrs = np.array(corrs)
     erg_s_cm2_ang = corrs * np.median(corr_vals) * 1e-16
     # Take the median of the correction vectors
-    the_corr = scipy.stats.nanmedian(erg_s_cm2_ang, 0)
+    the_corr = np.nanmedian(erg_s_cm2_ang, 0)
     # Fit red end unless we are calibrated out there
     if not np.isfinite(the_corr).all() and maxnm < 1000.0:
         print "Fitting red end"

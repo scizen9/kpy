@@ -5,7 +5,7 @@ import glob
 import numpy as np
 import pylab as pl
 from matplotlib.patches import Ellipse
-import pyfits as pf
+import astropy.io.fits as pf
 import itertools
 import warnings
 
@@ -29,8 +29,8 @@ import skimage.feature as feature
 
 
 def reject_outliers(data, m=2.):
-    d = np.abs(data - np.median(data))
-    mdev = np.median(d)
+    d = np.abs(data - np.nanmedian(data))
+    mdev = np.nanmedian(d)
     d[d != d] = 100000.
     s = d/mdev if mdev else 0.
     return data[s < m]
@@ -121,7 +121,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 
 
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
-                               airmass=1.0, sigfac=3.0, plotobj=False):
+                               airmass=1.0, sigfac=3.0, plotobj=True):
     """ 
     Returns index of spectra picked by Guassian fit.
     
@@ -149,7 +149,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Create image, print stats
     grid_vs = griddata(points, values, (x, y), method='linear')
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
-    grid_med = np.median(grid_vs)
+    grid_med = np.nanmedian(grid_vs)
     print("grid_vs min, max, mean, median: %f, %f, %f, %f\n" %
           (np.nanmin(grid_vs), np.nanmax(grid_vs),
            np.nanmean(grid_vs), grid_med))
@@ -170,6 +170,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     for blob in blobs:
         # Extract blob properties
         bx, by, br = blob
+
+        bx = int(bx)
+        by = int(by)
+
         if plotobj:
             c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
                           linewidth=1, fill=False)
@@ -418,7 +422,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     kt = SedSpec.Spectra(newspec)
 
     xs, ys, vs = kt.to_xyv(lmin=lmin, lmax=lmax)
-    vmdn = np.median(vs)
+    vmdn = np.nanmedian(vs)
 
     vstd = np.nanstd(vs)
 
@@ -437,11 +441,11 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
         ok = (l > lmin) & (l <= lmax)
 
-        if np.median(el.spec[ok]) > hi_thresh:
+        if np.nanmedian(el.spec[ok]) > hi_thresh:
             skys.remove(s)
             n_hi_rem += 1
 
-        if np.median(el.spec[ok]) < lo_thresh:
+        if np.nanmedian(el.spec[ok]) < lo_thresh:
             skys.remove(s)
             n_lo_rem += 1
 
@@ -531,15 +535,15 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
             ys.append(x.Y_as)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                vs.append(np.median(x.specw[ok]))
+                vs.append(np.nanmedian(x.specw[ok]))
 
     if bgd_sub:
-        vs -= np.median(vs)
+        vs -= np.nanmedian(vs)
 
     # Clean outliers
     vcln = reject_outliers(np.array(vs, dtype=np.float), m=3.)
     vstd = np.nanstd(vcln)
-    vmid = np.median(vcln)
+    vmid = np.nanmedian(vcln)
     if cmin is None or cmax is None:
         if posb is None:
             vmin = vmid - vstd
@@ -928,9 +932,9 @@ def bgd_level(extractions):
 
             l, fl = spectrum.get_counts(the_spec='specw')
 
-            levels.append(np.median(fl))
+            levels.append(np.nanmedian(fl))
 
-    bgd = np.median(levels)
+    bgd = np.nanmedian(levels)
     sd = np.std(levels)
     pl.plot(levels, 'x')
     pl.axhline(bgd)
@@ -1238,7 +1242,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Calculate airmass correction
     airmass = meta['airmass']
     extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
-    print "Median airmass corr: %.4f" % np.median(extcorr)
+    print "Median airmass corr: %.4f" % np.nanmedian(extcorr)
     # Calculate output corrected spectrum
     # Account for sky, airmass and aperture
     res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
@@ -1608,7 +1612,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Calculate airmass correction
         airmass = meta['airmass']
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
-        print "Median airmass corr: %.4f" % np.median(extcorr)
+        print "Median airmass corr: %.4f" % np.nanmedian(extcorr)
         # Calculate output corrected spectrum
         if stats['nosky']:
             print "Sky subtraction off"
@@ -1986,7 +1990,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         extcorra = 10**(Atm.ext(ll*10)*airmassa/2.5)
         extcorrb = 10**(Atm.ext(ll*10)*airmassb/2.5)
         print("Median airmass corrs A: %.4f, B: %.4f" %
-              (np.median(extcorra), np.median(extcorrb)))
+              (np.nanmedian(extcorra), np.nanmedian(extcorrb)))
         # If requested merely sum in aperture, otherwise subtract sky
         if stats['nosky']:
             print "Sky subtraction off"
