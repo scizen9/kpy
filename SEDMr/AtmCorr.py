@@ -156,7 +156,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         if "std-maxnm" in data.keys():
             if data['std-maxnm'] > maxnm:
                 maxnm = data['std-maxnm']
-        # Convert file named sp_STD-nnnn_obs* to a name compaitable
+        # Convert file named sp_STD-nnnn_obs* to a name compatable
         # with Standards.py.  First strip of "sp_STD-"
         pred = ifile[7:]
         pred = pred.split("_")[0]
@@ -178,7 +178,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
 
     # Rescale each correction and scale to erg/s/cm2/Ang
     corrs = np.array(corrs)
-    erg_s_cm2_ang = corrs * np.median(corr_vals) * 1e-16
+    erg_s_cm2_ang = corrs * np.nanmedian(corr_vals) * 1e-16
     # Take the median of the correction vectors
     the_corr = np.nanmedian(erg_s_cm2_ang, 0)
     # Fit red end unless we are calibrated out there
@@ -227,8 +227,10 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     if plot_filt:
         pl.semilogy(ll, the_corr * 4., linewidth=2)
         filt_legend.append("Balmer*4")
+    # Filter nans
+    fin = np.isfinite(the_corr)
     # Filter correction to remove spectral features and leave response alone
-    the_corr = scipy.signal.savgol_filter(the_corr, 9, 5)
+    the_corr[fin] = scipy.signal.savgol_filter(the_corr[fin], 9, 5)
     # Plot intermediate correction
     if plot_filt:
         pl.semilogy(ll, the_corr * 2., linewidth=2)
