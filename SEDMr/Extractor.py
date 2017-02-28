@@ -559,12 +559,12 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
 
     pl.ylim(-14, 14)
     pl.xlim(14, -14)
-    sym_size = 70
+    sym_size = 35
     pl.grid(True)
 
     print "scaling output image between %d and %d" % (vmin, vmax)
     pl.scatter(xs, ys, c=vs, s=sym_size, marker='H', linewidth=0,
-               vmin=vmin, vmax=vmax)
+               vmin=vmin, vmax=vmax, cmap=pl.get_cmap('jet'))
 
     if posa is not None:
         pl.axvline(posa[0], color='black', linewidth=.5)
@@ -588,7 +588,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
 
     if adcpos is not None:
         for p in adcpos:
-            pl.plot(p[0], p[1], 'rx')
+            pl.plot(p[0], p[1], 'rx', mew=0.1)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")

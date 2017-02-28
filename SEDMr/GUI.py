@@ -105,7 +105,7 @@ class PositionPicker(object):
     scaled = None
     ellipse = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, ellipse=None,
+    def __init__(self, spectra=None, pointsize=35, bgd_sub=False, ellipse=None,
                  objname=None, scaled=False,
                  lmin=600, lmax=650, cmin=-300, cmax=300, nosky=False):
         """ Create spectum picking gui.
@@ -130,7 +130,7 @@ class PositionPicker(object):
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
-            self.Vs -= np.median(self.Vs)
+            self.Vs -= np.nanmedian(self.Vs)
 
         pl.ioff()
         pl.title("%s Image from %s to %s nm" % (self.objname,
@@ -152,7 +152,7 @@ class PositionPicker(object):
             if self.bgd_sub:
                 v_mid = 0.
             else:
-                v_mid = np.median(self.Vs)
+                v_mid = np.nanmedian(self.Vs)
 
             # get standard deviation
             v_std = np.nanstd(self.Vs)
@@ -166,7 +166,7 @@ class PositionPicker(object):
         # plot (may want to use cmap=pl.cm.Spectral)
         print "scaling image display between %d and %d" % (dv_min, dv_max)
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
-                   vmin=dv_min, vmax=dv_max)
+                   vmin=dv_min, vmax=dv_max, cmap=pl.get_cmap('jet'))
 
         pl.ylim(-14, 14)
         pl.xlim(14, -14)
@@ -210,7 +210,7 @@ class ScaleCube(object):
     cmin = None
     cmax = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False,
+    def __init__(self, spectra=None, pointsize=35, bgd_sub=False,
                  objname=None, lmin=600, lmax=650):
         """ Create scaling gui.
 
@@ -243,7 +243,7 @@ class ScaleCube(object):
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
-            self.Vs -= np.median(self.Vs)
+            self.Vs -= np.nanmedian(self.Vs)
 
         # get standard deviation
         v_std = np.nanstd(self.Vs)
@@ -258,9 +258,11 @@ class ScaleCube(object):
                 self.cmin = -300
                 self.cmax = 300
         else:
-            v_mid = np.median(self.Vs)
+            v_mid = np.nanmedian(self.Vs)
             self.cmin = v_mid - 3.0 * v_std
             self.cmax = v_mid + 3.0 * v_std
+
+        print "mid, std: %f, %f" % (v_mid, v_std)
 
         pl.ioff()
 
@@ -275,9 +277,9 @@ class ScaleCube(object):
         pl.title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
                  (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
 
-        # plot (may want to use cmap=pl.cm.Spectral)
         self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
-                               linewidth=0, vmin=self.cmin, vmax=self.cmax)
+                               linewidth=0, vmin=self.cmin, vmax=self.cmax,
+                               cmap=pl.get_cmap('jet'))
 
         pl.ylim(-14, 14)
         pl.xlim(14, -14)
@@ -364,7 +366,7 @@ class WaveFixer(object):
     ax_cube = None
     ax_spec = None
 
-    def __init__(self, cube=None, pointsize=65):
+    def __init__(self, cube=None, pointsize=35):
         """ Create spectum picking gui.
 
         Args:
