@@ -121,7 +121,7 @@ def gaussian_2d(xdata_tuple, amplitude, xo, yo,
 
 
 def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
-                               airmass=1.0, sigfac=3.0, plotobj=True):
+                               airmass=1.0, sigfac=3.0, plotobj=False):
     """ 
     Returns index of spectra picked by Guassian fit.
     
