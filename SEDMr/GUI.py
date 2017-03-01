@@ -299,7 +299,8 @@ class ScaleCube(object):
 
         self.scat = ax.scatter(self.Xs, self.Ys, c=self.Vs,
                                s=self.pointsize, linewidth=0,
-                               vmin=self.cmin, vmax=self.cmax)
+                               vmin=self.cmin, vmax=self.cmax,
+                               cmap=pl.get_cmap('jet'))
         self.cb.set_clim(self.cmin, self.cmax)
         self.cb.update_normal(self.scat)
         self.figure.canvas.draw()

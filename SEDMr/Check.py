@@ -95,7 +95,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=35, c=ss, vmin=smn, vmax=smx,
+               cmap=pl.get_cmap('jet'))
     pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(15, -15)
     pl.ylim(-15, 15)

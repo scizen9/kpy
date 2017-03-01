@@ -2,8 +2,7 @@
 
 source activate astroconda
 
-PATH=${PATH}:/Users/neill/Ureka/bin
-export PATH
+export PATH=${PATH}:$HOME/Ureka/bin
 
 SEDMPATH=$HOME/kpy
 
