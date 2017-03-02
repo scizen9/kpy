@@ -369,7 +369,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Save fig to file
     if savefig:
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM.pdf'
         pl.savefig(outf)
         print "Figure saved to " + outf
@@ -382,7 +382,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
             '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
@@ -412,7 +412,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.grid(True)
         pl.ioff()
         if savefig:
-            outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+            outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM_eff.pdf'
             pl.savefig(outf)
             print "Figure saved to " + outf
