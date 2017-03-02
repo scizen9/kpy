@@ -411,8 +411,8 @@ def reject_outliers(data, m=2.):
         (numpy float array): input array with outliers removed
 
     """
-    d = np.abs(data - np.median(data))
-    mdev = np.median(d)
+    d = np.abs(data - np.nanmedian(data))
+    mdev = np.nanmedian(d)
     d[d != d] = 10000.
     s = d/mdev if mdev else 0.
     return data[s < m]
