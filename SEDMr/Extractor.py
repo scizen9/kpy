@@ -762,7 +762,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     pl.figure(2)
     pl.clf()
     s_grid = np.array(s_grid)
-    pl.imshow(s_grid, vmin=yl[0], vmax=yl[1])
+    pl.imshow(s_grid, vmin=yl[0], vmax=yl[1],cmap=pl.get_cmap('jet'))
     pl.xlabel('Wavelength bin [pixel]')
     pl.title("%s Spaxels" % outname.split('.')[0])
     pl.colorbar()
