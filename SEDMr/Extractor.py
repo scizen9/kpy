@@ -741,37 +741,39 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     medspec = np.nanmean(s_grid, axis=0)
 
     # Output figures if requested
+    do_plot = ((outname is not None) or plot)
 
     # Spectrum
-    pl.figure(3)
-    pl.clf()
-    pl.step(l_grid, medspec)
-    yl = pl.ylim()
-    pl.xlim(300., 1200.)
-    pl.xlabel('Wavelength [nm]')
-    pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
-    pl.title("%s Raw Spectrum" % outname.split('.')[0])
-    pl.grid(True)
-    if outname is not None:
-        pl.savefig("spec_%s" % outname)
-        print "Wrote spec_%s" % outname
-    if plot:
-        pl.show()
+    if do_plot:
+        pl.figure(3)
+        pl.clf()
+        pl.step(l_grid, medspec)
+        yl = pl.ylim()
+        pl.xlim(300., 1200.)
+        pl.xlabel('Wavelength [nm]')
+        pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
+        pl.title("%s Raw Spectrum" % outname.split('.')[0])
+        pl.grid(True)
+        if outname is not None:
+            pl.savefig("spec_%s" % outname)
+            print "Wrote spec_%s" % outname
+        if plot:
+            pl.show()
 
-    # Spaxel stack image
-    pl.figure(2)
-    pl.clf()
-    s_grid = np.array(s_grid)
-    pl.imshow(s_grid, vmin=yl[0], vmax=yl[1],cmap=pl.get_cmap('jet'))
-    pl.xlabel('Wavelength bin [pixel]')
-    pl.title("%s Spaxels" % outname.split('.')[0])
-    pl.colorbar()
-    pl.grid(True)
-    if outname is not None:
-        pl.savefig("allspec_%s" % outname)
-        print "Wrote allspec_%s" % outname
-    if plot:
-        pl.show()
+        # Spaxel stack image
+        pl.figure(2)
+        pl.clf()
+        s_grid = np.array(s_grid)
+        pl.imshow(s_grid, vmin=yl[0], vmax=yl[1],cmap=pl.get_cmap('jet'))
+        pl.xlabel('Wavelength bin [pixel]')
+        pl.title("%s Spaxels" % outname.split('.')[0])
+        pl.colorbar()
+        pl.grid(True)
+        if outname is not None:
+            pl.savefig("allspec_%s" % outname)
+            print "Wrote allspec_%s" % outname
+        if plot:
+            pl.show()
 
     # Package results
     doc = """Result contains:
@@ -809,21 +811,22 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         result[0]['corrected-spec'] = medspec * corrfun
 
         # Output corrected spectrum if requested
-        pl.figure(4)
-        pl.clf()
-        pl.step(l_grid, medspec*corrfun)
-        pl.ylim(yl[0], yl[1]*20)
-        pl.xlabel('Wavelength [nm]')
-        pl.ylabel(r'Spectral irradiance[photon/10 m/nm] x Atm correction')
-        pl.title("%s Corr Spectrum" % outname.split('.')[0])
-        pl.grid(True)
-        if outname is not None:
-            pl.savefig("corr_spec_%s" % outname)
-            print "Wrote corr_spec_%s" % outname
-        if plot:
-            pl.show()
+        if do_plot:
+            pl.figure(4)
+            pl.clf()
+            pl.step(l_grid, medspec*corrfun)
+            pl.ylim(yl[0], yl[1]*20)
+            pl.xlabel('Wavelength [nm]')
+            pl.ylabel(r'Spectral irradiance[photon/10 m/nm] x Atm correction')
+            pl.title("%s Corr Spectrum" % outname.split('.')[0])
+            pl.grid(True)
+            if outname is not None:
+                pl.savefig("corr_spec_%s" % outname)
+                print "Wrote corr_spec_%s" % outname
+            if plot:
+                pl.show()
 
-    pl.figure(2)
+            pl.figure(2)
 
     return result, newsix
 
