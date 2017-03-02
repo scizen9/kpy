@@ -1183,7 +1183,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
     skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
                                   sky=True)
-    vara, nspxav = interp_spectra(e_var, sixa, outname=outname+"_var.pdf")
+    vara, nspxav = interp_spectra(e_var, sixa)  # , outname=outname+"_var.pdf")
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1549,7 +1549,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
                                     percent=30.)
         skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
                                      sky=True)
-        vara, nsxav = interp_spectra(e_var, nsxa, outname=outname+"_var.pdf")
+        vara, nsxav = interp_spectra(e_var, nsxa)
+        # , outname=outname+"_var.pdf")
         # Plot out the X/Y positions of the selected spaxels
         xsa = []
         ysa = []
@@ -1884,10 +1885,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                      outname=outname+"_skyA.pdf", sky=True)
         skyb, nsxBk = interp_spectra(ex, kixb, sign=-1,
                                      outname=outname+"_skyB.pdf", sky=True)
-        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1,
-                              outname=outname+"_A_var.pdf")
-        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1,
-                              outname=outname+"_B_var.pdf")
+        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1)
+        # , outname=outname+"_A_var.pdf")
+        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1)
+        # , outname=outname+"_B_var.pdf")
 
         # Plot out the X/Y selected spectra
         xsa = []
