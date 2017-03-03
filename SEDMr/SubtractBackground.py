@@ -3,7 +3,7 @@
 import argparse
 import os
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 import sys
 import shutil
 

@@ -95,7 +95,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=35, c=ss, vmin=smn, vmax=smx,
+               cmap=pl.get_cmap('jet'))
     pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(15, -15)
     pl.ylim(-15, 15)
@@ -229,8 +230,8 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     pl.ylabel("erg/s/cm2/ang")
 
     # Handle plot geometry
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("900x500+10+10")
+    # plm = pl.get_current_fig_manager()
+    # plm.window.wm_geometry("900x500+10+10")
 
     # See if this is a standard star
     pred = specname[7:]
@@ -368,7 +369,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Save fig to file
     if savefig:
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM.pdf'
         pl.savefig(outf)
         print "Figure saved to " + outf
@@ -381,7 +382,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
             '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
@@ -411,7 +412,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.grid(True)
         pl.ioff()
         if savefig:
-            outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+            outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM_eff.pdf'
             pl.savefig(outf)
             print "Figure saved to " + outf

@@ -1,14 +1,5 @@
-import numpy as np
-import tempfile
 import os
 import getpass
-
-
-
-
-
-
-
 
 
 # catalog_name, output_name
@@ -91,29 +82,26 @@ XML_NAME         sex.xml        # Filename for XML output
 """
 
 
-
 def go(paths):
 
-    user= getpass.getuser()
+    user = getpass.getuser()
 
     f = open("/tmp/sex.%s.param" % user, 'w')
     f.write("NUMBER\n")
     f.close()
 
     for path in paths:
-        name= os.path.basename(path)
+        name = os.path.basename(path)
 
         c = sex_params.format(**{"catalog_name": "deleteme",
-            "user": user, "output_name": name})
+                                 "user": user, "output_name": name})
 
-        conf_file = open("/tmp/sedm_sex_%s_conf.sex" % user,"w")
+        conf_file = open("/tmp/sedm_sex_%s_conf.sex" % user, "w")
         conf_file.write(c)
         conf_file.close()
-        os.system("sex -c /tmp/sedm_sex_{1}_conf.sex {0}".format(path,user))
+        os.system("sex -c /tmp/sedm_sex_{1}_conf.sex {0}".format(path, user))
 
 if __name__ == '__main__':
     import sys
 
     go(sys.argv[1:])
-    
-

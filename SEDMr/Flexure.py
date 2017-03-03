@@ -2,7 +2,7 @@
 import argparse
 import numpy as np
 import pylab as pl
-import pyfits as pf
+import astropy.io.fits as pf
 
 import NPK.Fit as NFit
 
@@ -19,7 +19,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     Args:
         cube (extraction array): List of Extraction object, the fine loc +
             wave solution for each spectrum
-        hdulist (pyfits obj): Pyfits object for the spectrum to measure
+        hdulist (astropy.io.fits obj): Pyfits object for the spectrum to measure
         drow (float): offset in rows for flexure (y-axis)
         skylines (float, float): The night skylines to centroid on in nm
 
@@ -72,13 +72,14 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         for jx, xpos in enumerate(np.arange(f.xrange[0], f.xrange[1])):
 
             # get y position on image
-            ypos = yfun(xpos)
+            ypos = int(yfun(xpos))
 
             # extract spectrum from image
             try:
                 spec[jx] = np.sum(dat[ypos-extract_width:ypos+extract_width,
                                   xpos])
             except:
+                print "Warning: no sum for sky spectrum %d at %d" % (jx, xpos)
                 continue
 
         # get wavelengths of spaxel
