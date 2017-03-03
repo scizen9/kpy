@@ -2,8 +2,6 @@
 
 source activate astroconda
 
-export PATH=${PATH}:$HOME/Ureka/bin
-
 SEDMPATH=$HOME/kpy
 
 if [ -z ${PYTHONPATH+X} ]
