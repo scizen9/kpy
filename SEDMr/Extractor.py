@@ -831,12 +831,15 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     return result, newsix
 
 
-def imarith(operand1, op, operand2, result, doairmass=False, doexptime=False):
-    from pyraf import iraf
-    iraf.images()
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
 
-    pars = iraf.imarith.getParList()
-    iraf.imcombine.unlearn()
+
+def imarith(operand1, op, operand2, result, doairmass=False):
 
     try:
         os.remove(result)
@@ -844,30 +847,34 @@ def imarith(operand1, op, operand2, result, doairmass=False, doexptime=False):
         pass
 
     print "%s %s %s -> %s" % (operand1, op, operand2, result)
-    iraf.imarith(operand1=operand1, op=op, operand2=operand2, result=result)
-    iraf.imarith.setParList(pars)
-    if doairmass:
-        # Adjust FITS header
-        with pf.open(operand1) as f:
-            am1 = f[0].header['airmass']
-        with pf.open(operand2) as f:
-            am2 = f[0].header['airmass']
 
-        of = pf.open(result)
-        of[0].header['airmass1'] = am1
-        of[0].header['airmass2'] = am2
-        of.writeto(result, clobber=True)
-    if doexptime:
-        # Adjust FITS header
-        with pf.open(operand1) as f:
-            ex1 = f[0].header['exptime']
-        with pf.open(operand2) as f:
-            ex2 = f[0].header['exptime']
+    inhdu2 = None
+    inhdu1 = pf.open(operand1)
+    res = inhdu1[0].data
+    hdr = inhdu1[0].header
 
-        of = pf.open(result)
-        of[0].header['exptime1'] = ex1
-        of[0].header['exptime2'] = ex2
-        of.writeto(result, clobber=True)
+    if '+' in op:
+        if is_number(operand2):
+            res += float(operand2)
+            hdr['COMMENT'] = "imarith %s + %f" % (operand1, float(operand2))
+        else:
+            inhdu2 = pf.open(operand2)
+            res += inhdu2[0].data
+            hdr['COMMENT'] = "imarith %s + %s" % (operand1, operand2)
+    elif '-' in op:
+        inhdu2 = pf.open(operand2)
+        res -= inhdu2[0].data
+        hdr['COMMENT'] = "imarith %s - %s" % (operand1, operand2)
+    else:
+        print "Unrecognized operator: %s" % op
+        return
+
+    if doairmass and inhdu2 is not None:
+        # Adjust FITS header
+        hdr['airmass1'] = hdr['airmass']
+        hdr['airmass2'] = inhdu2[0].header['airmass']
+
+    pf.writeto(result, res, hdr)
 
 
 def gunzip(a, b):
@@ -912,14 +919,6 @@ def subtract(a, b, outname):
 
     a, b = gunzip(a, b)
     imarith(a, "-", b, outname, doairmass=True)
-    gzip(a, b)
-
-    return pf.open(outname)
-
-
-def divide(a, b, outname):
-    a, b = gunzip(a, b)
-    imarith(a, "/", b, outname)
     gzip(a, b)
 
     return pf.open(outname)

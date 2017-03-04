@@ -88,7 +88,8 @@ if __name__ == '__main__':
     
     for ifile in files:
         try:
-            if ifile[-5:] != '.fits': continue
+            if ifile[-5:] != '.fits':
+                continue
         except:
             continue
         print ifile

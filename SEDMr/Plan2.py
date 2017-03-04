@@ -247,15 +247,15 @@ def MF_imcombine(objname, files, dependencies=""):
     filelist = " ".join(["%s " % ifile for ifile in files])
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
-    if len(filelist) > 7:
-        reject = "sigclip"
+    if len(files) > 7:
+        reject = "-Nlo 3 --Nhi 3"
     else:
-        reject = "none"
+        reject = ""
     if "bias" in objname:
-        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 2 --files %s\n" % (
+        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst %s --files %s\n" % (
             objname, objname, reject, filelist)
     else:
-        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst --reject %s --Nlo 3 --Nhi 3 --files %s\n" % (
+        second = "\t$(IMCOMBINE) --outname %s.fits --listfile %s.lst %s --files %s\n" % (
             objname, objname, reject, filelist)
 
     if "bias" not in objname and "dome" not in objname:
