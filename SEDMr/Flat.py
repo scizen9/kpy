@@ -41,7 +41,7 @@ def measure_flat(extraction, fmeta, lamstart=700, lamend=900):
             fc.correction = np.nanmean(f[ROI])
 
     vals = [f.get_correction(0) for f in corrections]
-    medval = np.median(vals)
+    medval = np.nanmedian(vals)
 
     Ss = []
     for c in corrections: 
@@ -88,4 +88,4 @@ if __name__ == '__main__':
     flat = measure_flat(ext, meta, lamstart=args.lamstart, lamend=args.lamend)
 
     np.save(args.outfile, flat)
-    print "Wrote %s" % args.outfile
+    print("Wrote %s" % args.outfile)

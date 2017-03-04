@@ -116,7 +116,7 @@ class Spectra(object):
             Ys.append(XY[1])
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                Vs.append(np.median(el.spec[ok]))
+                Vs.append(np.nanmedian(el.spec[ok]))
 
         return (np.array(Xs),
                 np.array(Ys),

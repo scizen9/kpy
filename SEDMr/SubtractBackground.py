@@ -69,7 +69,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
                        outint=False, fft_filt=False):
 
     if outname is None:
-        print "Need an output name"
+        print("Need an output name")
         return
 
     infile[0].data = infile[0].data.astype(np.float64)
@@ -98,7 +98,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
 
     from astropy.convolution import convolve, convolve_fft, Box2DKernel
 
-    print "Traditional convolve (pass 1)"
+    print("Traditional convolve (pass 1)")
     # get convolution kernel
     k = Box2DKernel(17)
     # start with original masked image for background
@@ -106,7 +106,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
     # write out starting image if requested
     if outint:
         IO.writefits(pf.PrimaryHDU(bkg), "test_0.fits", clobber=True)
-        print "Wrote test_0.fits.gz"
+        print("Wrote test_0.fits.gz")
     # keep track of nans
     nans = ~np.isfinite(data)
     # good data
@@ -117,12 +117,12 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
         bkg = convolve(bkg, k)
         # replace background light
         bkg[oks] = data[oks]
-        print "\tIteration %d of 5" % (i+1)
+        print("\tIteration %d of 5" % (i+1))
         # write out each iteration if requested
         if outint:
             IO.writefits(pf.PrimaryHDU(bkg), "test_%i.fits" % (i+1),
                          clobber=True)
-            print "Wrote test_%i.fits.gz" % i
+            print("Wrote test_%i.fits.gz" % i)
 
     # insert iterative smoothed object pixels
     data[nans] = bkg[nans]
@@ -131,22 +131,22 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
     nans = ~np.isfinite(data)
     # fill them in with median value
     if np.count_nonzero(nans) > 0:
-        data[nans] = np.median(data[oks])
+        data[nans] = np.nanmedian(data[oks])
     # write out intermediate result if requested
     if outint:
         fname = os.path.join(os.path.dirname(outname),
                              "lf_" + os.path.basename(outname))
         IO.writefits(data, fname, clobber=True)
-        print "Wrote %s" % fname + ".gz"
+        print("Wrote %s" % fname + ".gz")
 
     # use FFT filter if requested
     if fft_filt:
-        print "FFT convolve (pass 2)"
+        print("FFT convolve (pass 2)")
         k = Box2DKernel(70)
         bkg = convolve_fft(data, k)
     # else, use gaussian filter of requested width in pixels
     else:
-        print "Gaussian filter with width = %d (pass 2)" % gausswidth
+        print("Gaussian filter with width = %d (pass 2)" % gausswidth)
         bkg = gaussian_filter(data, gausswidth)
 
     # write resulting background to a gzipped fits file
@@ -155,7 +155,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
     HDU = pf.PrimaryHDU(bkg)
     HDU.header["GAUFWID"] = (gausswidth, 'Gaussian filter width in pixels')
     IO.writefits(HDU, ofname, clobber=True)
-    print "Background image in %s" % ofname + ".gz"
+    print("Background image in %s" % ofname + ".gz")
 
     # record which file in output header
     infile[0].header["BGDSUB"] = "Background subtracted using %s" % ofname
@@ -167,7 +167,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
     infile[0].data -= bkg
     # write out the resulting fits file
     IO.writefits(infile, ofname, clobber=True)
-    print "Subtracted image in %s" % ofname + ".gz"
+    print("Subtracted image in %s" % ofname + ".gz")
 
     return bkg
 

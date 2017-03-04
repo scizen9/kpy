@@ -71,14 +71,14 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
         Note: if airmass=1, then the list is equivalent of [ pos ]
 
     """
-    print "LamEff %.1f microns, Airmass %.3f" % (leff, airmass)
+    print("LamEff %.1f microns, Airmass %.3f" % (leff, airmass))
 
     # Compute the AD for two pieces of the spectrum:
     # from 0.38 microns to leff and from leff to 0.95 microns
     blue_ad = NPK.Util.atm_disper(0.38, leff, airmass)
     red_ad = NPK.Util.atm_disper(0.95, leff, airmass)
-    print 'Blue AD is %1.1f", Red AD is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
-                                                                prlltc.degree)
+    print('Blue AD is %1.1f", Red AD is %1.1f" PRLLTC %3.1f' % (blue_ad, red_ad,
+                                                                prlltc.degree))
 
     dx = -np.sin(prlltc.radian)
     dy = np.cos(prlltc.radian)
@@ -97,7 +97,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     dx = positions[0][0] - positions[-1][0]
     dy = positions[0][1] - positions[-1][1]
 
-    print "DX %2.1f, DY %2.1f, D %2.1f" % (dx, dy, np.sqrt(dx*dx + dy*dy))
+    print("DX %2.1f, DY %2.1f, D %2.1f" % (dx, dy, np.sqrt(dx*dx + dy*dy)))
     return positions
 
 
@@ -146,7 +146,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     points = zip(xs, ys)
     values = vs
 
-    # Create image, print stats
+    # Create image, print(stats)
     grid_vs = griddata(points, values, (x, y), method='linear')
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
     grid_med = np.nanmedian(grid_vs)
@@ -157,7 +157,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Find features in image
     blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
                              threshold=100.0)
-    print "Found %d blobs" % len(blobs)
+    print("Found %d blobs" % len(blobs))
 
     if plotobj:
         fig, ax = pl.subplots(1, 1)
@@ -193,7 +193,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
                 pl.annotate("%d" % goodblob, xy=(xi[bx], yi[by]),
                             xytext=(xi[bx]+2., yi[by]+2.), color='white')
 
-    print "Found %d good objects" % len(objs)
+    print("Found %d good objects" % len(objs))
     if len(objs) <= 0:
         objs = [(1000., 0., 0., goodblob)]
     # Make sure the brightest object is last
@@ -209,7 +209,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         yo = obj[2]
         objno = obj[3]
 
-        print "\nFitting object %d" % objno
+        print("\nFitting object %d" % objno)
         print("initial guess : z,a,b,x,y,theta:"
               " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f" %
               (amplitude, sigma_x, sigma_y, xo, yo, 0.))
@@ -221,16 +221,16 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
                                        grid_vs.flatten(), p0=initial_guess)
         except RuntimeError:
-            print "ERROR: unable to fit Gaussian"
-            print "Using initial guess"
+            print("ERROR: unable to fit Gaussian")
+            print("Using initial guess")
             status = 3
             popt = initial_guess
         # Fitted position
         xc = popt[1]
         yc = popt[2]
         if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
-            print "ERROR: X,Y out of bounds: %f, %f" % (xc, yc)
-            print "Using initial position: %f, %f" % (xo, yo)
+            print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
+            print("Using initial position: %f, %f" % (xo, yo))
             xc = xo
             yc = yo
             status = 1
@@ -239,8 +239,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         a = popt[3]*sigfac
         b = popt[4]*sigfac
         if a > 30. or b > 30. or a <= 0. or b <= 0.:
-            print "ERROR: A,B out of bounds: %f, %f" % (a, b)
-            print "Using initial values: %f, %f" % (sigma_x, sigma_y)
+            print("ERROR: A,B out of bounds: %f, %f" % (a, b))
+            print("Using initial values: %f, %f" % (sigma_x, sigma_y))
             a = sigma_x
             b = sigma_y
             status = 2
@@ -274,10 +274,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
         all_kix = list(itertools.chain(*all_kix))
         kix = list(set(all_kix))
-        print "found this many spaxels: %d" % len(kix)
+        print("found this many spaxels: %d" % len(kix))
 
     if status == 0 and goodblob == 0:
-        print "ERROR: no good objects found in image"
+        print("ERROR: no good objects found in image")
         status = 4
 
     if plotobj:
@@ -326,11 +326,11 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
         inell[0] = radius
         inell[2] = 0.
         inell[3] = 0.
-        print "Loaded ellipse parameters from %s" % elfl[0]
+        print("Loaded ellipse parameters from %s" % elfl[0])
     else:
         inell = (radius, radius, 0., 0., 20.5)
-        print "Using default ellipse parameters"
-    print "\nStarting with a %s arcsec semimajor axis" % radius
+        print("Using default ellipse parameters")
+    print("\nStarting with a %s arcsec semimajor axis" % radius)
 
     # Get spectral extractions
     kt = SedSpec.Spectra(spectra)
@@ -347,7 +347,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
 
     # Print message if needed
     if message is not None:
-        print message
+        print(message)
 
     # Get positions
     g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
@@ -357,11 +357,11 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     nosky = g.nosky
     ellipse = g.ellipse
 
-    print "Final semimajor axis (arcsec) = %4.1f" % ellipse[0]
+    print("Final semimajor axis (arcsec) = %4.1f" % ellipse[0])
     if nosky:
-        print "Sky subtraction off"
+        print("Sky subtraction off")
     else:
-        print "Sky subtraction on"
+        print("Sky subtraction on")
 
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
 
@@ -414,9 +414,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
             skys.remove(o)
 
     if len(skys) > 0:
-        print "Number of starting pure sky spaxels is %d" % len(skys)
+        print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
-        print "ERROR: no sky spaxels in this image"
+        print("ERROR: no sky spaxels in this image")
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
@@ -562,7 +562,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     sym_size = 35
     pl.grid(True)
 
-    print "scaling output image between %d and %d" % (vmin, vmax)
+    print("scaling output image between %d and %d" % (vmin, vmax))
     pl.scatter(xs, ys, c=vs, s=sym_size, marker='H', linewidth=0,
                vmin=vmin, vmax=vmax, cmap=pl.get_cmap('jet'))
 
@@ -599,7 +599,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     pl.colorbar()
     pl.savefig("image_%s.pdf" % outname)
     pl.close()
-    print "Wrote image_%s.pdf" % outname
+    print("Wrote image_%s.pdf" % outname)
 
 
 def c_to_nm(coefficients, pix, offset=0.):
@@ -679,10 +679,10 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
     # Are we trimming at a percentile?
     if percent is not None:
         f_lim = np.percentile(f_grid, percent)
-        print "Trimming at %.1f %%, flux = %.1f" % (percent, f_lim)
+        print("Trimming at %.1f %%, flux = %.1f" % (percent, f_lim))
         if f_lim < 0:
-            print "WARNING: If A/B pair, sky level has changed between A and B"
-            print "         Consider single mode extraction"
+            print("WARNING: If A/B pair, sky level has changed between A and B")
+            print("         Consider single mode extraction")
         l_grid = onto
         s_grid = []
         newsix = []
@@ -732,8 +732,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
                 newsix.append(ix)
             else:
                 nrej += 1
-            #     print "rejected - ix: %d, flx: %.1f" % (ix, f_test)
-        print "%d spaxels rejected" % nrej
+            #     print("rejected - ix: %d, flx: %.1f" % (ix, f_test))
+        print("%d spaxels rejected" % nrej)
     else:
         newsix = None
 
@@ -756,7 +756,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.grid(True)
         if outname is not None:
             pl.savefig("spec_%s" % outname)
-            print "Wrote spec_%s" % outname
+            print("Wrote spec_%s" % outname)
         if plot:
             pl.show()
 
@@ -771,7 +771,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.grid(True)
         if outname is not None:
             pl.savefig("allspec_%s" % outname)
-            print "Wrote allspec_%s" % outname
+            print("Wrote allspec_%s" % outname)
         if plot:
             pl.show()
 
@@ -822,7 +822,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             pl.grid(True)
             if outname is not None:
                 pl.savefig("corr_spec_%s" % outname)
-                print "Wrote corr_spec_%s" % outname
+                print("Wrote corr_spec_%s" % outname)
             if plot:
                 pl.show()
 
@@ -846,7 +846,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
     except:
         pass
 
-    print "%s %s %s -> %s" % (operand1, op, operand2, result)
+    print("%s %s %s -> %s" % (operand1, op, operand2, result))
 
     inhdu2 = None
     inhdu1 = pf.open(operand1)
@@ -866,7 +866,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         res -= inhdu2[0].data
         hdr['COMMENT'] = "imarith %s - %s" % (operand1, operand2)
     else:
-        print "Unrecognized operator: %s" % op
+        print("Unrecognized operator: %s" % op)
         return
 
     if doairmass and inhdu2 is not None:
@@ -965,13 +965,13 @@ def handle_flat(flfile, fine, outname=None):
         outname = "%s" % flfile
 
     if os.path.isfile(outname+".npy"):
-        print "Extractions already exist in %s.npy!" % outname
-        print "rm %s.npy # if you want to recreate extractions" % outname
+        print("Extractions already exist in %s.npy!" % outname)
+        print("rm %s.npy # if you want to recreate extractions" % outname)
     else:
-        print "\nCREATING extractions ..."
+        print("\nCREATING extractions ...")
         spec = pf.open(flfile)
 
-        print "\nExtracting object spectra"
+        print("\nExtracting object spectra")
         ex, meta = \
             Wavelength.wavelength_extract(spec, fine,
                                           filename=outname,
@@ -979,7 +979,7 @@ def handle_flat(flfile, fine, outname=None):
                                           flexure_y_corr_pix=0.)
         meta['airmass'] = spec[0].header['airmass']
         header = {}
-        for k, v in spec[0].header.iteritems():
+        for k, v in spec[0].header.items():
             try:
                 header[k] = v
             except:
@@ -1002,7 +1002,7 @@ def handle_flat(flfile, fine, outname=None):
 
         meta['exptime'] = spec[0].header['exptime']
         np.save(outname, [ex, meta])
-        print "Wrote %s.npy" % outname
+        print("Wrote %s.npy" % outname)
 
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
@@ -1072,12 +1072,12 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         ff = np.load(offset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
-        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        print("Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix']))
         if 'xfwhm' in ff[0]:
             xfwhm = ff[0]['xfwhm']
             yfwhm = ff[0]['yfwhm']
-            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
-                                                       ff[0]['yfwhm'])
+            print("FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm']))
         else:
             xfwhm = 0.
             yfwhm = 0.
@@ -1089,13 +1089,13 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
-        print "USING extractions in %s.npy!" % outname
-        print "rm %s.npy # if you want to recreate extractions" % outname
+        print("USING extractions in %s.npy!" % outname)
+        print("rm %s.npy # if you want to recreate extractions" % outname)
         ex, meta = np.load(outname+".npy")
         e_var, meta_var = np.load("var_" + outname + ".npy")
     # No extractions yet, so generate them
     else:
-        print "\nCREATING extractions ..."
+        print("\nCREATING extractions ...")
         # Load spectrum image
         spec = pf.open(stdfile)
         # Set up variance image by adding read noise to Poisson noise
@@ -1107,7 +1107,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         # Variance image is input image plus read variance
         var = addcon(stdfile, str(read_var), "var_" + outname + ".fits")
         # Extract each object spaxel
-        print "\nExtracting object spectra"
+        print("\nExtracting object spectra")
         ex, meta = \
             Wavelength.wavelength_extract(spec, fine,
                                           filename=outname,
@@ -1117,7 +1117,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         # Extract metadata
         meta['airmass'] = spec[0].header['airmass']
         header = {}
-        for k, v in spec[0].header.iteritems():
+        for k, v in spec[0].header.items():
             try:
                 header[k] = v
             except:
@@ -1139,9 +1139,9 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         meta['exptime'] = spec[0].header['exptime']
         # Save object extraction
         np.save(outname, [ex, meta])
-        print "Wrote %s.npy" % outname
+        print("Wrote %s.npy" % outname)
         # Extract each variance spaxel
-        print "\nExtracting variance spectra"
+        print("\nExtracting variance spectra")
         e_var, meta_var = \
             Wavelength.wavelength_extract(var, fine,
                                           filename=outname,
@@ -1150,7 +1150,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                                           flat_corrections=flat_corrections)
         # Save variance extraction
         np.save("var_" + outname, [e_var, meta_var])
-        print "Wrote var_%s.npy" % outname
+        print("Wrote var_%s.npy" % outname)
 
     # Get the object name of record
     objname = meta['header']['OBJECT'].split()[0]
@@ -1223,7 +1223,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     pl.title(tlab)
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
-    print "Wrote XYs_%s.pdf" % outname
+    print("Wrote XYs_%s.pdf" % outname)
     # / End Plot
 
     # Define our standard wavelength grid
@@ -1244,13 +1244,13 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Calculate airmass correction
     airmass = meta['airmass']
     extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
-    print "Median airmass corr: %.4f" % np.nanmedian(extcorr)
+    print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
     # Calculate output corrected spectrum
     # Account for sky, airmass and aperture
     res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
 
     # Process standard star objects
-    print "STANDARD"
+    print("STANDARD")
     # Extract reference data
     wav = standard[:, 0]
     flux = standard[:, 1]
@@ -1314,11 +1314,11 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['dlam'] = np.diff(newll)
     # Save the final spectrum
     np.save("sp_" + outname, res)
-    print "Wrote sp_"+outname+".npy"
+    print("Wrote sp_"+outname+".npy")
     # Save std star ellipse if all went well
     if quality == 0:
         np.save("ell_" + outname, ellipse)
-        print "Wrote ell_%s.npy" % outname
+        print("Wrote ell_%s.npy" % outname)
 
 
 def handle_single(imfile, fine, outname=None, offset=None,
@@ -1389,12 +1389,12 @@ def handle_single(imfile, fine, outname=None, offset=None,
         ff = np.load(offset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = ff[0]['dYpix']
-        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        print("Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix']))
         if 'xfwhm' in ff[0]:
             xfwhm = ff[0]['xfwhm']
             yfwhm = ff[0]['yfwhm']
-            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
-                                                       ff[0]['yfwhm'])
+            print("FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm']))
         else:
             xfwhm = 0.
             yfwhm = 0.
@@ -1406,13 +1406,13 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
     # The spaxel extraction already exist, so load them in
     if os.path.isfile(outname+".npy"):
-        print "USING extractions in %s.npy!" % outname
-        print "rm %s.npy # if you want to recreate extractions" % outname
+        print("USING extractions in %s.npy!" % outname)
+        print("rm %s.npy # if you want to recreate extractions" % outname)
         ex, meta = np.load(outname+".npy")
         e_var, meta_var = np.load("var_" + outname + ".npy")
     # No extractions yet, so generate them
     else:
-        print "\nCREATING extractions ..."
+        print("\nCREATING extractions ...")
         # Load spectrum image
         spec = pf.open(imfile)
         # Set up variance image by adding read noise to Poisson noise
@@ -1424,7 +1424,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Variance image is input image plus read variance
         var = addcon(imfile, str(read_var), "var_" + outname + ".fits")
         # Extract each object spaxel
-        print "\nExtracting object spectra"
+        print("\nExtracting object spectra")
         ex, meta = \
             Wavelength.wavelength_extract(spec, fine,
                                           filename=outname,
@@ -1434,7 +1434,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Extract metadata
         meta['airmass'] = spec[0].header['airmass']
         header = {}
-        for k, v in spec[0].header.iteritems():
+        for k, v in spec[0].header.items():
             try:
                 header[k] = v
             except:
@@ -1456,9 +1456,9 @@ def handle_single(imfile, fine, outname=None, offset=None,
         meta['exptime'] = spec[0].header['exptime']
         # Save object extraction
         np.save(outname, [ex, meta])
-        print "Wrote %s.npy" % outname
+        print("Wrote %s.npy" % outname)
         # Extract each variance spaxel
-        print "\nExtracting variance spectra"
+        print("\nExtracting variance spectra")
         e_var, meta_var = \
             Wavelength.wavelength_extract(var, fine,
                                           filename=outname,
@@ -1467,7 +1467,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                                           flat_corrections=flat_corrections)
         # Save variance extraction
         np.save("var_" + outname, [e_var, meta_var])
-        print "Wrote var_%s.npy" % outname
+        print("Wrote var_%s.npy" % outname)
 
     if specExtract:
         # Get the object name of record
@@ -1513,11 +1513,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
             if interact:
 
                 # Get quality of observation
-                print "Enter quality of observation:"
-                print "1 - good       (no problems)"
-                print "2 - acceptable (minor problem)"
-                print "3 - poor       (major problem)"
-                print "4 - no object visible"
+                print("Enter quality of observation:")
+                print("1 - good       (no problems)")
+                print("2 - acceptable (minor problem)")
+                print("3 - poor       (major problem)")
+                print("4 - no object visible")
                 q = 'x'
                 quality = -1
                 prom = ": "
@@ -1529,10 +1529,10 @@ def handle_single(imfile, fine, outname=None, offset=None,
                             prom = "Try again: "
                     else:
                         prom = "Try again: "
-                print "Quality = %d, now making outputs..." % quality
+                print("Quality = %d, now making outputs..." % quality)
             else:
                 quality = 0
-                print "Now making outputs..."
+                print("Now making outputs...")
 
             # Use an annulus for sky spaxels for Science Objects
             kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
@@ -1590,7 +1590,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
             tlab += ", Qual: %d" % quality
         pl.title(tlab)
         pl.savefig("XYs_%s.pdf" % outname)
-        print "Wrote XYs_%s.pdf" % outname
+        print("Wrote XYs_%s.pdf" % outname)
         pl.close()
         # / End Plot
 
@@ -1615,14 +1615,14 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Calculate airmass correction
         airmass = meta['airmass']
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
-        print "Median airmass corr: %.4f" % np.nanmedian(extcorr)
+        print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
         # Calculate output corrected spectrum
         if stats['nosky']:
-            print "Sky subtraction off"
+            print("Sky subtraction off")
             # Account for airmass and aperture
             res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
         else:
-            print "Sky subtraction on"
+            print("Sky subtraction on")
             # Account for sky, airmass and aperture
             res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
 
@@ -1656,7 +1656,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['dlam'] = np.diff(newll)
         # Save the final spectrum
         np.save("sp_" + outname, res)
-        print "Wrote sp_"+outname+".npy"
+        print("Wrote sp_"+outname+".npy")
 
 
 def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
@@ -1724,12 +1724,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         ff = np.load(offset)
         flexure_x_corr_nm = ff[0]['dXnm']
         flexure_y_corr_pix = -ff[0]['dYpix']
-        print "Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix'])
+        print("Dx %2.1f nm | Dy %2.1f px" % (ff[0]['dXnm'], ff[0]['dYpix']))
         if 'xfwhm' in ff[0]:
             xfwhm = ff[0]['xfwhm']
             yfwhm = ff[0]['yfwhm']
-            print "FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
-                                                       ff[0]['yfwhm'])
+            print("FWHMx %2.1f nm | FWHMy %2.1f px" % (ff[0]['xfwhm'],
+                                                       ff[0]['yfwhm']))
         else:
             xfwhm = 0.
             yfwhm = 0.
@@ -1740,13 +1740,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         yfwhm = 0.
 
     if os.path.isfile(outname + ".npy"):
-        print "USING extractions in %s!" % outname
-        print "rm %s.npy # if you want to recreate extractions" % outname
+        print("USING extractions in %s!" % outname)
+        print("rm %s.npy # if you want to recreate extractions" % outname)
         ex, meta = np.load(outname + ".npy")
         ex_var, meta_var = np.load("var_" + outname + ".npy")
         header = meta['header']
     else:
-        print "\nCREATING extractions ..."
+        print("\nCREATING extractions ...")
         diff = subtract(afile, bfile, outname + ".fits")
         add(afile, bfile, "tmpvar_" + outname + ".fits")
 
@@ -1760,7 +1760,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                      "var_" + outname + ".fits")
         os.remove("tmpvar_" + outname + ".fits.gz")
 
-        print "\nExtracting object spectra"
+        print("\nExtracting object spectra")
         ex, meta = \
             Wavelength.wavelength_extract(diff, fine,
                                           filename=outname,
@@ -1771,7 +1771,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         meta['airmass2'] = diff[0].header['airmass2']
         meta['airmass'] = diff[0].header['airmass']
         header = {}
-        for k, v in diff[0].header.iteritems():
+        for k, v in diff[0].header.items():
             try:
                 header[k] = v
             except:
@@ -1794,9 +1794,9 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         meta['exptime'] = diff[0].header['exptime']
         np.save(outname, [ex, meta])
-        print "Wrote %s.npy" % outname
+        print("Wrote %s.npy" % outname)
 
-        print "\nExtracting variance spectra"
+        print("\nExtracting variance spectra")
         ex_var, meta_var = \
             Wavelength.wavelength_extract(var, fine,
                                           filename=outname,
@@ -1805,7 +1805,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                           flat_corrections=flat_corrections)
 
         np.save("var_" + outname, [ex_var, meta_var])
-        print "Wrote var_%s.npy" % outname
+        print("Wrote var_%s.npy" % outname)
 
     if specExtract:
         objname = header['OBJECT'].split()[0]
@@ -1841,11 +1841,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         if interact:
 
             # Get quality of observation
-            print "Enter quality of observation:"
-            print "1 - good       (no problems)"
-            print "2 - acceptable (minor problem)"
-            print "3 - poor       (major problem)"
-            print "4 - no object visible"
+            print("Enter quality of observation:")
+            print("1 - good       (no problems)")
+            print("2 - acceptable (minor problem)")
+            print("3 - poor       (major problem)")
+            print("4 - no object visible")
             q = 'x'
             quality = -1
             prom = ": "
@@ -1857,10 +1857,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                         prom = "Try again: "
                 else:
                     prom = "Try again: "
-            print "Quality = %d, now making outputs..." % quality
+            print("Quality = %d, now making outputs..." % quality)
         else:
             quality = 0
-            print "Now making outputs..."
+            print("Now making outputs...")
 
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
@@ -1951,7 +1951,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
         pl.savefig("XYs_%s.pdf" % outname)
-        print "Wrote XYs_%s.pdf" % outname
+        print("Wrote XYs_%s.pdf" % outname)
         pl.close()
         # / End Plot
 
@@ -1996,14 +1996,14 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
               (np.nanmedian(extcorra), np.nanmedian(extcorrb)))
         # If requested merely sum in aperture, otherwise subtract sky
         if stats['nosky']:
-            print "Sky subtraction off"
+            print("Sky subtraction off")
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=FutureWarning)
                 res[0]['ph_10m_nm'] = \
                     np.nansum([f1(ll) * extcorra, f2(ll) * extcorrb],
                               axis=0) * (len(nsxA) + len(nsxB))
         else:
-            print "Sky subtraction on"
+            print("Sky subtraction on")
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=FutureWarning)
                 res[0]['ph_10m_nm'] = \
@@ -2044,7 +2044,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['dlam'] = np.diff(newll)
         # Save the final spectrum
         np.save("sp_" + outname, res)
-        print "Wrote sp_"+outname+".npy"
+        print("Wrote sp_"+outname+".npy")
 
 
 if __name__ == '__main__':
@@ -2078,19 +2078,19 @@ Handles a single A image and A+B pair as well as flat extraction.
 
     args = parser.parse_args()
 
-    print ""
+    print("")
 
     if args.outname is not None:
         args.outname = os.path.splitext(args.outname)[0]
 
     if args.flat_correction is not None:
-        print "Using flat data in %s" % args.flat_correction
+        print("Using flat data in %s" % args.flat_correction)
         flat = np.load(args.flat_correction)
     else:
         flat = None
 
     if args.A is not None and args.B is not None:
-        print "A B Extraction to %s.npy" % args.outname
+        print("A B Extraction to %s.npy" % args.outname)
         handle_dual(args.A, args.B, args.fine, outname=args.outname,
                     offset=args.Aoffset, radius=args.radius_as,
                     flat_corrections=flat, nosky=args.nosky,
@@ -2100,10 +2100,10 @@ Handles a single A image and A+B pair as well as flat extraction.
     elif args.A is not None:
         if args.std is None:
             if args.extflat:
-                print "Flat Extraction to %s.npy" % args.outname
+                print("Flat Extraction to %s.npy" % args.outname)
                 handle_flat(args.A, args.fine, outname=args.outname)
             else:
-                print "Single Extraction to %s.npy" % args.outname
+                print("Single Extraction to %s.npy" % args.outname)
                 handle_single(args.A, args.fine, outname=args.outname,
                               offset=args.Aoffset, radius=args.radius_as,
                               flat_corrections=flat, nosky=args.nosky,
@@ -2111,11 +2111,11 @@ Handles a single A image and A+B pair as well as flat extraction.
                               autoExtract=args.autoExtract,
                               interact=args.interact)
         else:
-            print "Standard Star Extraction to %s.npy" % args.outname
+            print("Standard Star Extraction to %s.npy" % args.outname)
             star = Stds.Standards[args.std]
             handle_std(args.A, args.fine, outname=args.outname,
                        standard=star, offset=args.Aoffset,
                        flat_corrections=flat)
 
     else:
-        print "I do not understand your intent, you must specify --A, at least"
+        print("I do not understand your intent, you must specify --A, at least")

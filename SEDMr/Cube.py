@@ -128,11 +128,11 @@ def qr_to_img(exts, size=4, outname="cube.fits"):
         except:
             pass
 
-        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x[0], y[0])
-        print outstr,
+        # outstr = "\rX = %+10.5f, Y = %+10.5f" % (x[0], y[0])
+        # print(outstr, end="")
         sys.stdout.flush()
 
-    back = np.median(allspec, 0)
+    back = np.nanmedian(allspec, 0)
 
     if 'fits' not in outname:
         outname += '.fits'
@@ -262,8 +262,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     xreflams = reject_outliers(
             np.array([ex.xreflam for ex in exts], dtype=np.float))
     meta_data = {"fiducial_wavelength": np.mean(xreflams)}
-    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams),
-                                        np.std(xreflams))
+    print("Avg lam, Std lam: %f, %f" % (np.mean(xreflams),
+                                        np.std(xreflams)))
 
     # make arrays
     xs = np.array(xs, dtype=np.float)
@@ -283,7 +283,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     exts[center].Q_ix = 0
     exts[center].R_ix = 0
 
-    print "IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot, n_lam, n_mdn)
+    print("IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot,
+                                                 n_lam, n_mdn))
 
     def populate_hex(to_populate):
         """ Breadth-first search 
@@ -301,7 +302,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         v = np.array([xs[to_populate], ys[to_populate]])
         dists, kix = tree.query(v, 7)
         # Transformation matrix
-        tfm = P2H * ROT / np.median(dists) * 2
+        tfm = P2H * ROT / np.nanmedian(dists) * 2
 
         # Trim self reference
         if dists[0] < 2:
@@ -350,9 +351,9 @@ def extraction_to_cube(exts, outname="G.npy"):
                 # Check if our hex positions agree
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                         (exts[nix].R_ix != r_this + rnd[1]):
-                    print "collision: ",
-                    print exts[nix].Q_ix, q_this + rnd[0], " ",
-                    print exts[nix].R_ix, r_this + rnd[1]
+                    print("collision: %5.1f %5.1f %5.1f %5.1f" %
+                          (exts[nix].Q_ix, q_this + rnd[0],
+                           exts[nix].R_ix, r_this + rnd[1]))
                     # Update with this one, but don't drill more
                     # otherwise we get in an infinite loop
                     exts[nix].Q_ix = q_this + rnd[0]
@@ -363,7 +364,7 @@ def extraction_to_cube(exts, outname="G.npy"):
 
     populate_hex(center)
 
-    print "Number of collisions: %d" % ncol
+    print("Number of collisions: %d" % ncol)
 
     # Now convert Q/R to even-Q X/Y
 
@@ -397,7 +398,7 @@ def extraction_to_cube(exts, outname="G.npy"):
 
     # Write out the cube
     np.save(outname, [exts, meta_data])
-    print "Wrote %s.npy" % outname
+    print("Wrote %s.npy" % outname)
 
 
 def reject_outliers(data, m=2.):
@@ -441,15 +442,15 @@ extract: To extract the cube (one for each observation)
     infile = args.extracted
 
     if step == 'make':
-        print "\nMAKING cube from %s " % infile
+        print("\nMAKING cube from %s " % infile)
         ext = np.load(infile)
         extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
-        print "\nEXTRACTING from %s " % infile
+        print("\nEXTRACTING from %s " % infile)
         ext, meta = np.load(infile)
         qr_to_img(ext, size=2, outname=args.outname)
     elif step == 'dump':
-        print "\nDUMPING from %s to %s_dump.txt" % (infile, infile)
+        print("\nDUMPING from %s to %s_dump.txt" % (infile, infile))
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])
@@ -458,4 +459,4 @@ extract: To extract the cube (one for each observation)
         dat = np.array([Xs, Ys, Sid])
         np.savetxt("%s_dump.txt" % infile, dat.T)
     else:
-        print "NO STEP TO PERFORM"
+        print("NO STEP TO PERFORM")

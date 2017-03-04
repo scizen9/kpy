@@ -16,6 +16,8 @@ import warnings
 
 from stsci.tools.gfit import gfit1d
 
+import NPK.Bar as Bar
+
 Coord = namedtuple("XY", "x y")
 
 
@@ -57,13 +59,13 @@ def load_data(segmapfn, objfn):
 
     try:
         segmap = pf.open(segmapfn)
-    except Exception, e:
-        print "Could not open %s: %s" % (segmapfn, e)
+    except Exception as e:
+        print("Could not open %s: %s" % (segmapfn, e))
 
     try:
         obj = pf.open(objfn)
-    except Exception, e:
-        print "Could not open %s: %s" % (segmapfn, e)
+    except Exception as e:
+        print("Could not open %s: %s" % (segmapfn, e))
 
     return segmap, obj
 
@@ -87,7 +89,11 @@ def find_segments_helper(seg_cnt):
 
     """
     # Global is for inter process communication
-    global segdat, objdat, polyorder
+    global segdat, objdat, polyorder, n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0:
+        Bar.update()
 
     # Padding in pixels around trace in Y
     PAD = 2
@@ -110,7 +116,7 @@ def find_segments_helper(seg_cnt):
     if len(test[0]) < 10 or len(test[1]) < 10:
         outstr = '\r%4.4i: %4.4i, TINY SEGMENT, %-5s' % (seg_cnt, len(test[0]),
                                                          tr['ok'])
-        print outstr
+        print(outstr)
         sys.stdout.flush()
     # We are OK
     else:
@@ -137,11 +143,11 @@ def find_segments_helper(seg_cnt):
             means = np.zeros(n_el)
             trace_profile = np.zeros(mxsr - mnsr)
 
-            for i in xrange(n_el):
+            for i in range(n_el):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
                     XX = i + span[0].x
-                    profile = np.median(objdat[y_slc, XX - 3:XX + 3], 1)
+                    profile = np.nanmedian(objdat[y_slc, XX - 3:XX + 3], 1)
                     profile -= np.min(profile)
 
                     trace_profile += profile
@@ -171,11 +177,11 @@ def find_segments_helper(seg_cnt):
             tr["bkg_ok"] = True
             tr["ok"] = (np.count_nonzero(nans) <= 0 & np.isfinite(poly[0]))
 
-        outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
-                                                           sig * 2.355,
-                                                           tr['ok'])
-        print outstr,
-        sys.stdout.flush()
+        # outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
+        #                                                    sig * 2.355,
+        #                                                    tr['ok'])
+        # print(outstr, end="")
+        # sys.stdout.flush()
 
     return tr
 
@@ -202,19 +208,22 @@ def find_segments(segmap=None, obj=None, order=2):
                 "ok": Trace has more than 50 pixels     }
         
     """
-    global segdat, objdat, polyorder
+    global segdat, objdat, polyorder, n_done, update_rate
 
     segdat = segmap[0].data
     objdat = obj[0].data
     polyorder = order
 
     # First segment begins at 1
-    segrange = xrange(1, max(segdat.flatten())+1)
+    segrange = range(1, max(segdat.flatten())+1)
 
+    n_done = 0
+    update_rate = len(segrange) / Bar.setup(toolbar_width=74) + 1
     p = Pool(8)
     traces = p.map(find_segments_helper, segrange)
     p.close()
-    print ""
+    Bar.done(mapped=True)
+    # print("")
 
     return traces
 

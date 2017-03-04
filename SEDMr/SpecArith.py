@@ -19,7 +19,7 @@ def specDiv(A, B, out):
 
     # Combine keys in rational way
     result = {}
-    for k,v in s_A.iteritems():
+    for k,v in s_A.items():
         # Skip these
         if k in ['meta', 'Extinction Correction', 'doc']: continue
         # Are there discrepant dictionaries?
@@ -82,7 +82,7 @@ def specAvg(A, B, out):
 
     # Combine keys in a rational way
     result = {}
-    for k,v in s_A.iteritems():
+    for k,v in s_A.items():
         # Skip these
         if k in ['operation', 'meta_1', 'meta_2', 'meta', 
                  'Extinction Correction', 'doc']:
@@ -146,7 +146,7 @@ def specAdd(A, B, out):
 
     # Combine keys in a rational way
     result = {}
-    for k,v in s_A.iteritems():
+    for k,v in s_A.items():
         # Skip these
         if k in ['operation', 'meta_1', 'meta_2', 'meta',
                  'Extinction Correction', 'doc']:
@@ -223,7 +223,7 @@ if __name__ == '__main__':
         err += "File '%s' exists. Use a different file name.\n" % args.outname
 
     if err != "":
-        print err
+        print(err)
         sys.exit(1)
 
     print "%s %s %s > %s" % (args.A, args.operation, args.B, args.outname)

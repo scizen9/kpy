@@ -39,7 +39,7 @@ def readspec(path, corrname='std-correction.npy'):
         else:
             corrname = '/scr2/sedm/ref/std-correction.npy'
 
-    print "Attempting to load standard correction in: %s" % corrname
+    print("Attempting to load standard correction in: %s" % corrname)
         
     ss = np.load(path)[0]
 
@@ -58,7 +58,7 @@ def readspec(path, corrname='std-correction.npy'):
         skyspec = ss['skyph'] * corf(lam)
     else:
         skyspec = None
-        print "Spectrum in %s has no sky spectrum" % path 
+        print("Spectrum in %s has no sky spectrum" % path)
     
     if 'var' in ss:
         with warnings.catch_warnings():
@@ -66,7 +66,7 @@ def readspec(path, corrname='std-correction.npy'):
             std = np.sqrt(np.abs(ss['var']) * corf(lam)*corf(lam))
     else:
         std = None
-        print "Spectrum in %s has no variance spectrum" % path
+        print("Spectrum in %s has no variance spectrum" % path)
 
     if 'meta' in ss:
         meta = ss['meta']

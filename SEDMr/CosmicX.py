@@ -15,13 +15,13 @@ import astropy.io.fits as pf
 try:
     import _lacosmicx
 except ImportError:
-    print "Please install lacosmicx from github.com/cmccully/lacosmicx."
+    print("Please install lacosmicx from github.com/cmccully/lacosmicx.")
     quit()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="""
     Program to detect cosmics in single exposure CCD frames. Important: The image and the readout noise are assumed to be in units of electrons.
-    The image also needs to be BIAS subtracted! The gain can be entered to convert the image from ADUs to electros, when this is down already set gain=1.0 as the default. A bad pixel mask of cosmics and a cleaned image will be provided by the routine as an output.""", formatter_class=argparse.ArgumentDefaultsHelpFormatter,prog='CosmicX.py',version='CosmicX version %s'%(__version__))
+    The image also needs to be BIAS subtracted! The gain can be entered to convert the image from ADUs to electros, when this is down already set gain=1.0 as the default. A bad pixel mask of cosmics and a cleaned image will be provided by the routine as an output.""", formatter_class=argparse.ArgumentDefaultsHelpFormatter,prog='CosmicX.py')
 
     parser.add_argument("raw", type=str, help="""File name of the CCD raw frame FITS file from which to detect and reject cosmic ray hits. This frame is expected to be BIAS subtracted. If it is not provided in units of electrons please provide the appropriate gain factor to convert from ADUs to electrons with the --gain parameter.
     """)

@@ -47,7 +47,7 @@ def full_frame(dat):
 
     """
 
-    bias = np.median(dat[:, 2045:], axis=1)
+    bias = np.nanmedian(dat[:, 2045:], axis=1)
     bias = bias.astype(np.float)
     smooth = FI.median_filter(bias, size=50)
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
                 continue
         except:
             continue
-        print ifile
+        print(ifile)
         FF = pf.open(ifile)
         adcspeed = FF[0].header['ADCSPEED']
 

@@ -19,7 +19,7 @@ ef3 = []
 ef4 = []
 ef5 = []
 for d in dlist:
-    print d
+    print(d)
     ddate = d.split('/')[-1]
     dtime = Time(ddate[0:4]+'-'+ddate[4:6]+'-'+ddate[6:])
 

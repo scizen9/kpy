@@ -75,7 +75,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
                     ss[i] = cc[i].lamrms
 
         c, low, upp = sigmaclip(ss)
-        smdn = np.median(c)
+        smdn = np.nanmedian(c)
         sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
               (len(cc), (len(cc) - len(c)), smdn, sstd))
@@ -108,7 +108,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.ioff()
     if savefig:
         pl.savefig(outf)
-        print "Figure saved to " + outf
+        print("Figure saved to " + outf)
     else:
         pl.show()
 
@@ -151,8 +151,8 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         stdspec /= 10.
 
     # Print wavelength range
-    print "Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
-                                            np.nanmax(lam[np.isfinite(spec)]))
+    print("Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
+                                            np.nanmax(lam[np.isfinite(spec)])))
 
     # Get object name
     if 'header' in meta:
@@ -164,9 +164,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         obj = ''
 
-    print "Plotting spectrum in %s" % specname
+    print("Plotting spectrum in %s" % specname)
     if 'radius_as' in ss:
-        print "Extraction radius: %1.2f asec" % ss['radius_as']
+        print("Extraction radius: %1.2f asec" % ss['radius_as'])
 
     if 'airmass1' in meta:
         ec = meta['airmass1']
@@ -187,7 +187,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         maxwl = 9200.0
 
-    print "Max Angstroms: %7.1f" % maxwl
+    print("Max Angstroms: %7.1f" % maxwl)
 
     # If it has airmass2 then must be A/B pair
     if 'airmass2' in meta:
@@ -250,16 +250,16 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
-        lmed = np.median(spec[lroi])
+        lmed = np.nanmedian(spec[lroi])
 
         sroi = (slam > 4500) & (slam < 6500)
-        smed = np.median(sflx[sroi])
+        smed = np.nanmedian(sflx[sroi])
 
         rat = (lmed / smed)
 
         # Report offset
         ratmag = 2.5 * np.log10(rat)
-        print "Ref offset (Ref - Obs): %6.2f mag" % ratmag
+        print("Ref offset (Ref - Obs): %6.2f mag" % ratmag)
 
         # Apply offset for plotting
         spec /= rat
@@ -305,7 +305,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Overplot reference spectrum
     if pred in Stds.Standards:
-        print "Overplotting %s reference spectrum" % pred
+        print("Overplotting %s reference spectrum" % pred)
         legend.append("ref")
         pl.plot(slam, sflx)
 
@@ -330,11 +330,11 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.ion()
         pl.show()
         # Get quality of observation
-        print "Enter quality of observation:"
-        print "1 - good       (no problems)"
-        print "2 - acceptable (minor problem)"
-        print "3 - poor       (major problem)"
-        print "4 - no object visible"
+        print("Enter quality of observation:")
+        print("1 - good       (no problems)")
+        print("2 - acceptable (minor problem)")
+        print("3 - poor       (major problem)")
+        print("4 - no object visible")
         q = 'x'
         qual = -1
         prom = ": "
@@ -346,7 +346,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
                     prom = "Try again: "
             else:
                 prom = "Try again: "
-        print "Quality = %d" % qual
+        print("Quality = %d" % qual)
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
                (specname, ec, et, "On" if skysub else "Off", qual)
         pl.title(tlab)
@@ -354,7 +354,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         res[0]['quality'] = qual
 
         # Get reducer
-        print "Enter reducer of observations:"
+        print("Enter reducer of observations:")
         prom = "<cr> = ("+reducer+"): "
         q = raw_input(prom)
         if len(q) > 0:
@@ -364,7 +364,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Add reducer and save spectrum
     res[0]['reducer'] = reducer
-    print "Reducer: %s" % reducer
+    print("Reducer: %s" % reducer)
     np.save(specname, res)
 
     # Save fig to file
@@ -372,7 +372,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM.pdf'
         pl.savefig(outf)
-        print "Figure saved to " + outf
+        print("Figure saved to " + outf)
 
     if not interact and not savefig:
         pl.show()
@@ -399,7 +399,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             header += "\nTRACEFWHMPX: %.1f" % ss['yfwhm']
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
-        print "Saved to " + outf
+        print("Saved to " + outf)
 
     if 'efficiency' in ss:
         pl.clf()
@@ -415,7 +415,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM_eff.pdf'
             pl.savefig(outf)
-            print "Figure saved to " + outf
+            print("Figure saved to " + outf)
         else:
             pl.show()
 

@@ -80,7 +80,7 @@ if __name__ == '__main__':
     filelist = args.files
     out = args.outname
     if args.outname is None:
-        print "Set --outname"
+        print("Set --outname")
 
     imcombine(filelist, out, listfile=args.listfile, combtype=args.combtype,
               nlow=args.Nlo, nhigh=args.Nhi)

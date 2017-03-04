@@ -21,7 +21,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print "-- Ingesting headers --"
+    print("-- Ingesting headers --")
     update_rate = len(infiles) / (Bar.setup() - 1)
     if update_rate <= 0:
         update_rate = 1
@@ -31,7 +31,7 @@ def extract_info(infiles):
         FF = pf.open(ifile)
         FF[0].header['filename'] = ifile
         if 'JD' not in FF[0].header:
-            # print "Skipping %s" % ifile
+            # print("Skipping %s" % ifile)
             continue
         headers.append(FF[0].header)
         FF.close()
@@ -131,19 +131,19 @@ def identify_observations(headers):
             cnt = objcnt[name]
             objs[name][cnt].append(fname)
 
-    print "\n-- Calibrations --"
-    for k, v in calibs.iteritems():
-        print "%15s : %2.0i" % (k, len(v))
+    print("\n-- Calibrations --")
+    for k, v in calibs.items():
+        print("%15s : %2.0i" % (k, len(v)))
 
-    print "\n-- Standard Star Sets --"
-    for k, v in objs.iteritems():
+    print("\n-- Standard Star Sets --")
+    for k, v in objs.items():
         if "STD-" in k:
-            print "%20s : %2.0i" % (k, len(v))
+            print("%20s : %2.0i" % (k, len(v)))
 
-    print "\n-- Science Object Sets --"
-    for k, v in objs.iteritems():
+    print("\n-- Science Object Sets --")
+    for k, v in objs.items():
         if "STD-" not in k:
-            print "%20s : %2.0i" % (k, len(v))
+            print("%20s : %2.0i" % (k, len(v)))
 
     return objs, calibs
 
@@ -268,7 +268,7 @@ def MF_imcombine(objname, files, dependencies=""):
 def MF_single(objname, obsnum, ifile, standard=None):
     """Create the MF entry for a observation with a single file. """
 
-    # print objname, obsnum, ifile
+    # print(objname, obsnum, ifile)
 
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
@@ -317,7 +317,7 @@ cube_%(outname)s.fits: %(outname)s
 def MF_standard(objname, obsnum, ifile, standard=None):
     """Create the MF entry for a standard star observation. """
 
-    # print objname, obsnum, ifile
+    # print(objname, obsnum, ifile)
 
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
@@ -359,7 +359,7 @@ cube_%(outname)s.fits: %(outname)s
 def MF_AB(objname, obsnum, A, B):
     """Create the MF entry for an A-B observation"""
 
-    # print objname, obsnum, A, B
+    # print(objname, obsnum, A, B)
     tp = {'objname': objname, 'A': "bs_crr_b_" + A, 'B': "bs_crr_b_" + B}
     if obsnum == 1:
         tp['num'] = ''
@@ -401,7 +401,7 @@ def to_makefile(objs, calibs):
 
     flexures = ""
 
-    for calibname, files in calibs.iteritems():
+    for calibname, files in calibs.items():
 
         if "bias" not in calibname:
             pass
@@ -409,7 +409,7 @@ def to_makefile(objs, calibs):
         all += "%s.fits " % calibname
 
     flatfiles = []
-    for objname, observations in objs.iteritems():
+    for objname, observations in objs.items():
 
         objname = objname.replace(" ", "_")
         objname = objname.replace(")", "_")
@@ -417,7 +417,7 @@ def to_makefile(objs, calibs):
         objname = objname.replace("[", "_")
         objname = objname.replace("]", "_")
 
-        for obsnum, obsfiles in observations.iteritems():
+        for obsnum, obsfiles in observations.items():
             flatfiles.append(obsfiles)
 
             # Handle Standard Stars

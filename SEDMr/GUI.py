@@ -37,8 +37,8 @@ class MouseCross(object):
         self.nosky = nosky
         self.ellipse = ellipse
 
-        print "semimajor axis is %s arcsec" % self.radius_as
-        print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
+        print("semimajor axis is %s arcsec" % self.radius_as)
+        print("x - expand ap, z - shrink ap, y - toggle sky/host sub")
 
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
@@ -70,7 +70,7 @@ class MouseCross(object):
             else:
                 self.nosky = True
 
-        print "semimajor axis is %s arcsec" % self.radius_as
+        print("semimajor axis is %s arcsec" % self.radius_as)
 
         self.ellipse = (self.radius_as,
                         self.radius_as * (self.ellipse[1]/self.ellipse[0]),
@@ -81,9 +81,9 @@ class MouseCross(object):
         self.line.set_visible(True)
 
         if self.nosky:
-            print "Sky subtraction off"
+            print("Sky subtraction off")
         else:
-            print "Sky subtraction on"
+            print("Sky subtraction on")
 
         pl.draw()
 
@@ -164,7 +164,7 @@ class PositionPicker(object):
                 dv_max = 300
 
         # plot (may want to use cmap=pl.cm.Spectral)
-        print "scaling image display between %d and %d" % (dv_min, dv_max)
+        print("scaling image display between %d and %d" % (dv_min, dv_max))
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
                    vmin=dv_min, vmax=dv_max, cmap=pl.get_cmap('jet'))
 
@@ -189,7 +189,7 @@ class PositionPicker(object):
         """Event call handler for Picker gui."""
 
         if event.name == 'button_press_event':
-            print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
+            print("X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata))
             self.picked = (event.xdata, event.ydata)
             self.xc = event.xdata
             self.yc = event.ydata
@@ -218,17 +218,17 @@ class ScaleCube(object):
             spectra: SEDMr.Spectra object
         """
 
-        print "First scale cube using keys to change limits:"
+        print("First scale cube using keys to change limits:")
         if bgd_sub:
-            print "> - increase upper/lower spread by 200"
-            print "< - decrease upper/lower spread by 200"
+            print("> - increase upper/lower spread by 200")
+            print("< - decrease upper/lower spread by 200")
         else:
-            print "> - to increase upper limit by 100"
-            print "< - to decrease upper limit by 100"
-            print ". - to increase lower limit by 100"
-            print ", - to decrease lower limit by 100"
-        print "x - exit"
-        print "q - to abandon scaling"
+            print("> - to increase upper limit by 100")
+            print("< - to decrease upper limit by 100")
+            print(". - to increase lower limit by 100")
+            print(", - to decrease lower limit by 100")
+        print("x - exit")
+        print("q - to abandon scaling")
 
         self.spectra = spectra
         self.pointsize = pointsize
@@ -262,7 +262,7 @@ class ScaleCube(object):
             self.cmin = v_mid - 3.0 * v_std
             self.cmax = v_mid + 3.0 * v_std
 
-        print "mid, std: %f, %f" % (v_mid, v_std)
+        print("mid, std: %f, %f" % (v_mid, v_std))
 
         pl.ioff()
 
@@ -310,11 +310,11 @@ class ScaleCube(object):
 
         if event.key == 'x':
             self.scaled = True
-            print "Scaling between %f and %f" % (self.cmin, self.cmax)
+            print("Scaling between %f and %f" % (self.cmin, self.cmax))
             pl.close(self.figure)
         if event.key == 'q':
             self.scaled = False
-            print "Using default scaling"
+            print("Using default scaling")
             pl.close(self.figure)
         elif event.key == '>':
             if self.bgd_sub:
@@ -421,7 +421,7 @@ class WaveFixer(object):
         pl.ion()
         self.draw_cube()
 
-        print "Registering events"
+        print("Registering events")
         self.fig.canvas.mpl_connect("button_press_event", self)
         self.fig.canvas.mpl_connect("key_press_event", self)
 
@@ -435,7 +435,7 @@ class WaveFixer(object):
         else:
             self.state = "Display"
 
-        print self.state
+        print(self.state)
         self.draw_cube()
 
     def draw_spectra(self):
@@ -443,7 +443,7 @@ class WaveFixer(object):
         if self.picked is None:
             return
 
-        print "Drawing spectra"
+        print("Drawing spectra")
         # xl = self.ax_spec.get_xlim()
         # yl = self.ax_spec.get_ylim()
         self.ax_spec.cla()
@@ -453,7 +453,7 @@ class WaveFixer(object):
         x, y = self.X2[self.picked], self.Y1[self.picked]
         objs = self.KT.query_ball_point((x, y), 70)
 
-        print "Query around %s found: %s" % ((x, y), objs)
+        print("Query around %s found: %s" % ((x, y), objs))
 
         spec = self.cube[self.picked]
         ix = np.arange(*spec.xrange)
@@ -476,7 +476,7 @@ class WaveFixer(object):
 
     def draw_cube(self):
         """ Draw the data cube """
-        print "drawing cube"
+        print("drawing cube")
 
         # Draw cube
 
@@ -494,7 +494,7 @@ class WaveFixer(object):
                           markersize=7, marker='h', linewidth=0)
 
         if self.picked is not None:
-            print self.X2[self.picked], self.Y1[self.picked]
+            print(self.X2[self.picked], self.Y1[self.picked])
 
             self.ax_cube.plot([self.X2[self.picked]],
                               [self.Y1[self.picked]],
@@ -519,7 +519,7 @@ class WaveFixer(object):
                     np.abs(self.Y1 - event.ydata)
 
             ix = np.nanargmin(dists)
-            print dists[ix]
+            print(dists[ix])
 
             if dists[ix] > 20:
                 self.picked = None
@@ -532,7 +532,7 @@ class WaveFixer(object):
     def __call__(self, event):
         """Event call handler for Picker gui."""
 
-        print (event.name)
+        print(event.name)
 
         if event.name == 'pick_event':
             import pdb
@@ -551,5 +551,5 @@ class WaveFixer(object):
                 to_call()
 
             if key == "?":
-                for k, v in self.actions.iteritems():
-                    print "%s: %s" % (k, v.__doc__)
+                for k, v in self.actions.items():
+                    print("%s: %s" % (k, v.__doc__))

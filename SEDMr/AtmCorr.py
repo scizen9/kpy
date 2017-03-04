@@ -51,7 +51,7 @@ def handle_corr(filename, outname='corrected.npy'):
         outname = "corr_" + filename
     dat = np.load("sp_" + filename)[0]
     if "std-correction" not in dat.keys():
-        print "Not a known standard extraction, returning"
+        print("Not a known standard extraction, returning")
         return
     erg_s_cm2_ang = dat['std-correction'] * 1e-16
     maxnm = dat['std-maxnm']
@@ -143,12 +143,12 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
 
         # Check quality of extraction
         if data["quality"] > 0:
-            print "Bad std extraction in %s" % ifile
+            print("Bad std extraction in %s" % ifile)
             continue
 
         # Check for calculated correction
         if "std-correction" not in data.keys():
-            print "No std-correction vector in %s" % ifile
+            print("No std-correction vector in %s" % ifile)
             continue
         correction = data['std-correction']
 
@@ -162,7 +162,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         pred = pred.split("_")[0]
         legend.append(pred)
         pred = pred.lower().replace("+", "").replace("-", "_")
-        print ifile, pred, pred in Stds.Standards
+        print(ifile, pred, pred in Stds.Standards)
         # Are we in our list of standard stars?
         if pred not in Stds.Standards:
             print("File named '%s' is reduced to '%s' and no such standard "
@@ -170,7 +170,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             continue
         # Record median correction in ROI
         roi = (ll > 600) & (ll < 850)
-        corr_vals.append(np.median(correction[roi]))
+        corr_vals.append(np.nanmedian(correction[roi]))
         # Normalize each correction by the median value
         correction /= corr_vals[-1]
         corrs.append(correction)
@@ -183,7 +183,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     the_corr = np.nanmedian(erg_s_cm2_ang, 0)
     # Fit red end unless we are calibrated out there
     if not np.isfinite(the_corr).all() and maxnm < 1000.0:
-        print "Fitting red end"
+        print("Fitting red end")
         # Fit polynomial to extrapolate correction
         redend = (ll > 880) & (ll < maxnm)
         ss = np.poly1d(np.polyfit(ll[redend], the_corr[redend], 2))
@@ -261,7 +261,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     print("Mean cor: %10.3g, Sigma cor: %10.3g" %
           (np.mean(corr_vals) * 1e-16, np.std(corr_vals) * 1e-16))
     maxnm = np.min([maxnm, np.max(ll)])
-    print "Max nm: %7.2f" % maxnm
+    print("Max nm: %7.2f" % maxnm)
 
     # Construct result
     with warnings.catch_warnings():
@@ -292,13 +292,13 @@ def handle_summary(outname=None, filelist=[]):
     # Get a list of good correction vectors
     keepers = []
     for ifile in filelist:
-        print ifile
+        print(ifile)
         f = np.load(ifile)[0]
         # Correction values should be small
         # if "std-correction" not in data.keys():
         if np.nanmin(f['std-correction']) < 9:
             keepers.append(f)
-            print "Keeping %s" % ifile
+            print("Keeping %s" % ifile)
 
     # Set fiducial wavelengths from first correction vector
     corl = keepers[0]['nm'].copy()

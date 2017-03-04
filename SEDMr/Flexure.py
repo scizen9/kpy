@@ -79,7 +79,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
                 spec[jx] = np.sum(dat[ypos-extract_width:ypos+extract_width,
                                   xpos])
             except:
-                print "Warning: no sum for sky spectrum %d at %d" % (jx, xpos)
+                print("Warning: no sum for sky spectrum %d at %d" % (jx, xpos))
                 continue
 
         # get wavelengths of spaxel
@@ -95,7 +95,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
 
     # create a median spectrum from spaxel grid
     # taking a median minimizes impact of objects in sample
-    skyspec = np.median(specgrid, axis=1)
+    skyspec = np.nanmedian(specgrid, axis=1)
 
     # plot resulting sky spectrum
     pl.step(lamgrid, skyspec, where='mid')
@@ -144,10 +144,10 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     if sumscale > 0.:
         dxnm = sumoff / sumscale
     else:
-        print "Warning: no good skylines to fit!  Setting X offset to 0.0 nm"
+        print("Warning: no good skylines to fit!  Setting X offset to 0.0 nm")
         dxnm = 0.
         minsig = 0.
-    print "dX = %3.2f nm shift" % dxnm
+    print("dX = %3.2f nm shift" % dxnm)
 
     pl.title("dX = %3.2f nm shift, dY = %3.2f px shift" % (dxnm, drow))
     pl.legend(legend)
@@ -257,8 +257,8 @@ def measure_flexure_y(cube, hdulist, profwidth=5, plot=False):
     # clean 3 sigma outliers
     ok = np.abs(profwidys - mn)/sd < 3
     average_width = np.mean(profwidys[ok]) * 2.354
-    print "yFWHM = %5.2f pixels" % average_width
-    print "dY = %3.2f pixel shift" % required_shift
+    print("yFWHM = %5.2f pixels" % average_width)
+    print("dY = %3.2f pixel shift" % required_shift)
 
     if plot:
         px = (profwidth+1) + required_shift

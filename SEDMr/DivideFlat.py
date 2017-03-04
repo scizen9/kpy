@@ -54,7 +54,7 @@ if __name__ == '__main__':
         nmToPix = flex['skyline']/240
         dX = np.int(np.round(flex['dXnm'] * nmToPix))
         dY = np.int(np.round(flex['dYpix']))
-        print "Rolling by %i/%i" % (dX, dY)
+        print("Rolling by %i/%i" % (dX, dY))
         flat = np.roll(flat, dY, 0)
         flat = np.roll(flat, dX, 1)
         toflat[0].header["FLATROLL"] = ("%s/%s" % (dX, dY), 
