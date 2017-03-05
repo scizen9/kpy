@@ -648,10 +648,9 @@ def median_fine_grid(fine, doPlot=False):
                 continue
             if fine[nearest].lamcoeff is None:
                 continue
-            if fine[nearest].lamnrms is None:
-                continue
-            if fine[nearest].lamnrms > 0.4:
-                continue
+            if fine[nearest].lamnrms is not None:
+                if fine[nearest].lamnrms > 0.4:
+                    continue
             if np.abs(fine[nearest].xrange[1] - fine[nearest].xrange[0]) < 50:
                 continue
 
