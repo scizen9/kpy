@@ -4,7 +4,7 @@ import astropy.io.fits as pf
 import numpy as np
 
 
-def imcombine(flist, fout, listfile=None, combtype="median",
+def imcombine(flist, fout, listfile=None, combtype="mean",
               nlow=0, nhigh=0):
 
     """Convenience wrapper around STSCI python task numCombine
@@ -38,13 +38,17 @@ def imcombine(flist, fout, listfile=None, combtype="median",
 
     oimg = result.combArrObj
 
+    hdr.add_history('SEDMr.Imcombine combining stack of images')
     ncom = 1
     for fl in flist:
         key = "IMCMB%03d" % ncom
         ncom += 1
         hdr[key] = fl
 
-    hdr['NCOMBINE'] = len(flist)
+    hdr['NCOMBINE'] = (len(flist), 'number of images combined')
+    hdr['COMBTYPE'] = (combtype, 'type of combine')
+    hdr['COMBNLO'] = (nlow, 'number of low pixels to reject')
+    hdr['COMBNHI'] = (nhigh, 'number of high pixels to reject')
 
     pf.writeto(fout, oimg, hdr)
 
@@ -72,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('--listfile', type=str, default=None)
     parser.add_argument('--Nhi', type=int, default=0)
     parser.add_argument('--Nlo', type=int, default=0)
-    parser.add_argument('--combtype', type=str, default='median')
+    parser.add_argument('--combtype', type=str, default='mean')
     parser.add_argument('--reject', type=str, default='none')
     parser.add_argument('--outname', type=str, default=None)
     args = parser.parse_args()

@@ -397,8 +397,9 @@ class WaveFixer(object):
             self.X2.append(ha2)
             self.Y1.append(s.yrange[0])
 
-        self.X1, self.X2, self.Y1 = map(np.array, [self.X1, self.X2,
-                                                   self.Y1])
+        self.X1 = np.array(self.X1)
+        self.X2 = np.array(self.X2)
+        self.Y1 = np.array(self.Y1)
 
         ok = (np.abs(self.X1 - self.X2) < 2) & np.isfinite(self.X2) & \
              np.isfinite(self.Y1)

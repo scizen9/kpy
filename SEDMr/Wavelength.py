@@ -620,7 +620,9 @@ def median_fine_grid(fine, doPlot=False):
         ys.append(np.mean(g.yrange))
         ids.append(g.seg_id)
 
-    xs, ys, ids = map(np.array, [xs, ys, ids])
+    xs = np.array(xs)
+    ys = np.array(ys)
+    ids = np.array(ids)
     dat = np.array((xs, ys)).T
     dat[dat != dat] = -999  # Correct NaNs
     KD = KDTree(dat)
@@ -645,6 +647,8 @@ def median_fine_grid(fine, doPlot=False):
             if fine[nearest].hgcoef is None:
                 continue
             if fine[nearest].lamcoeff is None:
+                continue
+            if fine[nearest].lamnrms is None:
                 continue
             if fine[nearest].lamnrms > 0.4:
                 continue
@@ -773,7 +777,9 @@ def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
         ys.append(np.mean(g.yrange))
         ids.append(g.seg_id)
 
-    xs, ys, ids = map(np.array, [xs, ys, ids])
+    xs = np.array(xs)
+    ys = np.array(ys)
+    ids = np.array(ids)
     dat = np.array((xs, ys)).T
     KD = KDTree(dat)
 
@@ -1432,39 +1438,39 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     # Now find all the line centroids in stretched spectra
 
     # Start with Hg
+    print("Getting Hg line positions")
     n_done = 0
     update_rate = len(Hgs) / Bar.setup(toolbar_width=74)
     p = Pool(8)
-    print("Getting Hg line positions")
     hg_locs = p.map(fit_hg_lines, Hgs)
     p.close()
     Bar.done(mapped=True)
 
     # Now get Xe lines
+    print("Getting Xe line positions")
     n_done = 0
     update_rate = len(Xes) / Bar.setup(toolbar_width=74)
     p = Pool(8)
-    print("Getting Xe line positions")
     xe_locs = p.map(fit_xe_lines, Xes)
     p.close()
     Bar.done(mapped=True)
 
     # Cd next, if present
     if cd_spec is not None:
+        print("Getting Cd line positions")
         n_done = 0
         update_rate = len(Cds) / Bar.setup(toolbar_width=74)
         p = Pool(8)
-        print("Getting Cd line positions")
         cd_locs = p.map(fit_cd_lines, Cds)
         p.close()
         Bar.done(mapped=True)
 
     # Finally He, if present
     if he_spec is not None:
+        print("Getting He line positions")
         n_done = 0
         update_rate = len(Hes) / Bar.setup(toolbar_width=74)
         p = Pool(8)
-        print("Getting He line positions")
         he_locs = p.map(fit_he_lines, Hes)
         p.close()
         Bar.done(mapped=True)
@@ -1729,11 +1735,13 @@ def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578],
     max_std = 0.
     n_ext = 0
 
-    map(rough_grid_helper, range(len(extractions)))
+    for i in range(len(extractions)):
+        rough_grid_helper(i)
 
     if n_ext > 0:
         avg_std = tot_std / (1. * n_ext)
     else:
+        print("Warning - no good extractions")
         avg_std = 0.
     print("<STD>: %6.3f nm, STD(min): %6.3f nm, STD(max): %6.3f nm" %
           (avg_std, min_std, max_std))

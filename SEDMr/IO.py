@@ -125,7 +125,8 @@ def convert_spectra_to_recarray(spectra):
     keys = spectra[0].__dict__.keys()
 
     to_remove = ["mdn_coeff", "hg_lines", "spec", "specw"]
-    map(keys.remove, to_remove)
+    for k in to_remove:
+        keys.remove(k)
 
     types = []
     for key in keys:

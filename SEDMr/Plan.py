@@ -275,7 +275,7 @@ def MF_imcombine(objname, files, dependencies=""):
     first = "%s.fits: %s %s\n" % (objname, filelist, dependencies)
 
     if len(files) > 7:
-        reject = "--Nlo 3 --Nhi 3"
+        reject = "--Nlo 1 --Nhi 1"
     else:
         reject = ""
     if "bias" in objname:
