@@ -2,6 +2,7 @@ import argparse
 from stsci.image.numcombine import numCombine as nc
 import astropy.io.fits as pf
 import numpy as np
+import time
 
 
 def imcombine(flist, fout, listfile=None, combtype="mean",
@@ -38,7 +39,6 @@ def imcombine(flist, fout, listfile=None, combtype="mean",
 
     oimg = result.combArrObj
 
-    hdr.add_history('SEDMr.Imcombine combining stack of images')
     ncom = 1
     for fl in flist:
         key = "IMCMB%03d" % ncom
@@ -49,6 +49,7 @@ def imcombine(flist, fout, listfile=None, combtype="mean",
     hdr['COMBTYPE'] = (combtype, 'type of combine')
     hdr['COMBNLO'] = (nlow, 'number of low pixels to reject')
     hdr['COMBNHI'] = (nhigh, 'number of high pixels to reject')
+    hdr.add_history('SEDMr.Imcombine run on %s' % time.strftime("%c"))
 
     pf.writeto(fout, oimg, hdr)
 
