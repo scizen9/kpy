@@ -14,7 +14,7 @@ def extract_info(infiles):
     headers = []
 
     print("-- Ingesting headers --")
-    update_rate = len(infiles) / (Bar.setup() - 1)
+    update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1
     for ix, ifile in enumerate(infiles):

@@ -218,7 +218,7 @@ def find_segments(segmap=None, obj=None, order=2):
     segrange = range(1, max(segdat.flatten())+1)
 
     n_done = 0
-    update_rate = len(segrange) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(segrange) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     traces = p.map(find_segments_helper, segrange)
     p.close()

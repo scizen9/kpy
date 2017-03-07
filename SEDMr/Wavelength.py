@@ -208,7 +208,7 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par={365.0: 231,
     print("Finding Hg lines on dome traces")
     # print("SgID   Nlines")
     n_done = 0
-    update_rate = len(domedat) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(domedat) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     results = p.map(assoc_hg_with_flats_helper, range(len(domedat)))
     p.close()
@@ -258,7 +258,7 @@ def find_hg_spectra(lines, dYlimit=2, outname="find_spectra"):
     hg365 = []
 
     print("Finding Hg lines in each spectrum")
-    update_rate = len(lines) / (Bar.setup(toolbar_width=74)) + 1
+    update_rate = int(len(lines) / (Bar.setup(toolbar_width=74))) + 1
     for CNT, line in enumerate(lines):
         if CNT % update_rate == 0:
             Bar.update()
@@ -496,7 +496,7 @@ def wavelength_extract(HDUlist_par, wavecalib_par,
 
     # print("SgID  LamRMS     Flat")
     n_done = 0
-    update_rate = len(SSs) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(SSs) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     extractions = p.map(wavelength_extract_helper, SSs)
     p.close()
@@ -584,7 +584,7 @@ def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
     dat = HDUlist[0].data
 
     n_done = 0
-    update_rate = len(assoc_hg_spec) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(assoc_hg_spec) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     extractions = p.map(extract_helper, assoc_hg_spec)
     p.close()
@@ -628,7 +628,7 @@ def median_fine_grid(fine, doPlot=False):
     KD = KDTree(dat)
 
     assert(len(ids) == len(fine))
-    update_rate = len(fine) / (Bar.setup(toolbar_width=74)) + 1
+    update_rate = int(len(fine) / (Bar.setup(toolbar_width=74))) + 1
     for idx, spec in enumerate(fine):
         if idx % update_rate == 0:
             Bar.update()
@@ -1044,7 +1044,7 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
     squares = np.linspace(-1e-3, 1e-3, 15)
 
     specs = gridded_set
-    update_rate = len(specs) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(specs) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     results = p.map(stretch_fit_helper, range(len(specs)))
     p.close()
@@ -1244,7 +1244,7 @@ def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
     # END: for i in range(len(fine)):
 
     n_done = 0
-    update_rate = len(PARS) / Bar.setup(toolbar_width=74) + 1
+    update_rate = int(len(PARS) / Bar.setup(toolbar_width=74)) + 1
     # Map onto thread pool
     p = Pool(8)
     results = p.map(snap_solution_into_place, PARS)
@@ -1439,7 +1439,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     # Start with Hg
     print("Getting Hg line positions")
     n_done = 0
-    update_rate = len(Hgs) / Bar.setup(toolbar_width=74)
+    update_rate = int(len(Hgs) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     hg_locs = p.map(fit_hg_lines, Hgs)
     p.close()
@@ -1448,7 +1448,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     # Now get Xe lines
     print("Getting Xe line positions")
     n_done = 0
-    update_rate = len(Xes) / Bar.setup(toolbar_width=74)
+    update_rate = int(len(Xes) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     xe_locs = p.map(fit_xe_lines, Xes)
     p.close()
@@ -1458,7 +1458,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     if cd_spec is not None:
         print("Getting Cd line positions")
         n_done = 0
-        update_rate = len(Cds) / Bar.setup(toolbar_width=74)
+        update_rate = int(len(Cds) / Bar.setup(toolbar_width=74)) + 1
         p = Pool(8)
         cd_locs = p.map(fit_cd_lines, Cds)
         p.close()
@@ -1468,7 +1468,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
     if he_spec is not None:
         print("Getting He line positions")
         n_done = 0
-        update_rate = len(Hes) / Bar.setup(toolbar_width=74)
+        update_rate = int(len(Hes) / Bar.setup(toolbar_width=74)) + 1
         p = Pool(8)
         he_locs = p.map(fit_he_lines, Hes)
         p.close()
