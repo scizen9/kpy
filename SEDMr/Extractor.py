@@ -643,7 +643,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
         # check for saturated traces
         if np.max(s) > 1000000:
-            print("satureated extraction: %d, skipping" % ix)
+            print("saturated extraction: %d with max of %d, skipping" %
+                  (ix, np.max(s)))
             continue
 
         # This is correct: preference to lamcoeff over mdn_coeff
