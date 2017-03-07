@@ -276,7 +276,7 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     
     fwhm_value = fwhm
 
-    nsrc, fwhm_value, ellip = sextractor.get_image_pars(image)
+    nsrc, fwhm_value, ellip, bkg = sextractor.get_image_pars(image)
     if np.isnan(fwhm_value):
 	fwhm_value=99
     fitsutils.update_par(image, 'FWHM', fwhm_value)
