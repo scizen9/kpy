@@ -14,6 +14,7 @@ Note:
          file           An image file to be processed
 
 """
+import time
 import numpy as np
 import astropy.io.fits as pf
 import scipy.ndimage.filters as FI
@@ -92,7 +93,7 @@ if __name__ == '__main__':
                 continue
         except:
             continue
-        print(ifile)
+
         FF = pf.open(ifile)
         adcspeed = FF[0].header['ADCSPEED']
 
@@ -117,5 +118,6 @@ if __name__ == '__main__':
             FF[0].header['GAIN'] = (1.0,
                                     'GAIN Adjusted (was guessed %s)' % GAIN)
         FF[0].header['BUNIT'] = 'electron'
+        FF[0].header.add_history('SEDMr.Debias run on %s' % time.strftime("%c"))
         FF.writeto(outname)
 

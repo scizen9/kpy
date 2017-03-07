@@ -2,6 +2,7 @@
 import argparse
 import os
 import glob
+import time
 import numpy as np
 import pylab as pl
 from matplotlib.patches import Ellipse
@@ -640,9 +641,10 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         l, s = spectrum.get_counts(the_spec='specw')
         pix = np.arange(*spectrum.xrange)
 
-        # This is wrong: should give preference to lamcoeff according to Nick
-        # if spectrum.mdn_coeff is not None: cs = spectrum.mdn_coeff
-        # else: cs = spectrum.lamcoeff
+        # check for saturated traces
+        if np.max(s) > 1000000:
+            print("satureated extraction: %d, skipping" % ix)
+            continue
 
         # This is correct: preference to lamcoeff over mdn_coeff
         if spectrum.lamcoeff is not None:
@@ -735,6 +737,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             #     print("rejected - ix: %d, flx: %.1f" % (ix, f_test))
         print("%d spaxels rejected" % nrej)
     else:
+        print "No trimming performed"
         newsix = None
 
     # average of all spectra selected
@@ -764,7 +767,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.figure(2)
         pl.clf()
         s_grid = np.array(s_grid)
-        pl.imshow(s_grid, vmin=yl[0], vmax=yl[1],cmap=pl.get_cmap('jet'))
+        pl.imshow(s_grid, vmin=yl[0], vmax=yl[1], cmap=pl.get_cmap('jet'))
         pl.xlabel('Wavelength bin [pixel]')
         pl.title("%s Spaxels" % outname.split('.')[0])
         pl.colorbar()
@@ -873,6 +876,8 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         # Adjust FITS header
         hdr['airmass1'] = hdr['airmass']
         hdr['airmass2'] = inhdu2[0].header['airmass']
+
+    hdr.add_history('SEDMr.Extractor.imarith run on %s' % time.strftime("%c"))
 
     pf.writeto(result, res, hdr)
 

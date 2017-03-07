@@ -9,6 +9,7 @@ kludged from PyCosmic to run _lacosmicx instead, which is faster
 """
 __version__ = "0.1"
 
+import time
 import argparse
 import numpy as np
 import astropy.io.fits as pf
@@ -66,6 +67,7 @@ if __name__ == '__main__':
         header['history'] = "LA CosmicX params: sigclip=%5.2f sigfrac=%5.2f objlim=%5.2f" % (args.sigclip, args.sigfrac, args.objlim)
         header['history'] = "LA CosmicX params: fsmode=%s psfmodel=%s psffwhm=%5.2f" % (args.fsmode, args.psfmodel, args.psffwhm)
         header['history'] = "LA CosmicX params: sepmed=%s minexptime=%f" % (args.sepmed, args.minexptime)
+        header['history'] = "LA CosmicX run on %s" % time.strftime("%c")
 
         pf.writeto(args.clean, clean, header)
         mask = np.cast["uint8"](mask)
