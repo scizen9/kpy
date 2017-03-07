@@ -372,7 +372,12 @@ def make_profile(sl, sigma2=4):
 
 
 def wavelength_extract_helper(SS):
-    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs
+    global dat, exptime, wavecalib, HDUlist, extract_width, flt_corrs, \
+        n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0:
+        Bar.update()
 
     ix, flexure_x_corr_nm, flexure_y_corr_pix = SS
 

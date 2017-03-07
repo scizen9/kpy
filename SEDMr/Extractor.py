@@ -738,7 +738,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             #     print("rejected - ix: %d, flx: %.1f" % (ix, f_test))
         print("%d spaxels rejected" % nrej)
     else:
-        print "No trimming performed"
         newsix = None
 
     # average of all spectra selected

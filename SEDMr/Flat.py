@@ -4,22 +4,14 @@ import numpy as np
 import pylab as pl
 import warnings
 
-import NPK.Fit as FF
-
-import SEDMr.Extraction as Extraction
-import SEDMr.Wavelength as Wavelength
 from SEDMr.FlatCorrection import FlatCorrection as FC
-
-reload(FF)
-reload(Extraction)
-reload(Wavelength)
 
 
 def measure_flat(extraction, fmeta, lamstart=700, lamend=900):
 
     corrections = []
-    Xs = []
-    Ys = []
+    xs = []
+    ys = []
     for i, e in enumerate(extraction):
         fc = FC(seg_id=e.seg_id)
         corrections.append(fc)
@@ -32,30 +24,30 @@ def measure_flat(extraction, fmeta, lamstart=700, lamend=900):
         except:
             continue
 
-        Xs.append(np.nanmin(e.xrange)+e.xrefpix)
-        Ys.append(np.mean(e.yrange))
+        xs.append(np.nanmin(e.xrange)+e.xrefpix)
+        ys.append(np.mean(e.yrange))
 
-        ROI = (l > lamstart) & (l <= lamend)
+        roi = (l > lamstart) & (l <= lamend)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            fc.correction = np.nanmean(f[ROI])
+            fc.correction = np.nanmean(f[roi])
 
     vals = [f.get_correction(0) for f in corrections]
     medval = np.nanmedian(vals)
 
-    Ss = []
+    ss = []
     for c in corrections: 
         try: 
             c.correction /= medval
             if c.correction > 2:
                 c.correction = 1.0
-            Ss.append(c.correction)
+            ss.append(c.correction)
         except:
             pass
     
     pl.figure(1)
     pl.clf()
-    pl.scatter(Xs, Ys, c=Ss, s=35, linewidth=0, vmin=0.8, vmax=1.2, marker='h',
+    pl.scatter(xs, ys, c=ss, s=35, linewidth=0, vmin=0.8, vmax=1.2, marker='h',
                cmap=pl.get_cmap('jet'))
     pl.xlim(-100, 2048+100)
     pl.ylim(-100, 2048+100)
