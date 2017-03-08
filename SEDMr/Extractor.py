@@ -32,6 +32,14 @@ import skimage.feature as feature
 drp_ver = Version.ifu_drp_version()
 
 
+def plot_drp_ver():
+    ax = pl.gca()
+    ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                xycoords=('axes fraction', 'figure fraction'),
+                textcoords='offset points', size=6,
+                ha='center', va='bottom')
+
+
 def reject_outliers(data, m=2.):
     d = np.abs(data - np.nanmedian(data))
     mdev = np.nanmedian(d)
@@ -601,6 +609,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         tlab += ", Airmass: %.3f" % meta['airmass']
     pl.title(tlab)
     pl.colorbar()
+    plot_drp_ver()
     pl.savefig("image_%s.pdf" % outname)
     pl.close()
     print("Wrote image_%s.pdf" % outname)
@@ -759,6 +768,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.xlabel('Wavelength [nm]')
         pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
         pl.title("%s Raw Spectrum" % outname.split('.')[0])
+        plot_drp_ver()
+
         pl.grid(True)
         if outname is not None:
             pl.savefig("spec_%s" % outname)
@@ -775,6 +786,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.xlabel('Wavelength bin [pixel]')
         pl.title("%s Spaxels" % outname.split('.')[0])
         pl.colorbar()
+        plot_drp_ver()
         pl.grid(True)
         if outname is not None:
             pl.savefig("allspec_%s" % outname)
@@ -826,6 +838,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             pl.xlabel('Wavelength [nm]')
             pl.ylabel(r'Spectral irradiance[photon/10 m/nm] x Atm correction')
             pl.title("%s Corr Spectrum" % outname.split('.')[0])
+            plot_drp_ver()
             pl.grid(True)
             if outname is not None:
                 pl.savefig("corr_spec_%s" % outname)
@@ -1232,6 +1245,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
     pl.title(tlab)
+    plot_drp_ver()
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
     print("Wrote XYs_%s.pdf" % outname)
@@ -1600,6 +1614,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
+        plot_drp_ver()
         pl.title(tlab)
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
@@ -1963,6 +1978,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
+        plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
         pl.close()
