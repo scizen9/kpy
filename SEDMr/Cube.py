@@ -41,6 +41,7 @@ Note:
 """
 
 import os
+import sys
 import argparse
 import numpy as np
 import astropy.io.fits as pf
@@ -50,7 +51,9 @@ from numpy.polynomial.chebyshev import chebval
 from scipy.interpolate import interp1d
 import SEDMr.Wavelength as Wavelength
 
-import sys
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 sys.setrecursionlimit(10000)
 
@@ -396,6 +399,8 @@ def extraction_to_cube(exts, outname="G.npy"):
         ex.X_as = ex.Xhex_as
         ex.Y_as = ex.Yhex_as
 
+    # Record DRP version
+    meta_data['drp_version'] = drp_ver
     # Write out the cube
     np.save(outname, [exts, meta_data])
     print("Wrote %s.npy" % outname)

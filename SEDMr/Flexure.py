@@ -9,6 +9,9 @@ import NPK.Fit as NFit
 from scipy.interpolate import interp1d
 
 import SEDMr.Wavelength as Wavelength
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
@@ -153,6 +156,12 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
 
     pl.title("dX = %3.2f nm shift, dY = %3.2f px shift" % (dxnm, drow))
     pl.legend(legend)
+
+    ax = pl.gca()
+    ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                xycoords=('axes fraction', 'figure fraction'),
+                textcoords='offset points', size=10,
+                ha='center', va='bottom')
 
     if plot:
         pl.show()
@@ -329,6 +338,7 @@ if __name__ == '__main__':
             'yfwhm': ywid,
             'xfwhm': xwid,
             'dXnm': dx,
-            'dYpix': dy}]
+            'dYpix': dy,
+            'drp_version': drp_ver}]
 
     np.save(args.outfile, res)

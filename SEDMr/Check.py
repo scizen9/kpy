@@ -64,6 +64,10 @@ def check_cube(cubename, showlamrms=False, savefig=False):
 
     cc, meta = np.load(cubename)
     fid_wave = meta['fiducial_wavelength']
+    if 'drp_version' in meta:
+        dver = meta['drp_version']
+    else:
+        dver = ''
 
     xs = [c.X_as for c in cc]
     ys = [c.Y_as for c in cc]
@@ -104,6 +108,14 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.colorbar(label=cbtitle)
     pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
     pl.ylabel("Dec offset [asec]")
+    # Add drp version
+    if len(dver) > 0:
+        ax = pl.gca()
+        ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=10,
+                    ha='center', va='bottom')
+
     pl.grid(True)
     pl.ioff()
     if savefig:
@@ -218,6 +230,11 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     except:
         utc = ''
 
+    if 'drp_version' in ss:
+        dver = ss['drp_version']
+    else:
+        dver = ''
+
     # Annotate plots
     if qual > 0:
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
@@ -314,6 +331,14 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Add legend
     pl.legend(legend)
+
+    # Add drp version
+    if len(dver) > 0:
+        ax = pl.gca()
+        ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=10,
+                    ha='center', va='bottom')
 
     pl.grid(True)
     pl.ioff()

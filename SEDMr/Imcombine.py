@@ -3,6 +3,9 @@ from stsci.image.numcombine import numCombine as nc
 import astropy.io.fits as pf
 import numpy as np
 import time
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def imcombine(flist, fout, listfile=None, combtype="mean",
@@ -50,6 +53,7 @@ def imcombine(flist, fout, listfile=None, combtype="mean",
     hdr['COMBNLO'] = (nlow, 'number of low pixels to reject')
     hdr['COMBNHI'] = (nhigh, 'number of high pixels to reject')
     hdr.add_history('SEDMr.Imcombine run on %s' % time.strftime("%c"))
+    hdr['DRPVER'] = drp_ver
 
     pf.writeto(fout, oimg, hdr)
 

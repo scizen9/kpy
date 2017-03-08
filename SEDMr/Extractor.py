@@ -21,12 +21,15 @@ import SEDMr.GUI as GUI
 import NPK.Util
 import NPK.Standards as Stds
 import NPK.Atmosphere as Atm
+import SEDMr.Version as Version
 
 # Nadia imports
 from scipy.interpolate import griddata
 import scipy.optimize as opt
 
 import skimage.feature as feature
+
+drp_ver = Version.ifu_drp_version()
 
 
 def reject_outliers(data, m=2.):
@@ -878,6 +881,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         hdr['airmass2'] = inhdu2[0].header['airmass']
 
     hdr.add_history('SEDMr.Extractor.imarith run on %s' % time.strftime("%c"))
+    hdr['DRPVER'] = drp_ver
 
     pf.writeto(result, res, hdr)
 
@@ -1006,6 +1010,7 @@ def handle_flat(flfile, fine, outname=None):
         meta['header'] = header
 
         meta['exptime'] = spec[0].header['exptime']
+        meta['drp_version'] = drp_ver
         np.save(outname, [ex, meta])
         print("Wrote %s.npy" % outname)
 
@@ -1311,6 +1316,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['sky_spectra'] = skya[0]['spectra']
     res[0]['sky_subtraction'] = True
     res[0]['quality'] = quality
+    res[0]['drp_version'] = drp_ver
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1653,6 +1659,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['sky_spectra'] = skya[0]['spectra']
         res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
+        res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
         xs = np.arange(len(ll)+1)
@@ -2041,6 +2048,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['sky_spaxel_ids_B'] = kixb
         res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
+        res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
         xs = np.arange(len(ll)+1)

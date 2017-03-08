@@ -21,8 +21,6 @@ from numpy.polynomial.chebyshev import chebfit, chebval
 
 import SEDMr.Extraction as Extraction
 from scipy.interpolate import interp1d
-#reload(NPK.Fit)
-#reload(Extraction)
 
 from numpy import NaN, Inf, arange, isscalar, asarray, array
 
