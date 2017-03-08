@@ -38,27 +38,27 @@ for d in dlist:
 
         # 400 - 500 nm
         e1 = np.nanmean(ef[(wl > 400) * (wl < 500)])
-        if e1 > 100:
+        if e1 > 100 or e1 < 0:
             continue
 
         # 500 - 600 nm
         e2 = np.nanmean(ef[(wl > 500) * (wl < 600)])
-        if e2 > 100:
+        if e2 > 100 or e2 < 0:
             continue
 
         # 600 - 700 nm
         e3 = np.nanmean(ef[(wl > 600) * (wl < 700)])
-        if e3 > 100:
+        if e3 > 100 or e3 < 0:
             continue
 
         # 700 - 800 nm
         e4 = np.nanmean(ef[(wl > 700) * (wl < 800)])
-        if e4 > 100:
+        if e4 > 100 or e4 < 0:
             continue
 
         # 800 - 900 nm
         e5 = np.nanmean(ef[(wl > 800) * (wl < 900)])
-        if e5 > 100:
+        if e5 > 100 or e5 < 0:
             continue
 
         # Fill efficiency vectors
