@@ -160,7 +160,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     ax = pl.gca()
     ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                 xycoords=('axes fraction', 'figure fraction'),
-                textcoords='offset points', size=10,
+                textcoords='offset points', size=6,
                 ha='center', va='bottom')
 
     if plot:

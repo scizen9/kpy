@@ -113,7 +113,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         ax = pl.gca()
         ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
-                    textcoords='offset points', size=10,
+                    textcoords='offset points', size=6,
                     ha='center', va='bottom')
 
     pl.grid(True)
@@ -337,7 +337,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         ax = pl.gca()
         ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
-                    textcoords='offset points', size=10,
+                    textcoords='offset points', size=6,
                     ha='center', va='bottom')
 
     pl.grid(True)
