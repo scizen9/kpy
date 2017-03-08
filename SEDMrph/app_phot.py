@@ -286,9 +286,12 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     else:
         airmass_value = 1.3
         
+    if (not fitsutils.has_par(image, "EXPTIME")):
+        if (fitsutils.has_par(image, "ITIME") and fitsutils.has_par(image, "COADDS")):
+            exptime = fitsutils.get_par(image, "ITIME")*fitsutils.get_par(image, "COADDS")
+            fitsutils.update_par(image, "EXPTIME", exptime)
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
-    
     
     #print "FWHM", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
@@ -360,6 +363,9 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     if (fitsutils.has_par(image, "ZEROPT")):
         mag =  insmag + float(fitsutils.get_par(image, "ZEROPT"))
         magerr = np.sqrt(insmagerr**2+ float(fitsutils.get_par(image, "ZEROPTU"))**2)  
+    else:
+	mag = 0
+	magerr = 0
 	
     if np.isnan(mag):
         mag, magerr = 0, 0
