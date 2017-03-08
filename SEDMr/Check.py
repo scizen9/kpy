@@ -65,9 +65,9 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     cc, meta = np.load(cubename)
     fid_wave = meta['fiducial_wavelength']
     if 'drp_version' in meta:
-        dver = meta['drp_version']
+        drp_ver = meta['drp_version']
     else:
-        dver = ''
+        drp_ver = ''
 
     xs = [c.X_as for c in cc]
     ys = [c.Y_as for c in cc]
@@ -109,9 +109,9 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
     pl.ylabel("Dec offset [asec]")
     # Add drp version
-    if len(dver) > 0:
+    if len(drp_ver) > 0:
         ax = pl.gca()
-        ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
                     textcoords='offset points', size=6,
                     ha='center', va='bottom')
@@ -231,9 +231,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         utc = ''
 
     if 'drp_version' in ss:
-        dver = ss['drp_version']
+        drp_ver = ss['drp_version']
     else:
-        dver = ''
+        drp_ver = ''
 
     # Annotate plots
     if qual > 0:
@@ -333,9 +333,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     pl.legend(legend)
 
     # Add drp version
-    if len(dver) > 0:
+    if len(drp_ver) > 0:
         ax = pl.gca()
-        ax.annotate('DRP: '+dver, xy=(0.0, 0.01), xytext=(0, 0),
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
                     textcoords='offset points', size=6,
                     ha='center', va='bottom')
@@ -434,6 +434,13 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.xlabel("Wavelength [Ang]")
         pl.ylabel("SEDM efficiency (%)")
         pl.plot(ss['nm'], ss['efficiency']*100.)
+        # Add drp version
+        if len(drp_ver) > 0:
+            ax = pl.gca()
+            ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                        xycoords=('axes fraction', 'figure fraction'),
+                        textcoords='offset points', size=6,
+                        ha='center', va='bottom')
         pl.grid(True)
         pl.ioff()
         if savefig:
