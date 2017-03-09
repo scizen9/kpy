@@ -132,6 +132,7 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     legend = ["corr", ]
     filt_legend = ["orig"]
     maxnm = 915.
+    drp_ver = None
     for ifile in filelist:
         """ Filename is sp_STD-nnnnn_obs*.npy """
 
@@ -168,6 +169,9 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             print("File named '%s' is reduced to '%s' and no such standard "
                   "seems to exist." % (ifile, pred))
             continue
+        # get DRP version
+        if drp_ver is None:
+            drp_ver = data['drp_version']
         # Record median correction in ROI
         roi = (ll > 600) & (ll < 850)
         corr_vals.append(np.nanmedian(correction[roi]))
@@ -252,6 +256,12 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     pl.xlabel("Wavelength [nm]")
     pl.ylabel("Correction [erg/s/cm cm/Ang]")
     pl.title("Correct ph/10 m/nm to erg/s/cm2/Ang")
+    if drp_ver is not None:
+        ax = pl.gca()
+        ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
     pl.legend(legend)
 
     with warnings.catch_warnings():
