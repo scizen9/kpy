@@ -173,8 +173,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     if plotobj:
         fig, ax = pl.subplots(1, 1)
-        ax.imshow(grid_vs.T, extent=[np.min(xi), np.max(xi),
-                                     np.min(yi), np.max(yi)])
+        ax.imshow(np.rot90(grid_vs, k=1, axes=(0, 1)),
+                  extent=[np.min(xi), np.max(xi),
+                          np.min(yi), np.max(yi)])
     goodblob = 0
 
     # Loop over found blobs
@@ -1321,7 +1322,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['extinction_corr'] = extcorr
     res[0]['skyph'] = sky * len(sixa)
     res[0]['skynm'] = ll
-    res[0]['var'] = varspec
+    res[0]['var'] = varspec * len(sixa)
     res[0]['radius_as'] = radius_used
     res[0]['position'] = posa
     res[0]['N_spax'] = len(sixa)
@@ -1665,7 +1666,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['extinction_corr'] = extcorr
         res[0]['skyph'] = sky * len(nsxa)
         res[0]['skynm'] = ll
-        res[0]['var'] = varspec
+        res[0]['var'] = varspec * len(sixa)
         res[0]['radius_as'] = radius_used
         res[0]['position'] = posa
         res[0]['N_spax'] = len(nsxa)
@@ -2006,8 +2007,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                          bounds_error=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            varspec = np.nanmean([var_a(ll), var_b(ll)], axis=0) * \
-                      (len(nsxA) + len(nsxB))
+            varspec = np.nanmean([var_a(ll), var_b(ll)], axis=0)
 
         res = [{"doc": resa[0]["doc"],
                 "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
@@ -2052,7 +2052,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
         res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
-        res[0]['var'] = varspec
+        res[0]['var'] = varspec * (len(nsxA) + len(nsxB))
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa
