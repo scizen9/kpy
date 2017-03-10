@@ -2007,7 +2007,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                          bounds_error=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            varspec = np.nanmean([var_a(ll), var_b(ll)], axis=0)
+            varspec = np.nansum([var_a(ll), var_b(ll)], axis=0)
 
         res = [{"doc": resa[0]["doc"],
                 "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),

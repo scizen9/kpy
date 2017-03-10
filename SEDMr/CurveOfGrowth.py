@@ -378,11 +378,11 @@ def interp_spectra(all_spectra, six, onto=None, sky=False):
     return result
 
 
-def make_cog(outname, lmin=650., lmax=700., sigfac=7., interact=False):
+def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
-        outname (string): filename to write results to
+        infile (string): filename to write results to
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
         sigfac (float): sigma multiplier for Gaussian extent of aperture
@@ -394,27 +394,18 @@ def make_cog(outname, lmin=650., lmax=700., sigfac=7., interact=False):
     Raises:
         None
 
-    Note:
-        The extracted spectrum dictionary is written to ``outname``.npy::
-
-            'doc': docstring description
-            'ph_10m_nm': Flux in photon/10min/nm integrated
-            'spectra': Individual spaxel spectra
-            'coefficients': Coefficients of wavelength fit
-            'nm': Wavelengths in nm
-
-
     """
 
     # The spaxel extraction file must already exist, so load extractions in
-    if os.path.isfile(outname+".npy"):
-        print("USING extractions in %s.npy!" % outname)
-        ex, meta = np.load(outname+".npy")
+    if os.path.isfile(infile):
+        print("USING extractions in %s!" % infile)
+        ex, meta = np.load(infile)
     # No file found
     else:
-        print("File not found: %s.npy" % outname)
+        print("File not found: %s" % infile)
         return
 
+    outname = infile.split('.')[0]
     # Get the object name of record
     objname = meta['header']['OBJECT'].split()[0]
 
@@ -425,17 +416,6 @@ def make_cog(outname, lmin=650., lmax=700., sigfac=7., interact=False):
                                    lmin=lmin, lmax=lmax,
                                    airmass=meta['airmass'],
                                    sigfac=sigfac)
-    radius_used = ellipse[0] * 0.5
-
-    if status > 0:
-        quality = 4  # something went wrong
-    else:
-        quality = 1  # by definition
-
-    # Stats for automatic fit
-    stats = {"nosky": False, "scaled": False,
-             "lmin": lmin, "lmax": lmax,
-             "cmin": None, "cmax": None}
 
     # Use all sky spaxels in image
     kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
@@ -464,7 +444,7 @@ def make_cog(outname, lmin=650., lmax=700., sigfac=7., interact=False):
     # Set up plot
     pl.figure(1)
     pl.clf()
-    pl.title(objname)
+    pl.title(outname)
 
     xs = range(20)
     rs = list(np.linspace(0, ellipse[0], 20))
