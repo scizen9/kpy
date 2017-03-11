@@ -518,24 +518,59 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
 
     maxph = np.nanmax([c1, c2, c3, c4, c5])
 
-    hmx = np.array(px)
+    # Normalize and get minimum half-max radius
 
-    half = (c3 > maxph/2.)
-    hmx = hmx[half]
-    hmx = hmx[-1]
+    hmr = 1.e9
 
+    # 400-500 nm
     c1 /= maxph
+    if np.max(c1) == c1[0] and np.max(c1) > 0.5:
+        c1f = interp1d(c1, px)
+        hmx = c1f(0.5)
+        if hmx < hmr:
+            hmr = hmx
+
+    # 500-600 nm
     c2 /= maxph
+    if np.max(c2) == c2[0] and np.max(c2) > 0.5:
+        c2f = interp1d(c2, px)
+        hmx = c2f(0.5)
+        if hmx < hmr:
+            hmr = hmx
+
+    # 600-700 nm
     c3 /= maxph
+    if np.max(c3) == c3[0] and np.max(c3) > 0.5:
+        c3f = interp1d(c3, px)
+        hmx = c3f(0.5)
+        if hmx < hmr:
+            hmr = hmx
+
+    # 700-800 nm
     c4 /= maxph
+    if np.max(c4) == c4[0] and np.max(c4) > 0.5:
+        c4f = interp1d(c4, px)
+        hmx = c4f(0.5)
+        if hmx < hmr:
+            hmr = hmx
+
+    # 800-900 nm
     c5 /= maxph
+    if np.max(c5) == c5[0] and np.max(c5) > 0.5:
+        c5f = interp1d(c5, px)
+        hmx = c5f(0.5)
+        if hmx < hmr:
+            hmr = hmx
 
     pl.plot(px, c1, label='400-500 nm')
     pl.plot(px, c2, label='500-600 nm')
     pl.plot(px, c3, label='600-700 nm')
     pl.plot(px, c4, label='700-800 nm')
     pl.plot(px, c5, label='800-900 nm')
-    pl.plot([hmx, hmx], [-0.05, 1.05], ls='--', c='black', label='HalfMax')
+    if hmr < 1.e9:
+        pl.plot([hmr, hmr], [-0.05, 1.05], ls='--', c='black', label='HalfMax')
+        # pl.plot([0.05, hmr], [0.5, 0.5], ls='--', c='gray')
+    pl.xlim(0.05, np.max(px)+0.05)
     pl.ylim(-0.05, 1.05)
     pl.xlabel('Semi-major axis (arcsec)')
     pl.ylabel('Relative Irr')
