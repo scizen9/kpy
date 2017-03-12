@@ -449,7 +449,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
     xs = range(20)
     rs = list(np.linspace(0, ellipse[0], 20))
     rs.reverse()
-    print("loop down to 1 from %.2f asec" % ellipse[0])
+    print("max semi-major axis is %.2f asec" % ellipse[0])
 
     c1 = []
     c2 = []
