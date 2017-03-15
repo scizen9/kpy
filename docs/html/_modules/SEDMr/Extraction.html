@@ -107,6 +107,8 @@
 <span class="sd">            Y location is based on the segmentation map.</span>
 <span class="sd">        Xhex_as(float): The hex projected X coord in arcsec</span>
 <span class="sd">        Yhex_as(float): The hex projected Y coord in arcsec</span>
+<span class="sd">        Xccd_as(float): The CCD X coord in arcsec</span>
+<span class="sd">        Yccd_as(float): The CCD Y coord in arcsec</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        You should use the values as follows:</span>
@@ -152,6 +154,8 @@
     <span class="n">R_ix</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">Xhex_as</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">Yhex_as</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">Xccd_as</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">Yccd_as</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">X_as</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">Y_as</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">X_pix</span> <span class="o">=</span> <span class="bp">None</span>
@@ -241,7 +245,8 @@
                  <span class="n">yrange</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">poly</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">spec</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">specw</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">specf</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">specwf</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">exptime</span><span class="o">=</span><span class="n">exptime</span><span class="p">,</span> <span class="n">trace_sigma</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">hg_lines</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">X_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Y_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Q_ix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">R_ix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">X_pix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
-                 <span class="n">Y_pix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Xhex_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Yhex_as</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+                 <span class="n">Y_pix</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">Xhex_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Yhex_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">Xccd_as</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">Yccd_as</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">seg_id</span> <span class="o">=</span> <span class="n">seg_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ok</span> <span class="o">=</span> <span class="n">ok</span>
@@ -267,7 +272,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">Y_pix</span> <span class="o">=</span> <span class="n">Y_pix</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">R_ix</span> <span class="o">=</span> <span class="n">R_ix</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Xhex_as</span> <span class="o">=</span> <span class="n">Xhex_as</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">Yhex_as</span> <span class="o">=</span> <span class="n">Yhex_as</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Yhex_as</span> <span class="o">=</span> <span class="n">Yhex_as</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Xccd_as</span> <span class="o">=</span> <span class="n">Xccd_as</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Yccd_as</span> <span class="o">=</span> <span class="n">Yccd_as</span></div>
+
 </pre></div>
 
           </div>

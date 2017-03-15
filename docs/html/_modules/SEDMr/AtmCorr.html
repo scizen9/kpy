@@ -78,7 +78,6 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
 <span class="kn">import</span> <span class="nn">scipy.signal</span>
-<span class="kn">import</span> <span class="nn">scipy.stats</span>
 <span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebfit</span>
 <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
 
@@ -93,7 +92,7 @@
         <span class="n">outname</span> <span class="o">=</span> <span class="s2">&quot;corr_&quot;</span> <span class="o">+</span> <span class="n">filename</span>
     <span class="n">dat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;sp_&quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">if</span> <span class="s2">&quot;std-correction&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dat</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-        <span class="k">print</span> <span class="s2">&quot;Not a known standard extraction, returning&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Not a known standard extraction, returning&quot;</span><span class="p">)</span>
         <span class="k">return</span>
     <span class="n">erg_s_cm2_ang</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s1">&#39;std-correction&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-16</span>
     <span class="n">maxnm</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span>
@@ -174,6 +173,7 @@
     <span class="n">legend</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;corr&quot;</span><span class="p">,</span> <span class="p">]</span>
     <span class="n">filt_legend</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;orig&quot;</span><span class="p">]</span>
     <span class="n">maxnm</span> <span class="o">=</span> <span class="mf">915.</span>
+    <span class="n">drp_ver</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="k">for</span> <span class="n">ifile</span> <span class="ow">in</span> <span class="n">filelist</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot; Filename is sp_STD-nnnnn_obs*.npy &quot;&quot;&quot;</span>
 
@@ -185,12 +185,12 @@
 
         <span class="c1"># Check quality of extraction</span>
         <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">print</span> <span class="s2">&quot;Bad std extraction in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Bad std extraction in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span><span class="p">)</span>
             <span class="k">continue</span>
 
         <span class="c1"># Check for calculated correction</span>
         <span class="k">if</span> <span class="s2">&quot;std-correction&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="k">print</span> <span class="s2">&quot;No std-correction vector in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;No std-correction vector in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span><span class="p">)</span>
             <span class="k">continue</span>
         <span class="n">correction</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;std-correction&#39;</span><span class="p">]</span>
 
@@ -198,21 +198,24 @@
         <span class="k">if</span> <span class="s2">&quot;std-maxnm&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">maxnm</span><span class="p">:</span>
                 <span class="n">maxnm</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;std-maxnm&#39;</span><span class="p">]</span>
-        <span class="c1"># Convert file named sp_STD-nnnn_obs* to a name compaitable</span>
+        <span class="c1"># Convert file named sp_STD-nnnn_obs* to a name compatable</span>
         <span class="c1"># with Standards.py.  First strip of &quot;sp_STD-&quot;</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="n">ifile</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span>
         <span class="n">pred</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
-        <span class="k">print</span> <span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">)</span>
         <span class="c1"># Are we in our list of standard stars?</span>
         <span class="k">if</span> <span class="n">pred</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">Stds</span><span class="o">.</span><span class="n">Standards</span><span class="p">:</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;File named &#39;</span><span class="si">%s</span><span class="s2">&#39; is reduced to &#39;</span><span class="si">%s</span><span class="s2">&#39; and no such standard &quot;</span>
                   <span class="s2">&quot;seems to exist.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ifile</span><span class="p">,</span> <span class="n">pred</span><span class="p">))</span>
             <span class="k">continue</span>
+        <span class="c1"># get DRP version</span>
+        <span class="k">if</span> <span class="n">drp_ver</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">drp_ver</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;drp_version&#39;</span><span class="p">]</span>
         <span class="c1"># Record median correction in ROI</span>
         <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&gt;</span> <span class="mi">600</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="mi">850</span><span class="p">)</span>
-        <span class="n">corr_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">correction</span><span class="p">[</span><span class="n">roi</span><span class="p">]))</span>
+        <span class="n">corr_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">correction</span><span class="p">[</span><span class="n">roi</span><span class="p">]))</span>
         <span class="c1"># Normalize each correction by the median value</span>
         <span class="n">correction</span> <span class="o">/=</span> <span class="n">corr_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">corrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">correction</span><span class="p">)</span>
@@ -220,12 +223,12 @@
 
     <span class="c1"># Rescale each correction and scale to erg/s/cm2/Ang</span>
     <span class="n">corrs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">corrs</span><span class="p">)</span>
-    <span class="n">erg_s_cm2_ang</span> <span class="o">=</span> <span class="n">corrs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">corr_vals</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-16</span>
+    <span class="n">erg_s_cm2_ang</span> <span class="o">=</span> <span class="n">corrs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">corr_vals</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-16</span>
     <span class="c1"># Take the median of the correction vectors</span>
-    <span class="n">the_corr</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">erg_s_cm2_ang</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">the_corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">erg_s_cm2_ang</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
     <span class="c1"># Fit red end unless we are calibrated out there</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">the_corr</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="n">maxnm</span> <span class="o">&lt;</span> <span class="mf">1000.0</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Fitting red end&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Fitting red end&quot;</span><span class="p">)</span>
         <span class="c1"># Fit polynomial to extrapolate correction</span>
         <span class="n">redend</span> <span class="o">=</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&gt;</span> <span class="mi">880</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ll</span> <span class="o">&lt;</span> <span class="n">maxnm</span><span class="p">)</span>
         <span class="n">ss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">ll</span><span class="p">[</span><span class="n">redend</span><span class="p">],</span> <span class="n">the_corr</span><span class="p">[</span><span class="n">redend</span><span class="p">],</span> <span class="mi">2</span><span class="p">))</span>
@@ -269,8 +272,10 @@
     <span class="k">if</span> <span class="n">plot_filt</span><span class="p">:</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">ll</span><span class="p">,</span> <span class="n">the_corr</span> <span class="o">*</span> <span class="mf">4.</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">filt_legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Balmer*4&quot;</span><span class="p">)</span>
+    <span class="c1"># Filter nans</span>
+    <span class="n">fin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">the_corr</span><span class="p">)</span>
     <span class="c1"># Filter correction to remove spectral features and leave response alone</span>
-    <span class="n">the_corr</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">signal</span><span class="o">.</span><span class="n">savgol_filter</span><span class="p">(</span><span class="n">the_corr</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="n">the_corr</span><span class="p">[</span><span class="n">fin</span><span class="p">]</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">signal</span><span class="o">.</span><span class="n">savgol_filter</span><span class="p">(</span><span class="n">the_corr</span><span class="p">[</span><span class="n">fin</span><span class="p">],</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
     <span class="c1"># Plot intermediate correction</span>
     <span class="k">if</span> <span class="n">plot_filt</span><span class="p">:</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">ll</span><span class="p">,</span> <span class="n">the_corr</span> <span class="o">*</span> <span class="mf">2.</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
@@ -292,6 +297,12 @@
     <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Wavelength [nm]&quot;</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Correction [erg/s/cm cm/Ang]&quot;</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Correct ph/10 m/nm to erg/s/cm2/Ang&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">drp_ver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;DRP: &#39;</span> <span class="o">+</span> <span class="n">drp_ver</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;axes fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;figure fraction&#39;</span><span class="p">),</span>
+                    <span class="n">textcoords</span><span class="o">=</span><span class="s1">&#39;offset points&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">legend</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
@@ -301,7 +312,7 @@
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Mean cor: </span><span class="si">%10.3g</span><span class="s2">, Sigma cor: </span><span class="si">%10.3g</span><span class="s2">&quot;</span> <span class="o">%</span>
           <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">corr_vals</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-16</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">corr_vals</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-16</span><span class="p">))</span>
     <span class="n">maxnm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">maxnm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ll</span><span class="p">)])</span>
-    <span class="k">print</span> <span class="s2">&quot;Max nm: </span><span class="si">%7.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">maxnm</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Max nm: </span><span class="si">%7.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">maxnm</span><span class="p">)</span>
 
     <span class="c1"># Construct result</span>
     <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
@@ -332,13 +343,13 @@
     <span class="c1"># Get a list of good correction vectors</span>
     <span class="n">keepers</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">ifile</span> <span class="ow">in</span> <span class="n">filelist</span><span class="p">:</span>
-        <span class="k">print</span> <span class="n">ifile</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">ifile</span><span class="p">)</span>
         <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ifile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="c1"># Correction values should be small</span>
         <span class="c1"># if &quot;std-correction&quot; not in data.keys():</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;std-correction&#39;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">9</span><span class="p">:</span>
             <span class="n">keepers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-            <span class="k">print</span> <span class="s2">&quot;Keeping </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Keeping </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ifile</span><span class="p">)</span>
 
     <span class="c1"># Set fiducial wavelengths from first correction vector</span>
     <span class="n">corl</span> <span class="o">=</span> <span class="n">keepers</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;nm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
