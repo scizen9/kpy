@@ -1,0 +1,21 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            {% if fail %}
+                <div class="media-body">
+                    <h1> {{ fail }}</h1>
+                </div>
+            {% endif %}
+            <div class="col-md-6">
+                <div>
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <p>
+                            {{ render_field(form.object_id) }}
+                            {{ render_field(form.priority) }}
+                            {{ render_field(form.inidate) }}
+                            {{ render_field(form.enddate) }}
+                            {{ render_field(form.submit_req) }}
+                        </p>
+                    </form>
+                </div>
+            </div>

@@ -1,0 +1,15 @@
+{% from "_formhelpers.html" import render_field %}
+            <div class="col--md-6">
+                <div>
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <p>
+                            {{ render_field(form.object_name) }}
+                            {{ render_field(form.RA) }}
+                            {{ render_field(form.DEC) }}
+                            {{ render_field(form.submit_obj) }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
