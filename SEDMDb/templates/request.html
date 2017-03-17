@@ -1,21 +1,44 @@
 {% from "_formhelpers.html" import render_field %}
         <div class = "container">
-            {% if fail %}
+            {% if message %}
                 <div class="media-body">
-                    <h1> {{ fail }}</h1>
+                    <h5> {{ message }}</h5>
                 </div>
             {% endif %}
             <div class="col-md-6">
                 <div>
                     <form method="post">
-                        {{ form.csrf_token }}
+                        {{ form1.csrf_token }}
                         <p>
-                            {{ render_field(form.object_id) }}
-                            {{ render_field(form.priority) }}
-                            {{ render_field(form.inidate) }}
-                            {{ render_field(form.enddate) }}
-                            {{ render_field(form.submit_req) }}
+                            {{ render_field(form1.object_id) }}
+                            {{ render_field(form1.priority) }}
+                            {{ render_field(form1.inidate) }}
+                            {{ render_field(form1.enddate) }}
+                            {{ render_field(form1.submit_req) }}
                         </p>
                     </form>
                 </div>
             </div>
+            <div class="col--md-6">
+                <h4>Find an object</h4>
+                <div>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.RA) }}
+                            {{ render_field(form2.DEC) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                </div>
+                <div>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.object_name) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>

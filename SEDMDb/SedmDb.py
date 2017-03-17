@@ -460,24 +460,17 @@ class SedmDB:
         finds the id of an object given its name or part of its name
 
         Args:
-            object_name (str):
+            object_name (str): part of the name of an object
 
         Returns:
-            id, full name if one object is found
+            list of tuples [(id, full name)] for each object with a matching name
 
-            list of all (id, full name) if multiple matches are found for the name
-
-            None if the object is not found
+            [] if no matching object name is found
         """
         object_name = object_name.lower()
         sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
         obj = self.execute_sql(sql)
-        if not obj:
-            return None
-        elif len(obj) > 1:
-            return obj
-        else:
-            return obj[0]  # the sql returns ((id, name),)
+        return obj
 
         # TODO: move following below add_object
         # TODO: query associated table for object already existing
