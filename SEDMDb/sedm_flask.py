@@ -56,7 +56,8 @@ def requests():
     form2 = forms.FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
-
+    form1.project.choices = [(1, 'ZTF'), (2, 'CIT')]
+    form1.user_id.data = 1
     if form1.submit_req.data and form1.validate_on_submit():
         if request.method == 'POST':
             ini = Time(str(form1.inidate.data))
@@ -64,7 +65,7 @@ def requests():
             if ini < end:
                 req = (0, 'object_id: %s, priority: %s, inidate: %s, enddate: %s, exptime: {120,2400}' %
                        (form1.object_id.data, form1.priority.data, form1.inidate.data, form1.enddate.data))
-            elif ini >= end:
+            else:
                 req = (-1, 'ERROR: inidate: %s after enddate: %s' % (form1.inidate.data, form1.enddate.data))
             # TODO: return to following when able to access database
             #req = db.add_request({'object_id': form1.object_id.data, 'exptime': '{120, 2400}', 'priority': form1.priority.data,
@@ -80,7 +81,9 @@ def requests():
             if form2.RA.data and form2.DEC.data:
                 ra = form2.RA.data
                 dec = form2.DEC.data
-                req = db.get_objects_near(ra, dec, 5)
+                #req = db.get_objects_near(ra, dec, 5)
+                # TODO: uncomment db command
+                req = [(1, 'placeholder')]
                 if req:
                     if req[0] == -1:
                         message = req[1]
@@ -88,9 +91,8 @@ def requests():
                     else:
                         message = 'object(s) within 5 arcsec of coordinates: '
                         for target in req:
-                            message += '(name: %s, id: %s)' % (target[1],target[0])
+                            message += '(name: %s, id: %s)' % (target[1], target[0])
                         obj_id = req[0][0]
-
                 else:
                     message = "No objects in db within 5 arcsec of the coordinates!"
                     obj_id = None
@@ -114,8 +116,6 @@ def requests():
                                                                     message=message) + render_template('footer.html')
     return render_template('header.html') + render_template('request.html', form1=form1, form2=form2,
                                                             message=False) + render_template('footer.html')
-    #return render_template('header.html') + render_template('request.html', form=form1, message=False)\
-    #    + render_template('find_object.html', form=form2) + render_template('footer.html')
 
 
 @app.route('/schedule')
