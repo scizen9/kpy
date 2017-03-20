@@ -81,7 +81,7 @@ def requests():
             if form2.RA.data and form2.DEC.data:
                 ra = form2.RA.data
                 dec = form2.DEC.data
-                #req = db.get_objects_near(ra, dec, 5)
+                # req = db.get_objects_near(ra, dec, 5)
                 # TODO: uncomment db command
                 req = [(1, 'placeholder')]
                 if req:

@@ -6,8 +6,8 @@
                 </div>
             {% endif %}
             <div class="col-md-6">
-                <h3>Submit an observation request</h3>
-                <div>
+                <div class="well">
+                    <h3>Submit an observation request</h3>
                     <form method="post">
                         {{ form1.csrf_token }}
                         <p>
@@ -21,28 +21,30 @@
                     </form>
                 </div>
             </div>
-            <div class="col--md-6">
-                <h3>Find an object</h3>
-                <h4>Search by coordinates:</h4>
-                <div>
-                    <form method="post">
-                        {{ form2.csrf_token }}
-                        <p>
-                            {{ render_field(form2.RA) }}
-                            {{ render_field(form2.DEC) }}
-                            {{ render_field(form2.submit_obj) }}
-                        </p>
-                    </form>
-                </div>
-                <h4>Search by name</h4>
-                <div>
-                    <form method="post">
-                        {{ form2.csrf_token }}
-                        <p>
-                            {{ render_field(form2.object_name) }}
-                            {{ render_field(form2.submit_obj) }}
-                        </p>
-                    </form>
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Find an object</h3>
+                    <h4>Search by coordinates:</h4>
+                    <div>
+                        <form method="post">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.RA) }}
+                                {{ render_field(form2.DEC) }}
+                                {{ render_field(form2.submit_obj) }}
+                            </p>
+                        </form>
+                    </div>
+                    <h4>Search by name</h4>
+                    <div>
+                        <form method="post">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.object_name) }}
+                                {{ render_field(form2.submit_obj) }}
+                            </p>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
