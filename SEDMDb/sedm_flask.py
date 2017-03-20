@@ -1,15 +1,17 @@
 """
 
 """
-
+import sys
+sys.path.append('Caltech/kpy')
 
 import os
 import datetime
 from astropy.time import Time
 import numpy as np
 from flask import Flask, request, flash, redirect, render_template
-from SedmDb import SedmDB
-from SedmDb_tools import DbTools
+from SEDMDb.SedmDb import SedmDB
+from SEDMDb.SedmDb_tools import DbTools
+import forms
 import flask
 
 
@@ -43,22 +45,32 @@ def radec_str2rad(_ra_str, _dec_str):
 
 @app.route('/')
 def index():
+    # TODO: make it pretty
     return render_template('header.html') + render_template('footer.html')
 
 
-import forms
+@app.route('/')
+def login():
+    # TODO:
+    pass
 
 
 @app.route('/request', methods=['GET', 'POST'])
 def requests():
-    # TODO: make this capable of handling multiple forms (find object by name/ra+dec)
+    """
+    generate forms for request creation
+    """
     form1 = forms.RequestForm()
     form2 = forms.FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
     form1.project.choices = [(1, 'ZTF'), (2, 'CIT')]
     form1.user_id.data = 1
+    print "test"
+    print form1.submit_req.data
+    print form1.validate_on_submit()
     if form1.submit_req.data and form1.validate_on_submit():
+        print "form1"
         if request.method == 'POST':
             ini = Time(str(form1.inidate.data))
             end = Time(str(form1.enddate.data))
@@ -116,16 +128,27 @@ def requests():
                                                                     message=message) + render_template('footer.html')
     return render_template('header.html') + render_template('request.html', form1=form1, form2=form2,
                                                             message=False) + render_template('footer.html')
+# TODO: set up ability to view and cancel requests
+# TODO: allow searching for objects, return link to page with information/observations of it
+# TODO: End of Night report as html
 
 
 @app.route('/schedule')
 def schedule():
+    # TODO: create a table
     pass
 
 
 @app.route('/objects')
 def objects():
     pass
+
+
+@app.route('/project_stats/<path:project>')
+def project_stats(project):
+    # TODO: show chart with 'total time allocated', 'time requested', "time observed"
+    return render_template('header.html') + render_template('') + render_template('footer.html')
+
 
 if __name__ == '__main__':
     app.run()

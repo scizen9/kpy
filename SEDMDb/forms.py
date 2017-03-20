@@ -2,7 +2,6 @@ from flask_wtf import FlaskForm
 from wtforms import fields, validators
 from flask import request
 
-#form = FlaskForm(csrf_enabled=False)
 SECRET_KEY = 'secret'
 
 
@@ -12,7 +11,7 @@ class RequestForm(FlaskForm):
     inidate = fields.DateField('start date (Y-M-D)', [validators.data_required()])
     enddate = fields.DateField('end date (Y-M-D)', [validators.data_required()])
     user_id = fields.HiddenField('user_id', [validators.data_required()])
-    project = fields.SelectField('project', [validators.data_required()], choices=[])
+    project = fields.SelectField('project', [validators.data_required()], coerce=int, choices=[])
     submit_req = fields.SubmitField('submit request')
 
 
