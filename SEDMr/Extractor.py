@@ -790,11 +790,11 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.colorbar()
         plot_drp_ver()
         pl.grid(True)
-        print("plotting %d spaxels" % len(s_grid))
         if outname is not None:
             pl.savefig("allspec_%s" % outname)
-            print("Wrote allspec_%s" % outname)
+            print("Wrote %d spaxels to allspec_%s" % (len(s_grid), outname))
         if plot:
+            print("plotting %d spaxels" % len(s_grid))
             pl.show()
 
     # Package results
