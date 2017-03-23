@@ -253,9 +253,6 @@ def proc_bias_crrs(ncp=1, oldcals=False):
 def proc_cogs():
     """Process standard star curves of growth.
 
-    Args:
-        None
-
     Returns:
         bool: True if processing was successful, otherwise False
 
@@ -303,9 +300,6 @@ def proc_stds(ncp):
 
 def proc_auto():
     """Process automatic observations.
-
-    Args:
-        None
 
     Returns:
         bool: True if processing was successful, otherwise False

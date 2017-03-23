@@ -268,7 +268,7 @@ def measure_flexure_y(cube, hdulist, profwidth=5, plot=False):
     # clean 3 sigma outliers
     ok = np.abs(profwidys - mn)/sd < 3
     average_width = np.mean(profwidys[ok]) * 2.354
-    print("yFWHM = %5.2f pixels" % average_width)
+    print("yFWHM = %5.2f pixels" % float(average_width))
     print("dY = %3.2f pixel shift" % required_shift)
 
     if plot:
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     HDU = pf.open(args.infile)
     dy, ywid = measure_flexure_y(fine, HDU, profwidth=args.profwidth,
                                  plot=args.plot)
-    dx, xwid = measure_flexure_x(fine, HDU, drow=dy,
+    dx, xwid = measure_flexure_x(fine, HDU, drow=float(dy),
                                  skylines=args.skylines,
                                  lamstart=args.lamstart,
                                  lamratio=args.lamratio,

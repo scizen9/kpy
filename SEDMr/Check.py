@@ -83,7 +83,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         smdn = np.nanmedian(c)
         sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
-              (len(cc), (len(cc) - len(c)), smdn, sstd))
+              (len(cc), (len(cc) - len(c)), float(smdn), float(sstd)))
         # smx = smdn + 3. * sstd
         # smn = smdn - 3. * sstd
         # if smn < 0.:
@@ -164,8 +164,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         stdspec /= 10.
 
     # Print wavelength range
-    print("Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
-                                            np.nanmax(lam[np.isfinite(spec)])))
+    print("Wavelengths from %.1f - %.1f" %
+          (float(np.nanmin(lam[np.isfinite(spec)])),
+           float(np.nanmax(lam[np.isfinite(spec)]))))
 
     # Get object name
     if 'header' in meta:
@@ -264,7 +265,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         # Get reference spectrum
         standard = Stds.Standards[pred]
         slam = standard[:, 0]
-        sflx = standard[:, 1] * 1.e-16
+        sflx = standard[:, 1] * 1.e-16  # type: np.ndarray
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
@@ -286,7 +287,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     ok = (lam > 3800) & (lam < maxwl)
 
     # Apply redshift
-    lamz = lam / (1 + redshift)
+    lamz = lam / (1 + redshift)  # type: np.ndarray
 
     # Plot object spectrum
 

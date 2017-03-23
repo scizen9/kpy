@@ -92,7 +92,7 @@ def handle_corr(filename, outname='corrected.npy'):
     np.save(outname, [res])
 
 
-def handle_create(outname=None, filelist=[], plot_filt=False):
+def handle_create(outname=None, filelist=None, plot_filt=False):
     """Create standard star correction. Units are erg/s/cm2/Ang
 
     Read in the std-correction vector for each standard star, massage
@@ -133,6 +133,8 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
     filt_legend = ["orig"]
     maxnm = 915.
     drp_ver = None
+    if filelist is None:
+        filelist = []
     for ifile in filelist:
         """ Filename is sp_STD-nnnnn_obs*.npy """
 
@@ -272,7 +274,8 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
             pl.savefig("Standard_Correction.pdf")
 
         print("Mean cor: %10.3g, Sigma cor: %10.3g" %
-              (np.mean(corr_vals) * 1e-16, np.std(corr_vals) * 1e-16))
+              (float(np.mean(corr_vals) * 1e-16),
+               float(np.std(corr_vals) * 1e-16)))
         maxnm = np.min([maxnm, np.max(ll)])
         print("Max nm: %7.2f" % maxnm)
 
@@ -298,40 +301,41 @@ def handle_create(outname=None, filelist=[], plot_filt=False):
         print("No good sp_STD*.npy files, nothing generated")
 
 
-def handle_summary(outname=None, filelist=[]):
+def handle_summary(outname=None, filelist=None):
     """Extract all std-correction vectors and create ensemble (obsolete)"""
 
     if outname is None:
         outname = 'correction.npy'
 
-    # Get a list of good correction vectors
-    keepers = []
-    for ifile in filelist:
-        print(ifile)
-        f = np.load(ifile)[0]
-        # Correction values should be small
-        # if "std-correction" not in data.keys():
-        if np.nanmin(f['std-correction']) < 9:
-            keepers.append(f)
-            print("Keeping %s" % ifile)
+    if filelist is not None:
+        # Get a list of good correction vectors
+        keepers = []
+        for ifile in filelist:
+            print(ifile)
+            f = np.load(ifile)[0]
+            # Correction values should be small
+            # if "std-correction" not in data.keys():
+            if np.nanmin(f['std-correction']) < 9:
+                keepers.append(f)
+                print("Keeping %s" % ifile)
 
-    # Set fiducial wavelengths from first correction vector
-    corl = keepers[0]['nm'].copy()
-    # Insert first vector
-    cor = np.zeros((len(corl), len(keepers)))
-    cor[:, 0] = keepers[0]['std-correction'].copy()
-    # Insert the rest of the vectors
-    for ix, keeper in enumerate(keepers[1:]):
-        f = interp1d(keeper['nm'], keeper['std-correction'],
-                     bounds_error=False, fill_value=np.nan)
-        cor[:, ix] = f(corl)
-    # Create mean correction
-    cs = np.nanmean(cor, 1)
-    # Fit wl coefficients
-    ccs = chebfit(corl, cs, 6)
-    # Create output
-    cor = [{"nm": corl, "cor": cs, "coeff": ccs}]
-    np.save(outname, cor)
+        # Set fiducial wavelengths from first correction vector
+        corl = keepers[0]['nm'].copy()
+        # Insert first vector
+        cor = np.zeros((len(corl), len(keepers)))
+        cor[:, 0] = keepers[0]['std-correction'].copy()
+        # Insert the rest of the vectors
+        for ix, keeper in enumerate(keepers[1:]):
+            f = interp1d(keeper['nm'], keeper['std-correction'],
+                         bounds_error=False, fill_value=np.nan)
+            cor[:, ix] = f(corl)
+        # Create mean correction
+        cs = np.nanmean(cor, 1)
+        # Fit wl coefficients
+        ccs = chebfit(corl, cs, 6)
+        # Create output
+        cor = [{"nm": corl, "cor": cs, "coeff": ccs}]
+        np.save(outname, cor)
 
 
 if __name__ == '__main__':

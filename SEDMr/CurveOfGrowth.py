@@ -98,8 +98,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
     grid_med = np.nanmedian(grid_vs)
     print("grid_vs min, max, mean, median: %f, %f, %f, %f\n" %
-          (np.nanmin(grid_vs), np.nanmax(grid_vs),
-           np.nanmean(grid_vs), grid_med))
+          (float(np.nanmin(grid_vs)), float(np.nanmax(grid_vs)),
+           float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
     blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
@@ -123,7 +123,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         if 0 < bx < 199 and 0 < by < 199 and gv > 100.:
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
-                  (goodblob, gv, bx, by, xi[bx], yi[by]))
+                  (goodblob, float(gv), bx, by, xi[bx], yi[by]))
             objs.append((gv, xi[bx], yi[by], goodblob))
 
     print("Found %d good objects" % len(objs))
@@ -265,7 +265,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     hi_thresh = vmdn + 1.25 * vstd
     lo_thresh = vmdn - 2.0 * vstd
     print("Median: %6.2f, STD: %6.2f, Hi Thresh: %6.2f, Lo Thresh: %6.2f" %
-          (vmdn, vstd, hi_thresh, lo_thresh))
+          (float(vmdn), float(vstd), float(hi_thresh), float(lo_thresh)))
 
     n_hi_rem = 0
     n_lo_rem = 0

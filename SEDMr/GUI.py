@@ -262,7 +262,7 @@ class ScaleCube(object):
             self.cmin = v_mid - 3.0 * v_std
             self.cmax = v_mid + 3.0 * v_std
 
-        print("mid, std: %f, %f" % (v_mid, v_std))
+        print("mid, std: %f, %f" % (v_mid, float(v_std)))
 
         pl.ioff()
 
@@ -275,7 +275,8 @@ class ScaleCube(object):
     def draw_cube(self):
 
         pl.title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
-                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+                 (self.objname, self.lmin, self.lmax,
+                  float(self.cmin), float(self.cmax)))
 
         self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
                                linewidth=0, vmin=self.cmin, vmax=self.cmax,
@@ -293,7 +294,7 @@ class ScaleCube(object):
         ax = self.figure.gca()
         ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f Irr"
                      % (self.objname, self.lmin, self.lmax,
-                        self.cmin, self.cmax))
+                        float(self.cmin), float(self.cmax)))
 
         self.scat.remove()
 
@@ -310,7 +311,8 @@ class ScaleCube(object):
 
         if event.key == 'x':
             self.scaled = True
-            print("Scaling between %f and %f" % (self.cmin, self.cmax))
+            print("Scaling between %f and %f" %
+                  (float(self.cmin), float(self.cmax)))
             pl.close(self.figure)
         if event.key == 'q':
             self.scaled = False

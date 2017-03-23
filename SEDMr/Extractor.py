@@ -73,7 +73,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     atmospheric dispersion
 
     Args:
-        prlltc (float): parralactic angle in Angle class
+        prlltc (astropy.coordinates.Angle): parralactic angle in Angle class
         pos (float,float): (x,y) position of source in arcsec at wave leff
         leff (float): Effective wavelength, micron
         airmass (float): Atmospheric airmass, airmass=1 means no dispersion
@@ -162,8 +162,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
     grid_med = np.nanmedian(grid_vs)
     print("grid_vs min, max, mean, median: %f, %f, %f, %f\n" %
-          (np.nanmin(grid_vs), np.nanmax(grid_vs),
-           np.nanmean(grid_vs), grid_med))
+          (float(np.nanmin(grid_vs)), float(np.nanmax(grid_vs)),
+           float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
     blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
@@ -197,7 +197,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         if 0 < bx < 199 and 0 < by < 199 and gv > 100.:
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
-                  (goodblob, gv, bx, by, xi[bx], yi[by]))
+                  (goodblob, float(gv), bx, by, xi[bx], yi[by]))
             objs.append((gv, xi[bx], yi[by], goodblob))
             if plotobj:
                 c = pl.Circle((xi[bx], yi[by]), 2.0, color='white',
@@ -445,7 +445,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     hi_thresh = vmdn + 1.25 * vstd
     lo_thresh = vmdn - 2.0 * vstd
     print("Median: %6.2f, STD: %6.2f, Hi Thresh: %6.2f, Lo Thresh: %6.2f" %
-          (vmdn, vstd, hi_thresh, lo_thresh))
+          (float(vmdn), float(vstd), float(hi_thresh), float(lo_thresh)))
 
     n_hi_rem = 0
     n_lo_rem = 0
@@ -644,11 +644,14 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         percent:
     """
 
+    # Positive or negative spectra
+    pon = sign
+
     l_grid = onto
     s_grid = []
     f_grid = []
     lamcoeff = None
-    # for ix,spectrum in enumerate(all_spectra):
+    # loop over given spaxels
     for ix in six:
         spectrum = all_spectra[ix]
 
@@ -658,27 +661,24 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         l, s = spectrum.get_counts(the_spec='specw')
         pix = np.arange(*spectrum.xrange)
 
-        # check for saturated traces
+        # check for saturation
         if np.max(s) > 1000000:
             print("saturated extraction: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
 
-        # This is correct: preference to lamcoeff over mdn_coeff
+        # This is correct: preference for lamcoeff over mdn_coeff
         if spectrum.lamcoeff is not None:
             cs = spectrum.lamcoeff
         else:
             cs = spectrum.mdn_coeff
 
-        # get wavelengths for spectrum
+        # get wavelengths for spectra
         l = c_to_nm(cs, pix, offset=dnm)
 
         # skip short spectra (on or near edge of IFU)
         if l.max() - l.min() < 300:
             continue
-
-        # Positive or negative spectra
-        pon = sign
 
         # Check if our wavelength grid is defined,
         if l_grid is None:
@@ -730,9 +730,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             # skip short spectra (on or near edge of IFU)
             if l.max() - l.min() < 300:
                 continue
-
-            # Positive or negative spectra
-            pon = sign
 
             # Check if our wavelength grid is defined,
             if l_grid is None:
@@ -793,6 +790,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.colorbar()
         plot_drp_ver()
         pl.grid(True)
+        print("plotting %d spaxels" % len(s_grid))
         if outname is not None:
             pl.savefig("allspec_%s" % outname)
             print("Wrote allspec_%s" % outname)
@@ -1975,25 +1973,25 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         # Create mean spectra of selected spaxels
         #
         # Mean flux
-        resa, nsxA = interp_spectra(ex, sixa, sign=1,
+        resa, nsxA = interp_spectra(ex, sixa, sign=1.,
                                     outname=outname+"_A.pdf", percent=30.)
-        resb, nsxB = interp_spectra(ex, sixb, sign=-1,
+        resb, nsxB = interp_spectra(ex, sixb, sign=-1.,
                                     outname=outname+"_B.pdf", percent=30.)
         # Mean flux variance
-        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1)
+        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1.)
         # , outname=outname+"_A_var.pdf")
-        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1)
+        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1.)
         # , outname=outname+"_B_var.pdf")
 
         # Mean sky
-        skya, nsxAk = interp_spectra(ex, kixa, sign=1,
+        skya, nsxAk = interp_spectra(ex, kixa, sign=1.,
                                      outname=outname+"_skyA.pdf", sky=True)
-        skyb, nsxBk = interp_spectra(ex, kixb, sign=-1,
+        skyb, nsxBk = interp_spectra(ex, kixb, sign=-1.,
                                      outname=outname+"_skyB.pdf", sky=True)
         # Mean sky variance
-        vkya, nsxAv = interp_spectra(ex_var, kixa, sign=1)
+        vkya, nsxAv = interp_spectra(ex_var, kixa, sign=1.)
         # , outname=outname+"_A_skvar.pdf")
-        vkyb, nsxBv = interp_spectra(ex_var, kixb, sign=1)
+        vkyb, nsxBv = interp_spectra(ex_var, kixb, sign=1.)
         # , outname=outname+"_B_skvar.pdf")
 
         # Make some plots
@@ -2118,7 +2116,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         extcorra = 10**(Atm.ext(ll*10)*airmassa/2.5)
         extcorrb = 10**(Atm.ext(ll*10)*airmassb/2.5)
         print("Median airmass corrs A: %.4f, B: %.4f" %
-              (np.nanmedian(extcorra), np.nanmedian(extcorrb)))
+              (float(np.nanmedian(extcorra)), float(np.nanmedian(extcorrb))))
 
         # Calculate summed flux of A and B apertures
         # Don't subtract sky if 'nosky' is true

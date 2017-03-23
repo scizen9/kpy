@@ -31,7 +31,7 @@ for d in dlist:
         if 'efficiency' not in ss:
             continue
 
-        ef = ss['efficiency']*100.
+        ef = ss['efficiency']*100.  # type: np.ndarray
         wl = ss['nm']
 
         # Check each 100 nm bin
