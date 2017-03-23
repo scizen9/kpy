@@ -33,6 +33,7 @@ import argparse
 import datetime
 import os
 import sys
+from builtins import input
 
 import numpy as np
 import pylab as pl
@@ -363,13 +364,14 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         q = 'x'
         qual = -1
         prom = ": "
-        while not q.isdigit() or qual < 1 or qual > 4:
+        while qual < 1 or qual > 4:
             q = input(prom)
-            if q.isdigit():
-                qual = int(q)
-                if qual < 1 or qual > 4:
-                    prom = "Try again: "
+            if type(q) != int:
+                if q.isdigit():
+                    qual = int(q)
             else:
+                qual = q
+            if qual < 1 or qual > 4:
                 prom = "Try again: "
         print("Quality = %d" % qual)
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \

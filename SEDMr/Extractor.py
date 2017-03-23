@@ -1,4 +1,5 @@
 
+from builtins import input
 import argparse
 import os
 import glob
@@ -1577,13 +1578,14 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 q = 'x'
                 quality = -1
                 prom = ": "
-                while not q.isdigit() or quality < 1 or quality > 4:
+                while quality < 1 or quality > 4:
                     q = input(prom)
-                    if q.isdigit():
-                        quality = int(q)
-                        if quality < 1 or quality > 4:
-                            prom = "Try again: "
+                    if type(q) == str:
+                        if q.isdigit():
+                            quality = int(q)
                     else:
+                        quality = q
+                    if quality < 1 or quality > 4:
                         prom = "Try again: "
                 print("Quality = %d, now making outputs..." % quality)
             else:
@@ -1939,13 +1941,14 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             q = 'x'
             quality = -1
             prom = ": "
-            while not q.isdigit() or quality < 1 or quality > 4:
+            while quality < 1 or quality > 4:
                 q = input(prom)
-                if q.isdigit():
-                    quality = int(q)
-                    if quality < 1 or quality > 4:
-                        prom = "Try again: "
+                if type(q) == str:
+                    if q.isdigit():
+                        quality = int(q)
                 else:
+                    quality = q
+                if quality < 1 or quality > 4:
                     prom = "Try again: "
             print("Quality = %d, now making outputs..." % quality)
         else:
