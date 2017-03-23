@@ -102,7 +102,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     nstep = np.int(np.round((blue_ad - red_ad)/delta))
     if nstep == 0:
         nstep = 1
-    for step in xrange(nstep):
+    for step in range(nstep):
         t = [bpos[0] + step * dx * delta, bpos[1] + step * dy * delta]
         positions.append(t)
 
@@ -529,6 +529,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         lmax (float): maximum wavelength in nm to sum over
         cmin (float): cube intensity minimum for scaling
         cmax (float): cube intensity maximum for scaling
+        fwhm (bool): set to over-plot FWHM on image
     """
 
     xs = []
@@ -1577,7 +1578,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 quality = -1
                 prom = ": "
                 while not q.isdigit() or quality < 1 or quality > 4:
-                    q = raw_input(prom)
+                    q = input(prom)
                     if q.isdigit():
                         quality = int(q)
                         if quality < 1 or quality > 4:
@@ -1939,7 +1940,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             quality = -1
             prom = ": "
             while not q.isdigit() or quality < 1 or quality > 4:
-                q = raw_input(prom)
+                q = input(prom)
                 if q.isdigit():
                     quality = int(q)
                     if quality < 1 or quality > 4:
