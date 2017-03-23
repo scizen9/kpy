@@ -364,7 +364,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         qual = -1
         prom = ": "
         while not q.isdigit() or qual < 1 or qual > 4:
-            q = raw_input(prom)
+            q = input(prom)
             if q.isdigit():
                 qual = int(q)
                 if qual < 1 or qual > 4:
@@ -381,7 +381,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         # Get reducer
         print("Enter reducer of observations:")
         prom = "<cr> = ("+reducer+"): "
-        q = raw_input(prom)
+        q = input(prom)
         if len(q) > 0:
             reducer = q
 
