@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import fields, validators
-from flask import request
+from flask import request, redirect, url_for
+from urlparse import urlparse, urljoin
 
 SECRET_KEY = 'secret'
 
@@ -20,3 +21,38 @@ class FindObjectForm(FlaskForm):
     RA = fields.FloatField('Right Ascension (deg)')
     DEC = fields.FloatField('Declination (deg)')
     submit_obj = fields.SubmitField('seach for object')
+
+
+class LoginForm(FlaskForm):
+    username = fields.StringField('username')
+    password = fields.StringField('password')
+
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and \
+           ref_url.netloc == test_url.netloc
+
+
+def get_redirect_target():
+    for target in request.args.get('next'), request.referrer:
+        if not target:
+            continue
+        if is_safe_url(target):
+            return target
+
+
+class RedirectForm(FlaskForm):
+    next = fields.HiddenField()
+
+    def __init__(self, *args, **kwargs):
+        FlaskForm.__init__(self, *args, **kwargs)
+        if not self.next.data:
+            self.next.data = get_redirect_target() or ''
+
+    def redirect(self, endpoint='index', **values):
+        if is_safe_url(self.next.data):
+            return redirect(self.next.data)
+        target = get_redirect_target()
+        return redirect(target or url_for(endpoint, **values))

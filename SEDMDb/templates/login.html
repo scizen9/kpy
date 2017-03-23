@@ -1,0 +1,21 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            {% if message %}
+                <div class="media-body">
+                    <h5> {{ message }}</h5>
+                </div>
+            {% endif %}
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Login</h3>
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <p>
+                            {{ render_field(form.username) }}
+                            {{ render_field(form.password) }}
+                            <input type="submit" value = "Login">
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>

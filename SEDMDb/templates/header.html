@@ -70,6 +70,11 @@
                     <li><a href="/objects">Add an Object</a></li>
                     <li><a href="/data">Data</a></li>
                     <li><a href="/project_stats">Project Statistics</a></li>
+                    {% if not current_user.is_authenticated %}
+                        <li><a href="/login">Login</a></li>
+                    {% else %}
+                        <li><a href="/user_info">Logged in as {{ user.id }}</a></li>
+                    {% endif %}
                 </ul>
                 <form class="navbar-form navbar-left">
                     <div class="form-group">
@@ -82,11 +87,10 @@
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Dropdown <span class="caret"></span></a>
                         <ul class="dropdown-menu">
-                            <li><a href="#">Action</a></li>
-                            <li><a href="#">Another action</a></li>
-                            <li><a href="#">Something else here</a></li>
+                            <li><a href="/login">Login</a></li>
+                            <li><a href="/register">Register</a></li>
                             <li role="separator" class="divider"></li>
-                            <li><a href="#">Separated link</a></li>
+                            <li><a href="/logout">Logout</a></li>
                         </ul>
                     </li>
                 </ul>

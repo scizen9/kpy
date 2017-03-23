@@ -419,6 +419,7 @@ CREATE TABLE users (
     username text NOT NULL UNIQUE,
     name text  NULL,
     email text  NULL,
+    password text NOT NULL,
     CONSTRAINT users_pk PRIMARY KEY (id)
 );
 

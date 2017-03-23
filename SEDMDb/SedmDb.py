@@ -90,7 +90,8 @@ class SedmDB:
                 required:
                     'username' (str),
                     'name' (str),
-                    'email'(str)
+                    'email' (str),
+                    'password' (str) (hashed+salted)
 
         Returns:
             (-1, "ERROR...") if there is an issue
@@ -106,7 +107,7 @@ class SedmDB:
         if pardic['username'] in usernames:
             return (-1, "ERROR: user with that username exists!")
         for key in reversed(keys):  # remove group keys and any other bad keys
-            if key not in ['username', 'name', 'email']:
+            if key not in ['username', 'name', 'email', 'password']:
                 keys.remove(key)
         sql = _generate_insert_sql(pardic, keys, 'users')
         try:
@@ -169,7 +170,8 @@ class SedmDB:
                 'id' (int),
                 'username' (str),
                 'name' (str),
-                'email' (str)]
+                'email' (str),
+                'password' (str)
 
         Returns:
             list of tuples containing the values for each user matching the criteria
