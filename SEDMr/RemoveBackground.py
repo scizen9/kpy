@@ -110,8 +110,8 @@ def grow(img):
     img[img > 0] = 1
     cp = img[:, :]
 
-    for ix in xrange(img.shape[0]):
-        for jx in xrange(img.shape[1]):
+    for ix in range(img.shape[0]):
+        for jx in range(img.shape[1]):
             if img[ix,jx] == 1:
                 try:
                     cp[ix,jx+1] = 1
