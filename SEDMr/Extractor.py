@@ -140,8 +140,6 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     NOTE: Index is counted against the array, not seg_id
     """
 
-    status = 0
-
     pl.ioff()
 
     kt = SedSpec.Spectra(spectra)
@@ -181,6 +179,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     # Loop over found blobs
     objs = []
     for blob in blobs:
+
         # Extract blob properties
         bx, by, br = blob
 
@@ -216,6 +215,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     sigma_x = 2.0
     sigma_y = 2.0
     for obj in objs:
+        # Reset status
+        status = 0
+
         # Fill initial fit params
         amplitude = obj[0]
         xo = obj[1]
