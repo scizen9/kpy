@@ -226,7 +226,7 @@ if __name__ == '__main__':
         print(err)
         sys.exit(1)
 
-    print "%s %s %s > %s" % (args.A, args.operation, args.B, args.outname)
+    print("%s %s %s > %s" % (args.A, args.operation, args.B, args.outname))
     if args.operation == '+':
         specAdd(args.A, args.B, args.outname)
     elif args.operation == 'a':
@@ -234,4 +234,4 @@ if __name__ == '__main__':
     elif args.operation == '/':
         specDiv(args.A, args.B, args.outname)
     else:
-        print "%s not recognized as an op." % args.operation
+        print("%s not recognized as an op." % args.operation)
