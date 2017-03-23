@@ -1350,7 +1350,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['extinction_corr'] = extcorr
     res[0]['skyph'] = sky * len(sixa)
     res[0]['skynm'] = ll
-    res[0]['var'] = varspec * len(sixa)
+    res[0]['var'] = varspec * len(sixa)**2
     res[0]['radius_as'] = radius_used
     res[0]['position'] = posa
     res[0]['N_spax'] = len(sixa)
@@ -1727,7 +1727,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['extinction_corr'] = extcorr
         res[0]['skyph'] = sky * len(nsxa)
         res[0]['skynm'] = ll
-        res[0]['var'] = varspec * len(sixa)
+        res[0]['var'] = varspec * len(sixa)**2
         res[0]['radius_as'] = radius_used
         res[0]['position'] = posa
         res[0]['N_spax'] = len(nsxa)
@@ -2149,7 +2149,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
         res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
-        res[0]['var'] = varspec * (len(nsxA) + len(nsxB))
+        res[0]['var'] = varspec * (len(nsxA) + len(nsxB))**2
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa
