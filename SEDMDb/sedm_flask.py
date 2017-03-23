@@ -8,11 +8,14 @@ import os
 import datetime
 from astropy.time import Time
 import numpy as np
-from flask import Flask, request, flash, redirect, render_template
+from flask import Flask, request, flash, redirect, render_template, url_for
 from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
-import forms
+from werkzeug.security import generate_password_hash, check_password_hash
+from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, is_safe_url
 import flask
+import flask_login
+from wtforms import Form, HiddenField
 
 
 # config
@@ -25,6 +28,8 @@ tools = DbTools(db)
 
 app = Flask(__name__)
 app.config.from_object(__name__)
+login_manager = flask_login.LoginManager()
+login_manager.init_app(app)
 
 
 def radec_str2rad(_ra_str, _dec_str):
@@ -43,25 +48,60 @@ def radec_str2rad(_ra_str, _dec_str):
     return _ra, _dec
 
 
+class User(flask_login.UserMixin):
+    pass
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get(user_id)
+
+
 @app.route('/')
 def index():
     # TODO: make it pretty
     return render_template('header.html') + render_template('footer.html')
 
 
-@app.route('/')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    # TODO:
-    pass
+    # Here we use a class of some kind to represent and validate our
+    # client-side form data. For example, WTForms is a library that will
+    # handle this for us, and we use a custom LoginForm to validate.
+    form = LoginForm()
+    if form.validate_on_submit():
+        # Login and validate the user.
+        # user should be an instance of your `User` class
+        username = form.username.data
+        password = form.password.data
+        user_pass = db.get_from_users(['username', 'password'], {'username': username})
+        if not user_pass:
+            message = "Incorrect username or password"
+            return render_template('header.html', current_user=flask_login.current_user) + \
+                   render_template('login.html', form=form, message=message) + \
+                   render_template('footer.html')
 
+        elif user_pass[0] == -1:
+            message = user_pass[1]
+            return render_template('header.html', current_user=flask_login.current_user) + \
+                   render_template('login.html', form=form, message=message) + \
+                   render_template('footer.html')
+        elif check_password_hash(user_pass[0][1], flask.request.form['password']):
+            user = User()
+            user.id = username
+            flask_login.login_user(user, remember=True)
+            return redirect(flask.url_for('index'))
+    return render_template('header.html', current_user=flask_login.current_user) + \
+                   render_template('login.html', form=form, message=None) + \
+                   render_template('footer.html')
 
 @app.route('/request', methods=['GET', 'POST'])
 def requests():
     """
     generate forms for request creation
     """
-    form1 = forms.RequestForm()
-    form2 = forms.FindObjectForm()
+    form1 = RequestForm()
+    form2 = FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
     form1.project.choices = [(1, 'ZTF'), (2, 'CIT')]
@@ -69,6 +109,7 @@ def requests():
     print "test"
     print form1.submit_req.data
     print form1.validate_on_submit()
+    print flask_login.current_user
     if form1.submit_req.data and form1.validate_on_submit():
         print "form1"
         if request.method == 'POST':
@@ -84,8 +125,9 @@ def requests():
             #                      'inidate': form1.inidate.data, 'enddate': form1.enddate.data, 'user_id':0, 'program_id': 0})
             # TODO: set up user_id and program_id=
             message = req[1]
-            return render_template('header.html') + render_template('request.html', form1=form1, form2=form2,
-                                                                    message=message) + render_template('footer.html')
+            return render_template('header.html', current_user=flask_login.current_user) +\
+                   render_template('request.html', form1=form1, form2=form2, message=message) + \
+                   render_template('footer.html')
 
     if form2.submit_obj.data and form2.validate_on_submit():
         print 'form2'
@@ -124,10 +166,12 @@ def requests():
                 obj_id = None
 
             form1.object_id.data = obj_id  # set the object_id
-            return render_template('header.html') + render_template('request.html', form1=form1, form2=form2,
-                                                                    message=message) + render_template('footer.html')
-    return render_template('header.html') + render_template('request.html', form1=form1, form2=form2,
-                                                            message=False) + render_template('footer.html')
+            return render_template('header.html', current_user=flask_login.current_user) + \
+                   render_template('request.html', form1=form1, form2=form2, message=message) + \
+                   render_template('footer.html')
+    return render_template('header.html', current_user=flask_login.current_user) + \
+           render_template('request.html', form1=form1, form2=form2, message=False) + \
+           render_template('footer.html')
 # TODO: set up ability to view and cancel requests
 # TODO: allow searching for objects, return link to page with information/observations of it
 # TODO: End of Night report as html
@@ -147,7 +191,7 @@ def objects():
 @app.route('/project_stats/<path:project>')
 def project_stats(project):
     # TODO: show chart with 'total time allocated', 'time requested', "time observed"
-    return render_template('header.html') + render_template('') + render_template('footer.html')
+    return render_template('header.html', current_user=flask_login.current_user) + render_template('') + render_template('footer.html')
 
 
 if __name__ == '__main__':
