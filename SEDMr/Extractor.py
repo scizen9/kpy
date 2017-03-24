@@ -2148,8 +2148,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
-        res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
-        res[0]['var'] = varspec * (len(nsxA) + len(nsxB))**2
+        res[0]['skyph'] = sky * ((len(nsxA) + len(nsxB))/2.)
+        res[0]['var'] = varspec * ((len(nsxA) + len(nsxB))/2.)**2
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa
