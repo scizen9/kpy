@@ -336,11 +336,8 @@ def MF_standard(objname, obsnum, ifile, standard=None):
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
-%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
+sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
-
-sp_%(outname)s: %(outname)s
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 %(specplot)s
 
 cube_%(outname)s.fits: %(outname)s
@@ -442,7 +439,7 @@ def to_makefile(objs, calibs):
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "
-                        stds_dep += a + " "
+                        stds_dep += 'sp_' + a + " "
                         cogs_dep += 'cog_' + a + " "
 
                 else:
