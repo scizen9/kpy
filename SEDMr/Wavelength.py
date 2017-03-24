@@ -21,8 +21,6 @@ from numpy.polynomial.chebyshev import chebfit, chebval
 
 import SEDMr.Extraction as Extraction
 from scipy.interpolate import interp1d
-#reload(NPK.Fit)
-#reload(Extraction)
 
 from numpy import NaN, Inf, arange, isscalar, asarray, array
 
@@ -184,8 +182,8 @@ def assoc_hg_with_flats_helper(idx):
     return to_return
 
 
-def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par={365.0: 231,
-    404.6: 214, 435.8: 193, 546.1: 133, 578.00: 110}, outname='assoc_Hg'):
+def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par=None,
+                        outname='assoc_Hg'):
 
     """Given a set of functions defining the ridgeline of dome flats
     and a list of positions of mercury lamps, provide a crude wavelength
@@ -199,7 +197,11 @@ def assoc_hg_with_flats(domedat_par, hgcat_par, guess_offset_par={365.0: 231,
 
     domedat = domedat_par
     hgcat = hgcat_par
-    guess_offset = guess_offset_par
+    if guess_offset_par is None:
+        guess_offset = {365.0: 231, 404.6: 214, 435.8: 193,
+                        546.1: 133, 578.00: 110}
+    else:
+        guess_offset = guess_offset_par
 
     wavetrees = {}
     for k, v in hgcat.items():
@@ -1153,11 +1155,11 @@ def snap_solution_into_place(PARS):
 
                 # Print results
                 # if printout:
-                    # out_str = \
-                    #     "\rLine: %7.2f nm, Xpos: %8.3f px, dXpos: %6.3f px" % \
-                    #     (line, pars.params[1], pars.perror[1])
-                    # print(out_str, end="")
-                    # sys.stdout.flush()
+                #   out_str = \
+                #       "\rLine: %7.2f nm, Xpos: %8.3f px, dXpos: %6.3f px" % \
+                #         (line, pars.params[1], pars.perror[1])
+                #   print(out_str, end="")
+                #   sys.stdout.flush()
             # END: for line in linelist[lampname]:
         # END: for lampname, lampspec in lamp_spec.items():
 
@@ -1283,34 +1285,44 @@ def snap_solution_into_place_all(fine, Hgs, Xes, Cds=None, Hes=None):
 
     # Calculated and report RMS statistics
     avg_rms = np.nanmean(good_rms)
-    print("<RMS>: %8.3f nm, RMS(min): %8.3f nm, RMS(max): %8.3f nm" % (avg_rms,
-                                                                       min_rms,
-                                                                       max_rms))
+    print("<RMS>: %8.3f nm, RMS(min): %8.3f nm, RMS(max): %8.3f nm" %
+          (float(avg_rms), min_rms, max_rms))
     print("")
 
     return fine
 
 
-def fit_he_lines(SS, guesses={587.5: -18, 667.8: -48, 706.5: -60}, plot=False,
-                 Ncutout=7):
-    return fit_known_lines(SS, guesses, plot, Ncutout)
+def fit_he_lines(SS, guesses=None, Ncutout=7):
+    if guesses is None:
+        return fit_known_lines(SS, {587.5: -18, 667.8: -48, 706.5: -60},
+                               Ncutout)
+    else:
+        return fit_known_lines(SS, guesses, Ncutout)
 
 
-def fit_cd_lines(SS, guesses={467.8: 41, 479.9: 33, 508.5: 18}, plot=False,
-                 Ncutout=5):
-    return fit_known_lines(SS, guesses, plot, Ncutout)
+def fit_cd_lines(SS, guesses=None, Ncutout=5):
+    if guesses is None:
+        return fit_known_lines(SS, {467.8: 41, 479.9: 33, 508.5: 18}, Ncutout)
+    else:
+        return fit_known_lines(SS, guesses, Ncutout)
 
 
-def fit_hg_lines(SS, guesses={578: -14, 546.1: 0, 435.8: 60, 404.6: 81},
-                 plot=False, Ncutout=7):
-    return fit_known_lines(SS, guesses, plot, Ncutout)
+def fit_hg_lines(SS, guesses=None, Ncutout=7):
+    if guesses is None:
+        return fit_known_lines(SS, {578: -14, 546.1: 0, 435.8: 60, 404.6: 81},
+                               Ncutout)
+    else:
+        return fit_known_lines(SS, guesses, Ncutout)
 
 
-def fit_xe_lines(SS, guesses={764: -77, 828: -93}, plot=False, Ncutout=5):
-    return fit_known_lines(SS, guesses, plot, Ncutout)
+def fit_xe_lines(SS, guesses=None, Ncutout=5):
+    if guesses is None:
+        return fit_known_lines(SS, {764: -77, 828: -93}, Ncutout)
+    else:
+        return fit_known_lines(SS, guesses, Ncutout)
 
 
-def fit_known_lines(SS, guesses, plot, Ncutout):
+def fit_known_lines(SS, guesses, Ncutout):
     """ Fit line positions based on guess pixel positions against a fiducial spectrum 
 
     This function is mapable
@@ -1726,14 +1738,16 @@ def rough_grid_helper(ix):
     # sys.stdout.flush()
 
 
-def rough_grid(data, the_lines=[365.0, 404.6, 435.8, 546.1, 578],
-               outname='rough_wavelength.npy'):
+def rough_grid(data, the_lines=None, outname='rough_wavelength.npy'):
     """Shift the extractions onto a coarse common pixel grid"""
 
     global extractions, lines, n_ext, tot_std, min_std, max_std
 
     extractions = data
-    lines = the_lines
+    if the_lines is None:
+        lines = [365.0, 404.6, 435.8, 546.1, 578]
+    else:
+        lines = the_lines
     tot_std = 0.
     min_std = 1.e9
     max_std = 0.

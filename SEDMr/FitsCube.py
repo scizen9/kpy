@@ -15,7 +15,6 @@ import SEDMr.Spectra as SS
 import sys
 
 
-
 class FitsCube(object):
     
     # Following are numpy arrays
@@ -28,7 +27,6 @@ class FitsCube(object):
     locations = None
     header = None
 
-    
     def load(fname):
         FF = pf.open(fname)
 

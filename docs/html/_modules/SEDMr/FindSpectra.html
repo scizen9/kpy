@@ -50,12 +50,14 @@
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 <span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
 <span class="kn">from</span> <span class="nn">stsci.tools.gfit</span> <span class="kn">import</span> <span class="n">gfit1d</span>
+
+<span class="kn">import</span> <span class="nn">NPK.Bar</span> <span class="kn">as</span> <span class="nn">Bar</span>
 
 <span class="n">Coord</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;XY&quot;</span><span class="p">,</span> <span class="s2">&quot;x y&quot;</span><span class="p">)</span>
 
@@ -92,19 +94,19 @@
 <div class="viewcode-block" id="load_data"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.FindSpectra.load_data">[docs]</a><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">objfn</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Returns HDUs from files segmapfn and objfn.</span>
 <span class="sd">    </span>
-<span class="sd">    load_data is a thin wrapper around pyfits</span>
+<span class="sd">    load_data is a thin wrapper around astropy.io.fits</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">segmap</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">segmapfn</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">objfn</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Could not open </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">segmapfn</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="n">segmap</span><span class="p">,</span> <span class="n">obj</span></div>
 
@@ -128,7 +130,11 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Global is for inter process communication</span>
-    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span>
+    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span><span class="p">,</span> <span class="n">n_done</span><span class="p">,</span> <span class="n">update_rate</span>
+
+    <span class="n">n_done</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">n_done</span> <span class="o">%</span> <span class="n">update_rate</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">Bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 
     <span class="c1"># Padding in pixels around trace in Y</span>
     <span class="n">PAD</span> <span class="o">=</span> <span class="mi">2</span>
@@ -151,7 +157,7 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
         <span class="n">outstr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="si">%4.4i</span><span class="s1">: </span><span class="si">%4.4i</span><span class="s1">, TINY SEGMENT, </span><span class="si">%-5s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">seg_cnt</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
                                                          <span class="n">tr</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">])</span>
-        <span class="k">print</span> <span class="n">outstr</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">outstr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
     <span class="c1"># We are OK</span>
     <span class="k">else</span><span class="p">:</span>
@@ -165,24 +171,27 @@
         <span class="c1"># How long is it in X?</span>
         <span class="n">n_el</span> <span class="o">=</span> <span class="n">span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span>
 
+        <span class="c1"># How wide is it in Y?</span>
+        <span class="n">n_wd</span> <span class="o">=</span> <span class="n">span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">y</span>
+
         <span class="c1"># Don&#39;t fit short traces, but flag them by setting &quot;ok&quot; to False</span>
-        <span class="k">if</span> <span class="n">n_el</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">n_el</span> <span class="o">&lt;</span> <span class="mi">50</span> <span class="ow">or</span> <span class="n">n_wd</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
 
             <span class="c1"># Flag the sigma with zero</span>
             <span class="n">sig</span> <span class="o">=</span> <span class="mf">0.</span>
             <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;trace_sigma&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sig</span>
 
-        <span class="c1"># Trace is long enough, so let&#39;s fit it!</span>
+        <span class="c1"># Trace is long enough and wide enough, so let&#39;s fit it!</span>
         <span class="k">else</span><span class="p">:</span>
 
             <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_el</span><span class="p">)</span>
             <span class="n">trace_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">mxsr</span> <span class="o">-</span> <span class="n">mnsr</span><span class="p">)</span>
 
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n_el</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_el</span><span class="p">):</span>
                 <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
                     <span class="n">XX</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span>
-                    <span class="n">profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">objdat</span><span class="p">[</span><span class="n">y_slc</span><span class="p">,</span> <span class="n">XX</span> <span class="o">-</span> <span class="mi">3</span><span class="p">:</span><span class="n">XX</span> <span class="o">+</span> <span class="mi">3</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">objdat</span><span class="p">[</span><span class="n">y_slc</span><span class="p">,</span> <span class="n">XX</span> <span class="o">-</span> <span class="mi">3</span><span class="p">:</span><span class="n">XX</span> <span class="o">+</span> <span class="mi">3</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
                     <span class="n">profile</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
 
                     <span class="n">trace_profile</span> <span class="o">+=</span> <span class="n">profile</span>
@@ -212,11 +221,11 @@
             <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;bkg_ok&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
             <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;ok&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">nans</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">poly</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
 
-        <span class="n">outstr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="si">%4.4i</span><span class="s1">: </span><span class="si">%4.4i</span><span class="s1">, fwhm=</span><span class="si">%3.2f</span><span class="s1"> pix, </span><span class="si">%-5s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">seg_cnt</span><span class="p">,</span> <span class="n">n_el</span><span class="p">,</span>
-                                                           <span class="n">sig</span> <span class="o">*</span> <span class="mf">2.355</span><span class="p">,</span>
-                                                           <span class="n">tr</span><span class="p">[</span><span class="s1">&#39;ok&#39;</span><span class="p">])</span>
-        <span class="k">print</span> <span class="n">outstr</span><span class="p">,</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="c1"># outstr = &#39;\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s&#39; % (seg_cnt, n_el,</span>
+        <span class="c1">#                                                    sig * 2.355,</span>
+        <span class="c1">#                                                    tr[&#39;ok&#39;])</span>
+        <span class="c1"># print(outstr, end=&quot;&quot;)</span>
+        <span class="c1"># sys.stdout.flush()</span>
 
     <span class="k">return</span> <span class="n">tr</span></div>
 
@@ -243,19 +252,22 @@
 <span class="sd">                &quot;ok&quot;: Trace has more than 50 pixels     }</span>
 <span class="sd">        </span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span>
+    <span class="k">global</span> <span class="n">segdat</span><span class="p">,</span> <span class="n">objdat</span><span class="p">,</span> <span class="n">polyorder</span><span class="p">,</span> <span class="n">n_done</span><span class="p">,</span> <span class="n">update_rate</span>
 
     <span class="n">segdat</span> <span class="o">=</span> <span class="n">segmap</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
     <span class="n">objdat</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
     <span class="n">polyorder</span> <span class="o">=</span> <span class="n">order</span>
 
     <span class="c1"># First segment begins at 1</span>
-    <span class="n">segrange</span> <span class="o">=</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">segdat</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">segrange</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">segdat</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
 
+    <span class="n">n_done</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">update_rate</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segrange</span><span class="p">)</span> <span class="o">/</span> <span class="n">Bar</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">toolbar_width</span><span class="o">=</span><span class="mi">74</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
     <span class="n">traces</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">find_segments_helper</span><span class="p">,</span> <span class="n">segrange</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-    <span class="k">print</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">Bar</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">mapped</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="c1"># print(&quot;&quot;)</span>
 
     <span class="k">return</span> <span class="n">traces</span></div>
 

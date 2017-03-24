@@ -33,6 +33,7 @@ import argparse
 import datetime
 import os
 import sys
+from builtins import input
 
 import numpy as np
 import pylab as pl
@@ -64,6 +65,10 @@ def check_cube(cubename, showlamrms=False, savefig=False):
 
     cc, meta = np.load(cubename)
     fid_wave = meta['fiducial_wavelength']
+    if 'drp_version' in meta:
+        drp_ver = meta['drp_version']
+    else:
+        drp_ver = ''
 
     xs = [c.X_as for c in cc]
     ys = [c.Y_as for c in cc]
@@ -78,7 +83,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         smdn = np.nanmedian(c)
         sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
-              (len(cc), (len(cc) - len(c)), smdn, sstd))
+              (len(cc), (len(cc) - len(c)), float(smdn), float(sstd)))
         # smx = smdn + 3. * sstd
         # smn = smdn - 3. * sstd
         # if smn < 0.:
@@ -104,6 +109,14 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.colorbar(label=cbtitle)
     pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
     pl.ylabel("Dec offset [asec]")
+    # Add drp version
+    if len(drp_ver) > 0:
+        ax = pl.gca()
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
+
     pl.grid(True)
     pl.ioff()
     if savefig:
@@ -151,8 +164,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         stdspec /= 10.
 
     # Print wavelength range
-    print("Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
-                                            np.nanmax(lam[np.isfinite(spec)])))
+    print("Wavelengths from %.1f - %.1f" %
+          (float(np.nanmin(lam[np.isfinite(spec)])),
+           float(np.nanmax(lam[np.isfinite(spec)]))))
 
     # Get object name
     if 'header' in meta:
@@ -218,6 +232,11 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     except:
         utc = ''
 
+    if 'drp_version' in ss:
+        drp_ver = ss['drp_version']
+    else:
+        drp_ver = ''
+
     # Annotate plots
     if qual > 0:
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
@@ -246,7 +265,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         # Get reference spectrum
         standard = Stds.Standards[pred]
         slam = standard[:, 0]
-        sflx = standard[:, 1] * 1.e-16
+        sflx = standard[:, 1] * 1.e-16  # type: np.ndarray
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
@@ -268,7 +287,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     ok = (lam > 3800) & (lam < maxwl)
 
     # Apply redshift
-    lamz = lam / (1 + redshift)
+    lamz = lam / (1 + redshift)  # type: np.ndarray
 
     # Plot object spectrum
 
@@ -315,6 +334,14 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     # Add legend
     pl.legend(legend)
 
+    # Add drp version
+    if len(drp_ver) > 0:
+        ax = pl.gca()
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
+
     pl.grid(True)
     pl.ioff()
 
@@ -338,13 +365,14 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         q = 'x'
         qual = -1
         prom = ": "
-        while not q.isdigit() or qual < 1 or qual > 4:
-            q = raw_input(prom)
-            if q.isdigit():
-                qual = int(q)
-                if qual < 1 or qual > 4:
-                    prom = "Try again: "
+        while qual < 1 or qual > 4:
+            q = input(prom)
+            if type(q) != int:
+                if q.isdigit():
+                    qual = int(q)
             else:
+                qual = q
+            if qual < 1 or qual > 4:
                 prom = "Try again: "
         print("Quality = %d" % qual)
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
@@ -356,7 +384,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         # Get reducer
         print("Enter reducer of observations:")
         prom = "<cr> = ("+reducer+"): "
-        q = raw_input(prom)
+        q = input(prom)
         if len(q) > 0:
             reducer = q
 
@@ -409,6 +437,13 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.xlabel("Wavelength [Ang]")
         pl.ylabel("SEDM efficiency (%)")
         pl.plot(ss['nm'], ss['efficiency']*100.)
+        # Add drp version
+        if len(drp_ver) > 0:
+            ax = pl.gca()
+            ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                        xycoords=('axes fraction', 'figure fraction'),
+                        textcoords='offset points', size=6,
+                        ha='center', va='bottom')
         pl.grid(True)
         pl.ioff()
         if savefig:

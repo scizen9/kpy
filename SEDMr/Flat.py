@@ -56,6 +56,13 @@ def measure_flat(extraction, fmeta, lamstart=700, lamend=900):
     pl.ylabel("Y pixel")
     pl.title("Correction from %s to %s nm from %s" % (lamstart, lamend,
                                                       fmeta['outname']))
+    if 'drp_version' in fmeta:
+        drp_ver = fmeta['drp_version']
+        ax = pl.gca()
+        ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
     pl.savefig("flat-field-values.pdf")
 
     return corrections

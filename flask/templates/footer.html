@@ -1,0 +1,30 @@
+    <!---
+    <footer class="footer">
+        <div class="container">
+            <p class="text-muted" id="years">&copy; SEDM 2017</p>
+        </div>
+    </footer>
+    --->
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/moment.min.js"></script>
+    {% if fail %}
+        <script>
+            $(document).ready(function(){
+                $("#login-failed").slideDown("slow");
+            });
+        </script>
+    {% endif %}
+
+    <script>
+    $(document).ready(function() {
+        var ynow = moment().format('YYYY');
+        $('#years').append('-'+ynow);
+    });
+    </script>
+    </body>
+</html>

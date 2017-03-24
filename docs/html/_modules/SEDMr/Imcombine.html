@@ -40,19 +40,27 @@
             
   <h1>Source code for SEDMr.Imcombine</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">stsci.image.numcombine</span> <span class="kn">import</span> <span class="n">numCombine</span> <span class="k">as</span> <span class="n">nc</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Version</span> <span class="kn">as</span> <span class="nn">Version</span>
 
-<div class="viewcode-block" id="imcombine"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Imcombine.imcombine">[docs]</a><span class="k">def</span> <span class="nf">imcombine</span><span class="p">(</span><span class="n">filelist</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">listfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bpmask</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">reject</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span> 
-                <span class="n">nlow</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<span class="n">drp_ver</span> <span class="o">=</span> <span class="n">Version</span><span class="o">.</span><span class="n">ifu_drp_version</span><span class="p">()</span>
 
-    <span class="sd">&quot;&quot;&quot;Convenience wrapper around IRAF task imcombine</span>
+
+<div class="viewcode-block" id="imcombine"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Imcombine.imcombine">[docs]</a><span class="k">def</span> <span class="nf">imcombine</span><span class="p">(</span><span class="n">flist</span><span class="p">,</span> <span class="n">fout</span><span class="p">,</span> <span class="n">listfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">combtype</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+              <span class="n">nlow</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;Convenience wrapper around STSCI python task numCombine</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        filelist (list of str): The list of files to imcombine</span>
-<span class="sd">        out (str): The full path to the output file</span>
-<span class="sd">        bpmask (str): The full path to the bad pixel mask</span>
-<span class="sd">        reject (str): none, minmax, sigclip, avsigclip, pclip</span>
-<span class="sd">        nlow,nhigh (int,int): Parameters for minmax rejection, see iraf docs</span>
+<span class="sd">        flist (list of str): The list of files to imcombine</span>
+<span class="sd">        listfile (string): The file to store the list of images in</span>
+<span class="sd">        fout (str): The full path to the output file</span>
+<span class="sd">        combtype (str): median, mean, sum, minimum</span>
+<span class="sd">        nlow (int): Number of low pixels to throw out in median calculation</span>
+<span class="sd">        nhigh (int): Number of high pixels to throw out in median calculation</span>
 <span class="sd">    </span>
 <span class="sd">    Returns:</span>
 <span class="sd">        None</span>
@@ -62,37 +70,42 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1">#TODO: REMOVE Iraf and use python instead. STSCI Python has</span>
-    <span class="c1"># A builtin routine.</span>
-    <span class="kn">from</span> <span class="nn">pyraf</span> <span class="kn">import</span> <span class="n">iraf</span>
-    <span class="n">iraf</span><span class="o">.</span><span class="n">images</span><span class="p">()</span>
+    <span class="n">imstack</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">fl</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+        <span class="n">inhdu</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fl</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">inhdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="n">imstack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
 
-    <span class="n">filelist</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">[0]&quot;</span> <span class="o">%</span> <span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filelist</span><span class="p">]</span>
-    <span class="n">pars</span> <span class="o">=</span> <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="o">.</span><span class="n">getParList</span><span class="p">()</span>
-    <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="o">.</span><span class="n">unlearn</span><span class="p">()</span>
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">inhdu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">nc</span><span class="p">(</span><span class="n">imstack</span><span class="p">,</span> <span class="n">combinationType</span><span class="o">=</span><span class="n">combtype</span><span class="p">,</span> <span class="n">nlow</span><span class="o">=</span><span class="n">nlow</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="n">nhigh</span><span class="p">)</span>
+
+    <span class="n">oimg</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">combArrObj</span>
+
+    <span class="n">ncom</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">fl</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;IMCMB</span><span class="si">%03d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ncom</span>
+        <span class="n">ncom</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">hdr</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">fl</span>
+
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;NCOMBINE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">flist</span><span class="p">),</span> <span class="s1">&#39;number of images combined&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;COMBTYPE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">combtype</span><span class="p">,</span> <span class="s1">&#39;type of combine&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;COMBNLO&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">nlow</span><span class="p">,</span> <span class="s1">&#39;number of low pixels to reject&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;COMBNHI&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">nhigh</span><span class="p">,</span> <span class="s1">&#39;number of high pixels to reject&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="o">.</span><span class="n">add_history</span><span class="p">(</span><span class="s1">&#39;SEDMr.Imcombine run on </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%c</span><span class="s2">&quot;</span><span class="p">))</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;DRPVER&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drp_ver</span>
+
+    <span class="n">pf</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fout</span><span class="p">,</span> <span class="n">oimg</span><span class="p">,</span> <span class="n">hdr</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">listfile</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;flatcombine.lst&quot;</span>
-    <span class="k">else</span><span class="p">:</span> <span class="n">path</span> <span class="o">=</span> <span class="n">listfile</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">filelist</span><span class="p">:</span>
-        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">file</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-
-    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">,&quot;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">filelist</span><span class="p">))[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">s</span> <span class="o">%</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">filelist</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">reject</span> <span class="o">==</span> <span class="s1">&#39;minmax&#39;</span><span class="p">:</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="s2">&quot;@</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">,</span>
-            <span class="n">reject</span><span class="o">=</span><span class="n">reject</span><span class="p">,</span> <span class="n">nlow</span><span class="o">=</span><span class="n">nlow</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="n">nhigh</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">reject</span> <span class="o">==</span> <span class="s1">&#39;sigclip&#39;</span><span class="p">:</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="s2">&quot;@</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">,</span>
-            <span class="n">reject</span><span class="o">=</span><span class="n">reject</span><span class="p">,</span> <span class="n">lsigma</span><span class="o">=</span><span class="n">nlow</span><span class="p">,</span> <span class="n">hsigma</span><span class="o">=</span><span class="n">nhigh</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">Stdin</span><span class="o">=</span><span class="n">filelist</span><span class="p">,</span> <span class="n">Stdout</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">combine</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">,</span>
-            <span class="n">reject</span><span class="o">=</span><span class="n">reject</span><span class="p">)</span>
-
-    <span class="n">iraf</span><span class="o">.</span><span class="n">imcombine</span><span class="o">.</span><span class="n">setParList</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span></div>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">listfile</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">flist</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">file</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
@@ -105,11 +118,11 @@
 
 <span class="sd">    &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
 
-
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--files&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[])</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--listfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--Nhi&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--Nlo&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--Nhi&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--Nlo&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--combtype&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--reject&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outname&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
@@ -117,10 +130,10 @@
     <span class="n">filelist</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">files</span>
     <span class="n">out</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">outname</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Set --outname&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Set --outname&quot;</span><span class="p">)</span>
 
-    <span class="n">imcombine</span><span class="p">(</span><span class="n">filelist</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">listfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">listfile</span><span class="p">,</span> <span class="n">bpmask</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> 
-                <span class="n">reject</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">reject</span><span class="p">,</span> <span class="n">nlow</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">Nlo</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">Nhi</span><span class="p">)</span>
+    <span class="n">imcombine</span><span class="p">(</span><span class="n">filelist</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">listfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">listfile</span><span class="p">,</span> <span class="n">combtype</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">combtype</span><span class="p">,</span>
+              <span class="n">nlow</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">Nlo</span><span class="p">,</span> <span class="n">nhigh</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">Nhi</span><span class="p">)</span>
 
 
 </pre></div>

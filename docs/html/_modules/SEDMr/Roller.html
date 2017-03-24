@@ -40,10 +40,9 @@
             
   <h1>Source code for SEDMr.Roller</h1><div class="highlight"><pre>
 <span></span>
-<span class="kn">import</span> <span class="nn">argparse</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">pdb</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
-
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 
 
 <div class="viewcode-block" id="roll_file"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Roller.roll_file">[docs]</a><span class="k">def</span> <span class="nf">roll_file</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">):</span>
@@ -59,11 +58,7 @@
     <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;ROLLX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;Rolled in X&quot;</span><span class="p">)</span>
     <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;ROLLY&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="s2">&quot;Rolled in Y&quot;</span><span class="p">)</span>
 
-
     <span class="n">FF</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
-
-    
-
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
@@ -75,9 +70,7 @@
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--Y&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Roll amount Y&#39;</span><span class="p">)</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
 
-    
     <span class="n">roll_file</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">Y</span><span class="p">)</span>
-
 </pre></div>
 
           </div>

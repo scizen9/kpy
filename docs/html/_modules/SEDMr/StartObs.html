@@ -71,7 +71,7 @@
 <span class="kn">import</span> <span class="nn">glob</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">ephem</span>
 
@@ -211,7 +211,7 @@
     <span class="c1"># Check if dome conditions are not right</span>
     <span class="k">if</span> <span class="n">onsky</span> <span class="ow">and</span> <span class="s1">&#39;CLOSED&#39;</span> <span class="ow">in</span> <span class="n">dome</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-            <span class="k">print</span> <span class="s1">&#39;On sky and dome is closed, skipping </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">src</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;On sky and dome is closed, skipping </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">src</span><span class="p">)</span>
     <span class="c1"># All other conditions are OK</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Skip test and Focus images</span>
@@ -220,16 +220,16 @@
             <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
             <span class="k">if</span> <span class="s1">&#39;STD-&#39;</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
                 <span class="n">nstd</span> <span class="o">=</span> <span class="mi">1</span>
-                <span class="k">print</span> <span class="s2">&quot;Standard </span><span class="si">%s</span><span class="s2"> copied to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Standard </span><span class="si">%s</span><span class="s2"> copied to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dest</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">print</span> <span class="s1">&#39;Target </span><span class="si">%s</span><span class="s1"> copied to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Target </span><span class="si">%s</span><span class="s1"> copied to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dest</span><span class="p">))</span>
             <span class="n">ncp</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="c1"># Report skipping and type</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="s1">&#39;test&#39;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]:</span>
-                <span class="k">print</span> <span class="s1">&#39;test file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;test file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="s1">&#39;Focus:&#39;</span> <span class="ow">in</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]:</span>
-                <span class="k">print</span> <span class="s1">&#39;Focus file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Focus file </span><span class="si">%s</span><span class="s1"> not copied&#39;</span> <span class="o">%</span> <span class="n">src</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ncp</span><span class="p">,</span> <span class="n">nstd</span></div>
     <span class="c1"># END: docp</span>
@@ -275,20 +275,45 @@
                     <span class="n">retcode4</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
                 <span class="c1"># Success on all fronts!</span>
                 <span class="k">if</span> <span class="n">retcode4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="k">print</span> <span class="s2">&quot;bias, crrs processed for </span><span class="si">%d</span><span class="s2"> new images&quot;</span> <span class="o">%</span> <span class="n">ncp</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;bias, crrs processed for </span><span class="si">%d</span><span class="s2"> new images&quot;</span> <span class="o">%</span> <span class="n">ncp</span><span class="p">)</span>
                     <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
                 <span class="c1"># Report failures</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">print</span> <span class="s2">&quot;could not make crrs&quot;</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;could not make crrs&quot;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">print</span> <span class="s2">&quot;could not make bias&quot;</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;could not make bias&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">print</span> <span class="s2">&quot;could not make plan&quot;</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;could not make plan&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;could not make what.list&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;could not make what.list&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ret</span></div>
     <span class="c1"># END: proc_bias_crrs</span>
+
+
+<div class="viewcode-block" id="proc_cogs"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.proc_cogs">[docs]</a><span class="k">def</span> <span class="nf">proc_cogs</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Process standard star curves of growth.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if processing was successful, otherwise False</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Default return value</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="c1"># Make new stds</span>
+    <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make cogs.done&quot;</span><span class="p">)</span>
+    <span class="n">procTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
+    <span class="c1"># Did it work?</span>
+    <span class="k">if</span> <span class="n">retcode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Curves of growth processed in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="n">procTime</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
 
 
 <div class="viewcode-block" id="proc_stds"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.proc_stds">[docs]</a><span class="k">def</span> <span class="nf">proc_stds</span><span class="p">(</span><span class="n">ncp</span><span class="p">):</span>
@@ -365,7 +390,7 @@
             <span class="n">ret</span> <span class="o">=</span> <span class="bp">False</span>
 
     <span class="n">procTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
-    <span class="k">print</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> files bkg subtracted in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">copied</span><span class="p">),</span> <span class="n">procTime</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> files bkg subtracted in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">copied</span><span class="p">),</span> <span class="n">procTime</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">ret</span></div>
 
 
@@ -425,17 +450,17 @@
             <span class="n">ncp</span> <span class="o">+=</span> <span class="n">nc</span>
             <span class="n">nstd</span> <span class="o">+=</span> <span class="n">ns</span>
     <span class="c1"># We copied files</span>
-    <span class="k">print</span> <span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> files&quot;</span> <span class="o">%</span> <span class="n">ncp</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> files&quot;</span> <span class="o">%</span> <span class="n">ncp</span><span class="p">)</span>
     <span class="c1"># Do bias subtraction, CR rejection</span>
     <span class="k">if</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_bias_crrs</span><span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">oldcals</span><span class="o">=</span><span class="n">oldcals</span><span class="p">):</span>
-            <span class="k">print</span> <span class="s2">&quot;Error processing bias/crrs&quot;</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Error processing bias/crrs&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_bkg_flex</span><span class="p">(</span><span class="n">copied</span><span class="p">):</span>
-            <span class="k">print</span> <span class="s2">&quot;Error processing bkg/flex&quot;</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Error processing bkg/flex&quot;</span><span class="p">)</span>
         <span class="c1"># Process any standard stars</span>
         <span class="k">if</span> <span class="n">nstd</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">proc_stds</span><span class="p">(</span><span class="n">nstd</span><span class="p">):</span>
-                <span class="k">print</span> <span class="s2">&quot;Error processing standard stars&quot;</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Error processing standard stars&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ncp</span></div>
     <span class="c1"># END: cpsci</span>
@@ -462,7 +487,7 @@
     <span class="c1"># Make sure the file doesn&#39;t already exist in destdir</span>
     <span class="n">local_file</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">destdir</span><span class="p">,</span> <span class="n">fname</span><span class="p">))</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">local_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> already exists in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">destdir</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> already exists in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">destdir</span><span class="p">))</span>
         <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
     <span class="c1"># Search in redd for file</span>
     <span class="k">else</span><span class="p">:</span>
@@ -566,7 +591,7 @@
                                               <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
                                 <span class="n">ncp</span> <span class="o">+=</span> <span class="n">nc</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">print</span> <span class="s2">&quot;Truncated file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">src</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Truncated file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">src</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ncp</span></div>
     <span class="c1"># END: cpprecal</span>
@@ -700,26 +725,26 @@
     <span class="c1"># Go there</span>
     <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
     <span class="c1"># report</span>
-    <span class="k">print</span> <span class="s2">&quot;Raw files from  : </span><span class="si">%s</span><span class="se">\n</span><span class="s2">Reduced files to: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Raw files from  : </span><span class="si">%s</span><span class="se">\n</span><span class="s2">Reduced files to: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">))</span>
     <span class="c1"># Check if processed cal files are ready</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
         <span class="c1"># Wait for cal files until sunset</span>
         <span class="n">sunset</span> <span class="o">=</span> <span class="n">p60</span><span class="o">.</span><span class="n">next_setting</span><span class="p">(</span><span class="n">sun</span><span class="p">)</span>
         <span class="c1"># Copy raw cal files from previous date directory</span>
         <span class="n">npre</span> <span class="o">=</span> <span class="n">cpprecal</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
-        <span class="k">print</span> <span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">npre</span><span class="p">,</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">npre</span><span class="p">,</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
         <span class="c1"># Now check the current source dir for raw cal files</span>
         <span class="n">ncp</span> <span class="o">=</span> <span class="n">cpcal</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
-        <span class="k">print</span> <span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">srcdir</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">srcdir</span><span class="p">))</span>
         <span class="c1"># Now loop until we have the raw cal files we need or sun is down</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="n">cal_proc_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
             <span class="c1"># Wait a minute</span>
-            <span class="k">print</span> <span class="s2">&quot;waiting 60s...&quot;</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;waiting 60s...&quot;</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
-            <span class="k">print</span> <span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new raw cal files...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new raw cal files...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span><span class="p">)</span>
             <span class="n">ncp</span> <span class="o">=</span> <span class="n">cpcal</span><span class="p">(</span><span class="n">srcdir</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
-            <span class="k">print</span> <span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">srcdir</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Copied </span><span class="si">%d</span><span class="s2"> raw cal files from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">srcdir</span><span class="p">))</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">ncp</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Check to see if we are still before and hour after sunset</span>
@@ -757,9 +782,9 @@
                     <span class="n">retcode</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;make flat-dome-700to900.npy&quot;</span><span class="p">)</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span>
                             <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">))):</span>
-                        <span class="k">print</span> <span class="s2">&quot;Making of flat-dome-700to900.npy failed!&quot;</span>
+                        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Making of flat-dome-700to900.npy failed!&quot;</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">print</span> <span class="s2">&quot;Making of fine.npy and cube.npy failed!&quot;</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Making of fine.npy and cube.npy failed!&quot;</span><span class="p">)</span>
                 <span class="n">procfTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
                 <span class="c1"># Report times</span>
                 <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Calibration processing took &quot;</span>
@@ -768,8 +793,8 @@
 
         <span class="c1"># Check status</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">cal_ready</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
-            <span class="k">print</span> <span class="s2">&quot;These calibrations failed!&quot;</span>
-            <span class="k">print</span> <span class="s2">&quot;Let&#39;s get our calibrations from a previous night&quot;</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;These calibrations failed!&quot;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Let&#39;s get our calibrations from a previous night&quot;</span><span class="p">)</span>
             <span class="n">ncf</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;fine.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
             <span class="n">ncc</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;cube.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
             <span class="n">ncd</span> <span class="o">=</span> <span class="n">find_recent</span><span class="p">(</span><span class="n">redd</span><span class="p">,</span> <span class="s1">&#39;flat-dome-700to900.npy&#39;</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
@@ -785,9 +810,9 @@
             <span class="n">oldcals</span> <span class="o">=</span> <span class="bp">True</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Using older calibration files&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Calibrations already present in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">outdir</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Calibrations already present in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">outdir</span><span class="p">)</span>
 
-    <span class="k">print</span> <span class="s2">&quot;Calibration stage complete, ready for science!&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Calibration stage complete, ready for science!&quot;</span><span class="p">)</span>
     <span class="c1"># Keep track of no copy</span>
     <span class="n">nnc</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="c1"># loop and copy new files</span>
@@ -797,11 +822,11 @@
             <span class="c1"># Wait for next sunrise</span>
             <span class="n">sunrise</span> <span class="o">=</span> <span class="n">p60</span><span class="o">.</span><span class="n">next_rising</span><span class="p">(</span><span class="n">sun</span><span class="p">)</span>
             <span class="c1"># Wait a minute</span>
-            <span class="k">print</span> <span class="s2">&quot;waiting 60s for new ifu images...&quot;</span><span class="p">,</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;waiting 60s for new ifu images...&quot;</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
             <span class="c1"># Check for new ifu images</span>
-            <span class="k">print</span> <span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new ifu images...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;checking </span><span class="si">%s</span><span class="s2"> for new ifu images...&quot;</span> <span class="o">%</span> <span class="n">srcdir</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="c1"># Record starting time for new file processing</span>
             <span class="n">startTime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
@@ -809,7 +834,7 @@
             <span class="c1"># We copied some new ones so report processing time</span>
             <span class="k">if</span> <span class="n">ncp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">procTime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">startTime</span><span class="p">)</span>
-                <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> new ifu images processed in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">procTime</span><span class="p">)</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> new ifu images processed in </span><span class="si">%d</span><span class="s2"> s&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncp</span><span class="p">,</span> <span class="n">procTime</span><span class="p">))</span>
                 <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
                 <span class="n">nnc</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">else</span><span class="p">:</span>
@@ -824,7 +849,7 @@
                           <span class="s2">&quot;</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> so sun is up!&quot;</span> <span class="o">%</span>
                           <span class="p">(</span><span class="n">nnc</span><span class="p">,</span> <span class="n">now</span><span class="o">.</span><span class="n">tuple</span><span class="p">()[</span><span class="mi">3</span><span class="p">],</span> <span class="n">now</span><span class="o">.</span><span class="n">tuple</span><span class="p">()[</span><span class="mi">4</span><span class="p">],</span>
                            <span class="n">sunrise</span><span class="o">.</span><span class="n">tuple</span><span class="p">()[</span><span class="mi">3</span><span class="p">],</span> <span class="n">sunrise</span><span class="o">.</span><span class="n">tuple</span><span class="p">()[</span><span class="mi">4</span><span class="p">]))</span>
-                    <span class="k">print</span> <span class="s2">&quot;Time to wait until we have a new raw directory&quot;</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Time to wait until we have a new raw directory&quot;</span><span class="p">)</span>
                     <span class="n">doit</span> <span class="o">=</span> <span class="bp">False</span>
                     <span class="c1"># Normal termination</span>
                     <span class="n">ret</span> <span class="o">=</span> <span class="bp">True</span>
@@ -839,6 +864,12 @@
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Automatic processing successful&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Automatic processing not successful&quot;</span><span class="p">)</span>
+        <span class="c1"># do curves of growth</span>
+        <span class="n">cogs_status</span> <span class="o">=</span> <span class="n">proc_cogs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cogs_status</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Curves of growth generated successfully&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Error processing curves of growth&quot;</span><span class="p">)</span>
 
     <span class="c1"># Handle a ctrl-C</span>
     <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
@@ -879,7 +910,7 @@
     <span class="n">nraw</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rawlist</span><span class="p">)</span>
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">%d</span><span class="s2"> raw directories in </span><span class="si">%s</span><span class="s2">: putting reduced data in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
           <span class="p">(</span><span class="n">nraw</span><span class="p">,</span> <span class="n">rawd</span><span class="p">,</span> <span class="n">redd</span><span class="p">))</span>
-    <span class="k">print</span> <span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">wait</span><span class="p">:</span>
         <span class="n">stat</span> <span class="o">=</span> <span class="n">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
         <span class="n">its</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -888,10 +919,10 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="k">while</span> <span class="n">dobs</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">stat</span><span class="p">:</span>
-                <span class="k">print</span> <span class="s2">&quot;Now we wait until we get a new raw directory&quot;</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Now we wait until we get a new raw directory&quot;</span><span class="p">)</span>
                 <span class="n">waiting</span> <span class="o">=</span> <span class="bp">True</span>
                 <span class="k">while</span> <span class="n">waiting</span><span class="p">:</span>
-                    <span class="k">print</span> <span class="s2">&quot;waiting 10min for new raw directory...&quot;</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;waiting 10min for new raw directory...&quot;</span><span class="p">)</span>
                     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
                     <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">600</span><span class="p">)</span>
                     <span class="c1"># Get all raw directories</span>
@@ -910,7 +941,7 @@
                         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;UT = </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> No new directories yet, &quot;</span>
                               <span class="s2">&quot;so keep waiting&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
                         <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-            <span class="k">print</span> <span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="n">stat</span> <span class="o">=</span> <span class="n">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
             <span class="n">its</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Finished SEDM observing iteration </span><span class="si">%d</span><span class="s2"> in raw dir </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
