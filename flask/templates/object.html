@@ -1,0 +1,42 @@
+{% from "_formhelpers.html" import render_field %}
+        {% if not object %}
+            <div class = "container">
+                {% if message %}
+                    <div class="media-body">
+                        <h5> {{ message }}</h5>
+                    </div>
+                {% endif %}
+                <div class="col-md-6">
+                    <div class="well">
+                        <h3>Add Object</h3>
+                        <form method="post">
+                            {{ form1.csrf_token }}
+                            <p>
+                                {{ render_field(form1.object_name) }}
+                                {{ render_field(ssoform.typedesig) }}
+                                {{ render_field(form1.add_obj) }}
+                            </p>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="well">
+                        <h3>Object search</h3>
+                        <form method="post">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.RA) }}
+                                {{ render_field(form2.DEC) }}
+                                {{ render_field(form2.submit_obj) }}
+                            </p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div>
+                <p>
+                    {{ object }}
+                </p>
+            </div>
+        {% endif %}

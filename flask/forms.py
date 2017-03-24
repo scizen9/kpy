@@ -23,6 +23,19 @@ class FindObjectForm(FlaskForm):
     submit_obj = fields.SubmitField('seach for object')
 
 
+class SubmitObjectForm(FlaskForm):
+    object_name = fields.StringField('object Name')
+    RA = fields.FloatField('Right Ascension (deg)')
+    DEC = fields.FloatField('Declination (deg)')
+    add_obj = fields.SubmitField('Add object')
+
+
+class SSOForm(FlaskForm):
+    typedesig = fields.SelectField('Target type', choices=[('fixed', 'f'), ('heliocentric elliptical', 'e'),
+                                   ('heliocentric hyperbolic', 'h'), ('heliocentric parabolic', 'p'),
+                                   ('geocentric elliptical', 'E')])
+
+
 class LoginForm(FlaskForm):
     username = fields.StringField('username')
     password = fields.StringField('password')

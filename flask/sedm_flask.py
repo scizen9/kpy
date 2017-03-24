@@ -12,7 +12,7 @@ from flask import Flask, request, flash, redirect, render_template, url_for
 from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import generate_password_hash, check_password_hash
-from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, is_safe_url
+from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, SSOForm, is_safe_url
 import flask
 import flask_login
 from wtforms import Form, HiddenField
@@ -180,12 +180,29 @@ def requests():
 @app.route('/schedule')
 def schedule():
     # TODO: create a table
-    pass
+    schedule = None  # TODO: decide how schedule will be stored (file/database?)
+    return render_template('header.html', current_year=flask_login.current_user) + \
+           render_template('schedule.html') + \
+           render_template('footer.html')
 
 
-@app.route('/objects')
-def objects():
-    pass
+@app.route('/objects/<path:where>')
+def objects(where):
+    form1 = SubmitObjectForm()
+    form2 = FindObjectForm()
+    ssoform = SSOForm()
+    if where == 'add':
+        return render_template('header.html', current_year=flask_login.current_user) + \
+               render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
+               render_template('footer.html')
+    elif where:
+        return render_template('header.html', current_year=flask_login.current_user) + \
+               render_template('object.html', object=where) + \
+               render_template('footer.html')
+    # TODO: make an objects "homepage" to have as the base render
+    return render_template('header.html', current_year=flask_login.current_user) + \
+           render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
+           render_template('footer.html')
 
 
 @app.route('/project_stats/<path:project>')
