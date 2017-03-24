@@ -2,7 +2,8 @@
 
 """
 import sys
-sys.path.append('Caltech/kpy')
+import os
+sys.path.append(os.path.abspath('../'))
 
 import os
 import datetime
