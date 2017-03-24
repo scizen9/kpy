@@ -1155,11 +1155,11 @@ def snap_solution_into_place(PARS):
 
                 # Print results
                 # if printout:
-                    # out_str = \
-                    #     "\rLine: %7.2f nm, Xpos: %8.3f px, dXpos: %6.3f px" % \
-                    #     (line, pars.params[1], pars.perror[1])
-                    # print(out_str, end="")
-                    # sys.stdout.flush()
+                #   out_str = \
+                #       "\rLine: %7.2f nm, Xpos: %8.3f px, dXpos: %6.3f px" % \
+                #         (line, pars.params[1], pars.perror[1])
+                #   print(out_str, end="")
+                #   sys.stdout.flush()
             # END: for line in linelist[lampname]:
         # END: for lampname, lampspec in lamp_spec.items():
 

@@ -194,7 +194,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
         if not np.isfinite(the_corr).all() and maxnm < 1000.0:
             print("Fitting red end")
             # Fit polynomial to extrapolate correction
-            redend = (ll > 880) & (ll < maxnm)
+            redend = (ll > 880) & (ll < maxnm) & np.isfinite(the_corr)
             ss = np.poly1d(np.polyfit(ll[redend], the_corr[redend], 2))
             # Insert extrapolation back into correction vector
             redend = (ll > maxnm)
