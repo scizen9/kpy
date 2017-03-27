@@ -427,7 +427,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             header += "\nTRACEFWHMPX: %.1f" % ss['yfwhm']
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
-        print("Saved to " + outf)
+        print("Spectrum saved to " + outf)
 
     if 'efficiency' in ss:
         pl.clf()

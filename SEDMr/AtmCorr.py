@@ -142,7 +142,8 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
         try:
             data = np.load(ifile)[0]
         except:
-            raise Exception("Not able to load %s. " % ifile)
+            print("Not able to load %s. " % ifile)
+            continue
 
         # Check quality of extraction
         if data["quality"] > 0:
