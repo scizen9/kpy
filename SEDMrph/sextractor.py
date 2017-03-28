@@ -210,14 +210,16 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
     return x[np.argmin(p(x))], coefs[0]
     
-def analyse_image(sexfile):
+def analyse_image(sexfile, arcsecpix=0.394):
     '''
     Analyses the sextractor filelist to determine the best focus.
+    If FWHM in pixes is required, set arcsecpix=1
     
     returns: A tuple containing:
         1. - Number of extracted sources.
         2. - FWHM in arcsecs.
-	3. - Ellipticity.
+        3. - Ellipticity.
+        4. - Background
 
 	#   1 X_IMAGE                Object position along x                                    [pixel]
 	#   2 Y_IMAGE                Object position along y                                    [pixel]
@@ -249,9 +251,7 @@ def analyse_image(sexfile):
     s = s[s[:,10]==0]
 
     nsources = len(s) 
-    if (nsources > 0):
-        print nsources
-    else:
+    if (nsources == 0):
         return 0,0,0,0
     #Select round sources (ellipticity is 1-axis_ratio)
     s = s[s[:,8]<0.5]
@@ -259,18 +259,16 @@ def analyse_image(sexfile):
     s = s[s[:,8]<0.25]
 
     #Select FWHM at least 3 pixels and lower than 6 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*0.394<6)]
+    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<6)]
     
     nsources = len(s) 
-    if (nsources > 0):
-        print nsources
-    else:
+    if (nsources == 0):
         return 0,0,0,0
         
     #Select bright magnitudes
     s = s[s[:,4]<np.percentile(s[:,4], 20)]
        
-    fwhm = np.nanmedian(s[:,7]*0.394)
+    fwhm = np.nanmedian(s[:,7]*arcsecpix)
     bkg = np.nanmedian(s[:,9])
     
     return nsources, fwhm, ellipticity, bkg

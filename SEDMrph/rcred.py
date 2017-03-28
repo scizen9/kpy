@@ -801,11 +801,11 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     #Get basic statistics for the image
     nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(img)
     
-    logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
-    print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
+    logger.info( "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
+    print "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
 
     
-    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIP":ellip}
+    dic = {"FWHM": np.round(fwhm, 3) , "FWHMPIX": np.round(fwhm/0.394, 3) , "NSRC":nsrc, "ELLIP": np.round(ellip, 3)}
     #Update the seeing information from sextractor
     fitsutils.update_pars(img, dic)
     
@@ -1008,6 +1008,7 @@ if __name__ == '__main__':
                 reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
                 reducedfiles.extend(reduced)
             except:
+                print "Error when reducing image %s"%f
                 pass
 
     #If copy is requested, then we copy the whole folder or just the missing files to transient.

@@ -134,7 +134,7 @@ class QueryCatalogue:
 
         return catalog
             
-    def query_ps1(self):
+    def query_catalogue(self, catalogue="PS1V3OBJECTS"):
         '''
         Sends a VO query to the PS1 catalogue.
         Filters the result by mangitude.
@@ -167,7 +167,7 @@ class QueryCatalogue:
     
 
             
-        url = "http://gsss.stsci.edu/webservices/vo/CatalogSearch.aspx?CAT=PS1V3OBJECTS&RA=%.5f&DEC=%.5f&SR=%.5f&MAGRANGE=%.3f,%.3f"%(self.ra, self.dec, self.rad, self.minmag, self.maxmag)
+        url = "http://gsss.stsci.edu/webservices/vo/CatalogSearch.aspx?CAT=%s&RA=%.5f&DEC=%.5f&SR=%.5f&MAGRANGE=%.3f,%.3f"%(catalogue, self.ra, self.dec, self.rad, self.minmag, self.maxmag)
         
         u = urllib.urlopen(url)
         
@@ -186,7 +186,7 @@ class QueryCatalogue:
         
         newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
             ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
-            ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float),])
+            ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
         newcat["ra"] = catalog["RAmean"]
         newcat["dec"] = catalog["DECmean"]
         newcat["mag"] = catalog["rMeanPSFMag"]
@@ -200,6 +200,7 @@ class QueryCatalogue:
         newcat["Err_i"] = catalog["iMeanPSFMagErr"]
         newcat["Err_z"] = catalog["zMeanPSFMagErr"]
         newcat["Err_y"] = catalog["yMeanPSFMagErr"]  
+        newcat["distance"] = catalog["distance"]  
         
         #Clean temporary file.\
         if (os.path.isfile(tmp_file)):
