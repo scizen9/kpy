@@ -11,59 +11,6 @@ import SEDMr.IO as IO
 
 from scipy.ndimage.filters import gaussian_filter
 
-from scipy.weave import converters
-import scipy.weave as weave
- 
- 
-def weave_convolve(image, kernel):
- 
-    image = image.astype(float)
-    kernel = kernel.astype(float)
-
-    nkx, nky = kernel.shape
- 
-    if nkx % 2 == 0 or nky % 2 == 0:
-        raise Exception("Kernel dimensions should be odd")
- 
-    smoothed = np.zeros(image.shape)
- 
-    code = """
-            double top, bot;
-            int wkx, wky, iimin, iimax, jjmin, jjmax;
-            wkx = (nkx-1)/2;
-            wky = (nky-1)/2;
-            for (int i=0; i<nx; ++i) {
-                for (int j=0; j<ny; ++j) {
-                    if(isvalid(i,j)) {
-                        top = 0.;
-                        bot = 0.;
-                        if(i-wkx > 0) { iimin = i-wkx; } else { iimin = 0; };
-                        if(i+wkx < nx-1) { iimax = i+wkx; } else { iimax = nx-1; };
-                        if(j-wkx > 0) { jjmin = j-wky; } else { jjmin = 0; };
-                        if(j+wkx < ny-1) { jjmax = j+wky; } else { jjmax = ny-1; };
-                        for (int ii=iimin; ii <= iimax ; ++ii) {
-                            for (int jj=jjmin; jj <= jjmax; ++jj) {
-                                if(isvalid(ii,jj)) {
-                                    top = top + kernel(wkx + ii-i,wky + jj-j) * image(ii,jj);
-                                    bot = bot + kernel(wkx + ii-i,wky + jj-j);
-                                }
-                            }
-                        }
-                        smoothed(i,j) = top / bot;
-                    } else {
-                        smoothed(i,j) = image(i,j);
-                    }
-                }
-            }
-            return_val = 1;
-            """
- 
-    weave.inline(code, ['image', 'isvalid', 'nx', 'ny', 'kernel',
-                        'nkx', 'nky', 'smoothed'],
-                 type_converters=converters.blitz, compiler='gcc')
- 
-    return smoothed
-
 
 def estimate_background(fine, infile, gausswidth=100, outname=None,
                        outint=False, fft_filt=False):
@@ -89,7 +36,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
         ys = np.round(np.poly1d(ff.poly)(xs)).astype(np.int)
 
         # mask above and below each trace with nan's
-        for dY in xrange(-4, 5):
+        for dY in range(-4, 5):
             ty = ys.copy() - dY
             try:
                 data[ty, xs] = np.nan
@@ -112,7 +59,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
     # good data
     oks = np.isfinite(data)
     # iterate five times to remove object light from bkg
-    for i in xrange(5):
+    for i in range(5):
         # convolve entire image
         bkg = convolve(bkg, k)
         # replace background light

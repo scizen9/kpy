@@ -9,6 +9,9 @@ import NPK.Fit as NFit
 from scipy.interpolate import interp1d
 
 import SEDMr.Wavelength as Wavelength
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
@@ -154,6 +157,12 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     pl.title("dX = %3.2f nm shift, dY = %3.2f px shift" % (dxnm, drow))
     pl.legend(legend)
 
+    ax = pl.gca()
+    ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                xycoords=('axes fraction', 'figure fraction'),
+                textcoords='offset points', size=6,
+                ha='center', va='bottom')
+
     if plot:
         pl.show()
     else:
@@ -259,7 +268,7 @@ def measure_flexure_y(cube, hdulist, profwidth=5, plot=False):
     # clean 3 sigma outliers
     ok = np.abs(profwidys - mn)/sd < 3
     average_width = np.mean(profwidys[ok]) * 2.354
-    print("yFWHM = %5.2f pixels" % average_width)
+    print("yFWHM = %5.2f pixels" % float(average_width))
     print("dY = %3.2f pixel shift" % required_shift)
 
     if plot:
@@ -307,7 +316,7 @@ if __name__ == '__main__':
     HDU = pf.open(args.infile)
     dy, ywid = measure_flexure_y(fine, HDU, profwidth=args.profwidth,
                                  plot=args.plot)
-    dx, xwid = measure_flexure_x(fine, HDU, drow=dy,
+    dx, xwid = measure_flexure_x(fine, HDU, drow=float(dy),
                                  skylines=args.skylines,
                                  lamstart=args.lamstart,
                                  lamratio=args.lamratio,
@@ -329,6 +338,7 @@ if __name__ == '__main__':
             'yfwhm': ywid,
             'xfwhm': xwid,
             'dXnm': dx,
-            'dYpix': dy}]
+            'dYpix': dy,
+            'drp_version': drp_ver}]
 
     np.save(args.outfile, res)

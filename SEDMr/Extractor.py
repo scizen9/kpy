@@ -1,4 +1,5 @@
 
+from builtins import input
 import argparse
 import os
 import glob
@@ -21,12 +22,23 @@ import SEDMr.GUI as GUI
 import NPK.Util
 import NPK.Standards as Stds
 import NPK.Atmosphere as Atm
+import SEDMr.Version as Version
 
 # Nadia imports
 from scipy.interpolate import griddata
 import scipy.optimize as opt
 
 import skimage.feature as feature
+
+drp_ver = Version.ifu_drp_version()
+
+
+def plot_drp_ver():
+    ax = pl.gca()
+    ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                xycoords=('axes fraction', 'figure fraction'),
+                textcoords='offset points', size=6,
+                ha='center', va='bottom')
 
 
 def reject_outliers(data, m=2.):
@@ -61,7 +73,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     atmospheric dispersion
 
     Args:
-        prlltc (float): parralactic angle in Angle class
+        prlltc (astropy.coordinates.Angle): parralactic angle in Angle class
         pos (float,float): (x,y) position of source in arcsec at wave leff
         leff (float): Effective wavelength, micron
         airmass (float): Atmospheric airmass, airmass=1 means no dispersion
@@ -91,7 +103,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     nstep = np.int(np.round((blue_ad - red_ad)/delta))
     if nstep == 0:
         nstep = 1
-    for step in xrange(nstep):
+    for step in range(nstep):
         t = [bpos[0] + step * dx * delta, bpos[1] + step * dy * delta]
         positions.append(t)
 
@@ -129,8 +141,6 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     NOTE: Index is counted against the array, not seg_id
     """
 
-    status = 0
-
     pl.ioff()
 
     kt = SedSpec.Spectra(spectra)
@@ -152,8 +162,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     grid_vs[np.isnan(grid_vs)] = np.nanmean(grid_vs)
     grid_med = np.nanmedian(grid_vs)
     print("grid_vs min, max, mean, median: %f, %f, %f, %f\n" %
-          (np.nanmin(grid_vs), np.nanmax(grid_vs),
-           np.nanmean(grid_vs), grid_med))
+          (float(np.nanmin(grid_vs)), float(np.nanmax(grid_vs)),
+           float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
     blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
@@ -162,13 +172,15 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     if plotobj:
         fig, ax = pl.subplots(1, 1)
-        ax.imshow(grid_vs.T, extent=[np.min(xi), np.max(xi),
-                                     np.min(yi), np.max(yi)])
+        ax.imshow(np.rot90(grid_vs, k=1, axes=(0, 1)),
+                  extent=[np.min(xi), np.max(xi),
+                          np.min(yi), np.max(yi)])
     goodblob = 0
 
     # Loop over found blobs
     objs = []
     for blob in blobs:
+
         # Extract blob properties
         bx, by, br = blob
 
@@ -185,7 +197,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         if 0 < bx < 199 and 0 < by < 199 and gv > 100.:
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
-                  (goodblob, gv, bx, by, xi[bx], yi[by]))
+                  (goodblob, float(gv), bx, by, xi[bx], yi[by]))
             objs.append((gv, xi[bx], yi[by], goodblob))
             if plotobj:
                 c = pl.Circle((xi[bx], yi[by]), 2.0, color='white',
@@ -204,6 +216,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     sigma_x = 2.0
     sigma_y = 2.0
     for obj in objs:
+        # Reset status
+        status = 0
+
         # Fill initial fit params
         amplitude = obj[0]
         xo = obj[1]
@@ -430,7 +445,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     hi_thresh = vmdn + 1.25 * vstd
     lo_thresh = vmdn - 2.0 * vstd
     print("Median: %6.2f, STD: %6.2f, Hi Thresh: %6.2f, Lo Thresh: %6.2f" %
-          (vmdn, vstd, hi_thresh, lo_thresh))
+          (float(vmdn), float(vstd), float(hi_thresh), float(lo_thresh)))
 
     n_hi_rem = 0
     n_lo_rem = 0
@@ -515,6 +530,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         lmax (float): maximum wavelength in nm to sum over
         cmin (float): cube intensity minimum for scaling
         cmax (float): cube intensity maximum for scaling
+        fwhm (bool): set to over-plot FWHM on image
     """
 
     xs = []
@@ -598,6 +614,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         tlab += ", Airmass: %.3f" % meta['airmass']
     pl.title(tlab)
     pl.colorbar()
+    plot_drp_ver()
     pl.savefig("image_%s.pdf" % outname)
     pl.close()
     print("Wrote image_%s.pdf" % outname)
@@ -627,11 +644,14 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         percent:
     """
 
+    # Positive or negative spectra
+    pon = sign
+
     l_grid = onto
     s_grid = []
     f_grid = []
     lamcoeff = None
-    # for ix,spectrum in enumerate(all_spectra):
+    # loop over given spaxels
     for ix in six:
         spectrum = all_spectra[ix]
 
@@ -641,27 +661,24 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         l, s = spectrum.get_counts(the_spec='specw')
         pix = np.arange(*spectrum.xrange)
 
-        # check for saturated traces
+        # check for saturation
         if np.max(s) > 1000000:
             print("saturated extraction: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
 
-        # This is correct: preference to lamcoeff over mdn_coeff
+        # This is correct: preference for lamcoeff over mdn_coeff
         if spectrum.lamcoeff is not None:
             cs = spectrum.lamcoeff
         else:
             cs = spectrum.mdn_coeff
 
-        # get wavelengths for spectrum
+        # get wavelengths for spectra
         l = c_to_nm(cs, pix, offset=dnm)
 
         # skip short spectra (on or near edge of IFU)
         if l.max() - l.min() < 300:
             continue
-
-        # Positive or negative spectra
-        pon = sign
 
         # Check if our wavelength grid is defined,
         if l_grid is None:
@@ -714,9 +731,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             if l.max() - l.min() < 300:
                 continue
 
-            # Positive or negative spectra
-            pon = sign
-
             # Check if our wavelength grid is defined,
             if l_grid is None:
                 # use the first set of wavelengths and store
@@ -738,7 +752,6 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             #     print("rejected - ix: %d, flx: %.1f" % (ix, f_test))
         print("%d spaxels rejected" % nrej)
     else:
-        print "No trimming performed"
         newsix = None
 
     # average of all spectra selected
@@ -757,6 +770,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.xlabel('Wavelength [nm]')
         pl.ylabel(r'Spectral irradiance[photon/10 m/nm]')
         pl.title("%s Raw Spectrum" % outname.split('.')[0])
+        plot_drp_ver()
+
         pl.grid(True)
         if outname is not None:
             pl.savefig("spec_%s" % outname)
@@ -768,15 +783,18 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.figure(2)
         pl.clf()
         s_grid = np.array(s_grid)
-        pl.imshow(s_grid, vmin=yl[0], vmax=yl[1], cmap=pl.get_cmap('jet'))
+        pl.imshow(s_grid, vmin=yl[0], vmax=yl[1], cmap=pl.get_cmap('jet'),
+                  aspect='auto')
         pl.xlabel('Wavelength bin [pixel]')
         pl.title("%s Spaxels" % outname.split('.')[0])
         pl.colorbar()
+        plot_drp_ver()
         pl.grid(True)
         if outname is not None:
             pl.savefig("allspec_%s" % outname)
-            print("Wrote allspec_%s" % outname)
+            print("Wrote %d spaxels to allspec_%s" % (len(s_grid), outname))
         if plot:
+            print("plotting %d spaxels" % len(s_grid))
             pl.show()
 
     # Package results
@@ -823,6 +841,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             pl.xlabel('Wavelength [nm]')
             pl.ylabel(r'Spectral irradiance[photon/10 m/nm] x Atm correction')
             pl.title("%s Corr Spectrum" % outname.split('.')[0])
+            plot_drp_ver()
             pl.grid(True)
             if outname is not None:
                 pl.savefig("corr_spec_%s" % outname)
@@ -879,6 +898,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         hdr['airmass2'] = inhdu2[0].header['airmass']
 
     hdr.add_history('SEDMr.Extractor.imarith run on %s' % time.strftime("%c"))
+    hdr['DRPVER'] = drp_ver
 
     pf.writeto(result, res, hdr)
 
@@ -1007,6 +1027,7 @@ def handle_flat(flfile, fine, outname=None):
         meta['header'] = header
 
         meta['exptime'] = spec[0].header['exptime']
+        meta['drp_version'] = drp_ver
         np.save(outname, [ex, meta])
         print("Wrote %s.npy" % outname)
 
@@ -1184,14 +1205,26 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     for ix in kixa:
         ex[ix].is_sky = True
 
-    # Make an image of the spaxels for the record
-    to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-             bgd_sub=False, lmin=lmin, lmax=lmax, fwhm=True)
-    # get the mean spectrum over the selected spaxels
+    # Make an image of the spaxels
+    to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
+             ellipse=ellipse, bgd_sub=False,
+             lmin=lmin, lmax=lmax, fwhm=True)
+
+    # Create mean spectra of selected spaxels
+
+    # Mean flux
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
+
+    # Mean flux variance
+    vara, nspxav = interp_spectra(e_var, sixa)
+    # , outname=outname+"_var.pdf")
+
+    # Mean sky
     skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
                                   sky=True)
-    vara, nspxav = interp_spectra(e_var, sixa)  # , outname=outname+"_var.pdf")
+    # Mean sky variance
+    vkya, nspxak = interp_spectra(e_var, kixa)
+    # , outname=outname+"_skvar.pdf")
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1227,30 +1260,45 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
     pl.title(tlab)
+    plot_drp_ver()
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
     print("Wrote XYs_%s.pdf" % outname)
     # / End Plot
 
-    # Define our standard wavelength grid
+    # Re-sample spectra onto fiducial spectrum
     ll = Wavelength.fiducial_spectrum()
-    # Resample sky onto standard wavelength grid
+
+    # Re-sample sky spectrum
     sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'], bounds_error=False)
     sky = sky_a(ll)
-    # Resample variance onto standard wavelength grid
+
+    # Re-sample flux variance spectrum
     var_a = interp1d(vara[0]['nm'], vara[0]['ph_10m_nm'], bounds_error=False)
-    varspec = var_a(ll)
-    # Copy and resample object spectrum onto standard wavelength grid
-    res = [{"doc": resa[0]["doc"], "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
+
+    # Re-sample sky variance spectrum
+    vky_a = interp1d(vkya[0]['nm'], vkya[0]['ph_10m_nm'], bounds_error=False)
+
+    # Calculate summed variance
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        varspec = np.nansum([var_a(ll), vky_a(ll)], axis=0)
+
+    # initialize results data structure
+    res = [{"doc": resa[0]["doc"],
             "spectra": np.copy(resa[0]["spectra"]),
-            "coefficients": np.copy(resa[0]["coefficients"]),
-            "nm": np.copy(resa[0]["ph_10m_nm"])}]
+            "coefficients": np.copy(resa[0]["coefficients"])}]
+    # Insert fiducial wavelengths
     res[0]['nm'] = np.copy(ll)
+
+    # Re-sample mean flux spectrum
     f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
-    # Calculate airmass correction
+
+    # Calculate extinction correction
     airmass = meta['airmass']
     extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
     print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
+
     # Calculate output corrected spectrum
     # Account for sky, airmass and aperture
     res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
@@ -1302,7 +1350,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['extinction_corr'] = extcorr
     res[0]['skyph'] = sky * len(sixa)
     res[0]['skynm'] = ll
-    res[0]['var'] = varspec
+    res[0]['var'] = varspec * len(sixa)**2
     res[0]['radius_as'] = radius_used
     res[0]['position'] = posa
     res[0]['N_spax'] = len(sixa)
@@ -1312,6 +1360,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['sky_spectra'] = skya[0]['spectra']
     res[0]['sky_subtraction'] = True
     res[0]['quality'] = quality
+    res[0]['drp_version'] = drp_ver
     # Calculate wavelength offsets
     coef = chebfit(np.arange(len(ll)), ll, 4)
     xs = np.arange(len(ll)+1)
@@ -1527,13 +1576,14 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 q = 'x'
                 quality = -1
                 prom = ": "
-                while not q.isdigit() or quality < 1 or quality > 4:
-                    q = raw_input(prom)
-                    if q.isdigit():
-                        quality = int(q)
-                        if quality < 1 or quality > 4:
-                            prom = "Try again: "
+                while quality < 1 or quality > 4:
+                    q = input(prom)
+                    if type(q) == str:
+                        if q.isdigit():
+                            quality = int(q)
                     else:
+                        quality = q
+                    if quality < 1 or quality > 4:
                         prom = "Try again: "
                 print("Quality = %d, now making outputs..." % quality)
             else:
@@ -1543,22 +1593,33 @@ def handle_single(imfile, fine, outname=None, offset=None,
             # Use an annulus for sky spaxels for Science Objects
             kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
 
+        # Make an image of the spaxels
+        to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
+                 ellipse=ellipse, bgd_sub=False,
+                 lmin=lmin, lmax=lmax,
+                 cmin=stats['cmin'], cmax=stats['cmax'])
+
         for ix in sixa:
             ex[ix].is_obj = True
         for ix in kixa:
             ex[ix].is_sky = True
 
-        # Make an image of the spaxels for the record
-        to_image(ex, meta, outname, posa=posa, adcpos=adcpos, ellipse=ellipse,
-                 bgd_sub=False, lmin=lmin, lmax=lmax,
-                 cmin=stats['cmin'], cmax=stats['cmax'])
-        # get the mean spectrum over the selected spaxels
+        # Create mean spectra of selected spaxels
+
+        # Mean flux
         resa, nsxa = interp_spectra(ex, sixa, outname=outname+".pdf",
                                     percent=30.)
-        skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
-                                     sky=True)
+        # Mean flux variance
         vara, nsxav = interp_spectra(e_var, nsxa)
         # , outname=outname+"_var.pdf")
+
+        # Mean sky
+        skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                     sky=True)
+        # Mean sky variance
+        vkya, nsxav = interp_spectra(e_var, kixa)
+        # , outname=outname+"_skvar.pdf")
+
         # Plot out the X/Y positions of the selected spaxels
         xsa = []
         ysa = []
@@ -1594,39 +1655,61 @@ def handle_single(imfile, fine, outname=None, offset=None,
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
+        plot_drp_ver()
         pl.title(tlab)
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
         pl.close()
         # / End Plot
 
-        # Define our standard wavelength grid
+        # Re-sample spectra onto fiducual spectrum
         ll = Wavelength.fiducial_spectrum()
-        # Resample sky onto standard wavelength grid
+
+        # Re-sample sky spectrum
         sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                          bounds_error=False)
         sky = sky_a(ll)
-        # Resample variance onto standard wavelength grid
+
+        # Re-sample flux variance spectrum
         var_a = interp1d(vara[0]['nm'], vara[0]['ph_10m_nm'],
                          bounds_error=False)
-        varspec = var_a(ll)
-        # Copy and resample object spectrum onto standard wavelength grid
+
+        # Re-sample sky variance spectrum
+        vky_a = interp1d(vkya[0]['nm'], vkya[0]['ph_10m_nm'],
+                         bounds_error=False)
+
+        # Calculate summed variance
+        # Don't include sky variance if sky subtraction is off
+        if stats['nosky']:
+            varspec = var_a(ll)
+        # Do include sky variance if sky subtraction is on
+        else:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                varspec = np.nansum([var_a(ll), vky_a(ll)], axis=0)
+
+        # Initialize results data structure
         res = [{"doc": resa[0]["doc"],
-                "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
                 "spectra": np.copy(resa[0]["spectra"]),
-                "coefficients": np.copy(resa[0]["coefficients"]),
-                "nm": np.copy(resa[0]["ph_10m_nm"])}]
+                "coefficients": np.copy(resa[0]["coefficients"])}]
+        # Insert fiducial wavelengths
         res[0]['nm'] = np.copy(ll)
+
+        # Re-sample mean flux spectrum
         f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
-        # Calculate airmass correction
+
+        # Calculate extinction correction
         airmass = meta['airmass']
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
         print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
+
         # Calculate output corrected spectrum
+        # Don't subtract sky if nosky is true
         if stats['nosky']:
             print("Sky subtraction off")
             # Account for airmass and aperture
             res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
+        # Do subtract sky if nosky is false
         else:
             print("Sky subtraction on")
             # Account for sky, airmass and aperture
@@ -1644,7 +1727,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['extinction_corr'] = extcorr
         res[0]['skyph'] = sky * len(nsxa)
         res[0]['skynm'] = ll
-        res[0]['var'] = varspec
+        res[0]['var'] = varspec * len(sixa)**2
         res[0]['radius_as'] = radius_used
         res[0]['position'] = posa
         res[0]['N_spax'] = len(nsxa)
@@ -1654,6 +1737,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['sky_spectra'] = skya[0]['spectra']
         res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
+        res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
         xs = np.arange(len(ll)+1)
@@ -1855,24 +1939,25 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             q = 'x'
             quality = -1
             prom = ": "
-            while not q.isdigit() or quality < 1 or quality > 4:
-                q = raw_input(prom)
-                if q.isdigit():
-                    quality = int(q)
-                    if quality < 1 or quality > 4:
-                        prom = "Try again: "
+            while quality < 1 or quality > 4:
+                q = input(prom)
+                if type(q) == str:
+                    if q.isdigit():
+                        quality = int(q)
                 else:
+                    quality = q
+                if quality < 1 or quality > 4:
                     prom = "Try again: "
             print("Quality = %d, now making outputs..." % quality)
         else:
             quality = 0
             print("Now making outputs...")
 
+        # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
                  lmin=lmin, lmax=lmax,
-                 cmin=stats["cmin"],
-                 cmax=stats["cmax"])
+                 cmin=stats["cmin"], cmax=stats["cmax"])
 
         kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
         for ix in kixa:
@@ -1885,20 +1970,33 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             if ex[ix].is_obj:
                 kixb.remove(ix)
 
-        resa, nsxA = interp_spectra(ex, sixa, sign=1,
+        # Create mean spectra of selected spaxels
+        #
+        # Mean flux
+        resa, nsxA = interp_spectra(ex, sixa, sign=1.,
                                     outname=outname+"_A.pdf", percent=30.)
-        resb, nsxB = interp_spectra(ex, sixb, sign=-1,
+        resb, nsxB = interp_spectra(ex, sixb, sign=-1.,
                                     outname=outname+"_B.pdf", percent=30.)
-        skya, nsxAk = interp_spectra(ex, kixa, sign=1,
-                                     outname=outname+"_skyA.pdf", sky=True)
-        skyb, nsxBk = interp_spectra(ex, kixb, sign=-1,
-                                     outname=outname+"_skyB.pdf", sky=True)
-        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1)
+        # Mean flux variance
+        vara, nsxAv = interp_spectra(ex_var, nsxA, sign=1.)
         # , outname=outname+"_A_var.pdf")
-        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1)
+        varb, nsxBv = interp_spectra(ex_var, nsxB, sign=1.)
         # , outname=outname+"_B_var.pdf")
 
-        # Plot out the X/Y selected spectra
+        # Mean sky
+        skya, nsxAk = interp_spectra(ex, kixa, sign=1.,
+                                     outname=outname+"_skyA.pdf", sky=True)
+        skyb, nsxBk = interp_spectra(ex, kixb, sign=-1.,
+                                     outname=outname+"_skyB.pdf", sky=True)
+        # Mean sky variance
+        vkya, nsxAv = interp_spectra(ex_var, kixa, sign=1.)
+        # , outname=outname+"_A_skvar.pdf")
+        vkyb, nsxBv = interp_spectra(ex_var, kixb, sign=1.)
+        # , outname=outname+"_B_skvar.pdf")
+
+        # Make some plots
+        #
+        # Plot out the X/Y selected spaxels
         xsa = []
         ysa = []
         xsb = []
@@ -1956,51 +2054,72 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
+        plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
         pl.close()
         # / End Plot
 
-        np.save("sp_A_" + outname, resa)
-        np.save("sp_B_" + outname, resb)
-        np.save("var_A_" + outname, vara)
-        np.save("var_B_" + outname, varb)
-        print("Wrote sp_A_%s.npy, sp_B_%s.npy, var_A_%s.npy, var_B_%s.npy" %
-              (outname, outname, outname, outname))
-
+        # Re-sample spectra onto fiducial spectrum
         ll = Wavelength.fiducial_spectrum()
+
+        # Re-sample sky spectra (A/B)
         sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                          bounds_error=False)
         sky_b = interp1d(skyb[0]['nm'], skyb[0]['ph_10m_nm'],
                          bounds_error=False)
+
+        # Calculate mean sky of A and B
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             sky = np.nanmean([sky_a(ll), sky_b(ll)], axis=0)
 
+        # Re-sample flux variance spectra (A/B)
         var_a = interp1d(vara[0]['nm'], vara[0]['ph_10m_nm'],
                          bounds_error=False)
         var_b = interp1d(varb[0]['nm'], varb[0]['ph_10m_nm'],
                          bounds_error=False)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            varspec = np.nanmean([var_a(ll), var_b(ll)], axis=0) * \
-                      (len(nsxA) + len(nsxB))
+        # Re-sample sky variance spectra (A/B)
+        vky_a = interp1d(vkya[0]['nm'], vkya[0]['ph_10m_nm'],
+                         bounds_error=False)
+        vky_b = interp1d(vkyb[0]['nm'], vkyb[0]['ph_10m_nm'],
+                         bounds_error=False)
 
+        # Calculate summed variance of A and B
+        # Don't include sky variance if sky subtraction is off
+        if stats['nosky']:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                varspec = np.nansum([var_a(ll), var_b(ll)], axis=0)
+        # Do include sky variance if sky subtraction is on
+        else:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                varspec = np.nansum([var_a(ll), var_b(ll),
+                                     vky_a(ll), vky_b(ll)], axis=0)
+
+        # Initialize results data structure
         res = [{"doc": resa[0]["doc"],
-                "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
-                "nm": np.copy(resa[0]["ph_10m_nm"])}]
+                "spectraA": resa[0]["spectra"],
+                "spectraB": resb[0]["spectra"],
+                "coefficients": resa[0]["coefficients"]}]
+        # Insert fiducial wavelengths
         res[0]['nm'] = np.copy(ll)
+
+        # Re-sample mean A and B fluxes
         f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
         f2 = interp1d(resb[0]['nm'], resb[0]['ph_10m_nm'], bounds_error=False)
 
+        # Calculate extinction correction
         airmassa = meta['airmass1']
         airmassb = meta['airmass2']
-
         extcorra = 10**(Atm.ext(ll*10)*airmassa/2.5)
         extcorrb = 10**(Atm.ext(ll*10)*airmassb/2.5)
         print("Median airmass corrs A: %.4f, B: %.4f" %
-              (np.nanmedian(extcorra), np.nanmedian(extcorrb)))
-        # If requested merely sum in aperture, otherwise subtract sky
+              (float(np.nanmedian(extcorra)), float(np.nanmedian(extcorrb))))
+
+        # Calculate summed flux of A and B apertures
+        # Don't subtract sky if 'nosky' is true
         if stats['nosky']:
             print("Sky subtraction off")
             with warnings.catch_warnings():
@@ -2008,6 +2127,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 res[0]['ph_10m_nm'] = \
                     np.nansum([f1(ll) * extcorra, f2(ll) * extcorrb],
                               axis=0) * (len(nsxA) + len(nsxB))
+        # Do subtract sky if 'nosky' is false
         else:
             print("Sky subtraction on")
             with warnings.catch_warnings():
@@ -2028,8 +2148,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
-        res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
-        res[0]['var'] = varspec
+        res[0]['skyph'] = sky * ((len(nsxA) + len(nsxB))/2.)
+        res[0]['var'] = varspec * ((len(nsxA) + len(nsxB))/2.)**2
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa
@@ -2042,6 +2162,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['sky_spaxel_ids_B'] = kixb
         res[0]['sky_subtraction'] = False if stats['nosky'] else True
         res[0]['quality'] = quality
+        res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
         coef = chebfit(np.arange(len(ll)), ll, 4)
         xs = np.arange(len(ll)+1)

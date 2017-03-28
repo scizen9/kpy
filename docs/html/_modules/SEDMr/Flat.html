@@ -41,81 +41,69 @@
   <h1>Source code for SEDMr.Flat</h1><div class="highlight"><pre>
 <span></span>
 <span class="kn">import</span> <span class="nn">argparse</span>
-<span class="kn">import</span> <span class="nn">pdb</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
-<span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
-
-<span class="kn">import</span> <span class="nn">NPK.Fit</span> <span class="kn">as</span> <span class="nn">FF</span>
-<span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span> 
-
-
-<span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">KDTree</span> 
-<span class="kn">import</span> <span class="nn">scipy.signal</span> <span class="kn">as</span> <span class="nn">SG</span>
-<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
-
-
-<span class="kn">from</span> <span class="nn">numpy.polynomial.chebyshev</span> <span class="kn">import</span> <span class="n">chebfit</span><span class="p">,</span> <span class="n">chebval</span>
-
-<span class="kn">import</span> <span class="nn">SEDMr.Extraction</span> <span class="kn">as</span> <span class="nn">Extraction</span>
-<span class="kn">import</span> <span class="nn">SEDMr.Wavelength</span> <span class="kn">as</span> <span class="nn">Wavelength</span>
 <span class="kn">from</span> <span class="nn">SEDMr.FlatCorrection</span> <span class="kn">import</span> <span class="n">FlatCorrection</span> <span class="k">as</span> <span class="n">FC</span>
 
-<span class="nb">reload</span><span class="p">(</span><span class="n">FF</span><span class="p">)</span>
-<span class="nb">reload</span><span class="p">(</span><span class="n">Extraction</span><span class="p">)</span>
-<span class="nb">reload</span><span class="p">(</span><span class="n">Wavelength</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="measure_flat"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Flat.measure_flat">[docs]</a><span class="k">def</span> <span class="nf">measure_flat</span><span class="p">(</span><span class="n">extraction</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> 
-        <span class="n">lamstart</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span>
-        <span class="n">lamend</span><span class="o">=</span><span class="mi">900</span><span class="p">,</span>
-        <span class="n">outfile</span><span class="o">=</span><span class="s1">&#39;flat.npy&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="measure_flat"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Flat.measure_flat">[docs]</a><span class="k">def</span> <span class="nf">measure_flat</span><span class="p">(</span><span class="n">extraction</span><span class="p">,</span> <span class="n">fmeta</span><span class="p">,</span> <span class="n">lamstart</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span> <span class="n">lamend</span><span class="o">=</span><span class="mi">900</span><span class="p">):</span>
 
     <span class="n">corrections</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">Xs</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">Ys</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extraction</span><span class="p">):</span>
+    <span class="n">xs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ys</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extraction</span><span class="p">):</span>
         <span class="n">fc</span> <span class="o">=</span> <span class="n">FC</span><span class="p">(</span><span class="n">seg_id</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">seg_id</span><span class="p">)</span>
         <span class="n">corrections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fc</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+            <span class="k">continue</span>
 
-        <span class="k">try</span><span class="p">:</span> <span class="n">l</span><span class="p">,</span><span class="n">f</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">get_flambda</span><span class="p">()</span>
-        <span class="k">except</span><span class="p">:</span> <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">l</span><span class="p">,</span> <span class="n">f</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">get_flambda</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">continue</span>
 
-        <span class="n">Xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span><span class="o">+</span><span class="n">e</span><span class="o">.</span><span class="n">xrefpix</span><span class="p">)</span>
-        <span class="n">Ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">))</span>
+        <span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span><span class="o">+</span><span class="n">e</span><span class="o">.</span><span class="n">xrefpix</span><span class="p">)</span>
+        <span class="n">ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">yrange</span><span class="p">))</span>
 
-        <span class="n">ROI</span> <span class="o">=</span> <span class="p">(</span><span class="n">l</span><span class="o">&gt;</span><span class="n">lamstart</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">l</span> <span class="o">&lt;=</span> <span class="n">lamend</span><span class="p">)</span>
+        <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="n">l</span> <span class="o">&gt;</span> <span class="n">lamstart</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">l</span> <span class="o">&lt;=</span> <span class="n">lamend</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
-            <span class="n">fc</span><span class="o">.</span><span class="n">correction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">ROI</span><span class="p">])</span>
+            <span class="n">fc</span><span class="o">.</span><span class="n">correction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">roi</span><span class="p">])</span>
 
     <span class="n">vals</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">get_correction</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">corrections</span><span class="p">]</span>
-    <span class="n">medval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+    <span class="n">medval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
 
-    <span class="n">Ss</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">corrections</span><span class="p">:</span> 
         <span class="k">try</span><span class="p">:</span> 
             <span class="n">c</span><span class="o">.</span><span class="n">correction</span> <span class="o">/=</span> <span class="n">medval</span>
             <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">correction</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
                 <span class="n">c</span><span class="o">.</span><span class="n">correction</span> <span class="o">=</span> <span class="mf">1.0</span>
-            <span class="n">Ss</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">correction</span><span class="p">)</span>
-        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+            <span class="n">ss</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">correction</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
     
     <span class="n">pl</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
-    <span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">Xs</span><span class="p">,</span> <span class="n">Ys</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">Ss</span><span class="p">,</span><span class="n">s</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;h&#39;</span><span class="p">)</span>
-    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
-    <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span><span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">ss</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;h&#39;</span><span class="p">,</span>
+               <span class="n">cmap</span><span class="o">=</span><span class="n">pl</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s1">&#39;jet&#39;</span><span class="p">))</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2048</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
-    <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;X pixel @ </span><span class="si">%6.1f</span><span class="s2"> nm&quot;</span> <span class="o">%</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;fiducial_wavelength&#39;</span><span class="p">])</span>
+    <span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;X pixel @ </span><span class="si">%6.1f</span><span class="s2"> nm&quot;</span> <span class="o">%</span> <span class="n">fmeta</span><span class="p">[</span><span class="s1">&#39;fiducial_wavelength&#39;</span><span class="p">])</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Y pixel&quot;</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Correction from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2"> nm from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">lamstart</span><span class="p">,</span> <span class="n">lamend</span><span class="p">,</span>
-                <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;outname&#39;</span><span class="p">]))</span>
+                                                      <span class="n">fmeta</span><span class="p">[</span><span class="s1">&#39;outname&#39;</span><span class="p">]))</span>
+    <span class="k">if</span> <span class="s1">&#39;drp_version&#39;</span> <span class="ow">in</span> <span class="n">fmeta</span><span class="p">:</span>
+        <span class="n">drp_ver</span> <span class="o">=</span> <span class="n">fmeta</span><span class="p">[</span><span class="s1">&#39;drp_version&#39;</span><span class="p">]</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;DRP: &#39;</span> <span class="o">+</span> <span class="n">drp_ver</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;axes fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;figure fraction&#39;</span><span class="p">),</span>
+                    <span class="n">textcoords</span><span class="o">=</span><span class="s1">&#39;offset points&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;flat-field-values.pdf&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">corrections</span></div>
@@ -126,14 +114,13 @@
 
 <span class="sd">        &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
 
-
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;infile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to dome flat&#39;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--lamstart&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Wavelength range start&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">700.0</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--lamend&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> 
-            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Wavelength range end&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">900.0</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> 
-            <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output filename&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;flat-dome-700to900.npy&quot;</span><span class="p">)</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Wavelength range start&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">700.0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--lamend&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Wavelength range end&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">900.0</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output filename&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;flat-dome-700to900.npy&quot;</span><span class="p">)</span>
 
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
 
@@ -141,7 +128,7 @@
     <span class="n">flat</span> <span class="o">=</span> <span class="n">measure_flat</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">lamstart</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">lamstart</span><span class="p">,</span> <span class="n">lamend</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">lamend</span><span class="p">)</span>
 
     <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">outfile</span><span class="p">,</span> <span class="n">flat</span><span class="p">)</span>
-    <span class="k">print</span> <span class="s2">&quot;Wrote </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">outfile</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Wrote </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">outfile</span><span class="p">)</span>
 </pre></div>
 
           </div>

@@ -250,6 +250,28 @@ def proc_bias_crrs(ncp=1, oldcals=False):
     # END: proc_bias_crrs
 
 
+def proc_cogs():
+    """Process standard star curves of growth.
+
+    Returns:
+        bool: True if processing was successful, otherwise False
+
+    """
+
+    # Default return value
+    ret = False
+    # Make new stds
+    startTime = time.time()
+    retcode = os.system("make cogs.done")
+    procTime = int(time.time() - startTime)
+    # Did it work?
+    if retcode == 0:
+        print("Curves of growth processed in %d s" % procTime)
+        ret = True
+
+    return ret
+
+
 def proc_stds(ncp):
     """Process standard star observations.
 
@@ -278,9 +300,6 @@ def proc_stds(ncp):
 
 def proc_auto():
     """Process automatic observations.
-
-    Args:
-        None
 
     Returns:
         bool: True if processing was successful, otherwise False
@@ -798,6 +817,12 @@ def ObsLoop(rawlist=None, redd=None):
             print("Automatic processing successful")
         else:
             print("Automatic processing not successful")
+        # do curves of growth
+        cogs_status = proc_cogs()
+        if cogs_status:
+            print("Curves of growth generated successfully")
+        else:
+            print("Error processing curves of growth")
 
     # Handle a ctrl-C
     except KeyboardInterrupt:

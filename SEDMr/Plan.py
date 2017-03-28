@@ -153,6 +153,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
 PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
 BGDSUB =  $(PY) $(PYC)/SubtractBackground.py
@@ -362,18 +363,18 @@ def MF_standard(objname, obsnum, ifile, standard=None):
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
-%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
+sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
-%(specplot)s
-
-sp_%(outname)s: %(outname)s
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 %(specplot)s
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
+
+cog_%(outname)s: %(outname)s
+\t$(COG) --inname %(outname)s
 """ % tp
-    second = """corr_%(outname)s: %(outname)s
+    second = """
+corr_%(outname)s: %(outname)s
 \t$(ATM) CORR --A %(outname)s --std %(objname)s --outname corr_%(outname)s\n""" % tp
     fn = "%(outname)s" % tp
 
@@ -422,6 +423,7 @@ def to_makefile(objs, calibs):
     all = ""
     stds = ""
     stds_dep = ""
+    cogs_dep = ""
     sci = ""
     oth = ""
     auto = ""
@@ -464,7 +466,8 @@ def to_makefile(objs, calibs):
                         MF += m
                         # don't need these in all: dependants of target "stds"
                         # all += a + " "
-                        stds_dep += a + " "
+                        stds_dep += 'sp_' + a + " "
+                        cogs_dep += 'cog_' + a + " "
 
                 else:
                     standard = None
@@ -517,9 +520,12 @@ def to_makefile(objs, calibs):
     other = "\n\nother: %s report\n" % oth
     automatic = "\n\nauto: %s report\n" % auto
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
+    cogs = "cogs.done: %s \n\ttouch cogs.done \n" % cogs_dep
 
-    f.write(preamble + corr + "\nall: stds %s%s%s%s%s" % (all, clean, science,
-                                                          other, automatic) +
+    f.write(preamble + corr + cogs + "\nall: stds %s%s%s%s%s" % (all, clean,
+                                                                 science,
+                                                                 other,
+                                                                 automatic) +
             "\n" + MF + "\n" + flexures)
     f.close()
 

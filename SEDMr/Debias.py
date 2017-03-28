@@ -18,6 +18,9 @@ import time
 import numpy as np
 import astropy.io.fits as pf
 import scipy.ndimage.filters as FI
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def add_prefix(fname):
@@ -119,5 +122,6 @@ if __name__ == '__main__':
                                     'GAIN Adjusted (was guessed %s)' % GAIN)
         FF[0].header['BUNIT'] = 'electron'
         FF[0].header.add_history('SEDMr.Debias run on %s' % time.strftime("%c"))
+        FF[0].header['DRPVER'] = drp_ver
         FF.writeto(outname)
 

@@ -130,14 +130,17 @@ def find_segments_helper(seg_cnt):
         # How long is it in X?
         n_el = span[1].x - span[0].x
 
+        # How wide is it in Y?
+        n_wd = span[1].y - span[0].y
+
         # Don't fit short traces, but flag them by setting "ok" to False
-        if n_el < 50:
+        if n_el < 50 or n_wd < 3:
 
             # Flag the sigma with zero
             sig = 0.
             tr["trace_sigma"] = sig
 
-        # Trace is long enough, so let's fit it!
+        # Trace is long enough and wide enough, so let's fit it!
         else:
 
             means = np.zeros(n_el)

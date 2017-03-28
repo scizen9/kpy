@@ -39,7 +39,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir=".", box=15):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir=None, box=15):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -56,7 +56,9 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
 
     imdir = os.path.dirname(image)
     imname = os.path.basename(image)
-    plotdir = os.path.join(imdir, "photometry")
+    
+    if (plotdir is None):
+        plotdir = os.path.join(imdir, "photometry")
     
     if not os.path.isdir(plotdir):
         os.makedirs(plotdir)
@@ -64,7 +66,8 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     out_name = os.path.join(plotdir, imname +  ".seq.mag")
     clean_name = os.path.join(plotdir, imname +  ".app.mag")
 
-    
+    print "Will create output files", out_name, clean_name
+
     # Read values from .ec file
     ecfile= image+".ec"
     filter_value=''.join(ecfile).split('.',1)[0]
@@ -96,7 +99,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     
     print "FWHM", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
-    sky_rad= math.ceil(aperture_rad)*5
+    sky_rad= math.ceil(aperture_rad)*4
     
     print aperture_rad, sky_rad
 
@@ -116,7 +119,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         iraf.noao.digiphot.apphot.qphot(image = image,\
         cbox = box ,\
         annulus = sky_rad ,\
-        dannulus = 15. ,\
+        dannulus = 20. ,\
         aperture = str(aperture_rad),\
         coords = coords ,\
         output = out_name ,\
@@ -180,9 +183,9 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
                     else:
                         continue
                 ax.imshow(img[x1:x2,y1:y2], aspect="equal", extent=(-cutrad, cutrad, -cutrad, cutrad), origin="lower", cmap=matplotlib.cm.gray_r, interpolation="none", vmin=zmin, vmax=zmax)
-                c1 = plt.Circle( (0, 0), edgecolor="r", facecolor="none", radius=5.)
+                c1 = plt.Circle( (0, 0), edgecolor="r", facecolor="none", radius=aperture_rad)
                 c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
-                c3 = plt.Circle( (0, 0), edgecolor="yellow", facecolor="none", radius=sky_rad+10)
+                c3 = plt.Circle( (0, 0), edgecolor="yellow", facecolor="none", radius=sky_rad+20)
                 plt.gca().add_artist(c1)
                 plt.gca().add_artist(c2)
                 plt.gca().add_artist(c3)
@@ -216,7 +219,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, box=4, ra=None, dec=None):
+def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, box=15, ra=None, dec=None):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -286,12 +289,15 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     else:
         airmass_value = 1.3
         
+    if (not fitsutils.has_par(image, "EXPTIME")):
+        if (fitsutils.has_par(image, "ITIME") and fitsutils.has_par(image, "COADDS")):
+            exptime = fitsutils.get_par(image, "ITIME")*fitsutils.get_par(image, "COADDS")
+            fitsutils.update_par(image, "EXPTIME", exptime)
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
     
-    
     #print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*3)      # Set aperture radius to three times the PSF radius
+    aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to two times the PSF radius
     sky_rad= math.ceil(aperture_rad*4)
     
     #print aperture_rad, sky_rad
@@ -319,7 +325,7 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     iraf.noao.digiphot.apphot.qphot(image = image,\
     cbox = box ,\
     annulus = sky_rad ,\
-    dannulus = 15. ,\
+    dannulus = 20. ,\
     aperture = str(aperture_rad),\
     coords = coords ,\
     output = out_name ,\
@@ -360,6 +366,9 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     if (fitsutils.has_par(image, "ZEROPT")):
         mag =  insmag + float(fitsutils.get_par(image, "ZEROPT"))
         magerr = np.sqrt(insmagerr**2+ float(fitsutils.get_par(image, "ZEROPTU"))**2)  
+    else:
+	mag = 0
+	magerr = 0
 	
     if np.isnan(mag):
         mag, magerr = 0, 0

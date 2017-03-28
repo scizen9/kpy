@@ -4,6 +4,8 @@ Created on Thu Dec  3 14:57:05 2015
 
 @author: nadiablago
 """
+from __future__ import print_function
+
 import matplotlib
 matplotlib.use("Agg")
 import zscale
@@ -25,7 +27,7 @@ from astropy import stats
 import argparse
 import logging
 import datetime
-
+import QueryCatalogue
 
 from ConfigParser import SafeConfigParser
 import codecs
@@ -237,6 +239,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     sr = 2*np.abs(dec-dec0)
     logger.info("%.4f %.4f %.4f"%( ra,dec, sr))
     
+    qc = QueryCatalogue.QueryCatalogue(ra, dec, sr, minmag, maxmag, logger)
+    
     if not refstars is None:
         shutil.copy(refstars, "/tmp/tmp_sdss_%s.cat"%creationdate)
         catalog = np.genfromtxt("/tmp/tmp_sdss_%s.cat"%creationdate, names=True, dtype=None, delimiter=",")
@@ -247,78 +251,50 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         except:
             mag = catalog["r"]
         
-    elif str.lower(survey) =='usnob1':
-        #ra, dec = coordinates_conversor.hour2deg(f[0].header['RA'], f[0].header['DEC'])
-        #SEDM FoV is 6.5 arcmin, due to uncertainties in the position, 4 arcmin radius assumed.
-        # Download USNO-B1 catalog for the position
-        catalog_url = 'http://www.nofs.navy.mil/cgi-bin/vo_cone.cgi?CAT=USNO-B1&RA=%.5f&DEC=%.5f&SR=%.4f&VERB=1' % (ra, dec, sr)
-        logger.info( "Downloading USNO-B1 catalog...")
-        urllib.urlretrieve(catalog_url, '/tmp/tmp_%s.cat'%creationdate)
-        
-        # Read RA, Dec and magnitude from XML format USNO catalog
-        catalog = parse_single_table('/tmp/tmp_%s.cat'%creationdate)
-        cat_ra = catalog.array['RA'].data
-        cat_dec = catalog.array['DEC'].data
-        cat_R1mag = catalog.array['R1'].data
-        cat_R2mag = catalog.array['R2'].data
-        cat_B1mag = catalog.array['B1'].data
-        cat_B2mag = catalog.array['B2'].data
-        cat_I2mag = catalog.array['I2'].data
-        
-        cat_R1mag[cat_R1mag==0] = np.nan
-        cat_R2mag[cat_R2mag==0] = np.nan
-        cat_B1mag[cat_B1mag==0] = np.nan
-        cat_B2mag[cat_B2mag==0] = np.nan
-        cat_I2mag[cat_I2mag==0] = np.nan
-        
-        Bmag = np.nanmean(np.array([cat_B1mag, cat_B2mag]), axis=0)    
-        Rmag = np.nanmean(np.array([cat_R1mag, cat_R2mag]), axis=0)    
-        Imag = cat_I2mag
-            
-        mag = Rmag
-    elif survey == "apass":
-        # Download USNO-B1 catalog for the position
-        catalog_url = 'https://www.aavso.org/cgi-bin/apass_download.pl?ra=%.5f&dec=%.5f&radius=%.4f8&outtype=1' % (ra, dec, sr)
-        print "Downloading APASS catalog..."
-        urllib.urlretrieve(catalog_url, '/tmp/tmp_apass_%s.cat'%creationdate)
-        catalog = np.genfromtxt('/tmp/tmp_apass_%s.cat'%creationdate, delimiter=",", names=True)
-        if (np.ndim(catalog)==0):
-		return False
-        cat_ra = catalog['radeg']
-        cat_dec = catalog['decdeg']
-        mag = catalog['Sloan_r']
-        
     elif (survey=='sdss'):
-        minmag = 15
-        maxmag = 21.5
-        catalog_url='http://skyserver.sdss.org/dr9/en/tools/search/x_radial.asp?ra=%.5f&dec=%.5f&check_type=type&type=6&radius=%.4f&check_u=u&min_u=%.2f&max_u=%.2f&check_g=g&min_g=%.2f&max_g=%.2f&check_r=r&min_r=%.2f&max_r=%.2f&check_i=i&min_i=%.2f&max_i=%.2f&check_z=z&min_z=%.2f&max_z=%.2f&entries=top&topnum=500&format=csv'%\
-            (ra, dec, sr*60,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag,minmag,maxmag)
-        logger.info( "Downloading SDSS catalog...")
-        logger.info( "%s"%catalog_url )
-        urllib.urlretrieve(catalog_url, '/tmp/tmp_sdss_%s.cat'%creationdate)
-        catalog = np.genfromtxt("/tmp/tmp_sdss_%s.cat"%creationdate, delimiter=",", names=True)
 
-	if (np.ndim(catalog)==0):
-	    return False
+        catalog = qc.query_sdss()
+
+        if (np.ndim(catalog)==0):
+            return False
+            
         try:
             cat_ra = np.array(catalog['ra'], ndmin=1)
             cat_dec = np.array(catalog['dec'], ndmin=1)
             if (band in catalog.dtype.names):
-                print "SDSS filter detected"
+                print ( "SDSS filter detected")
                 mag = np.array(catalog[band], ndmin=1)
-            elif(band in ["U", "B", "V", "R", "I", "Z"]):
-                print "Johnson filter detected."
-                john = transformations.sdss2johnson('/tmp/tmp_sdss_%s.cat'%creationdate, savefile='/tmp/tmp_sdss_%s.cat'%creationdate)
-                mag = john[band]
-                catalog = np.genfromtxt('/tmp/tmp_sdss_%s.cat'%creationdate, dtype=None, names=True, delimiter=",")
             else:
-                print "Unknown band!!", band
+                print ("Unknown band!! %s"%band)
         except IOError:
             logger.error( "Problems with SDSS image %s"% band)
             return False
         except ValueError:
             logger.error( "Problems with the catalogue for the image")
             return False
+            
+    elif (survey=='ps1'):
+
+        catalog = qc.query_ps1()
+
+        if (np.ndim(catalog)==0):
+            return False
+            
+        try:
+            cat_ra = np.array(catalog['ra'], ndmin=1)
+            cat_dec = np.array(catalog['dec'], ndmin=1)
+            if (band in catalog.dtype.names):
+                print ( "SDSS filter detected")
+                mag = np.array(catalog[band], ndmin=1)
+            else:
+                print ("Unknown band!! %s"%band)
+        except IOError:
+            logger.error( "Problems with SDSS image %s"% band)
+            return False
+        except ValueError:
+            logger.error( "Problems with the catalogue for the image")
+            return False
+
 
     #Convert ra, dec position of all stars to pixels.
     star_pix = np.array([0,0])
@@ -330,105 +306,76 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     star_pix = star_pix[1:]
     pix2ang = 0.394
     rad = math.ceil(25./pix2ang)
+    
     #Select only the stars within the image.
     mask = (star_pix[:,0]>-rad) * (star_pix[:,0]<img.shape[1]+rad)*(star_pix[:,1]>-rad) * (star_pix[:,1]<img.shape[0]+rad)
     if (band == 'u'):    
-        mask = mask * (mag < 19)
+        mask = mask * (mag < 20)
+        
     #Select only stars isolated in a radius of ~12 arcsec.
     mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
     if (len(mask2)==0):
 	logger.error("No good stars left")
 	return False   
  
- 
     #Select only stars that are within the proper magnitude range
     mask3 = (mag[mask][mask2] < maxmag) * (mag[mask][mask2] > minmag) 
     
+    
+    #Combine all masks
     mask3 = mask3 * (star_pix[:,0][mask][mask2]>rad) * (star_pix[:,0][mask][mask2]<img.shape[1]-rad)*(star_pix[:,1][mask][mask2]>rad) * (star_pix[:,1][mask][mask2]<img.shape[0]-rad)
 
-
-    if (survey=='usnob1'):
-        output = np.column_stack((star_pix[:,0][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], \
-        cat_ra[mask][mask2][mask3], cat_dec[mask][mask2][mask3], Bmag[mask][mask2][mask3], Rmag[mask][mask2][mask3], Imag[mask][mask2][mask3]))
-        np.savetxt('/tmp/usnob1_cat.txt', output, fmt="%.5f %.5f %.5f %.5f %.5f %.5f %.5f", header='#X Y ra dec B R I')
-        print "Saved to", '/tmp/usnob1_cat.txt'
-    elif (survey=='apass'):
-            
-        if not np.any(mask2) and not np.any(mask3):
-            print star_pix
-            print "No stars left...", mask, mask2, mask3
-            return
-        else:
-            print catalog[mask][mask2][mask3]
-
+        
+    if (not np.any(mask) and not np.any(mask2) and not np.any(mask3)) or len(catalog[mask][mask2][mask3])==0:
+        logger.debug (star_pix)
+        print ( "No stars left...", mask, mask2, mask3)
+        return False
+    else:
         catalog = catalog[mask][mask2][mask3]
         s = star_pix[mask][mask2][mask3]
+
+        print ("left %d stars"%(len(catalog)), catalog.dtype.names)
+
         z = np.zeros(len(s), dtype=[('x','f8'), ('y', 'f8')])
         z['x'] = s[:,0]
         z['y'] = s[:,1]
                 
+        header='x y '
         for n  in catalog.dtype.names:
-            z = rfn.append_fields(z, names=n, data=catalog[n], usemask=False)
+            if n in ["objid", "ra", "dec", "u", "g", "r", "i", "z", "Err_u", "Err_g", "Err_r", "Err_i", "Err_z"] or\
+                n in ['id', 'ra', 'dec', 'U', 'B', 'V', 'R', 'I', 'dU', 'dB', 'dV', 'dR', 'dI']:
+                z = rfn.append_fields(z, names=n, data=catalog[n], usemask=False)
+                header += n.replace("Err_", "d") + " "
            
         fmt = "%.5f"
         for i in range(len(z[0])-1):
             fmt +=  " %.5f"
 
-        np.savetxt('/tmp/apass_cat.txt', z, fmt=fmt, \
-        header='x y radeg raerr decdeg decerr number_of_Obs V dV B dB g dg r dr i di')
-        print "Saved to", '/tmp/apass_cat.txt'
-    elif survey=='sdss':
-        if (not np.any(mask) and not np.any(mask2) and not np.any(mask3)) or len(catalog[mask][mask2][mask3])==0:
-            print star_pix
-            print "No stars left...", mask, mask2, mask3
+        np.savetxt('/tmp/sdss_cat_%s.txt'%creationdate, z, fmt=fmt, header = header)
+        logger.info( "Saved catalogue stars to %s"% ('/tmp/sdss_cat_%s.txt'%creationdate))
+        
+        #Find FWHM for this image            
+        out = find_fwhm(imfile, star_pix[:,1][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], plot=debug)
+        mask_valid_fwhm = (out['detected']) * (out['e']>0.6) * ~np.isnan(out['fwhm']* (out['fwhm'] < 30))            
+
+        if ((np.count_nonzero(mask_valid_fwhm) < 3) and (fitsutils.get_par(imfile, "FILTER")!="u")) or ( (np.count_nonzero(mask_valid_fwhm) < 2) and (fitsutils.get_par(imfile, "FILTER")=="u")):
+            logger.error( "ERROR with FWHM!! Too few points for a valid estimation. %d"% np.count_nonzero(mask_valid_fwhm)+ ") points")
+            logger.error( "%s %s"%(out["detected"], out["fwhm"]))
             return False
-        else:
-            catalog = catalog[mask][mask2][mask3]
-            s = star_pix[mask][mask2][mask3]
 
-            print "left %d stars"%(len(catalog)), catalog.dtype.names
+        outd = out[mask_valid_fwhm]
 
-            z = np.zeros(len(s), dtype=[('x','f8'), ('y', 'f8')])
-            z['x'] = s[:,0]
-            z['y'] = s[:,1]
-                    
-            header='x y '
-            for n  in catalog.dtype.names:
-                if n in ["objid", "ra", "dec", "u", "g", "r", "i", "z", "Err_u", "Err_g", "Err_r", "Err_i", "Err_z"] or n in ['id', 'ra', 'dec', 'U', 'B', 'V', 'R', 'I', 'dU', 'dB', 'dV', 'dR', 'dI']:
-                    z = rfn.append_fields(z, names=n, data=catalog[n], usemask=False)
-                    header += n.replace("Err_", "d") + " "
-               
-            fmt = "%.5f"
-            for i in range(len(z[0])-1):
-                fmt +=  " %.5f"
-    
-            np.savetxt('/tmp/sdss_cat_%s.txt'%creationdate, z, fmt=fmt, header = header)
-            logger.info( "Saved catalogue stars to %s"% ('/tmp/sdss_cat_%s.txt'%creationdate))
-            
-            #Find FWHM for this image            
-            out = find_fwhm(imfile, star_pix[:,1][mask][mask2][mask3], star_pix[:,0][mask][mask2][mask3], plot=debug)
-            mask_valid_fwhm = (out['detected']) * (out['e']>0.6) * ~np.isnan(out['fwhm']* (out['fwhm'] < 30))            
+        logger.info( 'Average FWHM %.3f arcsec, %.3f pixels'%(np.median(outd['fwhm']),  np.median(outd['fwhm'])*pix2ang))
+        
 
-            if ((np.count_nonzero(mask_valid_fwhm) < 3) and (fitsutils.get_par(imfile, "FILTER")!="u")) or ( (np.count_nonzero(mask_valid_fwhm) < 2) and (fitsutils.get_par(imfile, "FILTER")=="u")):
-                logger.error( "ERROR with FWHM!! Too few points for a valid estimation. %d"% np.count_nonzero(mask_valid_fwhm)+ ") points")
-                logger.error( "%s %s"%(out["detected"], out["fwhm"]))
-                return False
-
-            outd = out[mask_valid_fwhm]
-
-            logger.info( 'Average FWHM %.3f arcsec, %.3f pixels'%(np.median(outd['fwhm']),  np.median(outd['fwhm'])*pix2ang))
-            
-            fwhm = np.percentile(outd['fwhm'], 40)
-            fitsutils.update_par(imfile,'FWHM', np.round(fwhm, 3))
-
-            if (band in 'ugriz'):
-                header='x y objid ra dec u g r i z du dg dr di dz'
-            elif band in 'UBVRI':
-                header='x y objid ra dec U B V R I dU dB dV dR dI'
-            np.savetxt('/tmp/sdss_cat_det_%s.txt'%creationdate, z[mask_valid_fwhm], fmt=fmt, \
-            header=header)
-            print "Saved to", '/tmp/sdss_cat_det_%s.txt'%creationdate
-            
+        if (band in 'ugriz'):
+            header='x y objid ra dec u g r i z du dg dr di dz'
+        elif band in 'UBVRI':
+            header='x y objid ra dec U B V R I dU dB dV dR dI'
+        np.savetxt('/tmp/sdss_cat_det_%s.txt'%creationdate, z[mask_valid_fwhm], fmt=fmt, \
+        header=header)
+        print ("Saved to /tmp/sdss_cat_det_%s.txt"%creationdate)
+        
             
         
     #Plot results
@@ -486,9 +433,7 @@ def add_to_zp_cal(ref_stars, image, logname):
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
     #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
 
-    '''try:
-        my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
-    except:'''
+
     my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("filename","<f4"),  ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
 
     if (my.size < 2):
@@ -551,7 +496,7 @@ def lsq_test():
     coef = lsq_result[0]
     res = lsq_result[1]
     
-    print coef, res
+    print ( coef, res)
     
     f, (ax1, ax2) = plt.subplots(2, 1)
     ax1.plot(X.flatten(), depend -coef[0] -Y.flatten()*coef[2] , ".")
@@ -582,7 +527,7 @@ def calibrate_zp_fourshot(logfile, plot=True):
             aib = a[(a["filter"]==b)*(a["object"]==name)*(np.abs(a["color"])<1)]
             
             if len(aib) < 3:
-                print "Less than 3 stars found with %s %s"%(name,b)
+                print ("Less than 3 stars found with %s %s"%(name,b))
                 continue
             
             #First fit for the linear and detect the deviations
@@ -614,7 +559,7 @@ def calibrate_zp_fourshot(logfile, plot=True):
             
             mad = stats.funcs.median_absolute_deviation(p(aib["color"]) - (aib["std"] - aib["inst"]))
              
-            print coefs, residuals, mad
+            print (coefs, residuals, mad)
             
             for f in aib["filename"]:
                 #Add these values to the header.
@@ -747,7 +692,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 #+ coef[5]*ab['jd']**3 
         rms =  np.sqrt(np.sum((depend-est_zp)**2)/(len(depend)-1))
         np.savetxt("rms_%s.txt"%b, np.array([rms]))
-        print "Filter %s ZP %.2f RMS %.2f"%(b, coef[0], rms)
+        print ("Filter %s ZP %.2f RMS %.2f"%(b, coef[0], rms))
 
         if (plot):
             plt.close("all")
@@ -868,7 +813,7 @@ def lsq_zeropoint_partial(logfile, plot=True):
         coef = lsq_result[0]
         res = lsq_result[1]
                 
-        print "Band", b, "zp %.2f, col %.2f"%(coef[0], coef[1]), "Residuals", res
+        print ("Band", b, "zp %.2f, col %.2f"%(coef[0], coef[1]), "Residuals", res)
         
         if (plot):
             f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
@@ -939,7 +884,7 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     measured = r[band]- my["fit_mag"]
     mad = stats.funcs.median_absolute_deviation(pred-measured)
     
-    print "MAD1",  mad
+    print ("MAD1",  mad)
     
     if len(r) > 4:
         mask = np.abs(pred-measured)/mad < 3
@@ -957,11 +902,11 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
         pred = p(r[band]-r[col_band])
         measured = r[band]- my["fit_mag"]
         mad = stats.funcs.median_absolute_deviation(pred-measured)
-        print "MAD2",  mad
+        print ("MAD2",  mad)
 
         
     if (plot):
-        print "Plotting..."
+        print ("Plotting...")
         plt.errorbar(r[band]-r[col_band], r[band] - my["fit_mag"] , yerr=np.sqrt(my["fiterr"]**2 + r['d'+band]**2), marker="o", ls="None")
         for i, myid in enumerate(ids):
             plt.text(r[band][i]-r[col_band][i] + 0.01, r[band][i] - my["fit_mag"][i]+ 0.01, str(myid))
@@ -1022,16 +967,24 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
         logger.error( "ERROR. Exposure time too short for image (%s) to see anything..."%image)
         return 
 
-    extracted = extract_star_sequence(os.path.abspath(image), filt, plot=plot, survey='sdss', debug=debug, refstars=refstars, plotdir=plotdir)
+    calcat = ""
+    if (filt == 'u'):
+        calcat = "SDSS"
+        extracted = extract_star_sequence(os.path.abspath(image), filt, plot=plot, survey='sdss', debug=debug, refstars=refstars, plotdir=plotdir)
+    else:
+        calcat = "PS1"
+        extracted = extract_star_sequence(os.path.abspath(image), filt, plot=plot, survey='ps1', debug=debug, refstars=refstars, plotdir=plotdir)
+        
     if (not extracted):
-        logger.warn( "Field not in SDSS or error when retrieving the catalogue... Skipping. Image %s not zeropoint calibrated."%image)
+        logger.warn( "Field+filter not in SDSS or error when retrieving the catalogue... Skipping. Image %s not zeropoint calibrated."%image)
             #Add these values to the header.
         pardic = {"IQZEROPT" : 0,\
             "ZPCAT" : "None",\
             "ZEROPTU" : 0,\
             "ZEROPT" : 0, \
             "ZP":0,\
-            "ZPERR":0}
+            "ZPERR":0,\
+            "%s_coef"%filt : c}
         fitsutils.update_pars(image, pardic)
         return 
 
@@ -1039,6 +992,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
     fwhm = fitsutils.get_par(image, "fwhm")
     fwhm_as = fwhm * 0.394
 
+    #Run aperture photometry on the positions of the stars.
     app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=20)
     
     #Compute the zeropoint for the specific image.
@@ -1046,9 +1000,10 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
     
     #Add these values to the header.
     pardic = {"IQZEROPT" : 1,\
-            "ZPCAT" : "SDSS",\
+            "ZPCAT" : calcat,\
             "ZEROPTU" : np.round(err, 3),\
-            "ZEROPT" : np.round(z, 3)}
+            "ZEROPT" : np.round(z, 3),
+            "%s_coef"%filt : c}
     fitsutils.update_pars(image, pardic)
             
     #Log the current zeropoint for this image
@@ -1067,6 +1022,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
         f.write("%s,%.1f,%s,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%(image,exptime,filt,date,airmass,fwhm,fwhm_as,z,c,err))
         
     clean_tmp_files()
+    
         
 def plot_zp(zpfile, plotdir=None):
     import datetime

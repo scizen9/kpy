@@ -1,10 +1,8 @@
+"""
+    Create a console bar indicating the amount of time that's passed
+"""
 
 import sys
-
-
-'''
-    Create a console bar indicating the amount of time that's passed
-'''
 
 
 def setup(toolbar_width=40):

@@ -7,17 +7,19 @@
 kludged from PyCosmic to run _lacosmicx instead, which is faster
 
 """
-__version__ = "0.1"
-
 import time
 import argparse
 import numpy as np
 import astropy.io.fits as pf
+
 try:
     import _lacosmicx
 except ImportError:
     print("Please install lacosmicx from github.com/cmccully/lacosmicx.")
     quit()
+
+__version__ = "0.1"
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="""
@@ -51,7 +53,6 @@ if __name__ == '__main__':
     parser.add_argument("--verbose", action="store_true", default=False, help="""Flag to print some progress information on the screen.""")
     parser.add_argument("--sepmed", action="store_true", default=False, help="""Flag to use separable median (faster).""")
     parser.add_argument("--niter", type=int, default=4, help="""Number of iteration to be performed by the algorithms. Usually 5-6 iterations are needed to converge to a stable solution.""")
-
 
     args = parser.parse_args()
 
