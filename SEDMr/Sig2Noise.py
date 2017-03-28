@@ -16,12 +16,15 @@ def plot_drp_ver():
                 ha='center', va='bottom')
 
 
-def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R'):
+def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R',
+              only_exptime=False, no_stamp=False):
     """Calculate a normalized Signal-to-Noise for a set of sp_*.npy files
     Args:
         norm_exptime (float): exposure time to normalize magnitudes to (s)
         mag_file (str): filename for table of magnitudes (see Note below)
         ref_mag (str): reference filter for magnitudes (defaults to 'R')
+        only_exptime (bool): set to use norm_exptime as a filter for exptime
+        no_stamp (bool): set to prevent DRP stamp from printing
     Notes:
         mag_file should contain one line per object file with the following
         whitespace delimited columns:
@@ -77,6 +80,10 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R'):
                     else:
                         expt = 1.
                         print("No exptime found!")
+                        continue
+                    if only_exptime:
+                        if expt != norm_exptime:
+                            continue
                     magoff = 2.5 * math.log10(norm_exptime/expt)
                     mag = float(line[mi]) + magoff
                     mgs.append(mag)
@@ -101,6 +108,8 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R'):
                     print("No file for object %s" % line[0])
                 # Plot results
             if len(mgs) > 3:
+                pl.rcParams.update({'font.size': 14})
+                print("Plotting %d observations" % len(mgs))
                 pl.plot(mgs, s2ns, 'k.', label='400-900 nm')
                 pl.plot(mgs, s2n1, 'm.', label='400-500 nm')
                 pl.plot(mgs, s2n2, 'b.', label='500-600 nm')
@@ -112,7 +121,8 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R'):
                           (ref_mag, norm_exptime))
                 pl.ylabel('S/N')
                 pl.legend()
-                plot_drp_ver()
+                if not no_stamp:
+                    plot_drp_ver()
                 pl.show()
             else:
                 print("Not enough data points: %d" % len(mgs))
@@ -133,8 +143,13 @@ if __name__ == '__main__':
                         help='Exposure time to normalize magnitudes to (s)')
     parser.add_argument('--ref_mag', type=str, default='V',
                         help='Reference mag (B, V, R, or I)')
+    parser.add_argument('--only_exptime', action="store_true", default=False,
+                        help='Set to use norm_exptime to filter objects')
+    parser.add_argument('--no_stamp', action="store_true", default=False,
+                        help='Set to prevent plotting DRP version stamp')
 
     args = parser.parse_args()
 
     sig2noise(norm_exptime=args.norm_exptime, mag_file=args.mag_file,
-              ref_mag=args.ref_mag)
+              ref_mag=args.ref_mag, only_exptime=args.only_exptime,
+              no_stamp=args.no_stamp)
