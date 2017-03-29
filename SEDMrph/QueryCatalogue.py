@@ -182,28 +182,34 @@ class QueryCatalogue:
             catalog = votable.parse_single_table(tmp_file).to_table()
 
         catalog = catalog.as_array().data
-    
-        #Filter spurious sources
-        catalog = catalog[catalog["nDetections"]>5]        
-        
-        newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
-            ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
-            ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
-        newcat["ra"] = catalog["RAmean"]
-        newcat["dec"] = catalog["DECmean"]
-        newcat["mag"] = catalog["rMeanPSFMag"]
-        newcat["g"] = catalog["gMeanPSFMag"]
-        newcat["r"] = catalog["rMeanPSFMag"]
-        newcat["i"] = catalog["iMeanPSFMag"]
-        newcat["z"] = catalog["zMeanPSFMag"]
-        newcat["y"] = catalog["yMeanPSFMag"]
-        newcat["Err_g"] = catalog["gMeanPSFMagErr"]
-        newcat["Err_r"] = catalog["rMeanPSFMagErr"]
-        newcat["Err_i"] = catalog["iMeanPSFMagErr"]
-        newcat["Err_z"] = catalog["zMeanPSFMagErr"]
-        newcat["Err_y"] = catalog["yMeanPSFMagErr"]  
-        newcat["distance"] = catalog["distance"]  
-        
+
+
+        #If it is PS1, we know what fields we want. 
+        #Otherwise, we just return everything.
+        if (catalogue == "PS1V3OBJECTS"):
+            #Filter spurious sources
+            catalog = catalog[catalog["nDetections"]>5]        
+            
+            newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
+                ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
+                ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
+            newcat["ra"] = catalog["RAmean"]
+            newcat["dec"] = catalog["DECmean"]
+            newcat["mag"] = catalog["rMeanPSFMag"]
+            newcat["g"] = catalog["gMeanPSFMag"]
+            newcat["r"] = catalog["rMeanPSFMag"]
+            newcat["i"] = catalog["iMeanPSFMag"]
+            newcat["z"] = catalog["zMeanPSFMag"]
+            newcat["y"] = catalog["yMeanPSFMag"]
+            newcat["Err_g"] = catalog["gMeanPSFMagErr"]
+            newcat["Err_r"] = catalog["rMeanPSFMagErr"]
+            newcat["Err_i"] = catalog["iMeanPSFMagErr"]
+            newcat["Err_z"] = catalog["zMeanPSFMagErr"]
+            newcat["Err_y"] = catalog["yMeanPSFMagErr"]  
+            newcat["distance"] = catalog["distance"]  
+        else:
+            newcat = catalog
+            
         #Clean temporary file.\
         if (os.path.isfile(tmp_file)):
             os.remove(tmp_file)
