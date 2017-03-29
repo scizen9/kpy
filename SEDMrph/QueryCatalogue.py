@@ -19,7 +19,7 @@ from numpy.lib import recfunctions as rfn
 class QueryCatalogue:
 
             
-    def __init__(self, ra=0, dec=0, radius=0, minmag=15, maxmag=19, logger=None):
+    def __init__(self, ra=0, dec=0, radius=0, minmag=5, maxmag=23, logger=None):
             self.ra = ra
             self.dec= dec
             self.rad = radius

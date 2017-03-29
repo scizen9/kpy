@@ -368,6 +368,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         logger.info( 'Average FWHM %.3f arcsec, %.3f pixels'%(np.median(outd['fwhm']),  np.median(outd['fwhm'])*pix2ang))
         
 
+
         if (band in 'ugriz'):
             header='x y objid ra dec u g r i z du dg dr di dz'
         elif band in 'UBVRI':
