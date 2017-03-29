@@ -183,6 +183,8 @@ class QueryCatalogue:
 
         catalog = catalog.as_array().data
     
+        #Filter spurious sources
+        catalog = catalog[catalog["nDetections"]>5]        
         
         newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
             ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
