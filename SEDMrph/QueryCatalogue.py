@@ -187,14 +187,16 @@ class QueryCatalogue:
         #If it is PS1, we know what fields we want. 
         #Otherwise, we just return everything.
         if (catalogue == "PS1V3OBJECTS"):
-            #Filter spurious sources
-            catalog = catalog[catalog["nDetections"]>5]        
+            #Filter spurious sources/ Objects where the majority of pixels where not masked (QFperfect >=0.9) and likely stars (rmeanpsfmag - rmeankronmag < 0.5)
+            catalog = catalog[ (catalog["ng"]>3)*(catalog["nr"]>3)* (catalog["ni"]>3)\
+                *(catalog["gQfPerfect"]>=0.95) *(catalog["rQfPerfect"]>=0.95)*(catalog["iQfPerfect"]>=0.95) * (catalog["rMeanPSFMag"] - catalog["rMeanKronMag"] < 0.5)]        
             
-            newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
+            newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("objid", np.long), ("mag", np.float), \
                 ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
                 ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
             newcat["ra"] = catalog["RAmean"]
             newcat["dec"] = catalog["DECmean"]
+            newcat["objid"] = catalog["objID"]
             newcat["mag"] = catalog["rMeanPSFMag"]
             newcat["g"] = catalog["gMeanPSFMag"]
             newcat["r"] = catalog["rMeanPSFMag"]
