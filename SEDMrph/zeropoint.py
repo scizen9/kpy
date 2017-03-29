@@ -275,7 +275,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             
     elif (survey=='ps1'):
 
-        catalog = qc.query_ps1()
+        catalog = qc.query_catalogue()
 
         if (np.ndim(catalog)==0):
             return False
@@ -369,8 +369,10 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         
 
 
-        if (band in 'ugriz'):
+        if (band in 'ugriz' and survey=='sdss'):
             header='x y objid ra dec u g r i z du dg dr di dz'
+        if (band in 'grizy' and survey=='ps1'):
+            header='x y objid ra dec g r i z dg dr di dz dy'
         elif band in 'UBVRI':
             header='x y objid ra dec U B V R I dU dB dV dR dI'
         np.savetxt('/tmp/sdss_cat_det_%s.txt'%creationdate, z[mask_valid_fwhm], fmt=fmt, \
