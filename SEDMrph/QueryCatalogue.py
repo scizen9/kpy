@@ -194,9 +194,9 @@ class QueryCatalogue:
             newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("objid", np.long), ("mag", np.float), \
                 ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
                 ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
+            newcat["objid"] = catalog["objID"]
             newcat["ra"] = catalog["RAmean"]
             newcat["dec"] = catalog["DECmean"]
-            newcat["objid"] = catalog["objID"]
             newcat["mag"] = catalog["rMeanPSFMag"]
             newcat["g"] = catalog["gMeanPSFMag"]
             newcat["r"] = catalog["rMeanPSFMag"]
