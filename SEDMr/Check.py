@@ -44,7 +44,7 @@ import IO
 import NPK.Standards as Stds
 
 
-def check_cube(cubename, showlamrms=False, savefig=False):
+def check_cube(cubename, showlamrms=False, savefig=False, no_stamp=False):
     """Plot a datacube.
 
         This function can produce a PDF file of the data cube.
@@ -54,6 +54,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
             showlamrms (bool): display the rms of the wavelength fit,
                 otherwise display average trace width
             savefig (bool): save a pdf of the plot
+            no_stamp (bool): set to prevent printing DRP version stamp on plot
 
         Returns:
             None
@@ -102,7 +103,8 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.figure(1)
     pl.scatter(xs, ys, marker='H', linewidth=0, s=35, c=ss, vmin=smn, vmax=smx,
                cmap=pl.get_cmap('jet'))
-    pl.title("Hexagonal Grid of Cube Positions")
+    if not no_stamp:
+        pl.title("Hexagonal Grid of Cube Positions")
     pl.xlim(15, -15)
     pl.ylim(-15, 15)
 
@@ -110,7 +112,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
     pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
     pl.ylabel("Dec offset [asec]")
     # Add drp version
-    if len(drp_ver) > 0:
+    if len(drp_ver) > 0 and not no_stamp:
         ax = pl.gca()
         ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
@@ -127,7 +129,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
 
 
 def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
-               savefig=False, savespec=False, interact=False):
+               savefig=False, savespec=False, interact=False, no_stamp=False):
     """Plot a spectrum.
 
     This function can produce an ascii spectrum suitable for uploading
@@ -142,6 +144,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         savefig (bool): save a pdf of the plot
         savespec (bool): save an ascii spectrum
         interact (bool): query for the quality of the spectrum
+        no_stamp (bool): set to prevent printing DRP version stamp on plot
 
     Returns:
         None
@@ -244,7 +247,8 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s)" % \
              (specname, ec, et, "On" if skysub else "Off")
-    pl.title(tlab)
+    if not no_stamp:
+        pl.title(tlab)
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
@@ -335,7 +339,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     pl.legend(legend)
 
     # Add drp version
-    if len(drp_ver) > 0:
+    if len(drp_ver) > 0 and not no_stamp:
         ax = pl.gca()
         ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                     xycoords=('axes fraction', 'figure fraction'),
@@ -433,12 +437,13 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.clf()
         tlab = "%s\n(Air: %1.2f | Expt: %i | Refl %d%% | Area %d cm^s)" % \
                (specname, ec, et, ss['reflectance']*100., ss['area'])
-        pl.title(tlab)
+        if not no_stamp:
+            pl.title(tlab)
         pl.xlabel("Wavelength [Ang]")
         pl.ylabel("SEDM efficiency (%)")
         pl.plot(ss['nm'], ss['efficiency']*100.)
         # Add drp version
-        if len(drp_ver) > 0:
+        if len(drp_ver) > 0 and not no_stamp:
             ax = pl.gca()
             ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
                         xycoords=('axes fraction', 'figure fraction'),
@@ -475,13 +480,16 @@ if __name__ == '__main__':
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
     parser.add_argument('--smoothing', type=float, default=0,
                         help='Smoothing in pixels')
+    parser.add_argument('--no_stamp', action="store_true", default=False,
+                        help='Set to prevent plotting DRP version stamp')
 
     args = parser.parse_args()
 
     if args.cube is not None:
-        check_cube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
+        check_cube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig,
+                   no_stamp=args.no_stamp)
     if args.spec is not None:
         check_spec(args.spec, corrname=args.corrname, redshift=args.redshift,
                    smoothing=args.smoothing,
                    savefig=args.savefig, savespec=args.savespec,
-                   interact=args.interact)
+                   interact=args.interact, no_stamp=args.no_stamp)

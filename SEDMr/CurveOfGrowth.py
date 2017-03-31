@@ -446,7 +446,8 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
     # Set up plot
     pl.figure(1)
     pl.clf()
-    pl.title(outname)
+    if not no_stamp:
+        pl.title(outname)
 
     xs = range(20)
     rs = list(np.linspace(0, ellipse[0], 20))
