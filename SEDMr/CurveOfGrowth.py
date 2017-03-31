@@ -378,7 +378,8 @@ def interp_spectra(all_spectra, six, onto=None, sky=False):
     return result
 
 
-def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
+def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
+             no_stamp=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
@@ -387,6 +388,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
         lmax (float): upper wavelength limit for image generation
         sigfac (float): sigma multiplier for Gaussian extent of aperture
         interact (bool): set for interactive plotting
+        no_stamp (bool): set to prevent printing DRP version stamp on plot
 
     Returns:
         None
@@ -575,7 +577,8 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False):
     pl.xlabel('Semi-major axis (arcsec)')
     pl.ylabel('Relative Irr')
     pl.legend()
-    plot_drp_ver()
+    if not no_stamp:
+        plot_drp_ver()
     if interact:
         pl.show()
     else:
@@ -598,9 +601,12 @@ if __name__ == '__main__':
                              ' aperture', default=7.0)
     parser.add_argument('--interact', action='store_true', default=False,
                         help='Interactive plotting')
+    parser.add_argument('--no_stamp', action="store_true", default=False,
+                        help='Set to prevent plotting DRP version stamp')
 
     args = parser.parse_args()
 
     print("")
 
-    make_cog(args.inname, sigfac=args.sigfac, interact=args.interact)
+    make_cog(args.inname, sigfac=args.sigfac, interact=args.interact,
+             no_stamp=args.no_stamp)
