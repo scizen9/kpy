@@ -20,6 +20,7 @@ class FindObjectForm(FlaskForm):
     object_name = fields.StringField('object name contains')
     RA = fields.FloatField('Right Ascension (deg)')
     DEC = fields.FloatField('Declination (deg)')
+    radius = fields.FloatField('radius (arcsec)')
     submit_obj = fields.SubmitField('seach for object')
 
 

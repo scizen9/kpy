@@ -96,6 +96,7 @@ def login():
                    render_template('login.html', form=form, message=None) + \
                    render_template('footer.html')
 
+
 @app.route('/request', methods=['GET', 'POST'])
 def requests():
     """
@@ -107,12 +108,8 @@ def requests():
     #    print 'form1'
     form1.project.choices = [(1, 'ZTF'), (2, 'CIT')]
     form1.user_id.data = 1
-    print "test"
-    print form1.submit_req.data
-    print form1.validate_on_submit()
-    print flask_login.current_user
     if form1.submit_req.data and form1.validate_on_submit():
-        print "form1"
+        print "request submitted"
         if request.method == 'POST':
             ini = Time(str(form1.inidate.data))
             end = Time(str(form1.enddate.data))
@@ -131,12 +128,13 @@ def requests():
                    render_template('footer.html')
 
     if form2.submit_obj.data and form2.validate_on_submit():
-        print 'form2'
+        print 'object search'
         if request.method == 'POST' and form2.validate():
             if form2.RA.data and form2.DEC.data:
                 ra = form2.RA.data
                 dec = form2.DEC.data
-                # req = db.get_objects_near(ra, dec, 5)
+                rad = form2.radius.data
+                # req = db.get_objects_near(ra, dec, rad)
                 # TODO: uncomment db command
                 req = [(1, 'placeholder')]
                 if req:
@@ -144,7 +142,7 @@ def requests():
                         message = req[1]
                         obj_id = None
                     else:
-                        message = 'object(s) within 5 arcsec of coordinates: '
+                        message = 'object(s) within %s arcsec of coordinates: ' % (rad,)
                         for target in req:
                             message += '(name: %s, id: %s)' % (target[1], target[0])
                         obj_id = req[0][0]
@@ -182,26 +180,27 @@ def requests():
 def schedule():
     # TODO: create a table
     schedule = None  # TODO: decide how schedule will be stored (file/database?)
-    return render_template('header.html', current_year=flask_login.current_user) + \
+    return render_template('header.html', current_user=flask_login.current_user) + \
            render_template('schedule.html') + \
            render_template('footer.html')
 
 
+@app.route('/objects', defaults={'where': ''})
 @app.route('/objects/<path:where>')
 def objects(where):
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
     ssoform = SSOForm()
     if where == 'add':
-        return render_template('header.html', current_year=flask_login.current_user) + \
+        return render_template('header.html', current_user=flask_login.current_user) + \
                render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
                render_template('footer.html')
     elif where:
-        return render_template('header.html', current_year=flask_login.current_user) + \
+        return render_template('header.html', current_user=flask_login.current_user) + \
                render_template('object.html', object=where) + \
                render_template('footer.html')
     # TODO: make an objects "homepage" to have as the base render
-    return render_template('header.html', current_year=flask_login.current_user) + \
+    return render_template('header.html', current_user=flask_login.current_user) + \
            render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
            render_template('footer.html')
 

@@ -19,7 +19,7 @@ from numpy.lib import recfunctions as rfn
 class QueryCatalogue:
 
             
-    def __init__(self, ra=0, dec=0, radius=0, minmag=15, maxmag=19, logger=None):
+    def __init__(self, ra=0, dec=0, radius=0, minmag=5, maxmag=23, logger=None):
             self.ra = ra
             self.dec= dec
             self.rad = radius
@@ -134,7 +134,7 @@ class QueryCatalogue:
 
         return catalog
             
-    def query_ps1(self):
+    def query_catalogue(self, catalogue="PS1V3OBJECTS"):
         '''
         Sends a VO query to the PS1 catalogue.
         Filters the result by mangitude.
@@ -167,7 +167,7 @@ class QueryCatalogue:
     
 
             
-        url = "http://gsss.stsci.edu/webservices/vo/CatalogSearch.aspx?CAT=PS1V3OBJECTS&RA=%.5f&DEC=%.5f&SR=%.5f&MAGRANGE=%.3f,%.3f"%(self.ra, self.dec, self.rad, self.minmag, self.maxmag)
+        url = "http://gsss.stsci.edu/webservices/vo/CatalogSearch.aspx?CAT=%s&RA=%.5f&DEC=%.5f&SR=%.5f&MAGRANGE=%.3f,%.3f"%(catalogue, self.ra, self.dec, self.rad, self.minmag, self.maxmag)
         
         u = urllib.urlopen(url)
         
@@ -182,25 +182,36 @@ class QueryCatalogue:
             catalog = votable.parse_single_table(tmp_file).to_table()
 
         catalog = catalog.as_array().data
-    
-        
-        newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("mag", np.float), \
-            ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
-            ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float),])
-        newcat["ra"] = catalog["RAmean"]
-        newcat["dec"] = catalog["DECmean"]
-        newcat["mag"] = catalog["rMeanPSFMag"]
-        newcat["g"] = catalog["gMeanPSFMag"]
-        newcat["r"] = catalog["rMeanPSFMag"]
-        newcat["i"] = catalog["iMeanPSFMag"]
-        newcat["z"] = catalog["zMeanPSFMag"]
-        newcat["y"] = catalog["yMeanPSFMag"]
-        newcat["Err_g"] = catalog["gMeanPSFMagErr"]
-        newcat["Err_r"] = catalog["rMeanPSFMagErr"]
-        newcat["Err_i"] = catalog["iMeanPSFMagErr"]
-        newcat["Err_z"] = catalog["zMeanPSFMagErr"]
-        newcat["Err_y"] = catalog["yMeanPSFMagErr"]  
-        
+
+
+        #If it is PS1, we know what fields we want. 
+        #Otherwise, we just return everything.
+        if (catalogue == "PS1V3OBJECTS"):
+            #Filter spurious sources/ Objects where the majority of pixels where not masked (QFperfect >=0.9) and likely stars (rmeanpsfmag - rmeankronmag < 0.5)
+            catalog = catalog[ (catalog["ng"]>3)*(catalog["nr"]>3)* (catalog["ni"]>3)\
+                *(catalog["gQfPerfect"]>=0.95) *(catalog["rQfPerfect"]>=0.95)*(catalog["iQfPerfect"]>=0.95) * (catalog["rMeanPSFMag"] - catalog["rMeanKronMag"] < 0.5)]        
+            
+            newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("objid", np.long), ("mag", np.float), \
+                ("g", np.float), ("r", np.float), ("i", np.float), ("z", np.float), ("y", np.float), \
+                ("Err_g", np.float), ("Err_r", np.float), ("Err_i", np.float), ("Err_z", np.float), ("Err_y", np.float), ("distance", np.double)])
+            newcat["objid"] = catalog["objID"]
+            newcat["ra"] = catalog["RAmean"]
+            newcat["dec"] = catalog["DECmean"]
+            newcat["mag"] = catalog["rMeanPSFMag"]
+            newcat["g"] = catalog["gMeanPSFMag"]
+            newcat["r"] = catalog["rMeanPSFMag"]
+            newcat["i"] = catalog["iMeanPSFMag"]
+            newcat["z"] = catalog["zMeanPSFMag"]
+            newcat["y"] = catalog["yMeanPSFMag"]
+            newcat["Err_g"] = catalog["gMeanPSFMagErr"]
+            newcat["Err_r"] = catalog["rMeanPSFMagErr"]
+            newcat["Err_i"] = catalog["iMeanPSFMagErr"]
+            newcat["Err_z"] = catalog["zMeanPSFMagErr"]
+            newcat["Err_y"] = catalog["yMeanPSFMagErr"]  
+            newcat["distance"] = catalog["distance"]  
+        else:
+            newcat = catalog
+            
         #Clean temporary file.\
         if (os.path.isfile(tmp_file)):
             os.remove(tmp_file)
