@@ -400,7 +400,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     try:
         np.save(specname, res)
     except IOError:
-        print("Unable to update %s with reducer" % specname)
+        print("Unable to update %s with reducer %s" % (specname, reducer))
 
     # Save fig to file
     if savefig:
