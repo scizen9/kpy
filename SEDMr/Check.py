@@ -397,7 +397,10 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     # Add reducer and save spectrum
     res[0]['reducer'] = reducer
     print("Reducer: %s" % reducer)
-    np.save(specname, res)
+    try:
+        np.save(specname, res)
+    except IOError:
+        print("Unable to update %s with reducer" % specname)
 
     # Save fig to file
     if savefig:
