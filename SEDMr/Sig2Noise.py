@@ -78,7 +78,6 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R',
                         if 'spectraB' in sp:
                             expt *= 2.
                     else:
-                        expt = 1.
                         print("No exptime found!")
                         continue
                     if only_exptime:
@@ -94,9 +93,11 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R',
                     s2ns.append(np.nanmean(s2n[roi]))
                     roi = (ll > 400) & (ll < 500)
                     s2n1.append(np.nanmean(s2n[roi]))
-                    roi = (ll > 500) & (ll < 600)
+                    roi = (ll > 500) & (ll < 800)
+                    # roi = (ll > 500) & (ll < 600)
                     s2n2.append(np.nanmean(s2n[roi]))
-                    roi = (ll > 600) & (ll < 700)
+                    roi = (ll > 800) & (ll < 900)
+                    # roi = (ll > 600) & (ll < 700)
                     s2n3.append(np.nanmean(s2n[roi]))
                     roi = (ll > 700) & (ll < 800)
                     s2n4.append(np.nanmean(s2n[roi]))
@@ -110,20 +111,48 @@ def sig2noise(norm_exptime=3600., mag_file='mags.dat', ref_mag='R',
             if len(mgs) > 3:
                 pl.rcParams.update({'font.size': 14})
                 print("Plotting %d observations" % len(mgs))
-                pl.plot(mgs, s2ns, 'k.', label='400-900 nm')
+                # pl.plot(mgs, s2ns, 'k.', label='400-900 nm')
                 pl.plot(mgs, s2n1, 'm.', label='400-500 nm')
-                pl.plot(mgs, s2n2, 'b.', label='500-600 nm')
-                pl.plot(mgs, s2n3, 'g.', label='600-700 nm')
-                pl.plot(mgs, s2n4, 'r.', label='700-800 nm')
-                pl.plot(mgs, s2n5, 'y.', label='800-900 nm')
+                pl.plot(mgs, s2n2, 'g.', label='500-800 nm')
+                pl.plot(mgs, s2n3, 'r.', label='800-900 nm')
+                # pl.plot(mgs, s2n1, 'm.', label='400-500 nm')
+                # pl.plot(mgs, s2n2, 'b.', label='500-600 nm')
+                # pl.plot(mgs, s2n3, 'g.', label='600-700 nm')
+                # pl.plot(mgs, s2n4, 'r.', label='700-800 nm')
+                # pl.plot(mgs, s2n5, 'y.', label='800-900 nm')
                 pl.grid(True)
                 pl.xlabel('Equivalent %s Magnitude at %.1f s' %
                           (ref_mag, norm_exptime))
-                pl.ylabel('S/N')
+                pl.ylabel('<SNR>')
                 pl.legend()
                 if not no_stamp:
                     plot_drp_ver()
                 pl.show()
+                mgs = np.array(mgs)
+                s2n1 = np.array(s2n1)
+                s2n2 = np.array(s2n2)
+                s2n3 = np.array(s2n3)
+                inds = mgs.argsort()
+                mgs = mgs[inds]
+                s2n1 = s2n1[inds]
+                s2n2 = s2n2[inds]
+                s2n3 = s2n3[inds]
+                roi = (mgs > 16.) & (mgs <= 17.)
+                print ("R 16-17: %f, %f, %f" % (np.nanmean(s2n1[roi]),
+                                                np.nanmean(s2n2[roi]),
+                                                np.nanmean(s2n3[roi])))
+                roi = (mgs > 17.) & (mgs <= 18.)
+                print ("R 17-18: %f, %f, %f" % (np.nanmean(s2n1[roi]),
+                                                np.nanmean(s2n2[roi]),
+                                                np.nanmean(s2n3[roi])))
+                roi = (mgs > 18.) & (mgs <= 19.)
+                print ("R 18-19: %f, %f, %f" % (np.nanmean(s2n1[roi]),
+                                                np.nanmean(s2n2[roi]),
+                                                np.nanmean(s2n3[roi])))
+                roi = (mgs > 19.) & (mgs <= 20.)
+                print ("R 19-20: %f, %f, %f" % (np.nanmean(s2n1[roi]),
+                                                np.nanmean(s2n2[roi]),
+                                                np.nanmean(s2n3[roi])))
             else:
                 print("Not enough data points: %d" % len(mgs))
         else:

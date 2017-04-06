@@ -512,7 +512,8 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
              ellipse=None, ellipseb=None, sigfac=3.0, bgd_sub=True,
-             lmin=650., lmax=700., cmin=None, cmax=None, fwhm=False):
+             lmin=650., lmax=700., cmin=None, cmax=None, fwhm=False,
+             no_stamp=False):
     """ Convert spectra list into image_[outname].pdf
 
     Args:
@@ -531,6 +532,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         cmin (float): cube intensity minimum for scaling
         cmax (float): cube intensity maximum for scaling
         fwhm (bool): set to over-plot FWHM on image
+        no_stamp (bool): set to prevent printing DRP version stamp on plot
     """
 
     xs = []
@@ -612,9 +614,11 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
-    pl.title(tlab)
+    if not no_stamp:
+        pl.title(tlab)
     pl.colorbar()
-    plot_drp_ver()
+    if not no_stamp:
+        plot_drp_ver()
     pl.savefig("image_%s.pdf" % outname)
     pl.close()
     print("Wrote image_%s.pdf" % outname)
@@ -1034,7 +1038,7 @@ def handle_flat(flfile, fine, outname=None):
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                flat_corrections=None, lmin=650., lmax=700.,
-               refl=0.9, area=18000.):
+               refl=0.9, area=18000., no_stamp=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
@@ -1049,6 +1053,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         lmax (float): upper wavelength limit for image generation
         refl (float): Telescope reflectance factor (assuming .90 for P60)
         area (float): Telescope area (assuming 18000. cm^2 for P60)
+        no_stamp (bool): set to prevent printing DRP version stamp on plots
 
     Raises:
         None
@@ -1208,7 +1213,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Make an image of the spaxels
     to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
              ellipse=ellipse, bgd_sub=False,
-             lmin=lmin, lmax=lmax, fwhm=True)
+             lmin=lmin, lmax=lmax, fwhm=True, no_stamp=no_stamp)
 
     # Create mean spectra of selected spaxels
 
@@ -1259,8 +1264,9 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
-    pl.title(tlab)
-    plot_drp_ver()
+    if not no_stamp:
+        pl.title(tlab)
+        plot_drp_ver()
     pl.savefig("XYs_%s.pdf" % outname)
     pl.close()
     print("Wrote XYs_%s.pdf" % outname)
@@ -1379,7 +1385,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 def handle_single(imfile, fine, outname=None, offset=None,
                   radius=2., flat_corrections=None, nosky=False,
                   lmin=650., lmax=700.,
-                  specExtract=False, autoExtract=False, interact=False):
+                  specExtract=False, autoExtract=False, interact=False,
+                  no_stamp=False):
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
@@ -1391,12 +1398,13 @@ def handle_single(imfile, fine, outname=None, offset=None,
         radius (float): Extraction radius in arcsecond
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
-        nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        nosky (bool): if True don't subtract sky, merely sum in aperture
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
-        specExtract (Boolean): perform extraction to a spectrum?
-        autoExtract (Boolean): automatically find source?
-        interact (Boolean): Interactively set the quality of the extraction?
+        specExtract (bool): perform extraction to a spectrum?
+        autoExtract (bool): automatically find source?
+        interact (bool): Interactively set the quality of the extraction?
+        no_stamp (bool): set to prevent printing DRP version stamp on plots
 
     Returns:
         None
@@ -1597,7 +1605,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
                  ellipse=ellipse, bgd_sub=False,
                  lmin=lmin, lmax=lmax,
-                 cmin=stats['cmin'], cmax=stats['cmax'])
+                 cmin=stats['cmin'], cmax=stats['cmax'], no_stamp=no_stamp)
 
         for ix in sixa:
             ex[ix].is_obj = True
@@ -1655,8 +1663,9 @@ def handle_single(imfile, fine, outname=None, offset=None,
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
-        plot_drp_ver()
-        pl.title(tlab)
+        if not no_stamp:
+            pl.title(tlab)
+            plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
         pl.close()
@@ -1751,7 +1760,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
 def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 flat_corrections=None, nosky=False, lmin=650., lmax=700.,
-                specExtract=False, interact=False):
+                specExtract=False, interact=False, no_stamp=False):
     """Loads IFU frame "afile" and "bfile" and extract A-B spectra using "fine".
 
     Args:
@@ -1763,11 +1772,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         radius (float): Extraction radius in arcseconds
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
-        nosky (Boolean): if True don't subtract sky, merely sum in aperture
+        nosky (bool): if True don't subtract sky, merely sum in aperture
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
-        specExtract (Boolean): perform extraction to a spectrum?
-        interact (Boolean): Interactively set the quality of the extraction?
+        specExtract (bool): perform extraction to a spectrum?
+        interact (bool): Interactively set the quality of the extraction?
+        no_stamp (bool): set to prevent printing DRP version stamp on plots
 
     Returns:
         None
@@ -1957,7 +1967,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
                  lmin=lmin, lmax=lmax,
-                 cmin=stats["cmin"], cmax=stats["cmax"])
+                 cmin=stats["cmin"], cmax=stats["cmax"], no_stamp=no_stamp)
 
         kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
         for ix in kixa:
@@ -2049,12 +2059,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         tlab += ", Airmass: %.3f" % air
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
-        pl.title(tlab)
         pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
         pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
-        plot_drp_ver()
+        if not no_stamp:
+            pl.title(tlab)
+            plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
         print("Wrote XYs_%s.pdf" % outname)
         pl.close()
@@ -2202,6 +2213,8 @@ Handles a single A image and A+B pair as well as flat extraction.
                         help='Perform automatic extraction')
     parser.add_argument('--interact', action="store_true", default=False,
                         help='Interactively set the quality')
+    parser.add_argument('--no_stamp', action="store_true", default=False,
+                        help='Set to prevent plotting DRP version stamp')
 
     args = parser.parse_args()
 
@@ -2222,7 +2235,7 @@ Handles a single A image and A+B pair as well as flat extraction.
                     offset=args.Aoffset, radius=args.radius_as,
                     flat_corrections=flat, nosky=args.nosky,
                     specExtract=args.specExtract,
-                    interact=args.interact)
+                    interact=args.interact, no_stamp=args.no_stamp)
 
     elif args.A is not None:
         if args.std is None:
@@ -2236,13 +2249,13 @@ Handles a single A image and A+B pair as well as flat extraction.
                               flat_corrections=flat, nosky=args.nosky,
                               specExtract=args.specExtract,
                               autoExtract=args.autoExtract,
-                              interact=args.interact)
+                              interact=args.interact, no_stamp=args.no_stamp)
         else:
             print("Standard Star Extraction to %s.npy" % args.outname)
             star = Stds.Standards[args.std]
             handle_std(args.A, args.fine, outname=args.outname,
                        standard=star, offset=args.Aoffset,
-                       flat_corrections=flat)
+                       flat_corrections=flat, no_stamp=args.no_stamp)
 
     else:
         print("I do not understand your intent, you must specify --A, at least")

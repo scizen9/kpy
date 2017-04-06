@@ -1,5 +1,5 @@
 {% from "_formhelpers.html" import render_field %}
-        {% if not object %}
+        {% if not where %}
             <div class = "container">
                 {% if message %}
                     <div class="media-body">
@@ -21,12 +21,13 @@
                 </div>
                 <div class="col-md-6">
                     <div class="well">
-                        <h3>Object search</h3>
+                        <h3>Search Database</h3>
                         <form method="post">
                             {{ form2.csrf_token }}
                             <p>
                                 {{ render_field(form2.RA) }}
                                 {{ render_field(form2.DEC) }}
+                                {{ render_field(form2.radius) }}
                                 {{ render_field(form2.submit_obj) }}
                             </p>
                         </form>
