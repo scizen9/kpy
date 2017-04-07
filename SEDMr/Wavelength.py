@@ -598,6 +598,7 @@ def extract(HDUlist, assoc_hg_spec, filename='raw_extractions'):
     Bar.done(mapped=True)
 
     np.save(filename, extractions)
+    print("Saved extractions to %s.npy" % filename)
     return extractions
 
 
@@ -1767,6 +1768,7 @@ def rough_grid(data, the_lines=None, outname='rough_wavelength.npy'):
 
     try:
         np.save(outname, extractions)
+        print("Wrote %s.npy" % outname)
     except:
         pass
     return extractions
@@ -1859,6 +1861,7 @@ def fit_spectra_Hg_Xe(Hgs, Xes, kdtree, kdseg_ids, plot=False,
         pl.show()
 
     np.save(outname, Hgs)
+    print("Wrote %s.npy" % outname)
     return Hgs
 
 
@@ -2203,6 +2206,7 @@ if __name__ == '__main__':
         print("Snapping solution into place")
         snap_solution_into_place_all(result, Hg_E, Xe_E, Cds=Cd_E, Hes=He_E)
         np.save(args.outname, result)
+        print("Wrote %s.npy" % args.outname)
 
     elif args.step == 'extract':
 
@@ -2215,6 +2219,7 @@ if __name__ == '__main__':
             inname=args.toextract)
         ww[1]['airmass'] = hdu.header['airmass']
         np.save(outname, ww)
+        print("Wrote %s.npy" % outname)
 
     sys.exit()
 
