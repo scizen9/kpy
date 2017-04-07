@@ -262,7 +262,7 @@ def write_reports(segments, outname):
 
 def write_segments(segments):
     np.save(objfn + "_segments", segments)
-    print("Wrote %s_segments" % objfn)
+    print("Wrote %s_segments.npy" % objfn)
 
 
 if __name__ == '__main__':
