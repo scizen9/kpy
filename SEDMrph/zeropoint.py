@@ -9,7 +9,6 @@ from __future__ import print_function
 import matplotlib
 matplotlib.use("Agg")
 import zscale
-import sys, urllib
 import pyfits as pf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +21,6 @@ from numpy.lib import recfunctions as rfn
 import scipy.optimize as opt
 import fitsutils
 import os, shutil
-import transformations
 from astropy import stats
 import argparse
 import logging
@@ -287,7 +285,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             cat_dec = np.array(catalog['dec'], ndmin=1)
             if (band in catalog.dtype.names):
                 mag = np.array(catalog[band], ndmin=1)
-                print ( "SDSS filter detected, ",band)
+                print ( "SDSS filter detected %s"%band)
             else:
                 print ("Unknown band!! %s"%band)
         except IOError:
@@ -305,9 +303,6 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         ra, dec = rcred.get_xy_coords(imfile, cat_ra[i], cat_dec[i])
         #s = wcs.wcs_sky2pix(np.array([cat_ra[i], cat_dec[i]], ndmin=2), 1)[0]
         star_pix = np.row_stack((star_pix, np.array([ra, dec])))
-
-
-    #print (star_pix)
     star_pix = star_pix[1:]
     pix2ang = 0.394
     rad = math.ceil(25./pix2ang)
@@ -597,7 +592,14 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
     '''
     a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
     a.sort(order=['jd'], axis=0)
-    a = a[a['inst']!=0]
+    '''a = a[a['inst']!=0]
+    a = a[a['std']<20]
+    a = a[a['insterr']<0.1]
+    a = a[a['fwhm']<3.5]'''
+    a = a[(a['std']-a['inst']<24) * (a['std']-a['inst']>20.0)]
+        
+    #Select only sources that have not been deviating too far fromt he predicted position.
+    a = a[ (np.abs(a['dx'])<10)*(np.abs(a['dy'])<10)]
     
     a['jd'] = a['jd'] - np.min(a['jd'])
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
@@ -608,10 +610,10 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         ab = a[a['filter']==b]
         
         #Filter extreme colours which may bias the coefficient.
-        mincol = np.median(ab["color"]) - 2*np.std(ab["color"])
+        '''mincol = np.median(ab["color"]) - 2*np.std(ab["color"])
         maxcol = np.median(ab["color"]) + 2*np.std(ab["color"])
         
-        ab = ab[ (ab["color"]>mincol) * (ab["color"]<maxcol) ]        
+        ab = ab[ (ab["color"]>mincol) * (ab["color"]<maxcol) ] '''       
         
         #Remove detections which are too far
         coefs, residuals, rank, singular_values, rcond = np.polyfit(ab["std"], ab["inst"], w=1./np.maximum(0.3, np.sqrt(ab["stderr"]**2 + ab["insterr"]**2)), deg=1, full=True)
@@ -620,118 +622,197 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         if (plot):
             plt.figure()
             plt.title("Filter %s"%(b))
-            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="o")
-            plt.plot(ab["std"], p(ab["std"]))
-            
-        diff = np.abs(ab["inst"] - p(ab["std"]))
-        mad = stats.funcs.median_absolute_deviation(diff)
-        ab = ab[diff<mad*5]
+            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="bo", alpha=0.5, ms=2)
+            plt.plot(ab["std"], p(ab["std"]), "b-")
+     
+        #Removing outliers that deviate 5 times from the general trend.       
+        mad = stats.funcs.median_absolute_deviation(ab["inst"] - p(ab["std"]))
+        ab = ab[np.abs(ab["inst"] - p(ab["std"]))<mad*5]
         
                 
         if (plot):
-            plt.figure()
-            plt.title("Filter %s"%(b))
-            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="o")
-            plt.plot(ab["std"], p(ab["std"]))
-            plt.show()
+            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="ro", alpha=0.5, ms=2)
+            plt.plot(ab["std"], p(ab["std"]), "r-")
+            plt.savefig(os.path.join(plotdir, "filter_%s.png"%b))           
             
         #Find the coefficients.
-        '''M = np.zeros((len(ab), 4))
+        M = np.zeros((len(ab), 10))
         M[:,0] = 1      
-        #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
         M[:,2] = ab['airmass'] - 1.3
         M[:,3] = ab['jd'] 
+        M[:,4] = ab['jd']**2
+        M[:,5] = ab['x']
+        M[:,6] = ab['y']
+        M[:,7] = ab['x']**2
+        M[:,8] = ab['y']**2
+        M[:,9] = ab['fwhm'] - 1.5
+        #M[:,7] = ab['dx']
+        #M[:,8] = ab['dy']
         
         #print M
         
         depend = ab['std']-ab['inst']
-        
+                
         lsq_result = np.linalg.lstsq(M, depend)
         coef = lsq_result[0]
         res = lsq_result[1]
                 
-        print "Band", b, "zp %.2f, col %.2f , airmass %.3f , time %.2f"%(coef[0], coef[1], coef[2], coef[3]), "Residuals", res
-        
-        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - ab['jd']*coef[3]
+
+        #Empirical and predicted values
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['x'] + coef[6]*ab['y'] + coef[7]*ab['x']**2 + coef[8]*ab['y']**2 + coef[9]*(ab['fwhm']-1.5)#+ coef[5]*ab['jd']**3 
+
+
+        emp_col = depend - (est_zp - ab['color']*coef[1])
         pred_col = ab['color']*coef[1]
-        mask_col_outlier = np.abs(emp_col - pred_col) > 3* stats.funcs.median_absolute_deviation(emp_col - pred_col)
 
-
-        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ab['jd']*coef[3]
-        pred_airmass = ab['airmass']*coef[1]
-        mask_airmass_outlier = np.abs(emp_airmass - pred_airmass) > 3 * stats.funcs.median_absolute_deviation(emp_airmass - pred_airmass)
+        emp_airmass = depend - (est_zp - (ab['airmass']-1.3)*coef[2])
+        pred_airmass = (ab['airmass']-1.3)*coef[2]
         
-        emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
-        pred_jd =  ab['jd']*coef[3]
-        mask_col_jd = np.abs(emp_jd - pred_jd) > 3 * stats.funcs.median_absolute_deviation(emp_jd - pred_jd)
+        emp_jd = depend - (est_zp - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2) )
+        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2# + coef[5]*ab['jd']**3 
+                
+        rms =  np.sqrt(np.sum((depend-est_zp)**2)/(len(depend)-1))
+        mad = stats.funcs.median_absolute_deviation(depend-est_zp)
         
-        mask = mask_col_outlier * mask_airmass_outlier * mask_col_jd
+        #print ("Filter %s ZP %.2f Color index %.2f RMS %.2f MAD %.2f"%(b, coef[0], coef[1], rms, mad))
         
-        ab = ab[~mask]'''
-        M = np.zeros((len(ab), 5))
+        #Remove outliers
+        mask = np.abs(depend-est_zp) < 5*mad
+        
+        ab = ab[mask]
+        
+        M = np.zeros((len(ab), 10))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
         M[:,2] = ab['airmass'] - 1.3
         M[:,3] = ab['jd'] 
         M[:,4] = ab['jd']**2
-        #M[:,5] = ab['jd']**3
+        M[:,5] = ab['x']
+        M[:,6] = ab['y']
+        M[:,7] = ab['x']**2
+        M[:,8] = ab['y']**2
+        M[:,9] = ab['fwhm']-1.5
+        #M[:,7] = ab['dx']
+        #M[:,8] = ab['dy']
         
         #print M
         
         depend = ab['std']-ab['inst']
         
-        lsq_result = np.linalg.lstsq(M, depend)
-        coef = lsq_result[0]
-        res = lsq_result[1]
+        try:
+            lsq_result = np.linalg.lstsq(M, depend)
+            coef = lsq_result[0]
+            res = lsq_result[1]
+        except:
+            print ("Failed for filter %s"%b)
+            continue
         
         #Save the coefficients 
         np.savetxt("coefs_%s.txt"%b, coef)
         
         #Empirical and predicted values
-        emp_col = depend -coef[0] -(ab['airmass']-1.3)*coef[2] - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2)# + coef[5]*ab['jd']**3 )
+        #estimated zeropoint for each observation
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['x'] + coef[6]*ab['y'] + coef[7]*ab['x']**2 + coef[8]*ab['y']**2 + coef[9]*(ab['fwhm']-1.5)#+ coef[5]*ab['jd']**3 
+
+
+        emp_col = depend - (est_zp - ab['color']*coef[1])
         pred_col = ab['color']*coef[1]
 
-        emp_airmass = depend -coef[0] - ab['color']*coef[1] - ( coef[3]*ab['jd'] + coef[4]*ab['jd']**2)# + coef[5]*ab['jd']**3)
+        emp_airmass = depend - (est_zp - (ab['airmass']-1.3)*coef[2])
         pred_airmass = (ab['airmass']-1.3)*coef[2]
         
-        emp_jd = depend -coef[0] -ab['color']*coef[1]- (ab['airmass']-1.3)*coef[2]
+        emp_jd = depend - (est_zp - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2) )
         pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2# + coef[5]*ab['jd']**3 
                 
-        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 #+ coef[5]*ab['jd']**3 
         rms =  np.sqrt(np.sum((depend-est_zp)**2)/(len(depend)-1))
+        mad = stats.funcs.median_absolute_deviation(depend-est_zp)
+
         np.savetxt("rms_%s.txt"%b, np.array([rms]))
-        print ("Filter %s ZP %.2f RMS %.2f"%(b, coef[0], rms))
+        print ("Filter %s ZP %.2f Color index %.2f RMS %.2f MAD %.2f"%(b, coef[0], coef[1], rms, mad))
 
         if (plot):
             plt.close("all")
-            f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+            f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
+            f.set_figheight(15)
+            f.set_figwidth(10)
             ax1.plot(ab['color'], emp_col, "o", color=cols[b], ms=4, alpha=0.4)
             ax1.plot(ab['color'],  pred_col, color=cols[b])
-            ax1.set_xlabel("color")
+            ax1.set_title("colour")
 
             ax2.plot(ab['airmass'], emp_airmass, "o", color=cols[b], ms=4, alpha=0.4)
             ax2.plot(ab['airmass'], pred_airmass , color=cols[b])
-            ax2.set_xlabel("airmass")
+            ax2.set_title("airmass")
 
             #arr = np.array([ab['jd'], pred_jd]).T
             #print arr, arr.shape, arr.dtype
             #arr.view(dtype=[('f0', np.float64), ('f1', np.float64)]).sort(order=['f0'], axis=0)
             
-            ax3.plot(ab['jd'], emp_jd, "o", color=cols[b], ms=4, alpha=0.4)
-            ax3.plot(ab['jd'], pred_jd, color=cols[b])
-            ax3.set_xlabel("jd")   
-            
+            ax3.plot(ab['jd']*24, emp_jd, "o", color=cols[b], ms=4, alpha=0.4)
+            ax3.plot(ab['jd']*24, pred_jd, color=cols[b])
+            ax3.set_xlabel("Elapsed hours")  
+            ax3.set_title("Obs. Time")
+
+                
             #ax4.plot(ab['jd'], depend, "*", color=cols[b], alpha=0.4)
             #ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
-            ax4.errorbar(ab['jd'], depend-est_zp, yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
-            ax4.set_xlabel("jd")  
-            ax4.set_ylabel("night predicted zeropoint")
+            ax4.errorbar(ab['jd']*24, depend - est_zp, yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            ax4.set_xlabel("Elapsed hours")  
+            ax4.set_title("Residuals")
             ax4.invert_yaxis()
+            
+            
+            ax5.errorbar(ab['fwhm'], depend - (est_zp -coef[9]*(ab['fwhm']-1.5)), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            ax5.plot(ab['fwhm'], coef[9]*(ab['fwhm']-1.5), color=cols[b])
+
+            ax5.set_xlabel("FWHM")  
+            ax5.set_title("FWHM")
+
+
+            plt.tight_layout()
             
             if (not plotdir is None):
                 plt.savefig(os.path.join(plotdir, "allstars_%s.png"%b))
+            else:	
+                plt.show()
+
+
+            #Second set of figures.
+            medians = []
+            perc_10 = []
+            perc_90 = []         
+            magdiff = ab['std']-(ab['inst'] + est_zp)
+            magbins = np.arange(14,20.5,0.5)
+            for mi in magbins :
+                mask = np.abs(ab['std']-mi)<0.25
+                if np.any(mask):
+                    medians.append(np.median(magdiff[mask]))
+                    perc_10.append(np.percentile(magdiff[mask], 16.666667))
+                    perc_90.append(np.percentile(magdiff[mask], 83.333333))
+                else:
+                    medians.append(np.nan)
+                    perc_10.append(np.nan)
+                    perc_90.append(np.nan)
+                
+            f  = plt.figure()
+
+
+            plt.errorbar(ab['std'], ab['std']-(ab['inst'] + est_zp), yerr=np.sqrt(ab['insterr']**2 + ab['insterr']**2), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            #plt.hist2d(ab['std'], ab['std']-(ab['inst'] + est_zp), bins=(20,20))
+            plt.plot(magbins, medians, "k-")
+            plt.plot(magbins, perc_10, "k:")
+            plt.plot(magbins, perc_90, "k:")
+            xmin, xmax = plt.xlim()
+            plt.hlines(0, xmin, xmax, linestyles="--", color="b")
+            plt.hlines(0.05, xmin, xmax, linestyles="--", color="b", linewidth=0.3)
+            plt.hlines(-0.05, xmin, xmax, linestyles="--", color="b", linewidth=0.3)
+            plt.ylim(-0.45,0.45)
+            plt.xlabel("magnitude")  
+            plt.ylabel("Measured - Estimated [mag]")           
+                
+            if (not plotdir is None):
+                plt.savefig(os.path.join(plotdir, "zpfit_%s.png"%b))
             else:	
                 plt.show()
 
@@ -945,7 +1026,7 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     return np.round(p[0], 3), np.round(p[1], 3), np.round(mad, 3)
 
 
-def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=None):
+def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False, refstars=None):
     '''
     Calibrates the zeropoint using SDSS catalogue.    
     '''
@@ -974,6 +1055,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
         airmass = 1.3
     objname = fitsutils.get_par(image, "OBJECT")
     band = fitsutils.get_par(image, "FILTER")
+        
     
     logger.info( "Starting calibration of ZP for image %s for object %s with filter %s."%(image, objname, band))
 
@@ -983,7 +1065,8 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, debug=False, refstars=No
 
 
     #repeat astrometry
-    #rcred.solve_astrometry(image, image, radius=3, with_pix=True, overwrite=True, tweak=4)
+    if(astro):
+        rcred.solve_astrometry(image, radius=3, with_pix=True, overwrite=True, tweak=3)
 
     calcat = ""
     if (filt == 'u'):

@@ -399,6 +399,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     print("Reducer: %s" % reducer)
     try:
         np.save(specname, res)
+        print("Updated %s with reducer %s" % (specname, reducer))
     except IOError:
         print("Unable to update %s with reducer %s" % (specname, reducer))
 

@@ -463,5 +463,6 @@ extract: To extract the cube (one for each observation)
 
         dat = np.array([Xs, Ys, Sid])
         np.savetxt("%s_dump.txt" % infile, dat.T)
+        print("Wrote %s_dump.txt" % infile)
     else:
         print("NO STEP TO PERFORM")

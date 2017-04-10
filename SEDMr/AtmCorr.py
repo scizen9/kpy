@@ -90,6 +90,7 @@ def handle_corr(filename, outname='corrected.npy'):
             }
 
     np.save(outname, [res])
+    print("Wrote %s.npy" % outname)
 
 
 def handle_create(outname=None, filelist=None, plot_filt=False):
@@ -297,6 +298,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
             }
 
         np.save(outname, [res])
+        print("Wrote %s.npy" % outname)
         return res
     else:
         print("No good sp_STD*.npy files, nothing generated")
@@ -337,6 +339,7 @@ def handle_summary(outname=None, filelist=None):
         # Create output
         cor = [{"nm": corl, "cor": cs, "coeff": ccs}]
         np.save(outname, cor)
+        print("Wrote %s.npy" % outname)
 
 
 if __name__ == '__main__':

@@ -67,6 +67,7 @@ def specDiv(A, B, out):
     result['meta'] = s_A['meta']
 
     np.save(out, [result])
+    print("Wrote %s.npy" % out)
 
 
 def specAvg(A, B, out):
@@ -131,6 +132,7 @@ def specAvg(A, B, out):
     result['meta'] = s_A['meta']
 
     np.save(out, [result])
+    print("Wrote %s.npy" % out)
 
 
 def specAdd(A, B, out):
@@ -195,6 +197,7 @@ def specAdd(A, B, out):
     result['meta'] = s_A['meta']
 
     np.save(out, [result])
+    print("Wrote %s.npy" % out)
 
 
 if __name__ == '__main__':

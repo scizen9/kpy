@@ -87,4 +87,4 @@ if __name__ == '__main__':
     flat = measure_flat(ext, meta, lamstart=args.lamstart, lamend=args.lamend)
 
     np.save(args.outfile, flat)
-    print("Wrote %s" % args.outfile)
+    print("Wrote %s.npy" % args.outfile)

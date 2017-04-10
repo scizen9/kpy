@@ -779,7 +779,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pl.grid(True)
         if outname is not None:
             pl.savefig("spec_%s" % outname)
-            print("Wrote spec_%s" % outname)
+            print("Wrote spec_%s.pdf" % outname)
         if plot:
             pl.show()
 

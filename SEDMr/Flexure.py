@@ -342,3 +342,4 @@ if __name__ == '__main__':
             'drp_version': drp_ver}]
 
     np.save(args.outfile, res)
+    print("Wrote %s.npy" % args.outfile)

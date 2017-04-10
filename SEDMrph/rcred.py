@@ -26,15 +26,38 @@ import sextractor
 import zeropoint
 from astropy.io import fits
 
-#Log into a file
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
+
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-#root_dir = "/tmp/logs/"
-root_dir = "/scr2/sedm/logs/"
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
+creationdate = timestamp
 timestamp=timestamp.split("T")[0]
-logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
-logger = logging.getLogger('rcred')
+
+try:
+    #Log into a file
+    root_dir = _logpath
+    logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger = logging.getLogger('rcred')
+except:
+    logging.basicConfig(format=FORMAT, filename=os.path.join("/tmp", "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger= logging.getLogger("rcred")
+    
+
+
     
 def get_xy_coords(image, ra, dec):
     '''
@@ -803,18 +826,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     
     
     
-    #Get basic statistics for the image
-    nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(img)
-    
-    logger.info( "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
-    print "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
-
-    
-    dic = {"FWHM": np.round(fwhm, 3) , "FWHMPIX": np.round(fwhm/0.394, 3) , "NSRC":nsrc, "ELLIP": np.round(ellip, 3)}
-    #Update the seeing information from sextractor
-    fitsutils.update_pars(img, dic)
-    
-    
     #Compute BIAS
     if (biasdir is None or biasdir==""): biasdir = "."
     create_masterbias(biasdir)
@@ -915,7 +926,18 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for image in slice_names:
         bkg = get_median_bkg(image)
         fitsutils.update_par(image, "SKYBKG", bkg)
-        #shutil.move(name, newname)
+        
+        #Get basic statistics for the image
+        nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(image)
+        
+        logger.info( "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
+        print "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
+    
+        
+        dic = {"FWHM": np.round(fwhm, 3) , "FWHMPIX": np.round(fwhm/0.394, 3) , "NSRC":nsrc, "ELLIP": np.round(ellip, 3)}
+        #Update the seeing information from sextractor
+        fitsutils.update_pars(img, dic)
+    
 
         
     #Compute the zeropoints
