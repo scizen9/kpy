@@ -219,7 +219,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, box=15, ra=None, dec=None):
+def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=None, box=15, ra=None, dec=None):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -276,13 +276,13 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=2, 
     out_name = os.path.join(plotdir, imname +  ".seq.mag")
     clean_name = os.path.join(plotdir, imname +  ".objapp.mag")
     
-    
-    fwhm_value = fwhm
-
-    nsrc, fwhm_value, ellip = sextractor.get_image_pars(image)
-    if np.isnan(fwhm_value):
-	fwhm_value=99
-    fitsutils.update_par(image, 'FWHM', fwhm_value)
+    if (not fwhm is None):
+        fwhm_value = fwhm
+    elif (fitsutils.has_par(image, 'FWHM')):
+        fwhm_value = fitsutils.get_par(image, 'FWHM')
+    else:
+        #Put some default value for Palomar
+        fwhm_value=1.5
         
     if (fitsutils.has_par(image, 'AIRMASS')):
         airmass_value = fitsutils.get_par(image, 'AIRMASS')

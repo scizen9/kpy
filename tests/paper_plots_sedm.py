@@ -51,10 +51,14 @@ def compute_S2N(allstarsfile="/home/nblago/Documents/allstars_2017_fwhm.log", ex
     a = a[~np.isnan(a["exptime"])]
     a = a[~np.isnan(a["std"])]
     a = a[~np.isnan(a["insterr"])]
-    a = a[ (a["std"] - a["inst"]) < 24]
     a = a[a["airmass"] < 2.]
     a = a[a["fwhm"]!=0]
-    a = a[a["fwhm"]<3]
+    a = a[a["fwhm"]<2.8]
+    a = a[a['insterr']<0.1]
+    a = a[(a['std']-a['inst']<24) * (a['std']-a['inst']>19.5)]
+        
+    #Select only sources that have not been deviating too far fromt he predicted position.
+    a = a[ np.abs(a['dx'])<10*(np.abs(a['dy'])<10)]
     
     if "fwhm" not in a.dtype.names:
         a = add_fwhm(a)
@@ -80,7 +84,7 @@ def compute_S2N(allstarsfile="/home/nblago/Documents/allstars_2017_fwhm.log", ex
         ax1 = plt.subplot2grid((2,2), (i/2, i%2), colspan=1)
         scat = ax1.scatter(a["std"][mask_filter*~mask_bad], (S/N)[mask_filter*~mask_bad], s=2, c=a["fwhm"][mask_filter*~mask_bad])
         ax1.text(0.85, 0.8, filt, transform=ax1.transAxes, fontsize=16)
-        ax1.set_ylim(1,700)
+        ax1.set_ylim(10,700)
         ax1.set_xlim(15,21.1)
         ax1.set_yscale("log")
         if (i%2==1):
@@ -92,14 +96,15 @@ def compute_S2N(allstarsfile="/home/nblago/Documents/allstars_2017_fwhm.log", ex
         if ( i/2 == 0):
             ax1.set_xticklabels("")
         plt.legend()    
+        plt.minorticks_on()
     
     
     plt.subplots_adjust(wspace=0.0, hspace=0, right=0.85)
     cbar_ax = f.add_axes([0.87, 0.15, 0.02, 0.7])
-    cb = f.colorbar(scat, cax=cbar_ax, boundaries=[1.0, 1.2, 1.4, 1.6, 1.8, 2 ,2.2 , 2.4, 2.6, 2.8, 3])
-    cb.set_label("fwhm")
+    cb = f.colorbar(scat, cax=cbar_ax, boundaries=[1.0, 1.2, 1.4, 1.6, 1.8, 2 ,2.2 , 2.4])
+    cb.set_label("FWHM")
     
-    plt.savefig("/home/nblago/Projects/SEDM/plots_paper/signal2noise_%s.pdf"%myexptime, dpi=200)
+    plt.savefig("/home/nblago/Projects/SEDM/plots_paper/signal2noise_%s.pdf"%exptime, dpi=200)
     plt.show()
     
     '''mask_sn = ~np.isnan(S/N)
@@ -138,16 +143,20 @@ def compute_S2N_mags(allstarsfile="/home/nblago/Documents/allstars_2017_fwhm.log
     print len(a["filename"][(a["std"]<18) * (S/N)<7.5])
     mask_bad = (a["std"]<18) * ((S/N)<7.5)
     
-    f =plt.figure(figsize=(12,8))
+    f =plt.figure(figsize=(12,12))
     
-    colors = ['green', 'red']
-    widths = [4,2.5,1]
-    for i, filt in enumerate(['g', 'r']):
-        for j, m in enumerate([17.5, 18.5, 19.5]):
-            ax = plt.subplot2grid((2, 3), (i, j), colspan=1)
-            mask_filter_mag = (a['filter']==filt) * (np.abs(a['std']-m)<0.5)
-            plt.hist((S/N)[mask_filter_mag*~mask_bad], bins=15, color=colors[i], histtype="step", label="%.1f"%m, range=(0,200), normed=True, linewidth=widths[j]) 
-            ax.set_xlabel("S/N")
+    colors = ['purple', 'green', 'red', 'orange']
+    widths = [4,2.5,1, 0.5]
+    for i, filt in enumerate(['u', 'g', 'r', 'i']):
+        for j, m in enumerate([17.5, 18.5, 19.5, 20.5]):
+            ax = plt.subplot2grid((4, 4), (i, j), colspan=1)
+            mask_filter_mag = (a['filter']==filt) * (np.abs(a['std']-m)<0.7)
+            if not np.any(mask_filter_mag*~mask_bad):
+                continue
+            plt.hist((S/N)[mask_filter_mag*~mask_bad], bins=15, color=colors[i], histtype="step", label="%.1f - %.1f"%(m-0.5, m+0.5), range=(0,200), normed=True, linewidth=widths[j]) 
+            ax.text(0.5,0.7, "<S/N> %.1f"%np.median((S/N)[mask_filter_mag*~mask_bad]), transform=ax.transAxes)
+            if (i==3):
+                ax.set_xlabel("S/N")
             if (j==0):
                 ax.set_ylabel("Frequency")
             else:
