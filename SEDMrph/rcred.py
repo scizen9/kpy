@@ -931,7 +931,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         
         dic = {"FWHM": np.round(fwhm, 3) , "FWHMPIX": np.round(fwhm/0.394, 3) , "NSRC":nsrc, "ELLIP": np.round(ellip, 3)}
         #Update the seeing information from sextractor
-        fitsutils.update_pars(img, dic)
+        fitsutils.update_pars(image, dic)
     
 
         
