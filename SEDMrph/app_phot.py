@@ -18,8 +18,6 @@ except:
 import os, sys, math
 import pyfits as pf
 import zscale
-import time
-import sextractor
 import fitsutils
 import glob
 import argparse

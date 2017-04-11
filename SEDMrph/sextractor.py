@@ -210,7 +210,7 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
     return x[np.argmin(p(x))], coefs[0]
     
-def analyse_image(sexfile, arcsecpix=0.394):
+def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     '''
     Analyses the sextractor filelist to determine the best focus.
     If FWHM in pixes is required, set arcsecpix=1
@@ -245,7 +245,9 @@ def analyse_image(sexfile, arcsecpix=0.394):
     #Select sources inside of the cross
     x = s[:,0]
     y = s[:,1]
-    s = s[((y<850)|(y>1125))*((x<885)|(x>1540))]
+    
+    if is_rccam:
+        s = s[((y<850)|(y>1125))*((x<885)|(x>1540))]
 
     # Select with good flags only.
     s = s[s[:,10]==0]
