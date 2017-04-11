@@ -11,7 +11,7 @@ from matplotlib import image
 from PIL import Image
 from matplotlib import pylab as plt
 import glob
-import pyfits as pf
+from astropy.io import fits as pf
 import os, sys
 from optparse import OptionParser
 import matplotlib
@@ -377,7 +377,7 @@ def get_par(myfits, par):
     '''
     Returns the header parameter from the fits.
     '''
-    hdu = pf.open(myfits)
+    hdu = pf.open(myfits, ignore_missing_end=True)
     header = hdu[0].header
     return header[str.upper(par)]
     
@@ -385,7 +385,7 @@ def update_par(myfits, par, value):
     '''
     Updates the fits files with the new parameter.
     '''
-    hdu = pf.open(myfits)
+    hdu = pf.open(myfits, ignore_missing_end=True)
     header = hdu[0].header
     header.set(par, value)
     hdu.writeto(myfits, clobber=True)
@@ -394,7 +394,7 @@ def update_pars(myfits, pardic):
     '''
     Updates the fits files with the new parameter.
     '''
-    hdu = pf.open(myfits)
+    hdu = pf.open(myfits, ignore_missing_end=True)
     header = hdu[0].header
     
     for key, value in pardic.iteritems():
@@ -405,7 +405,7 @@ def has_par(myfits, par):
     '''
     Updates the fits files with the new parameter.
     '''
-    hdu = pf.open(myfits)
+    hdu = pf.open(myfits, ignore_missing_end=True)
     header = hdu[0].header
     return par in header.keys()
     
@@ -432,7 +432,7 @@ def arrange_fits_in_directories(mydir, myfilter, destdir):
     
 def get_gain_ron(fitsfile):
 
-    hdulist = pf.open(fitsfile)
+    hdulist = pf.open(fitsfile, ignore_missing_end=True)
     prihdr = hdulist[0].header
 
     uheader = unify_header(prihdr)
