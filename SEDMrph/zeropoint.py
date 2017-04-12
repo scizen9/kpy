@@ -680,7 +680,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         ab = ab[mask]
         
-        M = np.zeros((len(ab), 10))
+        M = np.zeros((len(ab), 12))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
@@ -692,8 +692,8 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         M[:,7] = ab['x']**2
         M[:,8] = ab['y']**2
         M[:,9] = ab['fwhm']-1.5
-        #M[:,7] = ab['dx']
-        #M[:,8] = ab['dy']
+        M[:,10] = ab['x']**3
+        M[:,11] = ab['y']**3
         
         #print M
         
@@ -712,7 +712,7 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         #Empirical and predicted values
         #estimated zeropoint for each observation
-        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['x'] + coef[6]*ab['y'] + coef[7]*ab['x']**2 + coef[8]*ab['y']**2 + coef[9]*(ab['fwhm']-1.5)#+ coef[5]*ab['jd']**3 
+        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['x'] + coef[6]*ab['y'] + coef[7]*ab['x']**2 + coef[8]*ab['y']**2 + coef[9]*(ab['fwhm']-1.5) + coef[10]*ab['x']**3 + coef[11]*ab['y']**3#+ coef[5]*ab['jd']**3 
 
 
         emp_col = depend - (est_zp - ab['color']*coef[1])
@@ -763,11 +763,19 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             
             ax5.errorbar(ab['fwhm'], depend - (est_zp -coef[9]*(ab['fwhm']-1.5)), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
             ax5.plot(ab['fwhm'], coef[9]*(ab['fwhm']-1.5), color=cols[b])
-
             ax5.set_xlabel("FWHM")  
             ax5.set_title("FWHM")
 
-
+            ax6.errorbar(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2 + coef[10]*ab['x']**3 )), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            #ax6.plot(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2)), color=cols[b])
+            ax6.set_xlabel("X")  
+            ax6.set_title("X")
+            
+            ax6.errorbar(ab['y'], depend - (est_zp -(coef[6]*ab['y'] + coef[8]*ab['y']**2 + coef[11]*ab['y']**3)), yerr=np.minimum(1, ab['insterr']), fmt="o", c="blue", alpha=0.4, ms=4)
+            #ax6.plot(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2)), color=cols[b])
+            ax6.set_xlabel("Y")  
+            ax6.set_title("Y")
+            
             plt.tight_layout()
             
             if (not plotdir is None):
