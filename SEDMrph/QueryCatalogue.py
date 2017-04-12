@@ -181,6 +181,12 @@ class QueryCatalogue:
             warnings.simplefilter("ignore")
             catalog = votable.parse_single_table(tmp_file).to_table()
 
+        if catalog.as_array() is None:
+        	#Clean temporary file.\
+        	if (os.path.isfile(tmp_file)):
+            		os.remove(tmp_file)
+		return None
+
         catalog = catalog.as_array().data
 
 

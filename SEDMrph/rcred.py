@@ -505,7 +505,7 @@ def copy_ref_calib(curdir, calib="Flat"):
         
         
 
-def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
+def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.
@@ -513,12 +513,13 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
 
     img = os.path.abspath(img)
     
-    ra = fitsutils.get_par(img, 'OBJRA')
-    dec = fitsutils.get_par(img, 'OBJDEC')
+    ra = fitsutils.get_par(img, 'RA')
+    dec = fitsutils.get_par(img, 'DEC')
     #logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
     
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
-    
+
+
     #If astrometry exists, we don't run it again.
     if (os.path.isfile(astro) and not overwrite):
         return astro
@@ -544,7 +545,11 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
         
     is_on_target(img)
     
-    return astro
+    if (not outimage is None and overwrite and os.path.isfile(astro)):
+        shutil.move(astro, outimage)
+	return outimage
+    else:
+    	return astro
     
 
 def make_mask_cross(img):  

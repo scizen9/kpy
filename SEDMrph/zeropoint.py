@@ -151,7 +151,7 @@ def find_fwhm(imfile, xpos, ypos, plot=True):
         def_x = np.argmax(np.sum(sub, axis=0))
         def_y = np.argmax(np.sum(sub, axis=1))
 
-        initial_guess = (100, def_x, def_y, def_fwhm, def_fwhm, 0, np.percentile(sub, 50))
+        initial_guess = (100, def_x, def_y, def_fwhm, def_fwhm, 0, np.percentile(sub, 40))
         detected = True
         try:
             popt, pcov = opt.curve_fit(twoD_Gaussian, (X, Y), sub.flatten(), p0=initial_guess)
@@ -223,8 +223,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     '''
     
     survey = str.lower(survey)
-    minmag = 15
-    maxmag = 21.0
+    minmag = 13.5
+    maxmag = 20.2
         
     f = pf.open(imfile)
     wcs = pywcs.WCS(f[0].header)
@@ -235,10 +235,11 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
     ra, dec = wcs.wcs_pix2sky(np.array([img.shape[0]/2, img.shape[1]/2], ndmin=2), 1)[0]
     ra0, dec0 = wcs.wcs_pix2sky(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
 
+
     sr = 2*np.abs(dec-dec0)
     logger.info("%.4f %.4f %.4f"%( ra,dec, sr))
     
-    qc = QueryCatalogue.QueryCatalogue(ra, dec, sr, minmag, maxmag, logger)
+    qc = QueryCatalogue.QueryCatalogue(ra, dec, sr/1.8, minmag, maxmag, logger)
     
     if not refstars is None:
         shutil.copy(refstars, "/tmp/tmp_sdss_%s.cat"%creationdate)
@@ -254,7 +255,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
 
         catalog = qc.query_sdss()
 
-        if (np.ndim(catalog)==0):
+        if (np.ndim(catalog)==0 or len(catalog)<2):
             return False
             
         try:
@@ -276,7 +277,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
 
         catalog = qc.query_catalogue()
 
-        if (np.ndim(catalog)==0):
+        if (np.ndim(catalog)==0 or catalog is None):
             return False
             
         try:
@@ -302,7 +303,6 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         ra, dec = rcred.get_xy_coords(imfile, cat_ra[i], cat_dec[i])
         #s = wcs.wcs_sky2pix(np.array([cat_ra[i], cat_dec[i]], ndmin=2), 1)[0]
         star_pix = np.row_stack((star_pix, np.array([ra, dec])))
-    
     star_pix = star_pix[1:]
     pix2ang = 0.394
     rad = math.ceil(25./pix2ang)
@@ -372,12 +372,12 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         if (band in 'ugriz' and survey=='sdss'):
             header='x y objid ra dec u g r i z du dg dr di dz'
         if (band in 'grizy' and survey=='ps1'):
-            header='x y objid ra dec g r i z dg dr di dz dy'
+            header='x y objid ra dec g r i z dg dr di dz'
         elif band in 'UBVRI':
             header='x y objid ra dec U B V R I dU dB dV dR dI'
         np.savetxt('/tmp/sdss_cat_det_%s.txt'%creationdate, z[mask_valid_fwhm], fmt=fmt, \
         header=header)
-        print ("Saved to /tmp/sdss_cat_det_%s.txt"%creationdate)
+        #print ("Saved to /tmp/sdss_cat_det_%s.txt"%creationdate)
         
             
         
@@ -414,8 +414,9 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
                 plt.text(selected[i,0]+10, selected[i,1]+10, i+1)
         
         plt.legend(loc="best", frameon=False, framealpha=0.9)
-        plt.savefig( os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png').replace('.new', '.seqstars.png')))
-        logger.info( "Saved stars to %s"%imfile.replace('.fits', '.seqstars.png'))
+        figname = os.path.join( plotdir, os.path.basename(imfile).replace('.fits', '.seqstars.png').replace('.new', '.seqstars.png'))
+        plt.savefig( figname)
+        logger.info( "Saved stars to %s"%figname)        
         plt.clf()
         
     return True
@@ -455,6 +456,7 @@ def add_to_zp_cal(ref_stars, image, logname):
 
     col_band = coldic[band]
     exptime = fitsutils.get_par(image, "exptime")
+    fwhm = fitsutils.get_par(image, "FWHM")
     airmass = 1.3
     name = "object"
     if (fitsutils.has_par(image, "NAME")):
@@ -472,11 +474,11 @@ def add_to_zp_cal(ref_stars, image, logname):
     
     if (not os.path.isfile(logname)):
             with open( logname, "a") as f:
-                f.write("#object,filename,filter,std,stderr,inst,insterr,jd,airmass,color,exptime,x,y,dx,dy\n")
+                f.write("#object,filename,filter,std,stderr,inst,insterr,jd,airmass,color,exptime,x,y,dx,dy,fwhm\n")
     with open( logname, "a") as f:
         for i in range(N):
-            f.write("%s,%s,%s,%.3f,%.3f,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f\n"%
-            (name, image, band, r[i][band], r[i]["d"+band], my[i]['fit_mag'], my[i]['fiterr'], date, airmass, r[i][band]-r[i][col_band],exptime,my[i]['X'],my[i]['Y'],my[i]['Xshift'],my[i]['Yshifts']))
+            f.write("%s,%s,%s,%.3f,%.3f,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.2f\n"%
+            (name, image, band, r[i][band], r[i]["d"+band], my[i]['fit_mag'], my[i]['fiterr'], date, airmass, r[i][band]-r[i][col_band],exptime,my[i]['X'],my[i]['Y'],my[i]['Xshift'],my[i]['Yshift'], fwhm))
 
 def lsq_test():
 
@@ -990,10 +992,13 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
         my = my[mask]
         ids = ids[mask]
         
-        coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.2, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
+        try:
+		coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.2, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
+        except:
+		logger.error("Critical failure for polyfit for object %s"%image)
+		return 0,0,0
         
         logger.info("Coefficients for 1 deg polynomial fit to the zeropoint: %s. After outlier rejection."% coefs)
-        
         p = np.poly1d(coefs)
     
         pred = p(r[band]-r[col_band])
@@ -1038,6 +1043,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     if plot and plotdir is None:
         plotdir = os.path.join(os.path.dirname(image), "photometry")
         if not os.path.isdir(plotdir):
+            print ("Creating diretory", plotdir)
             os.makedirs(plotdir)
         
     filt = fitsutils.get_par(image, 'filter')
@@ -1065,6 +1071,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
         logger.error( "ERROR. Exposure time too short for image (%s) to see anything..."%image)
         return 
 
+
     #repeat astrometry
     if(astro):
         rcred.solve_astrometry(image, radius=3, with_pix=True, overwrite=True, tweak=3)
@@ -1079,14 +1086,14 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
         
     if (not extracted):
         logger.warn( "Field+filter not in SDSS or error when retrieving the catalogue... Skipping. Image %s not zeropoint calibrated."%image)
-            #Add these values to the header.
+        #Add these values to the header.
         pardic = {"IQZEROPT" : 0,\
             "ZPCAT" : "None",\
             "ZEROPTU" : 0,\
             "ZEROPT" : 0, \
             "ZP":0,\
             "ZPERR":0,\
-            "%s_coef"%filt : c}
+            "%s_coef"%filt : 0}
         fitsutils.update_pars(image, pardic)
         return 
 
@@ -1095,7 +1102,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     fwhm_as = fwhm * 0.394
 
     #Run aperture photometry on the positions of the stars.
-    app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=20)
+    app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=25)
     
     #Compute the zeropoint for the specific image.
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det_%s.txt"%creationdate, image, plot=plot, plotdir=plotdir)
@@ -1201,10 +1208,10 @@ def main(reduced):
         os.makedirs(plotdir)
     
 
-    for f in glob.glob("*.fits|*.new"):
+    for f in glob.glob("a*.fits"):
         logger.info("Starting calibration of zeropoint for %s"% f)
         if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
-            calibrate_zeropoint(f, plotdir=os.path.abspath(plotdir))
+            calibrate_zeropoint(f, plotdir=None)
     if (os.path.isfile("zeropoint.log")):
         plot_zp("zeropoint.log", plotdir)
     if (os.path.isfile("allstars_zp.log")):
