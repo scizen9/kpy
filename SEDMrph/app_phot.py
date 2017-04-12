@@ -37,7 +37,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15, arcsecpix=0.394):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -127,13 +127,12 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         output = out_name ,\
         plotfile = "" ,\
         zmag = 0. ,\
-        exposure = exptime,\
-        airmass = airmass_value ,\
-        filter = "filters" ,\
+        exposure = "exptime",\
+        airmass = "airmass" ,\
+        filter = "filter" ,\
         obstime = "DATE" ,\
         #fwhm = fwhm_value,\
         epadu = gain ,\
-        readnoise = noise,\
         interactive = "no" ,\
         radplots = "yes" ,\
         verbose = "no" ,\
