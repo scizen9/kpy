@@ -37,7 +37,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15, arcsecpix=0.394):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -67,15 +67,13 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     print "Will create output files", out_name, clean_name
 
     # Read values from .ec file
-    ecfile= image+".ec"
-    filter_value=''.join(ecfile).split('.',1)[0]
     
-    fwhm_value = fwhm
+    fwhm_value = fwhm/arcsecpix
     
     if (fitsutils.has_par(image, 'FWHM')):
-        fwhm_value = fitsutils.get_par(image, 'FWHM')
-    else:
-        fwhm_value=3.5
+        fwhm_value = fitsutils.get_par(image, 'FWHM')/arcsecpix
+    elif (fwhm is None):
+        fwhm_value=3.5/arcsecpix
     if (fitsutils.has_par(image, 'AIRMASS')):
         airmass_value = fitsutils.get_par(image, 'AIRMASS')
     else:
@@ -85,21 +83,8 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     gain = fitsutils.get_par(image, 'GAIN')
     noise = fitsutils.get_par(image, 'RDNOISE')
 
-    '''try:      
-        with open(''.join(ecfile),'r') as f:
-            for line in f:
-                if "airmass" in line:
-                    airmass_value = line.split('=',1)[1]
-                else:
-                    airmass_value = 1
-                if "FWHM" in line:
-                    print line
-                    fwhm_value =  line.split('FWHM=',1)[1]
-                    fwhm_value = fwhm_value.rsplit("aperture")[0]
-    except:
-        pass'''
     
-    print "FWHM", fwhm_value
+    print "FWHM pixels", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
     sky_rad= math.ceil(aperture_rad)*4
     
@@ -107,17 +92,6 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
 
     if (not plot_only):
 
-        if os.path.isfile(out_name): os.remove(out_name)
-        if os.path.isfile(clean_name): os.remove(clean_name)
-
-        # Check if files in list, otherwise exit
-        if not ecfile:
-           print "No .ec files in directory, exiting"
-           sys.exit()
-        
-        
-   
-   
         iraf.noao.digiphot.apphot.qphot(image = image,\
         cbox = box ,\
         annulus = sky_rad ,\
@@ -127,13 +101,12 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         output = out_name ,\
         plotfile = "" ,\
         zmag = 0. ,\
-        exposure = exptime,\
-        airmass = airmass_value ,\
-        filter = "filters" ,\
+        exposure = "exptime",\
+        airmass = "airmass",\
+        filter = "filter" ,\
         obstime = "DATE" ,\
         #fwhm = fwhm_value,\
         epadu = gain ,\
-        readnoise = noise,\
         interactive = "no" ,\
         radplots = "yes" ,\
         verbose = "no" ,\
