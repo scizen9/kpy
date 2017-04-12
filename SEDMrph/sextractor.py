@@ -293,12 +293,12 @@ def get_focus_ifu(lfiles, plot=True):
     
     return focus, sigma
     
-def get_image_pars(image):
+def get_image_pars(image, arcsecpix=0.394, is_rccam=True):
     '''
     Returns a set of statistics for a given image.
     '''
     sexfiles = run_sex([image])
-    pars = analyse_image(sexfiles[0])
+    pars = analyse_image(sexfiles[0], arcsecpix=arcsecpix)
     
     return pars[0], pars[1], pars[2], pars[3]
     

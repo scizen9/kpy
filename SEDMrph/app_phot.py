@@ -37,7 +37,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2, plotdir=None, box=15):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -74,14 +74,18 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     
     if (fitsutils.has_par(image, 'FWHM')):
         fwhm_value = fitsutils.get_par(image, 'FWHM')
+    else:
+        fwhm_value=3.5
     if (fitsutils.has_par(image, 'AIRMASS')):
         airmass_value = fitsutils.get_par(image, 'AIRMASS')
     else:
 	airmass_value = 1.3
+ 
     exptime = fitsutils.get_par(image, 'EXPTIME')
     gain = fitsutils.get_par(image, 'GAIN')
+    noise = fitsutils.get_par(image, 'RDNOISE')
 
-    try:      
+    '''try:      
         with open(''.join(ecfile),'r') as f:
             for line in f:
                 if "airmass" in line:
@@ -93,7 +97,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
                     fwhm_value =  line.split('FWHM=',1)[1]
                     fwhm_value = fwhm_value.rsplit("aperture")[0]
     except:
-        pass
+        pass'''
     
     print "FWHM", fwhm_value
     aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
@@ -123,11 +127,13 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         output = out_name ,\
         plotfile = "" ,\
         zmag = 0. ,\
-        exposure = "exptime" ,\
-        airmass = "airmass" ,\
+        exposure = exptime,\
+        airmass = airmass_value ,\
         filter = "filters" ,\
         obstime = "DATE" ,\
+        #fwhm = fwhm_value,\
         epadu = gain ,\
+        readnoise = noise,\
         interactive = "no" ,\
         radplots = "yes" ,\
         verbose = "no" ,\
@@ -140,10 +146,11 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         
          
         #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+        iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,cier,rapert,sum,area,nsky,flux,itime,mag,merr", "yes", Stdout=clean_name)
         
     
-    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
+        ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     if (ma.size > 0):    
         m = ma[~np.isnan(ma["fit_mag"])]
     else:
