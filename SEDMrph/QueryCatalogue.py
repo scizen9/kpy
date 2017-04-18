@@ -14,23 +14,30 @@ import os
 import logging
 import warnings
 from numpy.lib import recfunctions as rfn
-
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 
 class QueryCatalogue:
 
             
     def __init__(self, ra=0, dec=0, radius=0, minmag=5, maxmag=23, logger=None):
+        
+        if (type(ra)==str or type(ra)==str ):
+            c = SkyCoord('%s %s'%(ra, dec), unit=(u.hourangle, u.deg),  frame='icrs')
+            self.ra = c.ra.value
+            self.dec = c.dec.value
+        else:
             self.ra = ra
             self.dec= dec
-            self.rad = radius
-            self.minmag = minmag
-            self.maxmag = maxmag
-            self.logger = logger
-            
-            if (logger is None):
-                FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-                logging.basicConfig(format=FORMAT, level=logging.INFO)
-                self.logger = logging.getLogger('zeropoint')
+        self.rad = float(radius)
+        self.minmag = minmag
+        self.maxmag = maxmag
+        self.logger = logger
+        
+        if (logger is None):
+            FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
+            logging.basicConfig(format=FORMAT, level=logging.INFO)
+            self.logger = logging.getLogger('zeropoint')
     
     def query_usnob1(self):
     

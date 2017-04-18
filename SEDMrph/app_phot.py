@@ -326,13 +326,14 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
 
 
     #iraf.noao.digiphot.apphot.phot(image=image, cbox=5., annulus=12.4, dannulus=10., salgori = "centroid", aperture=9.3,wcsin="world",wcsout="tv", interac = "no", coords=coords, output=out_name)
-    iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,mag,merr", "yes", Stdout=clean_name)
+    iraf.txdump(out_name, "id,image,xcenter,ycenter,xshift,yshift,fwhm,msky,stdev,cier,rapert,sum,area,nsky,flux,itime,mag,merr", "yes", Stdout=clean_name)
+
     
 
-    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
+        ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     if (ma.size > 0):  
-        if (ma.size==1):
-            ma = np.array([ma])
+        ma = np.array([ma])
         m = ma[~np.isnan(ma["fit_mag"])]
     else:
         print "Only one object found!"
@@ -394,7 +395,18 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
         plt.savefig(os.path.join(plotdir, imname+"_zoom.png"))
         plt.clf()
 
- 
+def get_upper_limit(app_phot_file, sigma=3, zp=0):
+    '''
+    Provides the upper X-sigma limit for that aperture.
+    '''
+    f = np.genfromtxt(app_phot_file, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
+    ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    
+    rmsflux = sigma * f['stdev'] * np.sqrt(f['area'])
+    uplimmag = zp - 2.5*np.log10(rmsflux) + 2.5*np.log10(f['itime'])
+    
+    return uplimmag
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
         '''

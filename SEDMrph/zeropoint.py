@@ -588,14 +588,16 @@ def calibrate_zp_fourshot(logfile, plot=True):
 def lsq_zeropoint(logfile, plotdir=None, plot=True):
     '''
     Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.
+    Check this one:
+    https://docs.scipy.org/doc/scipy/reference/odr.html
     
     '''
     a = np.genfromtxt(logfile, dtype=None, names=True, delimiter=",")
     a.sort(order=['jd'], axis=0)
     '''a = a[a['inst']!=0]
     a = a[a['std']<20]
-    a = a[a['insterr']<0.1]
-    a = a[a['fwhm']<3.5]'''
+    a = a[a['insterr']<0.1]'''
+    a = a[a['fwhm']<3.5]
     a = a[(a['std']-a['inst']<24) * (a['std']-a['inst']>20.0)]
         
     #Select only sources that have not been deviating too far fromt he predicted position.
@@ -682,20 +684,25 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         
         ab = ab[mask]
         
-        M = np.zeros((len(ab), 10))
+        M = np.zeros((len(ab), 13))
         M[:,0] = 1      
         #M[:,1] = ab['inst']
         M[:,1] = ab['color'] 
         M[:,2] = ab['airmass'] - 1.3
         M[:,3] = ab['jd'] 
         M[:,4] = ab['jd']**2
-        M[:,5] = ab['x']
-        M[:,6] = ab['y']
-        M[:,7] = ab['x']**2
-        M[:,8] = ab['y']**2
-        M[:,9] = ab['fwhm']-1.5
-        #M[:,10] = ab['x']**3
-        #M[:,11] = ab['y']**3
+        M[:,5] = ab['jd']**3
+        M[:,6] = ab['x']
+        M[:,7] = ab['y']
+        M[:,8] = ab['x']**2
+        M[:,9] = ab['y']**2
+        M[:,10] = ab['x']**3
+        M[:,11] = ab['y']**3
+        #M[:,12] = ab['x']**4
+        #M[:,13] = ab['y']**4
+        M[:,12] = ab['fwhm']-1.5
+        #M[:,6] = ab['fwhm']-1.5
+        
         
         #print M
         
@@ -709,22 +716,28 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             print ("Failed for filter %s"%b)
             continue
         
+        coefs_map = {'color': coef[1], 'airmass': coef[2], 'jd': coef[3], 'jd2': coef[4], 'jd3': coef[5], 'fwhm': coef[12],\
+        'x': coef[6], 'y':coef[7], 'x2':coef[8], 'y2':coef[9], 'x3':coef[10], 'y3':coef[11]}#, 'x4':coef[12], 'y4':coef[13], 'fwhm': coef[14]}
         #Save the coefficients 
         np.savetxt("coefs_%s.txt"%b, coef)
         
         #Empirical and predicted values
         #estimated zeropoint for each observation
-        est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['x'] + coef[6]*ab['y'] + coef[7]*ab['x']**2 + coef[8]*ab['y']**2 + coef[9]*(ab['fwhm']-1.5) #+ coef[10]*ab['x']**3 + coef[11]*ab['y']**3#+ coef[5]*ab['jd']**3 
+        #+ coefs_map['fwhm']*(ab['fwhm']-1.5) \
+        est_zp = coef[0] + coefs_map['color']*ab['color'] + coefs_map['airmass']*(ab['airmass']-1.3) + coefs_map['jd']*ab['jd'] + coefs_map['jd2']*ab['jd']**2 + coefs_map['jd3']*ab['jd']**3 + \
+            + coefs_map['x']*ab['x'] + coefs_map['y']*ab['y'] + coefs_map['x2']*ab['x']**2 + coefs_map['y2']*ab['y']**2 + coefs_map['x3']*ab['x']**3 + coefs_map['y3']*ab['y']**3 + \
+             + coefs_map['fwhm']*(ab['fwhm']-1.5)#+ coef[5]*ab['jd']**3 
+             #+ coefs_map['x4']*ab['x']**4 + coefs_map['y4']*ab['y']**4 
 
 
-        emp_col = depend - (est_zp - ab['color']*coef[1])
+        emp_col = depend - (est_zp - coefs_map['color']*ab['color'])
         pred_col = ab['color']*coef[1]
 
-        emp_airmass = depend - (est_zp - (ab['airmass']-1.3)*coef[2])
+        emp_airmass = depend - (est_zp - coefs_map['airmass']*(ab['airmass']-1.3))
         pred_airmass = (ab['airmass']-1.3)*coef[2]
         
-        emp_jd = depend - (est_zp - (coef[3]*ab['jd'] + coef[4]*ab['jd']**2) )
-        pred_jd =  coef[3]*ab['jd'] + coef[4]*ab['jd']**2# + coef[5]*ab['jd']**3 
+        emp_jd = depend - (est_zp - (coefs_map['jd']*ab['jd'] + coefs_map['jd2']*ab['jd']**2 + coefs_map['jd3']*ab['jd']**3) )
+        pred_jd =  coefs_map['jd']*ab['jd'] + coefs_map['jd2']*ab['jd']**2 + coefs_map['jd3']*ab['jd']**3 
                 
         rms =  np.sqrt(np.sum((depend-est_zp)**2)/(len(depend)-1))
         mad = stats.funcs.median_absolute_deviation(depend-est_zp)
@@ -735,48 +748,48 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         if (plot):
             plt.close("all")
             f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2)
-            f.set_figheight(15)
+            f.set_figheight(12)
             f.set_figwidth(10)
             ax1.plot(ab['color'], emp_col, "o", color=cols[b], ms=4, alpha=0.4)
+            #ax1.plot(ab['color'], depend - est_zp, "o", color=cols[b], ms=4, alpha=0.4)
             ax1.plot(ab['color'],  pred_col, color=cols[b])
             ax1.set_title("colour")
 
             ax2.plot(ab['airmass'], emp_airmass, "o", color=cols[b], ms=4, alpha=0.4)
+            #ax2.plot(ab['airmass'], depend - est_zp, "o", color=cols[b], ms=4, alpha=0.4)
+
             ax2.plot(ab['airmass'], pred_airmass , color=cols[b])
             ax2.set_title("airmass")
-
-            #arr = np.array([ab['jd'], pred_jd]).T
-            #print arr, arr.shape, arr.dtype
-            #arr.view(dtype=[('f0', np.float64), ('f1', np.float64)]).sort(order=['f0'], axis=0)
             
-            ax3.plot(ab['jd']*24, emp_jd, "o", color=cols[b], ms=4, alpha=0.4)
-            ax3.plot(ab['jd']*24, pred_jd, color=cols[b])
-            ax3.set_xlabel("Elapsed hours")  
-            ax3.set_title("Obs. Time")
+            ax3.errorbar(ab['fwhm'], depend - (est_zp -coefs_map['fwhm']*(ab['fwhm']-1.5)), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            #ax3.errorbar(ab['fwhm'], depend - est_zp, yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            ax3.plot(ab['fwhm'], coefs_map['fwhm']*(ab['fwhm']-1.5), color=cols[b])
+            ax3.set_xlabel("FWHM")  
+            ax3.set_title("FWHM")
+
+            
+            ax4.errorbar(ab['x'], depend - (est_zp -(coefs_map['x']*ab['x'] + coefs_map['x2']*ab['x']**2 + coefs_map['x3']*ab['x']**3 )), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
+            #ax4.plot(ab['x'], depend - est_zp, color=cols[b])
+            ax4.errorbar(ab['y'], depend - (est_zp -(coefs_map['y']*ab['y'] + coefs_map['y2']*ab['y']**2 + coefs_map['y3']*ab['y']**3)), yerr=np.minimum(1, ab['insterr']), fmt="o", c="blue", alpha=0.4, ms=4)
+            #ax4.plot(ab['x'], depend - est_zp, color=cols[b])
+            ax4.set_xlabel("Y")  
+            ax4.set_title("X and Y")
+
+            
+            ax5.plot(ab['jd']*24, emp_jd, "o", color=cols[b], ms=4, alpha=0.4)
+            ax5.plot(ab['jd']*24, pred_jd, color=cols[b])
+            ax5.set_xlabel("Elapsed hours")  
+            ax5.set_title("Obs. Time")
 
                 
             #ax4.plot(ab['jd'], depend, "*", color=cols[b], alpha=0.4)
             #ax4.errorbar(ab['jd'], est_zp, yerr=ab['insterr'], marker="o", c=cols[b], ls="none")
-            ax4.errorbar(ab['jd']*24, depend - est_zp, yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
-            ax4.set_xlabel("Elapsed hours")  
-            ax4.set_title("Residuals")
-            ax4.invert_yaxis()
+            ax6.errorbar(ab['jd']*24, depend - est_zp, yerr=np.minimum(0, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=3)
+            ax6.set_ylim(-0.2, 0.2)
+            ax6.set_xlabel("Elapsed hours")  
+            ax6.set_title("Residuals (Measured_ZP - Estimated_ZP)")
+            ax6.invert_yaxis()
             
-            
-            ax5.errorbar(ab['fwhm'], depend - (est_zp -coef[9]*(ab['fwhm']-1.5)), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
-            ax5.plot(ab['fwhm'], coef[9]*(ab['fwhm']-1.5), color=cols[b])
-            ax5.set_xlabel("FWHM")  
-            ax5.set_title("FWHM")
-
-            ax6.errorbar(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2  )), yerr=np.minimum(1, ab['insterr']), fmt="o", c=cols[b], alpha=0.4, ms=4)
-            #ax6.plot(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2)), color=cols[b])
-            ax6.set_xlabel("X")  
-            ax6.set_title("X")
-            
-            ax6.errorbar(ab['y'], depend - (est_zp -(coef[6]*ab['y'] + coef[8]*ab['y']**2 )), yerr=np.minimum(1, ab['insterr']), fmt="o", c="blue", alpha=0.4, ms=4)
-            #ax6.plot(ab['x'], depend - (est_zp -(coef[5]*ab['x'] + coef[7]*ab['x']**2)), color=cols[b])
-            ax6.set_xlabel("Y")  
-            ax6.set_title("Y")
             
             plt.tight_layout()
             
@@ -806,8 +819,8 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             f  = plt.figure()
 
 
-            plt.errorbar(ab['std'], ab['std']-(ab['inst'] + est_zp), yerr=np.sqrt(ab['insterr']**2 + ab['insterr']**2), fmt="o", c=cols[b], alpha=0.4, ms=4)
-            #plt.hist2d(ab['std'], ab['std']-(ab['inst'] + est_zp), bins=(20,20))
+            plt.errorbar(ab['std'], ab['std']-(ab['inst'] + est_zp), yerr=np.sqrt(ab['insterr']**2 + ab['insterr']**2), fmt="o", c=cols[b], alpha=0.3, ms=3)
+            #plt.hist2d(ab['std'], ab['std']-(ab['inst'] + est_zp), bins=(35,35), range=((13,20.5), (-0.2,0.2)), cmap=matplotlib.cm.gray_r)
             plt.plot(magbins, medians, "k-")
             plt.plot(magbins, perc_10, "k:")
             plt.plot(magbins, perc_90, "k:")
@@ -815,14 +828,46 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
             plt.hlines(0, xmin, xmax, linestyles="--", color="b")
             plt.hlines(0.05, xmin, xmax, linestyles="--", color="b", linewidth=0.3)
             plt.hlines(-0.05, xmin, xmax, linestyles="--", color="b", linewidth=0.3)
-            plt.ylim(-0.45,0.45)
+            plt.hlines(0.025, xmin, xmax, linestyles="--", color="red", linewidth=0.3)
+            plt.hlines(-0.025, xmin, xmax, linestyles="--", color="red", linewidth=0.3)
+            plt.ylim(-0.2,0.2)
             plt.xlabel("magnitude")  
             plt.ylabel("Measured - Estimated [mag]")           
                 
             if (not plotdir is None):
                 plt.savefig(os.path.join(plotdir, "zpfit_%s.png"%b))
+                plt.close("all")
             else:	
                 plt.show()
+                
+            #Third set of figures.
+            f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+            diff = depend - est_zp
+            im = ax1.scatter(ab['x'], ab['y'], c=depend - (est_zp), s=4)# -(coefs_map['x']*ab['x'] + coefs_map['x2']*ab['x']**2 + coefs_map['x3']*ab['x']**3 ) \
+                #-(coefs_map['y']*ab['y'] + coefs_map['y2']*ab['y']**2 + coefs_map['y3']*ab['y']**3) ))
+            ax1.set_title("Filter %s"%b)
+            ax1.set_xlabel("X")
+            ax1.set_ylabel("Y")
+            plt.colorbar(im)
+                     
+            myx = np.linspace(np.min(ab['x']), np.max(ab['x']), 15)
+            myy = np.linspace(np.min(ab['y']), np.max(ab['y']), 15)
+
+            diffsx = []
+            diffsy = []
+
+            for i in range(1,len(myx)):
+                diffsx.append(np.average(diff[ (ab['x']<myx[i])*(ab['x']>myx[i-1]) ]))
+                diffsy.append(np.average(diff[ (ab['x']<myy[i])*(ab['x']>myy[i-1]) ]))
+                
+            ax2.plot(myy[1:], diffsy)
+            ax3.plot(myx[1:], diffsx)
+            
+            if (not plotdir is None):
+                plt.savefig(os.path.join(plotdir, "x_y_depend_%s.png"%b))
+                plt.close("all")
+            else:	
+                plt.show() 
 
 def interpolate_zp(reduced, logfile):
     '''
@@ -1099,7 +1144,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
 
     #If extraction worked, we can get the FWHM        
     fwhm = fitsutils.get_par(image, "fwhm")
-    fwhm_as = fwhm * 0.394
+    fwhm_pix = fwhm / 0.394
 
     #Run aperture photometry on the positions of the stars.
     app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=25)
@@ -1128,7 +1173,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
             with open( logname, "a") as f:
                 f.write("#filename,exptime,filter,date,airmass,fwhm_pix,fwhm_as,zeropoint,color,err\n")
     with open( logname, "a") as f:
-        f.write("%s,%.1f,%s,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%(image,exptime,filt,date,airmass,fwhm,fwhm_as,z,c,err))
+        f.write("%s,%.1f,%s,%3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n"%(image,exptime,filt,date,airmass,fwhm_pix,fwhm,z,c,err))
         
     clean_tmp_files()
     
@@ -1148,7 +1193,7 @@ def plot_zp(zpfile, plotdir=None):
     for fi in ['u', 'g', 'r', 'i']:
         for i in range(len(a[a['filter']==fi])):
             plt.errorbar( (a[a['filter']==fi]['date'][i]-np.min(a[a['filter']==fi]['date'], axis=0))*24., \
-            a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i])
+            a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i]*5)
         logger.info( "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint'])))
 
     plt.gca().invert_yaxis()
