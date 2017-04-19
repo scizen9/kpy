@@ -75,7 +75,8 @@ def login():
         # user should be an instance of your `User` class
         username = form.username.data
         password = form.password.data
-        user_pass = db.get_from_users(['username', 'password'], {'username': username})
+        # user_pass = db.get_from_users(['username', 'password'], {'username': username})
+        user_pass = [(username, 'testing')]  # TODO: replace
         if not user_pass:
             message = "Incorrect username or password"
             return render_template('header.html', current_user=flask_login.current_user) + \
@@ -118,7 +119,7 @@ def requests():
                        (form1.object_id.data, form1.priority.data, form1.inidate.data, form1.enddate.data))
             else:
                 req = (-1, 'ERROR: inidate: %s after enddate: %s' % (form1.inidate.data, form1.enddate.data))
-            # TODO: return to following when able to access database
+            # TODO: replace with following when able to access database
             #req = db.add_request({'object_id': form1.object_id.data, 'exptime': '{120, 2400}', 'priority': form1.priority.data,
             #                      'inidate': form1.inidate.data, 'enddate': form1.enddate.data, 'user_id':0, 'program_id': 0})
             # TODO: set up user_id and program_id=
@@ -135,7 +136,7 @@ def requests():
                 dec = form2.DEC.data
                 rad = form2.radius.data
                 # req = db.get_objects_near(ra, dec, rad)
-                # TODO: uncomment db command
+                # TODO: replace with uncommented db command
                 req = [(1, 'placeholder')]
                 if req:
                     if req[0] == -1:
@@ -151,7 +152,8 @@ def requests():
                     obj_id = None
             elif form2.object_name.data:
                 obj_name = form2.object_name.data
-                req = db.get_object_id_from_name(obj_name)
+                # req = db.get_object_id_from_name(obj_name)
+                req = [(1, 'testing')]  # replace with above
                 if req:
                     message = 'name matches object(s): '
                     for target in req:
@@ -185,23 +187,62 @@ def schedule():
            render_template('footer.html')
 
 
-@app.route('/objects', defaults={'where': ''})
+@app.route('/objects', defaults={'where': ''}, methods=['GET', 'POST'])
 @app.route('/objects/<path:where>')
 def objects(where):
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
     ssoform = SSOForm()
+    message = None
+    urls = []
+    print where
+    if form2.submit_obj.data and form2.validate_on_submit():
+        if request.method == 'POST' and form2.validate():
+            if form2.RA.data and form2.DEC.data:
+                # coord_found = db.get_objects_near(form2.RA.data, form2.DEC.data, form2.radius.data)
+                found = [(1, 'placeholder')]  # TODO: replace with above
+
+            elif form2.object_name.data:
+                # name_found = db.get_object_id_from_name(form2.object_name.data)
+                found = [(2, 'name_placeholder')]  # TODO: replace with above
+            else:
+                found = None
+
+            if found is None:
+                message = "Not enough information provided"
+            elif form2.RA.data and not found:
+                message = "No objects in database within the coordinate range entered"
+            elif form2.object_name.data and not found:
+                message = "No object names in database contain %s" % (form2.object_name.data,)
+            elif found[0] == -1:
+                message = found[1]
+            elif len(found) > 1:
+                urls = [(obj[0], obj[1]) for obj in found]
+                message = "multiple objects matching coordinates:"
+            else:
+                return redirect(url_for('objects', where=found[0][0]))
+
     if where == 'add':
         return render_template('header.html', current_user=flask_login.current_user) + \
                render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
                render_template('footer.html')
     elif where:
+        try:
+            id = int(where)
+        except ValueError:
+            name = str(where)
+        if id:
+            info = db.get_from_object([])
+        elif name:
+            pass
         return render_template('header.html', current_user=flask_login.current_user) + \
                render_template('object.html', object=where) + \
                render_template('footer.html')
     # TODO: make an objects "homepage" to have as the base render
+    form2.radius.data = 4
     return render_template('header.html', current_user=flask_login.current_user) + \
-           render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None) + \
+           render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None,
+                           message=message, urls = urls) + \
            render_template('footer.html')
 
 
