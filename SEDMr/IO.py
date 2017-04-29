@@ -1,5 +1,5 @@
 import os
-import pyfits as pf
+import astropy.io.fits as pf
 import NPK.Util as UU
 import numpy as np
 import warnings
@@ -39,7 +39,7 @@ def readspec(path, corrname='std-correction.npy'):
         else:
             corrname = '/scr2/sedm/ref/std-correction.npy'
 
-    print "Attempting to load standard correction in: %s" % corrname
+    print("Attempting to load standard correction in: %s" % corrname)
         
     ss = np.load(path)[0]
 
@@ -58,7 +58,7 @@ def readspec(path, corrname='std-correction.npy'):
         skyspec = ss['skyph'] * corf(lam)
     else:
         skyspec = None
-        print "Spectrum in %s has no sky spectrum" % path 
+        print("Spectrum in %s has no sky spectrum" % path)
     
     if 'var' in ss:
         with warnings.catch_warnings():
@@ -66,7 +66,7 @@ def readspec(path, corrname='std-correction.npy'):
             std = np.sqrt(np.abs(ss['var']) * corf(lam)*corf(lam))
     else:
         std = None
-        print "Spectrum in %s has no variance spectrum" % path
+        print("Spectrum in %s has no variance spectrum" % path)
 
     if 'meta' in ss:
         meta = ss['meta']
@@ -104,9 +104,9 @@ def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
 
     if no_lossy_compress: 
         if '.gz' in fname:
-            hlist.writeto(os.path.splitext(fname)[0], clobber=clobber)
+            hlist.writeto(os.path.splitext(fname)[0], overwrite=clobber)
         else:
-            hlist.writeto(fname, clobber=clobber)
+            hlist.writeto(fname, overwrite=clobber)
         return
     
     if '.gz' in fname:
@@ -114,7 +114,7 @@ def writefits(towrite, fname, no_lossy_compress=False, clobber=False):
     else:
         n = fname
     hlist[0].data = UU.floatcompress(hlist[0].data)
-    hlist.writeto(fname, clobber=clobber)
+    hlist.writeto(fname, overwrite=clobber)
     
     os.system("gzip  %s" % n)
     
@@ -125,7 +125,8 @@ def convert_spectra_to_recarray(spectra):
     keys = spectra[0].__dict__.keys()
 
     to_remove = ["mdn_coeff", "hg_lines", "spec", "specw"]
-    map(keys.remove, to_remove)
+    for k in to_remove:
+        keys.remove(k)
 
     types = []
     for key in keys:
@@ -217,5 +218,5 @@ def write_cube(spectra):
     f4.header['CUNIT1'] = 'NM'
 
     towrite = pf.HDUList([f1, f2, t3, f4, f5])
-    towrite.writeto('test.fits', clobber=True)
+    towrite.writeto('test.fits', overwrite=True)
 

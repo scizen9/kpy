@@ -2,13 +2,16 @@
 import argparse
 import numpy as np
 import pylab as pl
-import pyfits as pf
+import astropy.io.fits as pf
 
 import NPK.Fit as NFit
 
 from scipy.interpolate import interp1d
 
 import SEDMr.Wavelength as Wavelength
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
@@ -19,7 +22,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     Args:
         cube (extraction array): List of Extraction object, the fine loc +
             wave solution for each spectrum
-        hdulist (pyfits obj): Pyfits object for the spectrum to measure
+        hdulist (astropy.io.fits obj): Pyfits object for the spectrum to measure
         drow (float): offset in rows for flexure (y-axis)
         skylines (float, float): The night skylines to centroid on in nm
 
@@ -44,7 +47,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     spec_ixs = np.arange(500, 1200, 10)
     # fiducial wavelength grid
     lamgrid = Wavelength.fiducial_spectrum(lamstart=lamstart,
-                                           lamratio=lamratio, len=lamlen)
+                                           lamratio=lamratio, npx=lamlen)
     # initialize grid of spaxel spectra
     specgrid = np.zeros((len(lamgrid), len(spec_ixs)))
 
@@ -72,13 +75,14 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         for jx, xpos in enumerate(np.arange(f.xrange[0], f.xrange[1])):
 
             # get y position on image
-            ypos = yfun(xpos)
+            ypos = int(yfun(xpos))
 
             # extract spectrum from image
             try:
                 spec[jx] = np.sum(dat[ypos-extract_width:ypos+extract_width,
                                   xpos])
             except:
+                print("Warning: no sum for sky spectrum %d at %d" % (jx, xpos))
                 continue
 
         # get wavelengths of spaxel
@@ -94,7 +98,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
 
     # create a median spectrum from spaxel grid
     # taking a median minimizes impact of objects in sample
-    skyspec = np.median(specgrid, axis=1)
+    skyspec = np.nanmedian(specgrid, axis=1)
 
     # plot resulting sky spectrum
     pl.step(lamgrid, skyspec, where='mid')
@@ -125,7 +129,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         # do the fit
         fit = NFit.mpfit_do(ffun, lamgrid[roi], skyspec[roi], parinfo)
         # did the fit succeed?
-        if fit.status == 1 and fit.params[2] > 0.:
+        if fit.status == 1 and 0. < fit.params[2] < 12.:
             off = fit.params[1] - skyline
             sumoff += off * fit.params[0]
             sumscale += fit.params[0]
@@ -135,21 +139,29 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
             dxnm = fit.params[1] - skyline
             legend.append("%.1f, %.2f" % (skyline, off))
         else:
+            sumscale = 0.
             dxnm = 0.
 
-        print("line = %6.1f (%6.1f), FWHM = %.2f nm, status = %d, dX = %3.2f nm shift" %
+        print("line = %6.1f (%6.1f), FWHM = %.2f nm, status = %d,"
+              " dX = %3.2f nm shift" %
               (skyline, fit.params[0], fit.params[2]*2.354, fit.status, dxnm))
 
     if sumscale > 0.:
         dxnm = sumoff / sumscale
     else:
-        print "Warning: no good skylines to fit!  Setting X offset to 0.0 nm"
+        print("Warning: no good skylines to fit!  Setting X offset to 0.0 nm")
         dxnm = 0.
         minsig = 0.
-    print "dX = %3.2f nm shift" % dxnm
+    print("dX = %3.2f nm shift" % dxnm)
 
     pl.title("dX = %3.2f nm shift, dY = %3.2f px shift" % (dxnm, drow))
     pl.legend(legend)
+
+    ax = pl.gca()
+    ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                xycoords=('axes fraction', 'figure fraction'),
+                textcoords='offset points', size=6,
+                ha='center', va='bottom')
 
     if plot:
         pl.show()
@@ -256,8 +268,8 @@ def measure_flexure_y(cube, hdulist, profwidth=5, plot=False):
     # clean 3 sigma outliers
     ok = np.abs(profwidys - mn)/sd < 3
     average_width = np.mean(profwidys[ok]) * 2.354
-    print "yFWHM = %5.2f pixels" % average_width
-    print "dY = %3.2f pixel shift" % required_shift
+    print("yFWHM = %5.2f pixels" % float(average_width))
+    print("dY = %3.2f pixel shift" % required_shift)
 
     if plot:
         px = (profwidth+1) + required_shift
@@ -304,7 +316,7 @@ if __name__ == '__main__':
     HDU = pf.open(args.infile)
     dy, ywid = measure_flexure_y(fine, HDU, profwidth=args.profwidth,
                                  plot=args.plot)
-    dx, xwid = measure_flexure_x(fine, HDU, drow=dy,
+    dx, xwid = measure_flexure_x(fine, HDU, drow=float(dy),
                                  skylines=args.skylines,
                                  lamstart=args.lamstart,
                                  lamratio=args.lamratio,
@@ -326,6 +338,8 @@ if __name__ == '__main__':
             'yfwhm': ywid,
             'xfwhm': xwid,
             'dXnm': dx,
-            'dYpix': dy}]
+            'dYpix': dy,
+            'drp_version': drp_ver}]
 
     np.save(args.outfile, res)
+    print("Wrote %s.npy" % args.outfile)

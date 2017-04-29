@@ -109,4 +109,4 @@ if __name__ == '__main__':
         cmd = 'cat report_ptf.txt | mail -s "SEDM DRP Report for %s" iptftransient@lists.astro.caltech.edu'%current_dir
         subprocess.call(cmd, shell=True)
     else:
-        print "No PTF objects to report. \n"
+        print("No PTF objects to report. \n")

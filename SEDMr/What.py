@@ -1,4 +1,4 @@
-import pyfits as pf
+import astropy.io.fits as pf
 
 
 def go(imfiles):
@@ -7,9 +7,10 @@ def go(imfiles):
         header = FF[0].header
         header['FNAME'] = ifile
         try:
-            print "%(FNAME)28s (%(AIRMASS)1.3f/%(ADCSPEED)1.1f/%(EXPTIME)s s): %(OBJECT)-30s" % header
+            print("%(FNAME)28s (%(AIRMASS)1.3f/%(ADCSPEED)1.1f/%(EXPTIME)s s):"
+                  " %(OBJECT)-30s" % header)
         except:
-            print "%28s : ?" % ifile
+            print("%28s : ?" % ifile)
 
 
 if __name__ == '__main__':

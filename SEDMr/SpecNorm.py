@@ -49,16 +49,16 @@ class normalizer:
         fig.canvas.mpl_connect('button_press_event',self.onclick)
         fig.canvas.mpl_connect('pick_event',self.onpick)
 
-        print '*'*20
-        print ' L click to define spline points'
-        print ' R click on a point to remove it'
-        print ' press enter at any point to refit continuum'
-        print ' after continuum is fit, press "n" to normalize'
-        print ' press "r" to reset'
-        print ' press "w" to write normalized spectrum out to file'
-        print 'When finished, the continuum is accessible as "<normalizer>.continuum"'
-        print 'The continuum function is accessible as "<normalizer>.cfunc"'
-        print '*'*20
+        print('*'*20)
+        print(' L click to define spline points')
+        print(' R click on a point to remove it')
+        print(' press enter at any point to refit continuum')
+        print(' after continuum is fit, press "n" to normalize')
+        print(' press "r" to reset')
+        print(' press "w" to write normalized spectrum out to file')
+        print('When finished, the continuum is accessible as "<normalizer>.continuum"')
+        print('The continuum function is accessible as "<normalizer>.cfunc"')
+        print('*'*20)
 
         # Now put some control points down
             
@@ -67,7 +67,7 @@ class normalizer:
 
             window = ((lam-self.winwidth)<=self.wave) &\
                       (self.wave<=(lam+self.winwidth))
-            y = np.median(self.flux[window])
+            y = np.nanmedian(self.flux[window])
 
             if y != y: 
                 continue
@@ -87,14 +87,14 @@ class normalizer:
         if event.button==1 and toolbar.mode=='':
             window = ((event.xdata-self.winwidth)<=self.wave) &\
                       (self.wave<=(event.xdata+self.winwidth))
-            y = np.median(self.flux[window])
+            y = np.nanmedian(self.flux[window])
             if y != y: 
-                print "clicked out of range"
+                print("clicked out of range")
                 return
 
             if near_balmer(event.xdata):
                 self.ax.plot(event.xdata,y,'bs',ms=10,picker=5,label='cont_pnt')
-                print "Blue point near balmer line"
+                print("Blue point near balmer line")
             else:
                 self.ax.plot(event.xdata,y,'rs',ms=10,picker=5,label='cont_pnt')
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     if args.std is None: 
         sss = lambda x: 1
     elif args.std not in Stds.Standards:
-        print "SpecNorm.py: Could not find the standard named %s" % args.std
+        print("SpecNorm.py: Could not find the standard named %s" % args.std)
         sss = lambda x: 1
     else:
         lstd = Stds.Standards[args.std][:,0]

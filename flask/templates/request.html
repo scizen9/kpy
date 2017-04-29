@@ -1,0 +1,51 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            {% if message %}
+                <div class="media-body">
+                    <h5> {{ message }}</h5>
+                </div>
+            {% endif %}
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Submit an observation request</h3>
+                    <form method="post">
+                        {{ form1.csrf_token }}
+                        <p>
+                            {{ render_field(form1.object_id) }}
+                            {{ render_field(form1.priority) }}
+                            {{ render_field(form1.inidate) }}
+                            {{ render_field(form1.enddate) }}
+                            {{ render_field(form1.project) }}
+                            {{ render_field(form1.submit_req) }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Find an object</h3>
+                    <h4>Search by coordinates:</h4>
+                    <div>
+                        <form method="post">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.RA) }}
+                                {{ render_field(form2.DEC) }}
+                                {{ render_field(form2.radius) }}
+                                {{ render_field(form2.submit_obj) }}
+                            </p>
+                        </form>
+                    </div>
+                    <h4>Search by name</h4>
+                    <div>
+                        <form method="post">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.object_name) }}
+                                {{ render_field(form2.submit_obj) }}
+                            </p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>

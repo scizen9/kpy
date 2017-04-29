@@ -1,17 +1,25 @@
 import argparse
+from stsci.image.numcombine import numCombine as nc
+import astropy.io.fits as pf
 import numpy as np
+import time
+import SEDMr.Version as Version
 
-def imcombine(filelist, out, listfile=None, bpmask=None, reject="none", 
-                nlow=None, nhigh=None):
+drp_ver = Version.ifu_drp_version()
 
-    """Convenience wrapper around IRAF task imcombine
+
+def imcombine(flist, fout, listfile=None, combtype="mean",
+              nlow=0, nhigh=0):
+
+    """Convenience wrapper around STSCI python task numCombine
 
     Args:
-        filelist (list of str): The list of files to imcombine
-        out (str): The full path to the output file
-        bpmask (str): The full path to the bad pixel mask
-        reject (str): none, minmax, sigclip, avsigclip, pclip
-        nlow,nhigh (int,int): Parameters for minmax rejection, see iraf docs
+        flist (list of str): The list of files to imcombine
+        listfile (string): The file to store the list of images in
+        fout (str): The full path to the output file
+        combtype (str): median, mean, sum, minimum
+        nlow (int): Number of low pixels to throw out in median calculation
+        nhigh (int): Number of high pixels to throw out in median calculation
     
     Returns:
         None
@@ -21,37 +29,42 @@ def imcombine(filelist, out, listfile=None, bpmask=None, reject="none",
 
     """
 
-    #TODO: REMOVE Iraf and use python instead. STSCI Python has
-    # A builtin routine.
-    from pyraf import iraf
-    iraf.images()
+    imstack = []
+    for fl in flist:
+        inhdu = pf.open(fl)
+        img = inhdu[0].data
+        img = img.astype(np.float)
+        imstack.append(img)
 
-    filelist = [("%s[0]" % f) for f in filelist]
-    pars = iraf.imcombine.getParList()
-    iraf.imcombine.unlearn()
+    hdr = inhdu[0].header
+
+    result = nc(imstack, combinationType=combtype, nlow=nlow, nhigh=nhigh)
+
+    oimg = result.combArrObj
+
+    ncom = 1
+    for fl in flist:
+        key = "IMCMB%03d" % ncom
+        ncom += 1
+        hdr[key] = fl
+
+    hdr['NCOMBINE'] = (len(flist), 'number of images combined')
+    hdr['COMBTYPE'] = (combtype, 'type of combine')
+    hdr['COMBNLO'] = (nlow, 'number of low pixels to reject')
+    hdr['COMBNHI'] = (nhigh, 'number of high pixels to reject')
+    hdr.add_history('SEDMr.Imcombine run on %s' % time.strftime("%c"))
+    hdr['DRPVER'] = drp_ver
+
+    pf.writeto(fout, oimg, hdr)
 
     if listfile is None:
         path = "flatcombine.lst"
-    else: path = listfile
+    else:
+        path = listfile
     f = open(path, "w")
-    for file in filelist:
+    for file in flist:
         f.write(file + "\n")
     f.close()
-
-    s = ("%s," * len(filelist))[0:-1]
-    s = s % tuple(filelist)
-
-    if reject == 'minmax':
-        t = iraf.imcombine("@%s" % path, out, combine="average",
-            reject=reject, nlow=nlow, nhigh=nhigh)
-    elif reject == 'sigclip':
-        t = iraf.imcombine("@%s" % path, out, combine="average",
-            reject=reject, lsigma=nlow, hsigma=nhigh)
-    else:
-        t = iraf.imcombine(s, out, Stdin=filelist, Stdout=1, combine="average",
-            reject=reject)
-
-    iraf.imcombine.setParList(pars)
 
 
 if __name__ == '__main__':
@@ -64,11 +77,11 @@ if __name__ == '__main__':
 
     """, formatter_class=argparse.RawTextHelpFormatter)
 
-
     parser.add_argument('--files', type=str, nargs='*', default=[])
     parser.add_argument('--listfile', type=str, default=None)
-    parser.add_argument('--Nhi', type=float, default=None)
-    parser.add_argument('--Nlo', type=float, default=None)
+    parser.add_argument('--Nhi', type=int, default=0)
+    parser.add_argument('--Nlo', type=int, default=0)
+    parser.add_argument('--combtype', type=str, default='mean')
     parser.add_argument('--reject', type=str, default='none')
     parser.add_argument('--outname', type=str, default=None)
     args = parser.parse_args()
@@ -76,9 +89,9 @@ if __name__ == '__main__':
     filelist = args.files
     out = args.outname
     if args.outname is None:
-        print "Set --outname"
+        print("Set --outname")
 
-    imcombine(filelist, out, listfile=args.listfile, bpmask=None, 
-                reject=args.reject, nlow=args.Nlo, nhigh=args.Nhi)
+    imcombine(filelist, out, listfile=args.listfile, combtype=args.combtype,
+              nlow=args.Nlo, nhigh=args.Nhi)
 
 

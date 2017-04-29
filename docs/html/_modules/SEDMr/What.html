@@ -39,7 +39,7 @@
           <div class="body" role="main">
             
   <h1>Source code for SEDMr.What</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span></span><span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 
 
 <div class="viewcode-block" id="go"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.What.go">[docs]</a><span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="n">imfiles</span><span class="p">):</span>
@@ -48,9 +48,10 @@
         <span class="n">header</span> <span class="o">=</span> <span class="n">FF</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
         <span class="n">header</span><span class="p">[</span><span class="s1">&#39;FNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ifile</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%(FNAME)28s</span><span class="s2"> (</span><span class="si">%(AIRMASS)1.3f</span><span class="s2">/</span><span class="si">%(ADCSPEED)1.1f</span><span class="s2">/</span><span class="si">%(EXPTIME)s</span><span class="s2"> s): </span><span class="si">%(OBJECT)-30s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">header</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%(FNAME)28s</span><span class="s2"> (</span><span class="si">%(AIRMASS)1.3f</span><span class="s2">/</span><span class="si">%(ADCSPEED)1.1f</span><span class="s2">/</span><span class="si">%(EXPTIME)s</span><span class="s2"> s):&quot;</span>
+                  <span class="s2">&quot; </span><span class="si">%(OBJECT)-30s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">header</span><span class="p">)</span>
         <span class="k">except</span><span class="p">:</span>
-            <span class="k">print</span> <span class="s2">&quot;</span><span class="si">%28s</span><span class="s2"> : ?&quot;</span> <span class="o">%</span> <span class="n">ifile</span></div>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%28s</span><span class="s2"> : ?&quot;</span> <span class="o">%</span> <span class="n">ifile</span><span class="p">)</span></div>
 
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>

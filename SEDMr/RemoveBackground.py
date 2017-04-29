@@ -1,9 +1,6 @@
-import argparse
-import numpy as np
-import tempfile
 import os
 import getpass
-import pyfits as pf
+import astropy.io.fits as pf
 
 
 # catalog_name, output_name
@@ -89,8 +86,8 @@ XML_NAME         sex.xml        # Filename for XML output
 
 
 def handle_path(path):
-    name= os.path.basename(path)
-    user= getpass.getuser()
+    name = os.path.basename(path)
+    user = getpass.getuser()
 
     c = sex_params.format(**{"catalog_name": "cat_%s.txt" % name,
         "user": user, "output_name": name})
@@ -102,16 +99,19 @@ def handle_path(path):
 
 
 def remove(fname):
-    try: os.remove(fname)
-    except: pass
+    try:
+        os.remove(fname)
+    except:
+        pass
+
 
 def grow(img):
 
     img[img > 0] = 1
-    cp = img[:,:]
+    cp = img[:, :]
 
-    for ix in xrange(img.shape[0]):
-        for jx in xrange(img.shape[1]):
+    for ix in range(img.shape[0]):
+        for jx in range(img.shape[1]):
             if img[ix,jx] == 1:
                 try:
                     cp[ix,jx+1] = 1
@@ -125,9 +125,10 @@ def grow(img):
 
     return cp
 
+
 def go(paths):
 
-    user= getpass.getuser()
+    user = getpass.getuser()
 
     f = open("/tmp/sex.%s.param" % user, 'w')
     f.write("NUMBER\nX_IMAGE\nY_IMAGE\nFLUX_ISO\nISOAREA_IMAGE\n")
@@ -155,7 +156,7 @@ def go(paths):
         tofill = mask > 0
         if tofill.any():
             Di[0].data[tofill] = Bi[0].data[tofill]
-            #Di[0].data[tofill] = np.nan
+            # Di[0].data[tofill] = np.nan
             Di.writeto("backfill_%s" % name, clobber=True)
 
         path = path.replace(name, "backfill_%s" % name)
@@ -180,16 +181,8 @@ def go(paths):
         remove("cat_%s.txt" % name)
 
 
-            
-
-        
-
-
-
 if __name__ == '__main__':
     
     import sys
 
     go(sys.argv[1:])
-    
-

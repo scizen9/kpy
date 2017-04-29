@@ -40,7 +40,7 @@
             
   <h1>Source code for SEDMr.IO</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 <span class="kn">import</span> <span class="nn">NPK.Util</span> <span class="kn">as</span> <span class="nn">UU</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
@@ -80,7 +80,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">corrname</span> <span class="o">=</span> <span class="s1">&#39;/scr2/sedm/ref/std-correction.npy&#39;</span>
 
-    <span class="k">print</span> <span class="s2">&quot;Attempting to load standard correction in: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">corrname</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Attempting to load standard correction in: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">corrname</span><span class="p">)</span>
         
     <span class="n">ss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
@@ -99,7 +99,7 @@
         <span class="n">skyspec</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;skyph&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">skyspec</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="k">print</span> <span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no sky spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span> 
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no sky spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
     
     <span class="k">if</span> <span class="s1">&#39;var&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
@@ -107,7 +107,7 @@
             <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ss</span><span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span><span class="o">*</span><span class="n">corf</span><span class="p">(</span><span class="n">lam</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">std</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="k">print</span> <span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no variance spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Spectrum in </span><span class="si">%s</span><span class="s2"> has no variance spectrum&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="s1">&#39;meta&#39;</span> <span class="ow">in</span> <span class="n">ss</span><span class="p">:</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="s1">&#39;meta&#39;</span><span class="p">]</span>
@@ -145,9 +145,9 @@
 
     <span class="k">if</span> <span class="n">no_lossy_compress</span><span class="p">:</span> 
         <span class="k">if</span> <span class="s1">&#39;.gz&#39;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span>
-            <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
+            <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
+            <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
         <span class="k">return</span>
     
     <span class="k">if</span> <span class="s1">&#39;.gz&#39;</span> <span class="ow">in</span> <span class="n">fname</span><span class="p">:</span>
@@ -155,7 +155,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">fname</span>
     <span class="n">hlist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">UU</span><span class="o">.</span><span class="n">floatcompress</span><span class="p">(</span><span class="n">hlist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-    <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
+    <span class="n">hlist</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">clobber</span><span class="p">)</span>
     
     <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s2">&quot;gzip  </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">n</span><span class="p">)</span></div>
     
@@ -166,7 +166,8 @@
     <span class="n">keys</span> <span class="o">=</span> <span class="n">spectra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
 
     <span class="n">to_remove</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mdn_coeff&quot;</span><span class="p">,</span> <span class="s2">&quot;hg_lines&quot;</span><span class="p">,</span> <span class="s2">&quot;spec&quot;</span><span class="p">,</span> <span class="s2">&quot;specw&quot;</span><span class="p">]</span>
-    <span class="nb">map</span><span class="p">(</span><span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">,</span> <span class="n">to_remove</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">:</span>
+        <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
 
     <span class="n">types</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
@@ -258,7 +259,7 @@
     <span class="n">f4</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;CUNIT1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NM&#39;</span>
 
     <span class="n">towrite</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="n">t3</span><span class="p">,</span> <span class="n">f4</span><span class="p">,</span> <span class="n">f5</span><span class="p">])</span>
-    <span class="n">towrite</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s1">&#39;test.fits&#39;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
+    <span class="n">towrite</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s1">&#39;test.fits&#39;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></div>
 
 </pre></div>
 

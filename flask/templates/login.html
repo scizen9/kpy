@@ -1,0 +1,26 @@
+{% from "_formhelpers.html" import render_field %}
+        {% if fail %}
+            <div class="alert alert-danger fade in" id="login-failed"
+                 role="alert" style="margin-bottom:0; display:none">
+                <a href="#" class="close" onclick="$('#login-failed').slideUp('fast');">&times;</a>
+                <strong>Error!</strong> Incorrect username or password.
+            </div>
+        {% endif %}
+.....
+        <div class="container container-table">
+            <div class="row vertical-center-row">
+                <div class="text-center col-md-4 col-md-offset-4">
+                    <div class="form-group">
+                        <form class="form-signin" action="login" method="POST">
+                            {{ form.csrf_token }}
+                            <p>
+                                {{ render_field(form.username) }}
+                                {{ render_field(form.password) }}
+                            </p>
+                            <input class="btn btn-lg btn-success btn-block" type="submit" value="Sign in">
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>

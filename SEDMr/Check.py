@@ -33,6 +33,7 @@ import argparse
 import datetime
 import os
 import sys
+from builtins import input
 
 import numpy as np
 import pylab as pl
@@ -43,7 +44,7 @@ import IO
 import NPK.Standards as Stds
 
 
-def check_cube(cubename, showlamrms=False, savefig=False):
+def check_cube(cubename, showlamrms=False, savefig=False, no_stamp=False):
     """Plot a datacube.
 
         This function can produce a PDF file of the data cube.
@@ -53,6 +54,7 @@ def check_cube(cubename, showlamrms=False, savefig=False):
             showlamrms (bool): display the rms of the wavelength fit,
                 otherwise display average trace width
             savefig (bool): save a pdf of the plot
+            no_stamp (bool): set to prevent printing DRP version stamp on plot
 
         Returns:
             None
@@ -64,6 +66,10 @@ def check_cube(cubename, showlamrms=False, savefig=False):
 
     cc, meta = np.load(cubename)
     fid_wave = meta['fiducial_wavelength']
+    if 'drp_version' in meta:
+        drp_ver = meta['drp_version']
+    else:
+        drp_ver = ''
 
     xs = [c.X_as for c in cc]
     ys = [c.Y_as for c in cc]
@@ -75,10 +81,10 @@ def check_cube(cubename, showlamrms=False, savefig=False):
                     ss[i] = cc[i].lamrms
 
         c, low, upp = sigmaclip(ss)
-        smdn = np.median(c)
+        smdn = np.nanmedian(c)
         sstd = np.nanstd(c)
         print("Nspax: %d, Nclip: %d, <RMS>: %f, RMS(std): %f" %
-              (len(cc), (len(cc) - len(c)), smdn, sstd))
+              (len(cc), (len(cc) - len(c)), float(smdn), float(sstd)))
         # smx = smdn + 3. * sstd
         # smn = smdn - 3. * sstd
         # if smn < 0.:
@@ -95,25 +101,35 @@ def check_cube(cubename, showlamrms=False, savefig=False):
         outf = "cube_trace_sigma.pdf"
 
     pl.figure(1)
-    pl.scatter(xs, ys, marker='H', linewidth=0, s=50, c=ss, vmin=smn, vmax=smx)
-    pl.title("Hexagonal Grid of Cube Positions")
-    pl.xlim(-25, 25)
-    pl.ylim(-25, 25)
+    pl.scatter(xs, ys, marker='H', linewidth=0, s=35, c=ss, vmin=smn, vmax=smx,
+               cmap=pl.get_cmap('jet'))
+    if not no_stamp:
+        pl.title("Hexagonal Grid of Cube Positions")
+    pl.xlim(15, -15)
+    pl.ylim(-15, 15)
 
     pl.colorbar(label=cbtitle)
-    pl.xlabel("X position [as] @ %6.1f nm" % fid_wave)
-    pl.ylabel("Y position [as]")
+    pl.xlabel("RA offset [asec] @ %6.1f nm" % fid_wave)
+    pl.ylabel("Dec offset [asec]")
+    # Add drp version
+    if len(drp_ver) > 0 and not no_stamp:
+        ax = pl.gca()
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
+
     pl.grid(True)
     pl.ioff()
     if savefig:
         pl.savefig(outf)
-        print "Figure saved to " + outf
+        print("Figure saved to " + outf)
     else:
         pl.show()
 
 
 def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
-               savefig=False, savespec=False, interact=False):
+               savefig=False, savespec=False, interact=False, no_stamp=False):
     """Plot a spectrum.
 
     This function can produce an ascii spectrum suitable for uploading
@@ -128,6 +144,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         savefig (bool): save a pdf of the plot
         savespec (bool): save an ascii spectrum
         interact (bool): query for the quality of the spectrum
+        no_stamp (bool): set to prevent printing DRP version stamp on plot
 
     Returns:
         None
@@ -150,8 +167,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         stdspec /= 10.
 
     # Print wavelength range
-    print "Wavelengths from %.1f - %.1f" % (np.nanmin(lam[np.isfinite(spec)]),
-                                            np.nanmax(lam[np.isfinite(spec)]))
+    print("Wavelengths from %.1f - %.1f" %
+          (float(np.nanmin(lam[np.isfinite(spec)])),
+           float(np.nanmax(lam[np.isfinite(spec)]))))
 
     # Get object name
     if 'header' in meta:
@@ -163,9 +181,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         obj = ''
 
-    print "Plotting spectrum in %s" % specname
+    print("Plotting spectrum in %s" % specname)
     if 'radius_as' in ss:
-        print "Extraction radius: %1.2f asec" % ss['radius_as']
+        print("Extraction radius: %1.2f asec" % ss['radius_as'])
 
     if 'airmass1' in meta:
         ec = meta['airmass1']
@@ -186,7 +204,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         maxwl = 9200.0
 
-    print "Max Angstroms: %7.1f" % maxwl
+    print("Max Angstroms: %7.1f" % maxwl)
 
     # If it has airmass2 then must be A/B pair
     if 'airmass2' in meta:
@@ -217,6 +235,11 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     except:
         utc = ''
 
+    if 'drp_version' in ss:
+        drp_ver = ss['drp_version']
+    else:
+        drp_ver = ''
+
     # Annotate plots
     if qual > 0:
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
@@ -224,13 +247,14 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     else:
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s)" % \
              (specname, ec, et, "On" if skysub else "Off")
-    pl.title(tlab)
+    if not no_stamp:
+        pl.title(tlab)
     pl.xlabel("Wavelength [Ang]")
     pl.ylabel("erg/s/cm2/ang")
 
     # Handle plot geometry
-    plm = pl.get_current_fig_manager()
-    plm.window.wm_geometry("900x500+10+10")
+    # plm = pl.get_current_fig_manager()
+    # plm.window.wm_geometry("900x500+10+10")
 
     # See if this is a standard star
     pred = specname[7:]
@@ -245,29 +269,29 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         # Get reference spectrum
         standard = Stds.Standards[pred]
         slam = standard[:, 0]
-        sflx = standard[:, 1] * 1.e-16
+        sflx = standard[:, 1] * 1.e-16  # type: np.ndarray
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
-        lmed = np.median(spec[lroi])
+        lmed = np.nanmedian(spec[lroi])
 
         sroi = (slam > 4500) & (slam < 6500)
-        smed = np.median(sflx[sroi])
+        smed = np.nanmedian(sflx[sroi])
 
         rat = (lmed / smed)
 
         # Report offset
         ratmag = 2.5 * np.log10(rat)
-        print "Ref offset (Ref - Obs): %6.2f mag" % ratmag
+        print("Ref offset (Ref - Obs): %6.2f mag" % ratmag)
 
         # Apply offset for plotting
-        spec = spec / rat
+        spec /= rat
 
     # Set wavelength range
     ok = (lam > 3800) & (lam < maxwl)
 
     # Apply redshift
-    lamz = lam / (1 + redshift)
+    lamz = lam / (1 + redshift)  # type: np.ndarray
 
     # Plot object spectrum
 
@@ -304,15 +328,23 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Overplot reference spectrum
     if pred in Stds.Standards:
-        print "Overplotting %s reference spectrum" % pred
+        print("Overplotting %s reference spectrum" % pred)
         legend.append("ref")
         pl.plot(slam, sflx)
 
         # Remove plotting offset
-        spec = spec * rat
+        spec *= rat
 
     # Add legend
     pl.legend(legend)
+
+    # Add drp version
+    if len(drp_ver) > 0 and not no_stamp:
+        ax = pl.gca()
+        ax.annotate('DRP: '+drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                    xycoords=('axes fraction', 'figure fraction'),
+                    textcoords='offset points', size=6,
+                    ha='center', va='bottom')
 
     pl.grid(True)
     pl.ioff()
@@ -329,23 +361,24 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         pl.ion()
         pl.show()
         # Get quality of observation
-        print "Enter quality of observation:"
-        print "1 - good       (no problems)"
-        print "2 - acceptable (minor problem)"
-        print "3 - poor       (major problem)"
-        print "4 - no object visible"
+        print("Enter quality of observation:")
+        print("1 - good       (no problems)")
+        print("2 - acceptable (minor problem)")
+        print("3 - poor       (major problem)")
+        print("4 - no object visible")
         q = 'x'
         qual = -1
         prom = ": "
-        while not q.isdigit() or qual < 1 or qual > 4:
-            q = raw_input(prom)
-            if q.isdigit():
-                qual = int(q)
-                if qual < 1 or qual > 4:
-                    prom = "Try again: "
+        while qual < 1 or qual > 4:
+            q = input(prom)
+            if type(q) != int:
+                if q.isdigit():
+                    qual = int(q)
             else:
+                qual = q
+            if qual < 1 or qual > 4:
                 prom = "Try again: "
-        print "Quality = %d" % qual
+        print("Quality = %d" % qual)
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \
                (specname, ec, et, "On" if skysub else "Off", qual)
         pl.title(tlab)
@@ -353,9 +386,9 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         res[0]['quality'] = qual
 
         # Get reducer
-        print "Enter reducer of observations:"
+        print("Enter reducer of observations:")
         prom = "<cr> = ("+reducer+"): "
-        q = raw_input(prom)
+        q = input(prom)
         if len(q) > 0:
             reducer = q
 
@@ -363,15 +396,19 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Add reducer and save spectrum
     res[0]['reducer'] = reducer
-    print "Reducer: %s" % reducer
-    np.save(specname, res)
+    print("Reducer: %s" % reducer)
+    try:
+        np.save(specname, res)
+        print("Updated %s with reducer %s" % (specname, reducer))
+    except IOError:
+        print("Unable to update %s with reducer %s" % (specname, reducer))
 
     # Save fig to file
     if savefig:
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM.pdf'
         pl.savefig(outf)
-        print "Figure saved to " + outf
+        print("Figure saved to " + outf)
 
     if not interact and not savefig:
         pl.show()
@@ -381,7 +418,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         wl = lam[roi]
         fl = spec[roi]
         srt = wl.argsort().argsort()
-        outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+        outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
             '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
@@ -398,23 +435,31 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             header += "\nTRACEFWHMPX: %.1f" % ss['yfwhm']
         np.savetxt(outf, np.array([wl[srt], fl[srt]]).T, fmt='%8.1f  %.4e',
                    header=header)
-        print "Saved to " + outf
+        print("Spectrum saved to " + outf)
 
     if 'efficiency' in ss:
         pl.clf()
         tlab = "%s\n(Air: %1.2f | Expt: %i | Refl %d%% | Area %d cm^s)" % \
                (specname, ec, et, ss['reflectance']*100., ss['area'])
-        pl.title(tlab)
+        if not no_stamp:
+            pl.title(tlab)
         pl.xlabel("Wavelength [Ang]")
         pl.ylabel("SEDM efficiency (%)")
         pl.plot(ss['nm'], ss['efficiency']*100.)
+        # Add drp version
+        if len(drp_ver) > 0 and not no_stamp:
+            ax = pl.gca()
+            ax.annotate('DRP: ' + drp_ver, xy=(0.0, 0.01), xytext=(0, 0),
+                        xycoords=('axes fraction', 'figure fraction'),
+                        textcoords='offset points', size=6,
+                        ha='center', va='bottom')
         pl.grid(True)
         pl.ioff()
         if savefig:
-            outf = specname[(specname.find('_') + 1):specname.find('.')] + \
+            outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
                '_SEDM_eff.pdf'
             pl.savefig(outf)
-            print "Figure saved to " + outf
+            print("Figure saved to " + outf)
         else:
             pl.show()
 
@@ -439,13 +484,16 @@ if __name__ == '__main__':
     parser.add_argument('--redshift', type=float, default=0, help='Redshift')
     parser.add_argument('--smoothing', type=float, default=0,
                         help='Smoothing in pixels')
+    parser.add_argument('--no_stamp', action="store_true", default=False,
+                        help='Set to prevent plotting DRP version stamp')
 
     args = parser.parse_args()
 
     if args.cube is not None:
-        check_cube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig)
+        check_cube(args.cube, showlamrms=args.lambdarms, savefig=args.savefig,
+                   no_stamp=args.no_stamp)
     if args.spec is not None:
         check_spec(args.spec, corrname=args.corrname, redshift=args.redshift,
                    smoothing=args.smoothing,
                    savefig=args.savefig, savespec=args.savespec,
-                   interact=args.interact)
+                   interact=args.interact, no_stamp=args.no_stamp)

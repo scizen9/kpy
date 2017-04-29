@@ -30,7 +30,7 @@ import shutil
 import glob
 import sys
 import os
-import pyfits as pf
+import astropy.io.fits as pf
 import argparse
 import ephem
 
@@ -170,7 +170,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # Check if dome conditions are not right
     if onsky and 'CLOSED' in dome:
         if verbose:
-            print 'On sky and dome is closed, skipping %s' % src
+            print('On sky and dome is closed, skipping %s' % src)
     # All other conditions are OK
     else:
         # Skip test and Focus images
@@ -179,16 +179,16 @@ def docp(src, dest, onsky=True, verbose=False):
             shutil.copy2(src, dest)
             if 'STD-' in obj:
                 nstd = 1
-                print "Standard %s copied to %s" % (obj, dest)
+                print("Standard %s copied to %s" % (obj, dest))
             else:
-                print 'Target %s copied to %s' % (obj, dest)
+                print('Target %s copied to %s' % (obj, dest))
             ncp = 1
         # Report skipping and type
         else:
             if verbose and 'test' in hdr['OBJECT']:
-                print 'test file %s not copied' % src
+                print('test file %s not copied' % src)
             if verbose and 'Focus:' in hdr['OBJECT']:
-                print 'Focus file %s not copied' % src
+                print('Focus file %s not copied' % src)
 
     return ncp, nstd
     # END: docp
@@ -234,20 +234,42 @@ def proc_bias_crrs(ncp=1, oldcals=False):
                     retcode4 = os.system(cmd)
                 # Success on all fronts!
                 if retcode4 == 0:
-                    print "bias, crrs processed for %d new images" % ncp
+                    print("bias, crrs processed for %d new images" % ncp)
                     ret = True
                 # Report failures
                 else:
-                    print "could not make crrs"
+                    print("could not make crrs")
             else:
-                print "could not make bias"
+                print("could not make bias")
         else:
-            print "could not make plan"
+            print("could not make plan")
     else:
-        print "could not make what.list"
+        print("could not make what.list")
 
     return ret
     # END: proc_bias_crrs
+
+
+def proc_cogs():
+    """Process standard star curves of growth.
+
+    Returns:
+        bool: True if processing was successful, otherwise False
+
+    """
+
+    # Default return value
+    ret = False
+    # Make new stds
+    startTime = time.time()
+    retcode = os.system("make cogs.done")
+    procTime = int(time.time() - startTime)
+    # Did it work?
+    if retcode == 0:
+        print("Curves of growth processed in %d s" % procTime)
+        ret = True
+
+    return ret
 
 
 def proc_stds(ncp):
@@ -278,9 +300,6 @@ def proc_stds(ncp):
 
 def proc_auto():
     """Process automatic observations.
-
-    Args:
-        None
 
     Returns:
         bool: True if processing was successful, otherwise False
@@ -324,7 +343,7 @@ def proc_bkg_flex(copied):
             ret = False
 
     procTime = int(time.time() - startTime)
-    print ("%d files bkg subtracted in %d s" % (len(copied), procTime))
+    print("%d files bkg subtracted in %d s" % (len(copied), procTime))
     return ret
 
 
@@ -384,17 +403,17 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             ncp += nc
             nstd += ns
     # We copied files
-    print "Copied %d files" % ncp
+    print("Copied %d files" % ncp)
     # Do bias subtraction, CR rejection
     if ncp > 0:
         if not proc_bias_crrs(ncp, oldcals=oldcals):
-            print "Error processing bias/crrs"
+            print("Error processing bias/crrs")
         if not proc_bkg_flex(copied):
-            print "Error processing bkg/flex"
+            print("Error processing bkg/flex")
         # Process any standard stars
         if nstd > 0:
             if not proc_stds(nstd):
-                print "Error processing standard stars"
+                print("Error processing standard stars")
 
     return ncp
     # END: cpsci
@@ -421,7 +440,7 @@ def find_recent(redd, fname, destdir):
     # Make sure the file doesn't already exist in destdir
     local_file = glob.glob(os.path.join(destdir, fname))
     if len(local_file) == 1:
-        print "%s already exists in %s" % (fname, destdir)
+        print("%s already exists in %s" % (fname, destdir))
         ret = True
     # Search in redd for file
     else:
@@ -499,7 +518,7 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                     exptime = hdr['EXPTIME']
                     # Check for dome exposures
                     if 'dome' in obj:
-                        if exptime > 100. and ('Hal' in obj and 
+                        if exptime > 100. and ('dome' in obj and
                                                'Xe' not in obj and
                                                'Hg' not in obj and 
                                                'Cd' not in obj):
@@ -525,7 +544,7 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                                               verbose=True)
                                 ncp += nc
             else:
-                print "Truncated file: %s" % src
+                print("Truncated file: %s" % src)
 
     return ncp
     # END: cpprecal
@@ -586,7 +605,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 exptime = hdr['EXPTIME']
                 # Check for dome exposures
                 if 'dome' in obj:
-                    if exptime > 100. and ('Hal' in obj and 
+                    if exptime > 100. and ('dome' in obj and
                                            'Xe' not in obj and
                                            'Hg' not in obj and 
                                            'Cd' not in obj):
@@ -659,26 +678,26 @@ def ObsLoop(rawlist=None, redd=None):
     # Go there
     os.chdir(outdir)
     # report
-    print "Raw files from  : %s\nReduced files to: %s" % (srcdir, outdir)
+    print("Raw files from  : %s\nReduced files to: %s" % (srcdir, outdir))
     # Check if processed cal files are ready
     if not cal_ready(outdir):
         # Wait for cal files until sunset
         sunset = p60.next_setting(sun)
         # Copy raw cal files from previous date directory
         npre = cpprecal(rawlist, outdir)
-        print "Copied %d raw cal files from %s" % (npre, rawlist[-2])
+        print("Copied %d raw cal files from %s" % (npre, rawlist[-2]))
         # Now check the current source dir for raw cal files
         ncp = cpcal(srcdir, outdir)
-        print "Copied %d raw cal files from %s" % (ncp, srcdir)
+        print("Copied %d raw cal files from %s" % (ncp, srcdir))
         # Now loop until we have the raw cal files we need or sun is down
         while not cal_proc_ready(outdir):
             # Wait a minute
-            print "waiting 60s..."
+            print("waiting 60s...")
             sys.stdout.flush()
             time.sleep(60)
-            print "checking %s for new raw cal files..." % srcdir
+            print("checking %s for new raw cal files..." % srcdir)
             ncp = cpcal(srcdir, outdir)
-            print "Copied %d raw cal files from %s" % (ncp, srcdir)
+            print("Copied %d raw cal files from %s" % (ncp, srcdir))
             sys.stdout.flush()
             if ncp <= 0:
                 # Check to see if we are still before and hour after sunset
@@ -716,9 +735,9 @@ def ObsLoop(rawlist=None, redd=None):
                     retcode = os.system("make flat-dome-700to900.npy")
                     if not (os.path.exists(
                             os.path.join(outdir, 'flat-dome-700to900.npy'))):
-                        print "Making of flat-dome-700to900.npy failed!"
+                        print("Making of flat-dome-700to900.npy failed!")
                 else:
-                    print "Making of fine.npy and cube.npy failed!"
+                    print("Making of fine.npy and cube.npy failed!")
                 procfTime = int(time.time() - startTime)
                 # Report times
                 print("Calibration processing took "
@@ -727,8 +746,8 @@ def ObsLoop(rawlist=None, redd=None):
 
         # Check status
         if not cal_ready(outdir):
-            print "These calibrations failed!"
-            print "Let's get our calibrations from a previous night"
+            print("These calibrations failed!")
+            print("Let's get our calibrations from a previous night")
             ncf = find_recent(redd, 'fine.npy', outdir)
             ncc = find_recent(redd, 'cube.npy', outdir)
             ncd = find_recent(redd, 'flat-dome-700to900.npy', outdir)
@@ -744,9 +763,9 @@ def ObsLoop(rawlist=None, redd=None):
             oldcals = True
             print("Using older calibration files")
     else:
-        print "Calibrations already present in %s" % outdir
+        print("Calibrations already present in %s" % outdir)
 
-    print "Calibration stage complete, ready for science!"
+    print("Calibration stage complete, ready for science!")
     # Keep track of no copy
     nnc = 0
     # loop and copy new files
@@ -756,11 +775,11 @@ def ObsLoop(rawlist=None, redd=None):
             # Wait for next sunrise
             sunrise = p60.next_rising(sun)
             # Wait a minute
-            print "waiting 60s for new ifu images...",
+            print("waiting 60s for new ifu images...")
             sys.stdout.flush()
             time.sleep(60)
             # Check for new ifu images
-            print "checking %s for new ifu images..." % srcdir
+            print("checking %s for new ifu images..." % srcdir)
             sys.stdout.flush()
             # Record starting time for new file processing
             startTime = time.time()
@@ -768,7 +787,7 @@ def ObsLoop(rawlist=None, redd=None):
             # We copied some new ones so report processing time
             if ncp > 0:
                 procTime = int(time.time() - startTime)
-                print "%d new ifu images processed in %d s" % (ncp, procTime)
+                print("%d new ifu images processed in %d s" % (ncp, procTime))
                 sys.stdout.flush()
                 nnc = 0
             else:
@@ -783,7 +802,7 @@ def ObsLoop(rawlist=None, redd=None):
                           "%02d:%02d so sun is up!" %
                           (nnc, now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
-                    print "Time to wait until we have a new raw directory"
+                    print("Time to wait until we have a new raw directory")
                     doit = False
                     # Normal termination
                     ret = True
@@ -798,6 +817,12 @@ def ObsLoop(rawlist=None, redd=None):
             print("Automatic processing successful")
         else:
             print("Automatic processing not successful")
+        # do curves of growth
+        cogs_status = proc_cogs()
+        if cogs_status:
+            print("Curves of growth generated successfully")
+        else:
+            print("Error processing curves of growth")
 
     # Handle a ctrl-C
     except KeyboardInterrupt:
@@ -838,7 +863,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
     nraw = len(rawlist)
     print("Found %d raw directories in %s: putting reduced data in %s" %
           (nraw, rawd, redd))
-    print "Latest raw directory is %s" % rawlist[-1]
+    print("Latest raw directory is %s" % rawlist[-1])
     if not wait:
         stat = ObsLoop(rawlist, redd)
         its += 1
@@ -847,10 +872,10 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
     try:
         while dobs:
             if stat:
-                print "Now we wait until we get a new raw directory"
+                print("Now we wait until we get a new raw directory")
                 waiting = True
                 while waiting:
-                    print "waiting 10min for new raw directory..."
+                    print("waiting 10min for new raw directory...")
                     sys.stdout.flush()
                     time.sleep(600)
                     # Get all raw directories
@@ -869,7 +894,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
                         print("UT = %02d:%02d No new directories yet, "
                               "so keep waiting" % (gm.tm_hour, gm.tm_min))
                         sys.stdout.flush()
-            print "Latest raw directory is %s" % rawlist[-1]
+            print("Latest raw directory is %s" % rawlist[-1])
             stat = ObsLoop(rawlist, redd)
             its += 1
             print("Finished SEDM observing iteration %d in raw dir %s" %

@@ -26,15 +26,38 @@ import sextractor
 import zeropoint
 from astropy.io import fits
 
-#Log into a file
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
+
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-#root_dir = "/tmp/logs/"
-root_dir = "/scr2/sedm/logs/"
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
+creationdate = timestamp
 timestamp=timestamp.split("T")[0]
-logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
-logger = logging.getLogger('rcred')
+
+try:
+    #Log into a file
+    root_dir = _logpath
+    logging.basicConfig(format=FORMAT, filename=os.path.join(root_dir, "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger = logging.getLogger('rcred')
+except:
+    logging.basicConfig(format=FORMAT, filename=os.path.join("/tmp", "rcred_{0}.log".format(timestamp)), level=logging.INFO)
+    logger= logging.getLogger("rcred")
+    
+
+
     
 def get_xy_coords(image, ra, dec):
     '''
@@ -482,7 +505,7 @@ def copy_ref_calib(curdir, calib="Flat"):
         
         
 
-def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
+def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.
@@ -490,12 +513,13 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
 
     img = os.path.abspath(img)
     
-    ra = fitsutils.get_par(img, 'OBJRA')
-    dec = fitsutils.get_par(img, 'OBJDEC')
+    ra = fitsutils.get_par(img, 'RA')
+    dec = fitsutils.get_par(img, 'DEC')
     #logger.info( "Solving astrometry on field with (ra,dec)=%s %s"%(ra, dec))
     
     astro = os.path.join( os.path.dirname(img), "a_" + os.path.basename(img))
-    
+
+
     #If astrometry exists, we don't run it again.
     if (os.path.isfile(astro) and not overwrite):
         return astro
@@ -521,7 +545,11 @@ def solve_astrometry(img, radius=3, with_pix=True, overwrite=False, tweak=3):
         
     is_on_target(img)
     
-    return astro
+    if (not outimage is None and overwrite and os.path.isfile(astro)):
+        shutil.move(astro, outimage)
+	return outimage
+    else:
+    	return astro
     
 
 def make_mask_cross(img):  
@@ -798,18 +826,6 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     
     
     
-    #Get basic statistics for the image
-    nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(img)
-    
-    logger.info( "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
-    print "Sextractor statistics: nscr %d, fwhm (pixel) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
-
-    
-    dic = {"SEEPIX": fwhm/0.394, "NSRC":nsrc, "ELLIP":ellip}
-    #Update the seeing information from sextractor
-    fitsutils.update_pars(img, dic)
-    
-    
     #Compute BIAS
     if (biasdir is None or biasdir==""): biasdir = "."
     create_masterbias(biasdir)
@@ -910,7 +926,18 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
     for image in slice_names:
         bkg = get_median_bkg(image)
         fitsutils.update_par(image, "SKYBKG", bkg)
-        #shutil.move(name, newname)
+        
+        #Get basic statistics for the image
+        nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(image)
+        
+        logger.info( "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
+        print "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
+    
+        
+        dic = {"FWHM": np.round(fwhm, 3) , "FWHMPIX": np.round(fwhm/0.394, 3) , "NSRC":nsrc, "ELLIP": np.round(ellip, 3)}
+        #Update the seeing information from sextractor
+        fitsutils.update_pars(image, dic)
+    
 
         
     #Compute the zeropoints
@@ -1008,6 +1035,7 @@ if __name__ == '__main__':
                 reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
                 reducedfiles.extend(reduced)
             except:
+                print "Error when reducing image %s"%f
                 pass
 
     #If copy is requested, then we copy the whole folder or just the missing files to transient.

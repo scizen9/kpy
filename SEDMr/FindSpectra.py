@@ -9,12 +9,14 @@
 import argparse
 from collections import namedtuple
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 from multiprocessing import Pool
 import sys
 import warnings
 
 from stsci.tools.gfit import gfit1d
+
+import NPK.Bar as Bar
 
 Coord = namedtuple("XY", "x y")
 
@@ -51,19 +53,19 @@ def spanrange(locs):
 def load_data(segmapfn, objfn):
     """Returns HDUs from files segmapfn and objfn.
     
-    load_data is a thin wrapper around pyfits
+    load_data is a thin wrapper around astropy.io.fits
 
     """
 
     try:
         segmap = pf.open(segmapfn)
-    except Exception, e:
-        print "Could not open %s: %s" % (segmapfn, e)
+    except Exception as e:
+        print("Could not open %s: %s" % (segmapfn, e))
 
     try:
         obj = pf.open(objfn)
-    except Exception, e:
-        print "Could not open %s: %s" % (segmapfn, e)
+    except Exception as e:
+        print("Could not open %s: %s" % (segmapfn, e))
 
     return segmap, obj
 
@@ -87,7 +89,11 @@ def find_segments_helper(seg_cnt):
 
     """
     # Global is for inter process communication
-    global segdat, objdat, polyorder
+    global segdat, objdat, polyorder, n_done, update_rate
+
+    n_done += 1
+    if n_done % update_rate == 0:
+        Bar.update()
 
     # Padding in pixels around trace in Y
     PAD = 2
@@ -97,18 +103,20 @@ def find_segments_helper(seg_cnt):
 
     # Test for tiny segment
     test = the_seg.nonzero()
+    # trace data
+    tr = {
+        "seg_cnt": seg_cnt,
+        "xs": np.array(np.nan),
+        "mean_ys": np.array(np.nan),
+        "coeff_ys": np.array(np.nan),
+        "trace_sigma": np.array(np.nan),
+        "ok": False,
+        "bkg_ok": False
+    }
     if len(test[0]) < 10 or len(test[1]) < 10:
-        tr = {
-            "seg_cnt": seg_cnt,
-            "xs": np.array(np.nan),
-            "mean_ys": np.array(np.nan),
-            "coeff_ys": np.array(np.nan),
-            "trace_sigma": np.array(np.nan),
-            "ok": False
-        }
         outstr = '\r%4.4i: %4.4i, TINY SEGMENT, %-5s' % (seg_cnt, len(test[0]),
                                                          tr['ok'])
-        print outstr
+        print(outstr)
         sys.stdout.flush()
     # We are OK
     else:
@@ -122,33 +130,27 @@ def find_segments_helper(seg_cnt):
         # How long is it in X?
         n_el = span[1].x - span[0].x
 
+        # How wide is it in Y?
+        n_wd = span[1].y - span[0].y
+
         # Don't fit short traces, but flag them by setting "ok" to False
-        if n_el < 50:
+        if n_el < 50 or n_wd < 3:
 
             # Flag the sigma with zero
             sig = 0.
+            tr["trace_sigma"] = sig
 
-            # Load up the trace with NaNs
-            tr = {
-                "seg_cnt": seg_cnt,
-                "xs": np.array(np.nan),
-                "mean_ys": np.array(np.nan),
-                "coeff_ys": np.array(np.nan),
-                "trace_sigma": np.array(np.nan),
-                "ok": False
-            }
-
-        # Trace is long enough, so let's fit it!
+        # Trace is long enough and wide enough, so let's fit it!
         else:
 
             means = np.zeros(n_el)
             trace_profile = np.zeros(mxsr - mnsr)
 
-            for i in xrange(n_el):
+            for i in range(n_el):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", category=RuntimeWarning)
                     XX = i + span[0].x
-                    profile = np.median(objdat[y_slc, XX - 3:XX + 3], 1)
+                    profile = np.nanmedian(objdat[y_slc, XX - 3:XX + 3], 1)
                     profile -= np.min(profile)
 
                     trace_profile += profile
@@ -159,25 +161,30 @@ def find_segments_helper(seg_cnt):
 
             xs = np.arange(n_el) + span[0].x
 
-            poly = np.array(np.polyfit(xs, means, polyorder))
+            nans = ~np.isfinite(means)
+            ok = np.isfinite(means)
 
-            tracefit = gfit1d(trace_profile,
-                              par=[0, len(trace_profile) / 2., 1.7], quiet=1)
-            sig = np.abs(tracefit.params[2])
+            if np.count_nonzero(nans) < 5:
+                poly = np.array(np.polyfit(xs[ok], means[ok], polyorder))
+            else:
+                poly = np.array(np.nan)
 
-            tr = {
-                "seg_cnt": seg_cnt,
-                "xs": np.array(xs),
-                "mean_ys": np.array(means),
-                "coeff_ys": poly,
-                "trace_sigma": sig,
-                "ok": True
-            }
+            trace_fit = gfit1d(trace_profile,
+                               par=[0, len(trace_profile) / 2., 1.7], quiet=1)
+            sig = np.abs(trace_fit.params[2])
 
-        outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
-                                                           sig * 2.355, tr['ok'])
-        print outstr,
-        sys.stdout.flush()
+            tr["xs"] = np.array(xs[ok])
+            tr["mean_ys"] = np.array(means[ok])
+            tr["coeff_ys"] = poly
+            tr["trace_sigma"] = sig
+            tr["bkg_ok"] = True
+            tr["ok"] = (np.count_nonzero(nans) <= 0 & np.isfinite(poly[0]))
+
+        # outstr = '\r%4.4i: %4.4i, fwhm=%3.2f pix, %-5s' % (seg_cnt, n_el,
+        #                                                    sig * 2.355,
+        #                                                    tr['ok'])
+        # print(outstr, end="")
+        # sys.stdout.flush()
 
     return tr
 
@@ -204,19 +211,22 @@ def find_segments(segmap=None, obj=None, order=2):
                 "ok": Trace has more than 50 pixels     }
         
     """
-    global segdat, objdat, polyorder
+    global segdat, objdat, polyorder, n_done, update_rate
 
     segdat = segmap[0].data
     objdat = obj[0].data
     polyorder = order
 
     # First segment begins at 1
-    segrange = xrange(1, max(segdat.flatten()))
+    segrange = range(1, max(segdat.flatten())+1)
 
+    n_done = 0
+    update_rate = int(len(segrange) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
     traces = p.map(find_segments_helper, segrange)
     p.close()
-    print ""
+    Bar.done(mapped=True)
+    # print("")
 
     return traces
 
@@ -252,12 +262,13 @@ def write_reports(segments, outname):
 
 def write_segments(segments):
     np.save(objfn + "_segments", segments)
+    print("Wrote %s_segments.npy" % objfn)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
                                      """
-    FindSegments.py
+    FindSpectra.py
     """)
 
     parser.add_argument("segmap_fits", type=str,

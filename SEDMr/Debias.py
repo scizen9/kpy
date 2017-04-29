@@ -14,9 +14,13 @@ Note:
          file           An image file to be processed
 
 """
+import time
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 import scipy.ndimage.filters as FI
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 
 def add_prefix(fname):
@@ -47,7 +51,7 @@ def full_frame(dat):
 
     """
 
-    bias = np.median(dat[:, 2045:], axis=1)
+    bias = np.nanmedian(dat[:, 2045:], axis=1)
     bias = bias.astype(np.float)
     smooth = FI.median_filter(bias, size=50)
 
@@ -88,10 +92,11 @@ if __name__ == '__main__':
     
     for ifile in files:
         try:
-            if ifile[-5:] != '.fits': continue
+            if ifile[-5:] != '.fits':
+                continue
         except:
             continue
-        print ifile
+
         FF = pf.open(ifile)
         adcspeed = FF[0].header['ADCSPEED']
 
@@ -99,7 +104,7 @@ if __name__ == '__main__':
         bias = pf.open(bfname)
 
         # Bias frame subtraction
-        FF[0].data -= bias[0].data
+        FF[0].data = FF[0].data - bias[0].data
 
         # Overscan subtraction
         FF[0].data = remove(FF)
@@ -116,5 +121,7 @@ if __name__ == '__main__':
             FF[0].header['GAIN'] = (1.0,
                                     'GAIN Adjusted (was guessed %s)' % GAIN)
         FF[0].header['BUNIT'] = 'electron'
+        FF[0].header.add_history('SEDMr.Debias run on %s' % time.strftime("%c"))
+        FF[0].header['DRPVER'] = drp_ver
         FF.writeto(outname)
 

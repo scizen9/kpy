@@ -2,7 +2,7 @@
 import argparse, os, pdb, sys
 import numpy as np
 import pylab as pl
-import pyfits as pf
+import astropy.io.fits as pf
 import scipy.signal as SG
 from scipy.spatial import KDTree 
 
@@ -13,7 +13,6 @@ import SEDMr.Wavelength as Wavelength
 import SEDMr.Spectra as SS
 
 import sys
-
 
 
 class FitsCube(object):
@@ -28,7 +27,6 @@ class FitsCube(object):
     locations = None
     header = None
 
-    
     def load(fname):
         FF = pf.open(fname)
 

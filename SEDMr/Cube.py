@@ -41,16 +41,19 @@ Note:
 """
 
 import os
+import sys
 import argparse
 import numpy as np
-import pyfits as pf
+import astropy.io.fits as pf
 from scipy.spatial import KDTree 
 
 from numpy.polynomial.chebyshev import chebval
 from scipy.interpolate import interp1d
 import SEDMr.Wavelength as Wavelength
 
-import sys
+import SEDMr.Version as Version
+
+drp_ver = Version.ifu_drp_version()
 
 sys.setrecursionlimit(10000)
 
@@ -65,12 +68,12 @@ ROT = np.array([[np.cos(theta), -np.sin(theta)],
                 [np.sin(theta),  np.cos(theta)]])
 
 
-def QR_to_img(exts, Size=4, outname="cube.fits"):
+def qr_to_img(exts, size=4, outname="cube.fits"):
     """Convert a data cube to a fits image
 
     Args:
         exts (list of Extraction): extractions to convert (see Extraction.py)
-        Size (int): expansion factor, defaults to 4
+        size (int): expansion factor, defaults to 4
         outname (str): output fits file name, defaults to cube.fits
 
     Returns:
@@ -78,39 +81,39 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
 
     """
     
-    Xs = np.array([ext.X_as for ext in exts], dtype=np.float)
-    Ys = np.array([ext.Y_as for ext in exts], dtype=np.float)
+    xs = np.array([ex.X_as for ex in exts], dtype=np.float)
+    ys = np.array([ex.Y_as for ex in exts], dtype=np.float)
 
-    minx = Size * np.nanmin(Xs)
-    miny = Size * np.nanmin(Ys)
-    maxx = Size * np.nanmax(Xs)
-    maxy = Size * np.nanmax(Ys)
+    minx = size * np.nanmin(xs)
+    miny = size * np.nanmin(ys)
+    maxx = size * np.nanmax(xs)
+    maxy = size * np.nanmax(ys)
 
-    Dx = (maxx-minx)/.25
-    Dy = (maxy-miny)/.25
+    dx = (maxx-minx)/.25
+    dy = (maxy-miny)/.25
     l_grid = Wavelength.fiducial_spectrum()
     l_grid = l_grid[::-1]
     dl_grid = np.diff(l_grid)
     l_grid = l_grid[1:]
 
-    img = np.zeros((Dx, Dy, len(l_grid)/2))
+    img = np.zeros((dx, dy, len(l_grid)/2))
     img[:] = np.nan
 
-    XSz = img.shape[0]/2
-    YSz = img.shape[1]/2
+    xsz = img.shape[0]/2
+    ysz = img.shape[1]/2
 
     allspec = np.zeros((len(exts), len(l_grid)/2))
-    for cnt, ext in enumerate(exts):
-        if ext.xrange is None:
+    for cnt, ex in enumerate(exts):
+        if ex.xrange is None:
             continue
-        if ext.exptime is None:
-            ext.exptime = 1
-        if ext.lamcoeff is None:
+        if ex.exptime is None:
+            ex.exptime = 1
+        if ex.lamcoeff is None:
             continue
 
-        ix = np.arange(*ext.xrange)
-        l = chebval(ix, ext.lamcoeff)
-        s = ext.specw
+        ix = np.arange(*ex.xrange)
+        l = chebval(ix, ex.lamcoeff)
+        s = ex.specw
 
         f = interp1d(l, s, fill_value=np.nan, bounds_error=False)
         fi = f(l_grid) / dl_grid
@@ -118,8 +121,8 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
 
         allspec[cnt, :] = fi
 
-        x = (ext.X_as - minx)/0.25
-        y = (ext.Y_as - miny)/0.25
+        x = (ex.X_as - minx)/0.25
+        y = (ex.Y_as - miny)/0.25
 
         try: 
             for dx in [-1, 0, 1]:
@@ -128,11 +131,11 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
         except:
             pass
 
-        outstr = "\rX = %+10.5f, Y = %+10.5f" % (x, y)
-        print outstr,
+        # outstr = "\rX = %+10.5f, Y = %+10.5f" % (x[0], y[0])
+        # print(outstr, end="")
         sys.stdout.flush()
 
-    back = np.median(allspec, 0)
+    back = np.nanmedian(allspec, 0)
 
     if 'fits' not in outname:
         outname += '.fits'
@@ -140,25 +143,25 @@ def QR_to_img(exts, Size=4, outname="cube.fits"):
     ff = pf.PrimaryHDU(img.T)
     ff.writeto(outname)
 
-    for cnt, ext in enumerate(exts):
-        if ext.xrange is None:
+    for cnt, ex in enumerate(exts):
+        if ex.xrange is None:
             continue
-        if ext.exptime is None:
-            ext.exptime = 1
-        if ext.lamcoeff is None:
+        if ex.exptime is None:
+            ex.exptime = 1
+        if ex.lamcoeff is None:
             continue
 
-        ix = np.arange(*ext.xrange)
-        l = chebval(ix, ext.lamcoeff)
-        s = ext.specw 
+        ix = np.arange(*ex.xrange)
+        l = chebval(ix, ex.lamcoeff)
+        s = ex.specw
 
         f = interp1d(l, s, fill_value=np.nan, bounds_error=False)
         fi = f(l_grid)/dl_grid 
         fi = fi[0:len(fi):2] + fi[1:len(fi):2] - back
 
         try:
-            x = np.round(Size*np.sqrt(3.) * (ext.Q_ix + ext.R_ix/2)) + XSz
-            y = np.round(Size*3./2. * ext.R_ix) + YSz
+            x = np.round(size * np.sqrt(3.) * (ex.Q_ix + ex.R_ix / 2)) + xsz
+            y = np.round(size * 3. / 2. * ex.R_ix) + ysz
         except:
             continue
         try: 
@@ -187,7 +190,8 @@ def extraction_to_cube(exts, outname="G.npy"):
 
         * X_as: X position in arcsec
         * Y_as: Y position in arcsec
-        * Z_as: Z position in arcsec (the Z coordinate runs 45 degrees to X and is not a `3rd` dimension).
+        * Z_as: Z position in arcsec
+        (the Z coordinate runs 45 degrees to X and is not a `3rd` dimension).
         * Q_ix: The axial Q coordinate in integral units
         * R_ix: The axial R coordinate in integral units
 
@@ -195,20 +199,20 @@ def extraction_to_cube(exts, outname="G.npy"):
         matrix times the rotation matrix:
 
         * P2H = np.array([[np.sqrt(3)/3, -1/3.], [0, 2/3.]])
-        * Rot (22 degree)
+        * rot (22 degree)
 
     """
 
     global ncol
 
     # start with our x,y pixel positions
-    Xs = [None] * len(exts)
-    Ys = [None] * len(exts)
+    xs = [None] * len(exts)
+    ys = [None] * len(exts)
 
     # these are the hex axial coords
-    for ext in exts:
-        ext.Q_ix = None
-        ext.R_ix = None
+    for ex in exts:
+        ex.Q_ix = None
+        ex.R_ix = None
     
     # counters for which wavelength solution is used:
     # mdn = median, lam = lambda, tot = total used
@@ -216,24 +220,25 @@ def extraction_to_cube(exts, outname="G.npy"):
     n_lam = 0
     n_tot = 0
 
-    for ix, ext in enumerate(exts):
+    for ix, ex in enumerate(exts):
         # The X/Y location of a lenslet is based on its
         # trace Y position and where the fiducial wavelength
         # is expected in the X direction.
 
         # skip bad solutions
-        if not ext.ok: continue
+        if not ex.ok:
+            continue
 
         # initialize
-        Xs[ix] = -999
-        Ys[ix] = -999
+        xs[ix] = -999
+        ys[ix] = -999
 
         # lamcoeff has precedence
-        if ext.lamcoeff is not None:
-            coeff = ext.lamcoeff
+        if ex.lamcoeff is not None:
+            coeff = ex.lamcoeff
             n_lam += 1
-        elif ext.mdn_coeff is not None: 
-            coeff = ext.mdn_coeff
+        elif ex.mdn_coeff is not None:
+            coeff = ex.mdn_coeff
             n_mdn += 1
         else:
             continue
@@ -241,44 +246,48 @@ def extraction_to_cube(exts, outname="G.npy"):
         n_tot += 1
 
         # get pixel and wavelength vectors
-        ixs = np.arange(*ext.xrange)
-        LL = chebval(ixs, coeff)
+        ixs = np.arange(*ex.xrange)
+        ll = chebval(ixs, coeff)
         
         # fill in the x,y pix positions
-        Xs[ix] = np.nanmin(ext.xrange) + ext.xrefpix
-        Ys[ix] = np.nanmean(ext.yrange)
-        ext.X_pix = Xs[ix]
-        ext.Y_pix = Ys[ix]
-        if ext.xrefpix is not None:
-            if ext.xrefpix < len(LL):
-                ext.xreflam = LL[ext.xrefpix]
+        xs[ix] = np.nanmin(ex.xrange) + ex.xrefpix
+        ys[ix] = np.nanmean(ex.yrange)
+        ex.X_pix = xs[ix]
+        ex.Y_pix = ys[ix]
+        ex.Xccd_as = (1024.0 - xs[ix]) * 0.0128
+        ex.Yccd_as = (1024.0 - ys[ix]) * 0.0128
+        if ex.xrefpix is not None:
+            if ex.xrefpix < len(ll):
+                ex.xreflam = ll[ex.xrefpix]
     # End loop over all extractions
 
     # Record wavelength mean and report stats
     xreflams = reject_outliers(
-            np.array([ext.xreflam for ext in exts], dtype=np.float))
-    meta = {"fiducial_wavelength": np.mean(xreflams)}
-    print "Avg lam, Std lam: %f, %f" % (np.mean(xreflams), np.std(xreflams))
+            np.array([ex.xreflam for ex in exts], dtype=np.float))
+    meta_data = {"fiducial_wavelength": np.mean(xreflams)}
+    print("Avg lam, Std lam: %f, %f" % (float(np.mean(xreflams)),
+                                        float(np.std(xreflams))))
 
     # make arrays
-    Xs = np.array(Xs, dtype=np.float)
-    Ys = np.array(Ys, dtype=np.float)
+    xs = np.array(xs, dtype=np.float)
+    ys = np.array(ys, dtype=np.float)
     # replace None's with -999
-    Xs[Xs != Xs] = -999
-    Ys[Ys != Ys] = -999
+    xs[xs != xs] = -999
+    ys[ys != ys] = -999
 
     # Make a KD-Tree
-    dat = np.array([Xs, Ys], dtype=np.float).T
-    tree = KDTree(dat)
+    tree_dat = np.array([xs, ys], dtype=np.float).T
+    tree = KDTree(tree_dat)
 
     # Get the index of the spaxel closest to the center of the CCD
-    ignore, Center = tree.query([1024, 1024], 1)
+    ignore, center = tree.query([1024, 1024], 1)
 
     # Set the coords for the center to 0,0 (origin)
-    exts[Center].Q_ix = 0
-    exts[Center].R_ix = 0
+    exts[center].Q_ix = 0
+    exts[center].R_ix = 0
 
-    print "IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot, n_lam, n_mdn)
+    print("IN: %d, EXT: %d, LAM: %d, MDN: %d" % (len(exts), n_tot,
+                                                 n_lam, n_mdn))
 
     def populate_hex(to_populate):
         """ Breadth-first search 
@@ -293,36 +302,36 @@ def extraction_to_cube(exts, outname="G.npy"):
 
         # Query 7 for the object + six surrounding members
         # Generate pixel distances relative to self and indices
-        v = np.array([Xs[to_populate], Ys[to_populate]])
-        Dists, Ixs = tree.query(v, 7)
+        v = np.array([xs[to_populate], ys[to_populate]])
+        dists, kix = tree.query(v, 7)
         # Transformation matrix
-        Tfm = P2H * ROT / np.median(Dists) * 2
+        tfm = P2H * ROT / np.nanmedian(dists) * 2
 
         # Trim self reference
-        if Dists[0] < 2: 
-            Dists = Dists[1:]
-            Ixs = Ixs[1:]
+        if dists[0] < 2:
+            dists = dists[1:]
+            kix = kix[1:]
 
         # Trim to within 70 pixels
-        ok = Dists < 70
-        Dists = Dists[ok]
-        Ixs = Ixs[ok]
+        ok = dists < 70
+        # dists = dists[ok]
+        kix = kix[ok]
 
         # Get the Q,R of the extraction we are populating
         q_this = exts[to_populate].Q_ix
         r_this = exts[to_populate].R_ix
 
         # Loop over the current nearest extractions
-        for nix in Ixs:
+        for nix in kix:
             # Search around current hex via a recrusive call
             # to populate_hex
 
             # Current extraction
-            nv = np.array([Xs[nix], Ys[nix]])
+            nv = np.array([xs[nix], ys[nix]])
             # Offset between self and current
-            D = nv-v
+            d = nv-v
             # Get offset in Q, R frame
-            dp = np.dot(Tfm, D)
+            dp = np.dot(tfm, d)
             # Integer hex positions so we round
             rnd = np.round(dp)
 
@@ -345,9 +354,9 @@ def extraction_to_cube(exts, outname="G.npy"):
                 # Check if our hex positions agree
                 if (exts[nix].Q_ix != q_this + rnd[0]) or \
                         (exts[nix].R_ix != r_this + rnd[1]):
-                    print "collision: ",
-                    print exts[nix].Q_ix, q_this + rnd[0], " ",
-                    print exts[nix].R_ix, r_this + rnd[1]
+                    print("collision: %5.1f %5.1f %5.1f %5.1f" %
+                          (exts[nix].Q_ix, q_this + rnd[0],
+                           exts[nix].R_ix, r_this + rnd[1]))
                     # Update with this one, but don't drill more
                     # otherwise we get in an infinite loop
                     exts[nix].Q_ix = q_this + rnd[0]
@@ -356,39 +365,45 @@ def extraction_to_cube(exts, outname="G.npy"):
         # end loop over current nearest extractions
     # end def populate_hex
 
-    populate_hex(Center)
+    populate_hex(center)
 
-    print "Number of collisions: %d" % ncol
+    print("Number of collisions: %d" % ncol)
 
     # Now convert Q/R to even-Q X/Y
 
     # Get arrays of hex positions
-    Qs = np.array([ext.Q_ix for ext in exts], dtype=np.float)
-    Rs = np.array([ext.R_ix for ext in exts], dtype=np.float)
+    qs = np.array([ex.Q_ix for ex in exts], dtype=np.float)
+    rs = np.array([ex.R_ix for ex in exts], dtype=np.float)
 
     # convert to pixel X,Y
-    Xs = np.sqrt(3) * (Qs + Rs/2.0)
-    Ys = 3/2 * Rs
+    # xs = np.sqrt(3) * (qs + rs/2.0)
+    xs = 2.1 * (qs + rs/2.2)
+    ys = 1.5 * rs
 
     # t= np.radians(165.0+45)
     # Hex angle relative to positive Y pixel axis
-    t = np.radians(180+22)
+    t = np.radians(180+13.5)
     # Rotation matrix
-    Rot = np.array([[np.cos(t), -np.sin(t)],
+    rot = np.array([[np.cos(t), -np.sin(t)],
                     [np.sin(t),  np.cos(t)]])
 
     # Loop over extractions and project onto X,Y
-    for ix, ext in enumerate(exts):
+    for ix, ex in enumerate(exts):
         # Project into X,Y frame
-        p = np.dot(Rot , np.array([Xs[ix], Ys[ix]]))
+        p = np.dot(rot, np.array([xs[ix], ys[ix]]))
         # Convert to RA, Dec
         # Note 0.633 is plate scale measured on 22 May 2014.
-        ext.X_as = p[0] * -0.633
-        ext.Y_as = p[1] * 0.633
+        # hex_scale = 0.315
+        ex.Xhex_as = p[0] * 0.300
+        ex.Yhex_as = p[1] * 0.355
+        ex.X_as = ex.Xhex_as
+        ex.Y_as = ex.Yhex_as
 
+    # Record DRP version
+    meta_data['drp_version'] = drp_ver
     # Write out the cube
-    np.save(outname, [exts, meta])
-    print "Wrote %s.npy" % outname
+    np.save(outname, [exts, meta_data])
+    print("Wrote %s.npy" % outname)
 
 
 def reject_outliers(data, m=2.):
@@ -402,8 +417,8 @@ def reject_outliers(data, m=2.):
         (numpy float array): input array with outliers removed
 
     """
-    d = np.abs(data - np.median(data))
-    mdev = np.median(d)
+    d = np.abs(data - np.nanmedian(data))
+    mdev = np.nanmedian(d)
     d[d != d] = 10000.
     s = d/mdev if mdev else 0.
     return data[s < m]
@@ -420,7 +435,8 @@ extract: To extract the cube (one for each observation)
     parser.add_argument('extracted', type=str, help='Extracted file')
     parser.add_argument('--step', type=str, default='make',
                         help='[make|extract|dump]')
-    parser.add_argument('--outname', type=str, help='Output cube name')
+    parser.add_argument('--outname', type=str, default='cube',
+                        help='Output cube name')
 
     args = parser.parse_args()
 
@@ -431,22 +447,22 @@ extract: To extract the cube (one for each observation)
     infile = args.extracted
 
     if step == 'make':
-        print "\nMAKING cube from %s " % infile
+        print("\nMAKING cube from %s " % infile)
         ext = np.load(infile)
-        cube = extraction_to_cube(ext, outname=args.outname)
+        extraction_to_cube(ext, outname=args.outname)
     elif step == 'extract':
-        print "\nEXTRACTING from %s " % infile
-        ext,meta = np.load(infile)
-        QR_to_img(ext, Size=2, outname=args.outname)
+        print("\nEXTRACTING from %s " % infile)
+        ext, meta = np.load(infile)
+        qr_to_img(ext, size=2, outname=args.outname)
     elif step == 'dump':
-        print "\nDUMPING from %s to %s_dump.txt" % (infile, infile)
+        print("\nDUMPING from %s to %s_dump.txt" % (infile, infile))
         cube = np.load(infile)
         Xs = np.array([c.X_as for c in cube])
         Ys = np.array([c.Y_as for c in cube])
         Sid = np.array([c.seg_id for c in cube])
 
-        dat = np.array([Xs,Ys,Sid])
+        dat = np.array([Xs, Ys, Sid])
         np.savetxt("%s_dump.txt" % infile, dat.T)
+        print("Wrote %s_dump.txt" % infile)
     else:
-        print "NO STEP TO PERFORM"
-
+        print("NO STEP TO PERFORM")

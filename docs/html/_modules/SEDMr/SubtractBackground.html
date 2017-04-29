@@ -44,7 +44,7 @@
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 
@@ -52,90 +52,32 @@
 
 <span class="kn">from</span> <span class="nn">scipy.ndimage.filters</span> <span class="kn">import</span> <span class="n">gaussian_filter</span>
 
-<span class="kn">from</span> <span class="nn">scipy.weave</span> <span class="kn">import</span> <span class="n">converters</span>
-<span class="kn">import</span> <span class="nn">scipy.weave</span> <span class="kn">as</span> <span class="nn">weave</span>
- 
- 
-<div class="viewcode-block" id="weaveConvolve"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.weaveConvolve">[docs]</a><span class="k">def</span> <span class="nf">weaveConvolve</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">kernel</span><span class="p">):</span>
- 
-    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-    <span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
- 
-    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
-    <span class="n">nkx</span><span class="p">,</span> <span class="n">nky</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span>
- 
-    <span class="k">if</span> <span class="n">nkx</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">nky</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Kernel dimensions should be odd&quot;</span><span class="p">)</span>
- 
-    <span class="n">smoothed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-    <span class="n">isvalid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
- 
-    <span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">            double top, bot;</span>
-<span class="s2">            int wkx, wky, iimin, iimax, jjmin, jjmax;</span>
-<span class="s2">            wkx = (nkx-1)/2;</span>
-<span class="s2">            wky = (nky-1)/2;</span>
-<span class="s2">            for (int i=0; i&lt;nx; ++i) {</span>
-<span class="s2">                for (int j=0; j&lt;ny; ++j) {</span>
-<span class="s2">                    if(isvalid(i,j)) {</span>
-<span class="s2">                        top = 0.;</span>
-<span class="s2">                        bot = 0.;</span>
-<span class="s2">                        if(i-wkx &gt; 0) { iimin = i-wkx; } else { iimin = 0; };</span>
-<span class="s2">                        if(i+wkx &lt; nx-1) { iimax = i+wkx; } else { iimax = nx-1; };</span>
-<span class="s2">                        if(j-wkx &gt; 0) { jjmin = j-wky; } else { jjmin = 0; };</span>
-<span class="s2">                        if(j+wkx &lt; ny-1) { jjmax = j+wky; } else { jjmax = ny-1; };</span>
-<span class="s2">                        for (int ii=iimin; ii &lt;= iimax ; ++ii) {</span>
-<span class="s2">                            for (int jj=jjmin; jj &lt;= jjmax; ++jj) {</span>
-<span class="s2">                                if(isvalid(ii,jj)) {</span>
-<span class="s2">                                    top = top + kernel(wkx + ii-i,wky + jj-j) * image(ii,jj);</span>
-<span class="s2">                                    bot = bot + kernel(wkx + ii-i,wky + jj-j);</span>
-<span class="s2">                                }</span>
-<span class="s2">                            }</span>
-<span class="s2">                        }</span>
-<span class="s2">                        smoothed(i,j) = top / bot;</span>
-<span class="s2">                    } else {</span>
-<span class="s2">                        smoothed(i,j) = image(i,j);</span>
-<span class="s2">                    }</span>
-<span class="s2">                }</span>
-<span class="s2">            }</span>
-<span class="s2">            return_val = 1;</span>
-<span class="s2">            &quot;&quot;&quot;</span>
- 
-    <span class="n">weave</span><span class="o">.</span><span class="n">inline</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="s1">&#39;isvalid&#39;</span><span class="p">,</span> <span class="s1">&#39;nx&#39;</span><span class="p">,</span> <span class="s1">&#39;ny&#39;</span><span class="p">,</span> <span class="s1">&#39;kernel&#39;</span><span class="p">,</span>
-                        <span class="s1">&#39;nkx&#39;</span><span class="p">,</span> <span class="s1">&#39;nky&#39;</span><span class="p">,</span> <span class="s1">&#39;smoothed&#39;</span><span class="p">],</span>
-                 <span class="n">type_converters</span><span class="o">=</span><span class="n">converters</span><span class="o">.</span><span class="n">blitz</span><span class="p">,</span> <span class="n">compiler</span><span class="o">=</span><span class="s1">&#39;gcc&#39;</span><span class="p">)</span>
- 
-    <span class="k">return</span> <span class="n">smoothed</span></div>
 
-
-<div class="viewcode-block" id="remove"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.remove">[docs]</a><span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
-        <span class="k">pass</span></div>
-
-
-<div class="viewcode-block" id="estimateBackground"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.estimateBackground">[docs]</a><span class="k">def</span> <span class="nf">estimateBackground</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">gausswidth</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="estimate_background"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.SubtractBackground.estimate_background">[docs]</a><span class="k">def</span> <span class="nf">estimate_background</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">gausswidth</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">outname</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                       <span class="n">outint</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">fft_filt</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
 
     <span class="k">if</span> <span class="n">outname</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Need an output name&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Need an output name&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
     <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
+    <span class="c1"># loop over each trace</span>
     <span class="k">for</span> <span class="n">ff</span> <span class="ow">in</span> <span class="n">fine</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">ff</span><span class="o">.</span><span class="n">ok</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ff</span><span class="o">.</span><span class="n">ok</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ff</span><span class="o">.</span><span class="n">bkg_ok</span><span class="p">:</span>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="n">ff</span><span class="o">.</span><span class="n">xrange</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="n">ff</span><span class="o">.</span><span class="n">poly</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="k">continue</span>
-        
+
+        <span class="c1"># get trace spatial ranges (xs, ys)</span>
         <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">*</span><span class="n">ff</span><span class="o">.</span><span class="n">xrange</span><span class="p">)</span>
         <span class="n">ys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">poly1d</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">poly</span><span class="p">)(</span><span class="n">xs</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">dY</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+        <span class="c1"># mask above and below each trace with nan&#39;s</span>
+        <span class="k">for</span> <span class="n">dY</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">):</span>
             <span class="n">ty</span> <span class="o">=</span> <span class="n">ys</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="o">-</span> <span class="n">dY</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">data</span><span class="p">[</span><span class="n">ty</span><span class="p">,</span> <span class="n">xs</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -144,50 +86,82 @@
 
     <span class="kn">from</span> <span class="nn">astropy.convolution</span> <span class="kn">import</span> <span class="n">convolve</span><span class="p">,</span> <span class="n">convolve_fft</span><span class="p">,</span> <span class="n">Box2DKernel</span>
 
-    <span class="k">print</span> <span class="s2">&quot;Traditional convolve (pass 1)&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Traditional convolve (pass 1)&quot;</span><span class="p">)</span>
+    <span class="c1"># get convolution kernel</span>
     <span class="n">k</span> <span class="o">=</span> <span class="n">Box2DKernel</span><span class="p">(</span><span class="mi">17</span><span class="p">)</span>
-    <span class="n">flt</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># start with original masked image for background</span>
+    <span class="n">bkg</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># write out starting image if requested</span>
+    <span class="k">if</span> <span class="n">outint</span><span class="p">:</span>
+        <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">bkg</span><span class="p">),</span> <span class="s2">&quot;test_0.fits&quot;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Wrote test_0.fits.gz&quot;</span><span class="p">)</span>
+    <span class="c1"># keep track of nans</span>
     <span class="n">nans</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="c1"># good data</span>
     <span class="n">oks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
-        <span class="n">flt</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">flt</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
-        <span class="n">flt</span><span class="p">[</span><span class="n">oks</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">oks</span><span class="p">]</span>
-        <span class="k">print</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Iteration </span><span class="si">%d</span><span class="s2"> of 5&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
-        <span class="c1"># IO.writefits(pf.PrimaryHDU(flt), &quot;test_%i.fits.gz&quot; % i, clobber=True)</span>
+    <span class="c1"># iterate five times to remove object light from bkg</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="c1"># convolve entire image</span>
+        <span class="n">bkg</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">bkg</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="c1"># replace background light</span>
+        <span class="n">bkg</span><span class="p">[</span><span class="n">oks</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">oks</span><span class="p">]</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Iteration </span><span class="si">%d</span><span class="s2"> of 5&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># write out each iteration if requested</span>
+        <span class="k">if</span> <span class="n">outint</span><span class="p">:</span>
+            <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">bkg</span><span class="p">),</span> <span class="s2">&quot;test_</span><span class="si">%i</span><span class="s2">.fits&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span>
+                         <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Wrote test_</span><span class="si">%i</span><span class="s2">.fits.gz&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
 
-    <span class="n">data</span><span class="p">[</span><span class="n">nans</span><span class="p">]</span> <span class="o">=</span> <span class="n">flt</span><span class="p">[</span><span class="n">nans</span><span class="p">]</span>
-    <span class="c1"># fname = os.path.join(os.path.dirname(outname),</span>
-    <span class="c1">#     &quot;lf_&quot; + os.path.basename(outname))</span>
-    <span class="c1"># IO.writefits(data, fname, clobber=True)</span>
+    <span class="c1"># insert iterative smoothed object pixels</span>
+    <span class="n">data</span><span class="p">[</span><span class="n">nans</span><span class="p">]</span> <span class="o">=</span> <span class="n">bkg</span><span class="p">[</span><span class="n">nans</span><span class="p">]</span>
 
-    <span class="c1"># print &quot;FFT convolve (pass 2)&quot;</span>
-    <span class="k">print</span> <span class="s2">&quot;Gaussian filter with width = </span><span class="si">%d</span><span class="s2"> (pass 2)&quot;</span> <span class="o">%</span> <span class="n">gausswidth</span>
-    <span class="c1"># k = Box2DKernel(70)</span>
-    <span class="c1"># flt = convolve_fft(data, k)</span>
-    <span class="n">flt</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">gausswidth</span><span class="p">)</span>
+    <span class="c1"># any remaining nans?</span>
+    <span class="n">nans</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="c1"># fill them in with median value</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">nans</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">nans</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">oks</span><span class="p">])</span>
+    <span class="c1"># write out intermediate result if requested</span>
+    <span class="k">if</span> <span class="n">outint</span><span class="p">:</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
+                             <span class="s2">&quot;lf_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
+        <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Wrote </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
 
+    <span class="c1"># use FFT filter if requested</span>
+    <span class="k">if</span> <span class="n">fft_filt</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;FFT convolve (pass 2)&quot;</span><span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">Box2DKernel</span><span class="p">(</span><span class="mi">70</span><span class="p">)</span>
+        <span class="n">bkg</span> <span class="o">=</span> <span class="n">convolve_fft</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="c1"># else, use gaussian filter of requested width in pixels</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Gaussian filter with width = </span><span class="si">%d</span><span class="s2"> (pass 2)&quot;</span> <span class="o">%</span> <span class="n">gausswidth</span><span class="p">)</span>
+        <span class="n">bkg</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">gausswidth</span><span class="p">)</span>
+
+    <span class="c1"># write resulting background to a gzipped fits file</span>
     <span class="n">ofname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
                           <span class="s2">&quot;bgd_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
-    <span class="n">HDU</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">flt</span><span class="p">)</span>
+    <span class="n">HDU</span> <span class="o">=</span> <span class="n">pf</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">bkg</span><span class="p">)</span>
     <span class="n">HDU</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GAUFWID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">gausswidth</span><span class="p">,</span> <span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
     <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">HDU</span><span class="p">,</span> <span class="n">ofname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="k">print</span> <span class="s2">&quot;Background image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ofname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Background image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ofname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
 
+    <span class="c1"># record which file in output header</span>
     <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;BGDSUB&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Background subtracted using </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ofname</span>
     <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;GAUFWID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">gausswidth</span><span class="p">,</span> 
                                    <span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
     <span class="n">ofname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outname</span><span class="p">),</span>
                           <span class="s2">&quot;bs_&quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">outname</span><span class="p">))</span>
-    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">flt</span>
-
+    <span class="c1"># subtract background</span>
+    <span class="n">infile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">bkg</span>
+    <span class="c1"># write out the resulting fits file</span>
     <span class="n">IO</span><span class="o">.</span><span class="n">writefits</span><span class="p">(</span><span class="n">infile</span><span class="p">,</span> <span class="n">ofname</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="k">print</span> <span class="s2">&quot;Subtracted image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ofname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Subtracted image in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ofname</span> <span class="o">+</span> <span class="s2">&quot;.gz&quot;</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">flt</span></div>
+    <span class="k">return</span> <span class="n">bkg</span></div>
 
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>\
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span>
         <span class="sd">&#39;&#39;&#39;SubtractBackground.py</span>
 
 <span class="sd">        &#39;&#39;&#39;</span><span class="p">,</span> <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawTextHelpFormatter</span><span class="p">)</span>
@@ -196,6 +170,10 @@
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;infile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Path to FITS file to refit&#39;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--gausswidth&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
                         <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Gaussian filter width in pixels&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--outint&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Output intermediate images&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--fftfilt&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Use FFT convolve instead of Gaussian filter&#39;</span><span class="p">)</span>
 
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
     <span class="n">fine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">fine</span><span class="p">)</span>
@@ -210,8 +188,9 @@
 
     <span class="n">gauss_width</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">gausswidth</span>
 
-    <span class="n">background</span> <span class="o">=</span> <span class="n">estimateBackground</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">gausswidth</span><span class="o">=</span><span class="n">gauss_width</span><span class="p">,</span>
-                                    <span class="n">outname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">)</span>
+    <span class="n">background</span> <span class="o">=</span> <span class="n">estimate_background</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="n">infile</span><span class="p">,</span> <span class="n">gausswidth</span><span class="o">=</span><span class="n">gauss_width</span><span class="p">,</span>
+                                     <span class="n">outname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">infile</span><span class="p">,</span> <span class="n">outint</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">outint</span><span class="p">,</span>
+                                     <span class="n">fft_filt</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">fftfilt</span><span class="p">)</span>
 </pre></div>
 
           </div>

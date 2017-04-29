@@ -43,13 +43,16 @@
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pylab</span> <span class="kn">as</span> <span class="nn">pl</span>
-<span class="kn">import</span> <span class="nn">pyfits</span> <span class="kn">as</span> <span class="nn">pf</span>
+<span class="kn">import</span> <span class="nn">astropy.io.fits</span> <span class="kn">as</span> <span class="nn">pf</span>
 
 <span class="kn">import</span> <span class="nn">NPK.Fit</span> <span class="kn">as</span> <span class="nn">NFit</span>
 
 <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
 
 <span class="kn">import</span> <span class="nn">SEDMr.Wavelength</span> <span class="kn">as</span> <span class="nn">Wavelength</span>
+<span class="kn">import</span> <span class="nn">SEDMr.Version</span> <span class="kn">as</span> <span class="nn">Version</span>
+
+<span class="n">drp_ver</span> <span class="o">=</span> <span class="n">Version</span><span class="o">.</span><span class="n">ifu_drp_version</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="measure_flexure_x"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.Flexure.measure_flexure_x">[docs]</a><span class="k">def</span> <span class="nf">measure_flexure_x</span><span class="p">(</span><span class="n">cube</span><span class="p">,</span> <span class="n">hdulist</span><span class="p">,</span> <span class="n">drow</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">skylines</span><span class="o">=</span><span class="p">(</span><span class="mf">557.0</span><span class="p">,</span> <span class="mf">589.0</span><span class="p">),</span>
@@ -60,7 +63,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        cube (extraction array): List of Extraction object, the fine loc +</span>
 <span class="sd">            wave solution for each spectrum</span>
-<span class="sd">        hdulist (pyfits obj): Pyfits object for the spectrum to measure</span>
+<span class="sd">        hdulist (astropy.io.fits obj): Pyfits object for the spectrum to measure</span>
 <span class="sd">        drow (float): offset in rows for flexure (y-axis)</span>
 <span class="sd">        skylines (float, float): The night skylines to centroid on in nm</span>
 
@@ -85,7 +88,7 @@
     <span class="n">spec_ixs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">1200</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
     <span class="c1"># fiducial wavelength grid</span>
     <span class="n">lamgrid</span> <span class="o">=</span> <span class="n">Wavelength</span><span class="o">.</span><span class="n">fiducial_spectrum</span><span class="p">(</span><span class="n">lamstart</span><span class="o">=</span><span class="n">lamstart</span><span class="p">,</span>
-                                           <span class="n">lamratio</span><span class="o">=</span><span class="n">lamratio</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">lamlen</span><span class="p">)</span>
+                                           <span class="n">lamratio</span><span class="o">=</span><span class="n">lamratio</span><span class="p">,</span> <span class="n">npx</span><span class="o">=</span><span class="n">lamlen</span><span class="p">)</span>
     <span class="c1"># initialize grid of spaxel spectra</span>
     <span class="n">specgrid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lamgrid</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">spec_ixs</span><span class="p">)))</span>
 
@@ -113,13 +116,14 @@
         <span class="k">for</span> <span class="n">jx</span><span class="p">,</span> <span class="n">xpos</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">f</span><span class="o">.</span><span class="n">xrange</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
 
             <span class="c1"># get y position on image</span>
-            <span class="n">ypos</span> <span class="o">=</span> <span class="n">yfun</span><span class="p">(</span><span class="n">xpos</span><span class="p">)</span>
+            <span class="n">ypos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">yfun</span><span class="p">(</span><span class="n">xpos</span><span class="p">))</span>
 
             <span class="c1"># extract spectrum from image</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">spec</span><span class="p">[</span><span class="n">jx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">ypos</span><span class="o">-</span><span class="n">extract_width</span><span class="p">:</span><span class="n">ypos</span><span class="o">+</span><span class="n">extract_width</span><span class="p">,</span>
                                   <span class="n">xpos</span><span class="p">])</span>
             <span class="k">except</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Warning: no sum for sky spectrum </span><span class="si">%d</span><span class="s2"> at </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">jx</span><span class="p">,</span> <span class="n">xpos</span><span class="p">))</span>
                 <span class="k">continue</span>
 
         <span class="c1"># get wavelengths of spaxel</span>
@@ -135,7 +139,7 @@
 
     <span class="c1"># create a median spectrum from spaxel grid</span>
     <span class="c1"># taking a median minimizes impact of objects in sample</span>
-    <span class="n">skyspec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">specgrid</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">skyspec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">specgrid</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="c1"># plot resulting sky spectrum</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lamgrid</span><span class="p">,</span> <span class="n">skyspec</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s1">&#39;mid&#39;</span><span class="p">)</span>
@@ -166,7 +170,7 @@
         <span class="c1"># do the fit</span>
         <span class="n">fit</span> <span class="o">=</span> <span class="n">NFit</span><span class="o">.</span><span class="n">mpfit_do</span><span class="p">(</span><span class="n">ffun</span><span class="p">,</span> <span class="n">lamgrid</span><span class="p">[</span><span class="n">roi</span><span class="p">],</span> <span class="n">skyspec</span><span class="p">[</span><span class="n">roi</span><span class="p">],</span> <span class="n">parinfo</span><span class="p">)</span>
         <span class="c1"># did the fit succeed?</span>
-        <span class="k">if</span> <span class="n">fit</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fit</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="mf">0.</span> <span class="o">&lt;</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">12.</span><span class="p">:</span>
             <span class="n">off</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">skyline</span>
             <span class="n">sumoff</span> <span class="o">+=</span> <span class="n">off</span> <span class="o">*</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">sumscale</span> <span class="o">+=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -176,21 +180,29 @@
             <span class="n">dxnm</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">skyline</span>
             <span class="n">legend</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.1f</span><span class="s2">, </span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">skyline</span><span class="p">,</span> <span class="n">off</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="n">sumscale</span> <span class="o">=</span> <span class="mf">0.</span>
             <span class="n">dxnm</span> <span class="o">=</span> <span class="mf">0.</span>
 
-        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;line = </span><span class="si">%6.1f</span><span class="s2"> (</span><span class="si">%6.1f</span><span class="s2">), FWHM = </span><span class="si">%.2f</span><span class="s2"> nm, status = </span><span class="si">%d</span><span class="s2">, dX = </span><span class="si">%3.2f</span><span class="s2"> nm shift&quot;</span> <span class="o">%</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;line = </span><span class="si">%6.1f</span><span class="s2"> (</span><span class="si">%6.1f</span><span class="s2">), FWHM = </span><span class="si">%.2f</span><span class="s2"> nm, status = </span><span class="si">%d</span><span class="s2">,&quot;</span>
+              <span class="s2">&quot; dX = </span><span class="si">%3.2f</span><span class="s2"> nm shift&quot;</span> <span class="o">%</span>
               <span class="p">(</span><span class="n">skyline</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fit</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="mf">2.354</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">dxnm</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">sumscale</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
         <span class="n">dxnm</span> <span class="o">=</span> <span class="n">sumoff</span> <span class="o">/</span> <span class="n">sumscale</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">print</span> <span class="s2">&quot;Warning: no good skylines to fit!  Setting X offset to 0.0 nm&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Warning: no good skylines to fit!  Setting X offset to 0.0 nm&quot;</span><span class="p">)</span>
         <span class="n">dxnm</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="n">minsig</span> <span class="o">=</span> <span class="mf">0.</span>
-    <span class="k">print</span> <span class="s2">&quot;dX = </span><span class="si">%3.2f</span><span class="s2"> nm shift&quot;</span> <span class="o">%</span> <span class="n">dxnm</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;dX = </span><span class="si">%3.2f</span><span class="s2"> nm shift&quot;</span> <span class="o">%</span> <span class="n">dxnm</span><span class="p">)</span>
 
     <span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;dX = </span><span class="si">%3.2f</span><span class="s2"> nm shift, dY = </span><span class="si">%3.2f</span><span class="s2"> px shift&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">dxnm</span><span class="p">,</span> <span class="n">drow</span><span class="p">))</span>
     <span class="n">pl</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">legend</span><span class="p">)</span>
+
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;DRP: &#39;</span> <span class="o">+</span> <span class="n">drp_ver</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;axes fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;figure fraction&#39;</span><span class="p">),</span>
+                <span class="n">textcoords</span><span class="o">=</span><span class="s1">&#39;offset points&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+                <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -297,8 +309,8 @@
     <span class="c1"># clean 3 sigma outliers</span>
     <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">profwidys</span> <span class="o">-</span> <span class="n">mn</span><span class="p">)</span><span class="o">/</span><span class="n">sd</span> <span class="o">&lt;</span> <span class="mi">3</span>
     <span class="n">average_width</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">profwidys</span><span class="p">[</span><span class="n">ok</span><span class="p">])</span> <span class="o">*</span> <span class="mf">2.354</span>
-    <span class="k">print</span> <span class="s2">&quot;yFWHM = </span><span class="si">%5.2f</span><span class="s2"> pixels&quot;</span> <span class="o">%</span> <span class="n">average_width</span>
-    <span class="k">print</span> <span class="s2">&quot;dY = </span><span class="si">%3.2f</span><span class="s2"> pixel shift&quot;</span> <span class="o">%</span> <span class="n">required_shift</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;yFWHM = </span><span class="si">%5.2f</span><span class="s2"> pixels&quot;</span> <span class="o">%</span> <span class="n">average_width</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;dY = </span><span class="si">%3.2f</span><span class="s2"> pixel shift&quot;</span> <span class="o">%</span> <span class="n">required_shift</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
         <span class="n">px</span> <span class="o">=</span> <span class="p">(</span><span class="n">profwidth</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">required_shift</span>
@@ -367,7 +379,8 @@
             <span class="s1">&#39;yfwhm&#39;</span><span class="p">:</span> <span class="n">ywid</span><span class="p">,</span>
             <span class="s1">&#39;xfwhm&#39;</span><span class="p">:</span> <span class="n">xwid</span><span class="p">,</span>
             <span class="s1">&#39;dXnm&#39;</span><span class="p">:</span> <span class="n">dx</span><span class="p">,</span>
-            <span class="s1">&#39;dYpix&#39;</span><span class="p">:</span> <span class="n">dy</span><span class="p">}]</span>
+            <span class="s1">&#39;dYpix&#39;</span><span class="p">:</span> <span class="n">dy</span><span class="p">,</span>
+            <span class="s1">&#39;drp_version&#39;</span><span class="p">:</span> <span class="n">drp_ver</span><span class="p">}]</span>
 
     <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">outfile</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
 </pre></div>

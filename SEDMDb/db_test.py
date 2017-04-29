@@ -8,52 +8,10 @@ db = SedmDb.SedmDB()
 # TODO: make tests that cause IntegrityError (giving a value in of the wrong format e.g. string for a decimal parameter) and ProgrammingError (attempting to insert/update a column that doesn't exist)
 # TODO: make the functions reject pardic keys that aren't columns
 
-user_dict = {'username': 'test_user', 'name': 'nmo', 'email': 'dodo'}
-
 # there are groups 'default group' and 'second default group'
 # (user_id = 1, username=default_user) can be tied to the requests
 
-def test_add_group():  # add_to_group is tested below
-    assert db.add_group({'designator': 'default group'}) == (-1, "ERROR: group exists!")
-    assert db.add_group({'id': 500}) == (-1, "ERROR: no group designator provided!")
 
-
-# to test add/remove_user
-def test_user_manipulation():
-    usernames = [user[0] for user in db.execute_sql('SELECT username from users;')]
-    if 'test_user' in usernames:
-        db.remove_user(user_dict)    
-    added = db.add_user(user_dict)
-    # check that the function returned a positive and that it was successful
-    assert added[0] == 0
-    assert [user[0] for user in db.execute_sql("SELECT username FROM users WHERE username='test_user';")]
-    user_id = db.execute_sql("SELECT id FROM users WHERE username='test_user';")[0][0]
-    db.add_to_group(user_id, 1)  # add the user to the default group
-    # check that it was properly added to its group
-    assert (user_id, 1) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
-    # check other aspects of adding to groups
-    assert db.add_to_group(user_id, 1) == (-1, "ERROR: user already in group!")
-    assert db.add_to_group(user_id, 0) == (-1, "ERROR: group does not exist!")
-    assert db.add_to_group(0, 1) == (-1, "ERROR: user does not exist!")
-    db.add_to_group(user_id, 2)  # multiple groups per user
-    assert (user_id, 2) in db.execute_sql("SELECT user_id, group_id FROM usergroups")
-    # check that it can't create another user with the same username
-    add_again = db.add_user(user_dict)
-    assert add_again[0] == -1
-
-    removed = db.remove_user(user_dict)
-    # check that the function returned a positive and that it was successful
-    assert removed[0] == 0
-    assert 'nmo' not in [user[0] for user in db.execute_sql('SELECT name from users WHERE id=2;')]
-    # check that the user is removed from all groups
-    assert user_id not in [user[0] for user in db.execute_sql("SELECT user_id FROM usergroups")]
-    remove_again = db.remove_user(user_dict)
-    assert remove_again[0] == -1
-
-    assert db.remove_user({'username': 'unused_name'}) == (-1, "ERROR: no user with that username!")
-    assert db.remove_user({'id': 0}) == (-1, "ERROR: no user with that id!")
-    assert db.remove_user({'name': 'neo', 'email': '3po'}) == (-1, "ERROR: username or id required!")
-    assert db.remove_user({}) == (-1, "ERROR: username or id required!")
     
 # TODO: more robust testing of the objects
 fixed_object = {'marshal_id': 60, 'name': 'test_obj', 'ra': 20., 'dec': 40., 'typedesig': 'f', 'epoch': 2000.}
@@ -130,12 +88,12 @@ atomic_dict = {'exptime': 1800.0, 'filter': 'f', 'priority': 32., 'inidate': '20
 
 def test_atomicrequest_manipulation():
     # TODO: test for add
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id not provided!")
+    assert db.add_atomicrequest(atomic_dict) == (-1, "ERROR: request_id not provided!")
     atomic_dict['request_id'] = 3.2
-    print db.add_atomic_request(atomic_dict)
-    assert db.add_atomic_request(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
-    atomic_dict['request_id'] = db.get_from_atomicrequests(['request_id'], {'object_id': 1})
-    assert db.add_atomic_request(atomic_dict)[0] == 0
+    print db.add_atomicrequest(atomic_dict)
+    assert db.add_atomicrequest(atomic_dict) == (-1, "ERROR: request_id must be of type 'int'!")
+    atomic_dict['request_id'] = db.get_from_atomicrequest(['request_id'], {'object_id': 1})
+    assert db.add_atomicrequest(atomic_dict)[0] == 0
 
 
     # TODO: test for update
@@ -157,38 +115,87 @@ def test_fits_header_parse():
     db_tools.add_observation_fitsfile(fitsfile)
 
 
-def test_add_phot_and_metrics():
-    # test add_reduced_photometry   
+def baseline_tests():
+    # db.add_user
+    # db.get_from_users
+    # db.remove_user
+    # db.add_group
+    # db.add_usergroup
+    # db.get_from_usergroups
+    # db.remove_from_group
 
-    # test add_metrics_phot 
-    pass
+#    print db.add_object({'name': 'test_obj', 'ra': 40., 'dec': 30., 'epoch': 2000., 'typedesig': 'f'})
+#    print db.get_from_object(['ra', 'dec'], {'name': 'test_obj'}) , (40, 30)
+#    print db.get_object_id_from_name('defa') , 2
+#    print db.add_elliptical_heliocentric({'object_id': 1, 'inclination': 0.1, 'perihelion_o': 0.5, 'a': 3.2, 'n': 20,
+#                                          'e': 0.01, 'M': 1., 'mjdepoch': 2000, 'D': 2009, 'M1': 1., 'M2': 2.,
+#                                          'longascnode_O': 3.})
+#    print db.get_from_elliptical_heliocentric(['e', 'mjdepoch'], {'D': 2009}), (0, 2000)
+#    print db.add_hyperbolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
+#                                         'perihelion_o': 2., 'e': 3.2, 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
+#    print db.get_from_hyperbolic_heliocentric(['e', 'q'], {'D': 2009}), (3.2, 20)
+#    print db.add_parabolic_heliocentric({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'longascnode_O': 0.5,
+#                                         'perihelion_o': 2., 'q': 20., 'D': 2009, 'M1': 1., 'M2': 2.})
+#    print db.get_from_parabolic_heliocentric(['object_id', 'inclination'], {'M1': 1.}), (1, 0.1)
+#    print db.add_earth_satellite({'object_id': 1, 'T': '2000-01-01', 'inclination': 0.1, 'ra': 0.5, 'e': 2., 'pedigree': 2.,
+#                                  'M': 3.2, 'n': 20., 'decay': 1., 'reforbit': 10})
+#    print db.get_from_earth_satellite(['object_id', 'M'], {'n': 20.}), (1, 3.2)
 
+    print db.add_request({'object_id': 1, 'user_id': 1, 'program_id': 1, 'exptime': '{2500, 300}', 'priority': 3.,
+                          'inidate': '2017-01-01', 'enddate': '2017-01-02', 'ordering': '{1ifu, 1g, 1r, 1i}'})
+    ids = db.get_from_request(['id'], {'enddate': '2017-01-02'})
+    print ids
+    print db.update_request({'id': int(ids[0][0]), 'priority': 5.})
+    print db.get_from_request(['priority'], {'id': int(ids[0][0])})
+    print db.expire_requests()
+    print db.get_from_request(['status'], {'enddate': '2017-01-02'})
 
-def test_add_spec_and_metrics():
-    # test add_reduced_spectrum
+    print db.add_atomicrequest({'request_id': 1, 'exptime': 300., 'filter': 'g', 'priority': 5., 'inidate':'2017-01-01',
+                                'enddate': '2017-04-03'})
+    ids = db.get_from_atomicrequest(['id'], {'enddate': '2017-04-03'})
+    print ids
+    print db.update_atomicrequest({'id': ids[0][0], 'status': 'CANCELED'})  # why doesn't have 'id' long fail?
+    print db.get_from_atomicrequest(['status'], {'id': int(ids[0][0])})
 
-    # test add_metrics_spec
-    pass
+    obs_dict = {'object_id': 1, 'request_id': 1, 'atomicrequest_id': 1, 'mjd': 23452.34, 'airmass': 2.2,
+                'exptime': 299., 'fitsfile': 'made_up_file', 'lst': 'lst', 'ra': 20., 'dec': 10., 'tel_ra': '42',
+                'tel_dec': '99', 'tel_az': 12., 'tel_el': 32., 'tel_pa': 42., 'ra_off': .1, 'dec_off': .2}
+    print db.add_observation(obs_dict)
+    # TODO: find out why it returned None
+    print db.update_observation
+    print db.get_from_observation(['fitsfile'], {'dec_off': .2})
+    print db.add_telescope_stats
+    print db.get_from_telescope_stats
 
+    print db.add_phot({'observation_id': 1, 'astrometry': 'false', 'filter': 'g', 'reducedfile': 'nofile', 'sexfile': 'c',
+                       'biasfile': 'd', 'maskfile': 'e', 'flatfile': 'f', 'pipeline': 'phot', 'marshal_phot_id': 1})
+    # test add_phot as update
+    print db.get_from_phot(['biasfile'], {'filger': 'g'})
+    print db.add_spec({'observation_id': 1, 'reducedfile': 'a', 'sexfile': 'b', 'biasfile': 'c', 'flatfile': 'd',
+                       'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': 'true'})
+    # tested add_spec as update as well
+    print db.get_from_spec(['imgset', 'skysub'], {'sexfile': 'b'})
 
-def test_add_flexure():
-    pass
-
-
-def test_classification():
-    # test add_classification
-    # test adding multiple classifications for one observation (different clssifiers)
-
-    # test update_classification
-    pass
+    print db.add_metrics_phot({'phot_id': 1, 'fwhm': 4., 'background': 102., 'zp': 2., 'zperr': 8.,
+                               'ellipticity': 0., 'nsources': 40})
+    # test add_metrics_phot as update
+    print db.get_from_metrics_phot(['nsources', 'fwhm'], {'phot_id': 1})
+    print db.add_metrics_spec({'spec_id': 1, 'fwhm': 2., 'background': 1.})
+    # test add_metrics_spec as update
+    print db.get_from_metrics_spec(['life_fwhm', 'background'], {'spec_id': 1})
+    obs_dict['atomicrequest_id']= 2
+    db.add_observation(obs_dict)
+    db.add_spec({'observation_id': 2, 'reducedfile': 'a', 'sexfile': 'b', 'biasfile': 'c', 'flatfile': 'd',
+                 'imgset': 'new', 'quality': 3, 'cubefile': 'e', 'standardfile': 'f', 'skysub': 'true'})
+    print db.add_flexure({'rms': 1., 'spec_id_1': 1, 'spec_id_2': 2, 'timestamp1': '2017-01-12 10:20:20',
+                          'timestamp2': '2017-01-12 10:20:40'})
+    print db.get_from_flexure(['rms'], {'spec_id_1': 1})
+    print db.add_classification({'spec_id': 1, 'object_id': 1, 'classification': 'none', 'redshift': 0.1,
+                                 'redshift_err': 1., 'classifier': 'none', 'score': 0.})
+    print db.update_classification
+    print db.get_from_classification(['classification', 'score'], {'classifier': 'none'})
 
 
 if __name__ == '__main__':
-    test_add_group()
-    test_user_manipulation()
-    test_object_creation()
-    test_request_manipulation()
-    test_request_update()
-    test_request_expiration()
-    test_atomicrequest_manipulation()
+    baseline_tests()
 

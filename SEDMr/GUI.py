@@ -37,8 +37,8 @@ class MouseCross(object):
         self.nosky = nosky
         self.ellipse = ellipse
 
-        print "semimajor axis is %s arcsec" % self.radius_as
-        print "x - expand ap, z - shrink ap, y - toggle sky/host sub"
+        print("semimajor axis is %s arcsec" % self.radius_as)
+        print("x - expand ap, z - shrink ap, y - toggle sky/host sub")
 
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
@@ -70,7 +70,7 @@ class MouseCross(object):
             else:
                 self.nosky = True
 
-        print "semimajor axis is %s arcsec" % self.radius_as
+        print("semimajor axis is %s arcsec" % self.radius_as)
 
         self.ellipse = (self.radius_as,
                         self.radius_as * (self.ellipse[1]/self.ellipse[0]),
@@ -81,9 +81,9 @@ class MouseCross(object):
         self.line.set_visible(True)
 
         if self.nosky:
-            print "Sky subtraction off"
+            print("Sky subtraction off")
         else:
-            print "Sky subtraction on"
+            print("Sky subtraction on")
 
         pl.draw()
 
@@ -105,7 +105,7 @@ class PositionPicker(object):
     scaled = None
     ellipse = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False, ellipse=None,
+    def __init__(self, spectra=None, pointsize=35, bgd_sub=False, ellipse=None,
                  objname=None, scaled=False,
                  lmin=600, lmax=650, cmin=-300, cmax=300, nosky=False):
         """ Create spectum picking gui.
@@ -130,7 +130,7 @@ class PositionPicker(object):
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
-            self.Vs -= np.median(self.Vs)
+            self.Vs -= np.nanmedian(self.Vs)
 
         pl.ioff()
         pl.title("%s Image from %s to %s nm" % (self.objname,
@@ -145,36 +145,36 @@ class PositionPicker(object):
     def draw_cube(self):
 
         if self.scaled:
-            dVmin = self.cmin
-            dVmax = self.cmax
+            dv_min = self.cmin
+            dv_max = self.cmax
         else:
             # get middle value
             if self.bgd_sub:
-                Vmid = 0.
+                v_mid = 0.
             else:
-                Vmid = np.median(self.Vs)
+                v_mid = np.nanmedian(self.Vs)
 
             # get standard deviation
-            Vstd = np.nanstd(self.Vs)
-            if 0 < Vstd < 100:
-                dVmin = Vmid - 3.0 * Vstd
-                dVmax = Vmid + 3.0 * Vstd
+            v_std = np.nanstd(self.Vs)
+            if 0 < v_std < 100:
+                dv_min = v_mid - 3.0 * v_std
+                dv_max = v_mid + 3.0 * v_std
             else:
-                dVmin = -300
-                dVmax = 300
+                dv_min = -300
+                dv_max = 300
 
         # plot (may want to use cmap=pl.cm.Spectral)
-        print "scaling image display between %d and %d" % (dVmin, dVmax)
+        print("scaling image display between %d and %d" % (dv_min, dv_max))
         pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize, linewidth=0,
-                   vmin=dVmin, vmax=dVmax)
+                   vmin=dv_min, vmax=dv_max, cmap=pl.get_cmap('jet'))
 
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
         pl.xlabel("-RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
         pl.colorbar()
 
-        c = Cursor(self.figure.gca(), useblit=True)
+        # c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
                            nosky=self.nosky)
@@ -189,7 +189,7 @@ class PositionPicker(object):
         """Event call handler for Picker gui."""
 
         if event.name == 'button_press_event':
-            print "X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata)
+            print("X = %+10.5f, Y = %+10.5f" % (event.xdata, event.ydata))
             self.picked = (event.xdata, event.ydata)
             self.xc = event.xdata
             self.yc = event.ydata
@@ -210,7 +210,7 @@ class ScaleCube(object):
     cmin = None
     cmax = None
 
-    def __init__(self, spectra=None, pointsize=55, bgd_sub=False,
+    def __init__(self, spectra=None, pointsize=35, bgd_sub=False,
                  objname=None, lmin=600, lmax=650):
         """ Create scaling gui.
 
@@ -218,17 +218,17 @@ class ScaleCube(object):
             spectra: SEDMr.Spectra object
         """
 
-        print "First scale cube using keys to change limits:"
+        print("First scale cube using keys to change limits:")
         if bgd_sub:
-            print "> - increase upper/lower spread by 200"
-            print "< - decrease upper/lower spread by 200"
+            print("> - increase upper/lower spread by 200")
+            print("< - decrease upper/lower spread by 200")
         else:
-            print "> - to increase upper limit by 100"
-            print "< - to decrease upper limit by 100"
-            print ". - to increase lower limit by 100"
-            print ", - to decrease lower limit by 100"
-        print "x - exit"
-        print "q - to abandon scaling"
+            print("> - to increase upper limit by 100")
+            print("< - to decrease upper limit by 100")
+            print(". - to increase lower limit by 100")
+            print(", - to decrease lower limit by 100")
+        print("x - exit")
+        print("q - to abandon scaling")
 
         self.spectra = spectra
         self.pointsize = pointsize
@@ -243,24 +243,26 @@ class ScaleCube(object):
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
         if bgd_sub:
-            self.Vs -= np.median(self.Vs)
+            self.Vs -= np.nanmedian(self.Vs)
 
         # get standard deviation
-        Vstd = np.nanstd(self.Vs)
+        v_std = np.nanstd(self.Vs)
 
         # get middle value
         if self.bgd_sub:
-            Vmid = 0.
-            if 0 < Vstd < 100:
-                self.cmin = Vmid - 3.0 * Vstd
-                self.cmax = Vmid + 3.0 * Vstd
+            v_mid = 0.
+            if 0 < v_std < 100:
+                self.cmin = v_mid - 3.0 * v_std
+                self.cmax = v_mid + 3.0 * v_std
             else:
                 self.cmin = -300
                 self.cmax = 300
         else:
-            Vmid = np.median(self.Vs)
-            self.cmin = Vmid - 3.0 * Vstd
-            self.cmax = Vmid + 3.0 * Vstd
+            v_mid = np.nanmedian(self.Vs)
+            self.cmin = v_mid - 3.0 * v_std
+            self.cmax = v_mid + 3.0 * v_std
+
+        print("mid, std: %f, %f" % (v_mid, float(v_std)))
 
         pl.ioff()
 
@@ -273,15 +275,16 @@ class ScaleCube(object):
     def draw_cube(self):
 
         pl.title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f int" %
-                 (self.objname, self.lmin, self.lmax, self.cmin, self.cmax))
+                 (self.objname, self.lmin, self.lmax,
+                  float(self.cmin), float(self.cmax)))
 
-        # plot (may want to use cmap=pl.cm.Spectral)
         self.scat = pl.scatter(self.Xs, self.Ys, c=self.Vs, s=self.pointsize,
-                               linewidth=0, vmin=self.cmin, vmax=self.cmax)
+                               linewidth=0, vmin=self.cmin, vmax=self.cmax,
+                               cmap=pl.get_cmap('jet'))
 
-        pl.ylim(-20, 20)
-        pl.xlim(-22, 20)
-        pl.xlabel("-RA offset [asec]")
+        pl.ylim(-14, 14)
+        pl.xlim(14, -14)
+        pl.xlabel("RA offset [asec]")
         pl.ylabel("Dec offset [asec]")
         self.cb = self.figure.colorbar(self.scat)
         pl.show()
@@ -291,13 +294,14 @@ class ScaleCube(object):
         ax = self.figure.gca()
         ax.set_title("Scaling %s Image from %s to %s nm\nfrom %.1f to %.1f Irr"
                      % (self.objname, self.lmin, self.lmax,
-                        self.cmin, self.cmax))
+                        float(self.cmin), float(self.cmax)))
 
         self.scat.remove()
 
         self.scat = ax.scatter(self.Xs, self.Ys, c=self.Vs,
                                s=self.pointsize, linewidth=0,
-                               vmin=self.cmin, vmax=self.cmax)
+                               vmin=self.cmin, vmax=self.cmax,
+                               cmap=pl.get_cmap('jet'))
         self.cb.set_clim(self.cmin, self.cmax)
         self.cb.update_normal(self.scat)
         self.figure.canvas.draw()
@@ -307,11 +311,12 @@ class ScaleCube(object):
 
         if event.key == 'x':
             self.scaled = True
-            print "Scaling between %f and %f" % (self.cmin, self.cmax)
+            print("Scaling between %f and %f" %
+                  (float(self.cmin), float(self.cmax)))
             pl.close(self.figure)
         if event.key == 'q':
             self.scaled = False
-            print "Using default scaling"
+            print("Using default scaling")
             pl.close(self.figure)
         elif event.key == '>':
             if self.bgd_sub:
@@ -364,7 +369,7 @@ class WaveFixer(object):
     ax_cube = None
     ax_spec = None
 
-    def __init__(self, cube=None, pointsize=65):
+    def __init__(self, cube=None, pointsize=35):
         """ Create spectum picking gui.
 
         Args:
@@ -394,14 +399,15 @@ class WaveFixer(object):
             self.X2.append(ha2)
             self.Y1.append(s.yrange[0])
 
-        self.X1, self.X2, self.Y1 = map(np.array, [self.X1, self.X2,
-                                                   self.Y1])
+        self.X1 = np.array(self.X1)
+        self.X2 = np.array(self.X2)
+        self.Y1 = np.array(self.Y1)
 
-        OK = (np.abs(self.X1 - self.X2) < 2) & np.isfinite(self.X2) & \
+        ok = (np.abs(self.X1 - self.X2) < 2) & np.isfinite(self.X2) & \
              np.isfinite(self.Y1)
 
-        self.good_cube = self.cube[OK]
-        locs = np.array([self.X2[OK], self.Y1[OK]]).T
+        self.good_cube = self.cube[ok]
+        locs = np.array([self.X2[ok], self.Y1[ok]]).T
         self.KT = scipy.spatial.KDTree(locs)
 
         assert (len(locs) == len(self.good_cube))
@@ -418,7 +424,7 @@ class WaveFixer(object):
         pl.ion()
         self.draw_cube()
 
-        print "Registering events"
+        print("Registering events")
         self.fig.canvas.mpl_connect("button_press_event", self)
         self.fig.canvas.mpl_connect("key_press_event", self)
 
@@ -432,7 +438,7 @@ class WaveFixer(object):
         else:
             self.state = "Display"
 
-        print self.state
+        print(self.state)
         self.draw_cube()
 
     def draw_spectra(self):
@@ -440,7 +446,7 @@ class WaveFixer(object):
         if self.picked is None:
             return
 
-        print "Drawing spectra"
+        print("Drawing spectra")
         # xl = self.ax_spec.get_xlim()
         # yl = self.ax_spec.get_ylim()
         self.ax_spec.cla()
@@ -450,7 +456,7 @@ class WaveFixer(object):
         x, y = self.X2[self.picked], self.Y1[self.picked]
         objs = self.KT.query_ball_point((x, y), 70)
 
-        print "Query around %s found: %s" % ((x, y), objs)
+        print("Query around %s found: %s" % ((x, y), objs))
 
         spec = self.cube[self.picked]
         ix = np.arange(*spec.xrange)
@@ -473,7 +479,7 @@ class WaveFixer(object):
 
     def draw_cube(self):
         """ Draw the data cube """
-        print "drawing cube"
+        print("drawing cube")
 
         # Draw cube
 
@@ -491,10 +497,11 @@ class WaveFixer(object):
                           markersize=7, marker='h', linewidth=0)
 
         if self.picked is not None:
-            print self.X2[self.picked], self.Y1[self.picked]
+            print(self.X2[self.picked], self.Y1[self.picked])
 
             self.ax_cube.plot([self.X2[self.picked]],
-                              [self.Y1[self.picked]], 'o', ms=12, color='yellow',
+                              [self.Y1[self.picked]],
+                              'o', ms=12, color='yellow',
                               alpha=0.4, visible=True)
 
         tit = "State: %s | Press ? for help" % self.state
@@ -515,7 +522,7 @@ class WaveFixer(object):
                     np.abs(self.Y1 - event.ydata)
 
             ix = np.nanargmin(dists)
-            print dists[ix]
+            print(dists[ix])
 
             if dists[ix] > 20:
                 self.picked = None
@@ -528,7 +535,7 @@ class WaveFixer(object):
     def __call__(self, event):
         """Event call handler for Picker gui."""
 
-        print (event.name)
+        print(event.name)
 
         if event.name == 'pick_event':
             import pdb
@@ -547,5 +554,5 @@ class WaveFixer(object):
                 to_call()
 
             if key == "?":
-                for k, v in self.actions.iteritems():
-                    print "%s: %s" % (k, v.__doc__)
+                for k, v in self.actions.items():
+                    print("%s: %s" % (k, v.__doc__))
