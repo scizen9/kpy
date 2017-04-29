@@ -320,6 +320,8 @@ CREATE TABLE atomicrequest (
     filter text NOT NULL,
     status text DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
+    inidate_plan date  NOT NULL,
+    enddate_plan date  NOT NULL,
     inidate date  NOT NULL,
     enddate date  NOT NULL,
     creationdate date  DEFAULT NOW(),

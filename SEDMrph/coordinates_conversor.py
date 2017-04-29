@@ -14,7 +14,7 @@ def getDegRaString(ra):
     elif (" " in ra.strip()):
         raparams = ra.strip().split(" ")
     else:
-	raparams = 0
+        raparams = 0
     
     raparams = [float(r) for r in raparams]
     
