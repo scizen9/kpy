@@ -182,7 +182,7 @@ class SedmDB:
         """
 
         # TODO: test, reconsider return styles
-        allowed_params = {'id': int, 'username': str, 'name': str, 'email': str}
+        allowed_params = {'id': int, 'username': str, 'name': str, 'email': str, 'password': str}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'users')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)

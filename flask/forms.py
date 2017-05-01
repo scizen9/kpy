@@ -39,7 +39,7 @@ class SSOForm(FlaskForm):
 
 class LoginForm(FlaskForm):
     username = fields.StringField('username')
-    password = fields.StringField('password')
+    password = fields.PasswordField('password')
 
 
 def is_safe_url(target):

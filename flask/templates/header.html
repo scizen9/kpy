@@ -73,7 +73,7 @@
                     {% if not current_user.is_authenticated %}
                         <li><a href="/login">Login</a></li>
                     {% else %}
-                        <li><a href="/user_info">Logged in as {{ user.id }}</a></li>
+                        <li><a href="/user_info">Logged in as {{ current_user.id }}</a></li>
                     {% endif %}
                 </ul>
                 <form class="navbar-form navbar-left">

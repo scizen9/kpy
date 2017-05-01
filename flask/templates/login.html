@@ -6,7 +6,11 @@
                 <strong>Error!</strong> Incorrect username or password.
             </div>
         {% endif %}
-.....
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+        {% endif %}
         <div class="container container-table">
             <div class="row vertical-center-row">
                 <div class="text-center col-md-4 col-md-offset-4">
