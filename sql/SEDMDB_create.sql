@@ -88,6 +88,7 @@ CREATE TABLE object (
     dec decimal(12,6) NULL,
     typedesig varchar(1),
     epoch float,
+    creationdate date NOT NULL,
     CONSTRAINT object_pk PRIMARY KEY (id)
 );
 
