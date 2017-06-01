@@ -55,11 +55,12 @@ class User(flask_login.UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    users = db.get_from_users([user_id], {'username': user_id})
+    users = db.get_from_users(['id', 'username'], {'id': user_id})
     if not users:
         return
     user = User()
-    user.id = user_id
+    user.id = users[0][1]
+    user.name = users[0][1]
     return user
 
 
@@ -77,7 +78,7 @@ def login():
         # user should be an instance of your `User` class
         username = form.username.data
         password = form.password.data
-        user_pass = db.get_from_users(['username', 'password'], {'username': username})
+        user_pass = db.get_from_users(['username', 'password', 'id'], {'username': username})
         if not user_pass:
             message = "Incorrect username or password!"
             return render_template('header.html', current_user=flask_login.current_user) + \
@@ -91,8 +92,15 @@ def login():
                    render_template('footer.html')
         elif check_password_hash(user_pass[0][1], flask.request.form['password']):
             user = User()
-            user.id = username
+            user.id = user_pass[0][2]
+            user.name = username
             flask_login.login_user(user, remember=True)
+            group_query = ("SELECT groups.id FROM groups "
+                           "JOIN usergroups ON usergroups.group_id = groups.id "
+                           "WHERE usergroups.user_id = '%s'" % (flask_login.current_user.id))
+            gr = db.execute_sql(group_query)
+            groups = tuple([group[0] for group in gr])  # will be a tuple of the ids
+            flask_login.current_user.groups = groups
             return redirect(flask.url_for('index'))
         else:
             message = "Incorrect username or password!"
@@ -218,18 +226,60 @@ def objects():
                            message=message, urls = urls) + \
            render_template('footer.html')
 
+
 # TODO: make show_objects prettier, add parts of it to 'objects' after search completes
 @app.route('/objects/<path:ident>')
 def show_objects(ident):
+    # take name or id and show info about it and images with permission
     try:
-        iden= int(ident)
+        iden = int(ident)
     except ValueError:
         name = str(ident)
         iden = None
     if iden:
-        info = db.get_from_object(['name', 'RA', 'DEC', 'typedesig', 'epoch'], {'id': iden})
+        info = db.get_from_object(['name', 'RA', 'DEC', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     elif name:
-        info
+        info = db.get_from_object(['name', 'RA', 'DEC', 'typedesig', 'epoch', 'id'], {'name': name})[0]
+
+    if info[0] == -1:
+        # TODO: show a query failed with message ""
+        # send report?
+        pass
+    elif not info:
+        # TODO: redirect or show "there is no object %s" % (ident,)
+        pass
+    elif not flask_login.current_user:
+        return render_template('header.html',  current_user=flask_login.current_user) + \
+               render_template('show_object.html')
+    else:
+        query = ("SELECT atomicrequest.id, atomicrequest.exptime, atomicrequest.status, request.program_id FROM request"
+                 " JOIN object ON object.id = request.object_id "
+                 "JOIN atomicrequest ON request.id = atomicrequest.request_id"
+                 "WHERE object.id = '%s';" % (info[5],))
+        obs = db.execute_sql(query)
+        ???
+        # TODO: setup sso object info (below)
+        """
+        if info[3] == 'e':
+            sso_query =
+        elif info[3] == 'h':
+
+        elif info[3] == 'p':
+
+        elif info[3] == 'E':
+        """
+        for areq in obs:
+            pass
+        # get the time, duration and file for observations of the object
+        areq_query = ("SELECT observation.mjd, observation.exptime, observation.fitsfile FROM observation"
+                      "JOIN object ON object.id = observation.object_id"
+                      "JOIN request ON request.id = observation.request_id"
+                      "WHERE object.id = '%s' AND request.program_id IN %s;" % (info[5], flask_login.current_user.groups))
+        observations = db.execute_sql(areq_query)
+
+
+
+
     return render_template('header.html', current_user=flask_login.current_user) + \
            render_template('show_object.html', object=ident) + \
            render_template('footer.html')
