@@ -219,3 +219,53 @@ def plot_two_spec(folder="/home/nblago/Projects/SEDM/plots_paper/specs/"):
     plt.tight_layout()
     plt.savefig("/home/nblago/Projects/SEDM/plots_paper/spectra_sedm.pdf", ddp=200)
     plt.show()
+    
+def plot_response_time():
+    v = np.genfromtxt("/home/nblago/Documents/delay_days2.txt", skip_header=2, delimiter="|", dtype=None)
+    (counts1, bins1, c) = plt.hist(np.abs(v["f1"]), bins=20, range=(0, 20), normed=True, label="SEDM", histtype="step")
+    plt.xlabel("Date discovery - Date SEDM spectrum [days]")
+    plt.ylabel("N")
+    plt.xlim(xmin=-0.1)
+    plt.minorticks_on()
+    #plt.savefig("/home/nblago/Projects/SEDM/plots/delay_time_spec.pdf", dpi=200)
+    
+    
+    v = np.genfromtxt("/home/nblago/Documents/delay_days_other.txt", skip_header=2, delimiter="|", dtype=None)
+    counts2, bins2, c = plt.hist(np.abs(v["f1"]), bins=20, range=(0, 20), normed=True, label="Other", histtype="step")
+    plt.xlabel("Date discovery - Date SEDM spectrum [days]")
+    plt.ylabel("N")
+    plt.xlim(xmin=-0.1)
+    plt.minorticks_on()
+    plt.legend()
+    #plt.savefig("/home/nblago/Projects/SEDM/plots/delay_time_spec.pdf", dpi=200)
+    
+    plt.figure()
+    plt.plot(bins2[0:-1], counts1*1./counts2, "o")
+    
+    print counts1, counts2
+    
+def plot_lightcurve():
+    lc = np.genfromtxt("/home/nblago/Documents/lc20160919.txt", dtype=None)
+    jd = lc["f1"] - np.min(lc["f1"])
+    plt.errorbar(jd*24, lc["f2"]+23.5, yerr=lc["f3"], fmt="o")
+    plt.gca().invert_yaxis()
+    plt.minorticks_on()
+    plt.xlabel("Time [h]")
+    plt.ylabel("R-magnitude") 
+    plt.tight_layout()
+    plt.savefig("/home/nblago/Projects/SEDM/plots_paper/lightcurve.pdf", ddp=200)
+
+def plot_num_sne():
+    sn = np.genfromtxt("/home/nblago/Projects/SEDM/reported_transients.txt", dtype=None)
+    sna = np.genfromtxt("/home/nblago/Projects/SEDM/classified_supernovae.txt", dtype=np.float)
+    plt.hist(sna, bins=100, range=(1917,2017), histtype="bar", lw=2, rwidth=1, label="Reported transients", color="k")
+    plt.hist(sn, bins=100, range=(1917,2017), histtype="bar", lw=2, rwidth=1, label="Confirmed SNe", color="orange")
+    plt.xlabel("Year")
+    plt.ylabel("N / year")
+    plt.minorticks_on()
+    plt.tight_layout()
+    plt.yscale("log")
+    plt.legend()
+    plt.xlim(1917,2018)
+    plt.gca().set_yticklabels([0,1, 1,10,100,1000,10000])
+    plt.savefig("/home/nblago/Projects/SEDM/plots_paper/sn_discovered.pdf", ddp=200)
