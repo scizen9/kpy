@@ -182,7 +182,7 @@ class SedmDB:
         """
 
         # TODO: test, reconsider return styles
-        allowed_params = {'id': int, 'username': str, 'name': str, 'email': str}
+        allowed_params = {'id': int, 'username': str, 'name': str, 'email': str, 'password': str}
         sql = _generate_select_sql(values, where_dict, allowed_params, 'users')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -430,7 +430,7 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
-    def get_objects_near(self, ra, dec, radius):
+    def get_objects_near(self, ra, dec, radius, values=['id', 'name', 'epoch']):
         """
         get object entries with coordinates within a radius
 
@@ -438,6 +438,9 @@ class SedmDB:
             ra (float or int): ra in degrees of the object
             dec (float or int): dec in degrees of the object
             radius (float or int): radius in arcseconds
+            values (list): which parameters to return
+                    options: 'id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'
+                    defaults to ['id', 'name', 'epoch']
 
         Returns:
             list of tuples [(id, name, epoch)] for each object in the radius
@@ -446,6 +449,9 @@ class SedmDB:
 
             (-1, "ERROR...") if there is an issue
         """
+        for value in values[::-1]:
+            if value not in ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']:
+                values.remove(value)
         if not (isinstance(ra, float) or isinstance(ra, int)):
             return (-1, "ERROR: parameter ra must be of type 'float' or type 'int'!")
         if not (isinstance(dec, float) or isinstance(dec, int)):

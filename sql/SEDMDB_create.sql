@@ -88,6 +88,7 @@ CREATE TABLE object (
     dec decimal(12,6) NULL,
     typedesig varchar(1),
     epoch float,
+    creationdate timestamp NOT NULL DEFAULT NOW(),
     CONSTRAINT object_pk PRIMARY KEY (id)
 );
 
@@ -133,7 +134,7 @@ CREATE TABLE hyperbolic_heliocentric (
     id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
-    T date,
+    T timestamp,
     --inclination
     inclination decimal(10,8),
     -- longitude of ascending node
@@ -158,7 +159,7 @@ CREATE TABLE parabolic_heliocentric (
     id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- date of the epoch of perihelion
-    T date,
+    T timestamp,
     --inclination
     inclination decimal(10,8),
     -- argument of perihelion
@@ -181,7 +182,7 @@ CREATE TABLE earth_satellite (
     id BIGSERIAL,
     object_id bigint not null UNIQUE,
     -- first date the elements are valid
-    T date,
+    T timestamp,
     --inclination
     inclination decimal(10,8),
     -- RA of ascending node
@@ -330,16 +331,16 @@ CREATE TABLE request (
     maxairmass decimal(5,2)  DEFAULT 2.5,
     status text  DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
-    inidate date  NOT NULL,
-    enddate date  NOT NULL,
+    inidate timestamp  NOT NULL,
+    enddate timestamp  NOT NULL,
     cadence decimal(5,2) NULL,
     phasesamples decimal(5,2)  NULL,
     sampletolerance decimal(5,2) NULL,
     filters text[] DEFAULT '{ifu,u,g,r,i}',
     nexposures integer[] NULL,
     ordering text[] NULL,
-    creationdate date DEFAULT NOW(),
-    lastmodified date  DEFAULT NOW(),
+    creationdate timestamp DEFAULT NOW(),
+    lastmodified timestamp  DEFAULT NOW(),
     CONSTRAINT request_pk PRIMARY KEY (id)
 );
 
@@ -360,10 +361,12 @@ CREATE TABLE atomicrequest (
     filter text NOT NULL,
     status text DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
-    inidate date  NOT NULL,
-    enddate date  NOT NULL,
-    creationdate date  DEFAULT NOW(),
-    lastmodified date  DEFAULT NOW(),
+    inidate_plan date  NOT NULL,
+    enddate_plan date  NOT NULL,
+    inidate timestamp  NOT NULL,
+    enddate timestamp  NOT NULL,
+    creationdate timestamp  DEFAULT NOW(),
+    lastmodified timestamp  DEFAULT NOW(),
     CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
 );
 
@@ -387,7 +390,7 @@ CREATE INDEX atomicrequest_enddate_key ON atomicrequest(
 CREATE TABLE telescope_stats (
     id BIGSERIAL,
     observation_id bigint NOT NULL UNIQUE,
-    date date  NOT NULL,
+    date timestamp  NOT NULL,
     dome_status text  NULL,
     in_temp decimal(5,2)  NULL,
     in_humidity decimal(5,2)  NULL,
