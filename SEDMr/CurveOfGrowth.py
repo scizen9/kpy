@@ -383,7 +383,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
     """Loads IFU frame "imfile" and extracts spectra using "fine".
 
     Args:
-        infile (string): filename to write results to
+        infile (string): input extractions file
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
         sigfac (float): sigma multiplier for Gaussian extent of aperture

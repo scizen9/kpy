@@ -832,7 +832,7 @@ def ObsLoop(rawlist=None, redd=None):
     # END: ObsLoop
 
 
-def go(rawd='/scr2/sedm/raw', redd='/scr2/sedm/redux', wait=False):
+def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
