@@ -262,9 +262,9 @@ def show_objects(ident):
         return (render_template('header.html',  current_user=flask_login.current_user) +
                 render_template('show_object.html'))
     else:
-        query = ("SELECT atomicrequest.id, atomicrequest.exptime, atomicrequest.status, request.program_id FROM request"
-                 " JOIN object ON object.id = request.object_id "
-                 "JOIN atomicrequest ON request.id = atomicrequest.request_id"
+        query = ("SELECT atomicrequest.id, atomicrequest.exptime, atomicrequest.status, request.program_id FROM request "
+                 "JOIN object ON object.id = request.object_id "
+                 "JOIN atomicrequest ON request.id = atomicrequest.request_id "
                  "WHERE object.id = '%s';" % (info[5],))
         obs = db.execute_sql(query)
         # TODO: remove above query?
@@ -299,11 +299,11 @@ def project_stats(project):
 
     day = datetime.datetime.now()
     start = Time(day - datetime.timedelta(days=day.weekday())).mjd
-    end = Time(start + datetime.timedelta(days=7)).mjd
+    end = start + 7 
 
-    areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest"
-                  "JOIN request ON request.id = atomicrequest.request_id"
-                  "WHERE request.project_id = '%s'"
+    areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
+                  "JOIN request ON request.id = atomicrequest.request_id "
+                  "WHERE request.program_id = '%s'"
                   #" AND  atomicrequest.lastmodified < %s AND atomicrequest.lastmodified > %s"
                   ";" % (group_dict[project],))
     requests = np.array(db.execute_sql(areq_query))
@@ -337,9 +337,8 @@ def project_stats(project):
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
 
-# return response
-    return (render_template('header.html', current_user=flask_login.current_user) +
-            render_template('project_stats', img_data=pi_chart.render()) +
+    return (render_template('header.html') +#, current_user=flask_login.current_user) +
+            render_template('project_stats.html', img_data=pi_chart.render()) +
             render_template('footer.html'))
 
 
