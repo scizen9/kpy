@@ -9,6 +9,9 @@ import os
 import datetime
 from astropy.time import Time
 import numpy as np
+import pygal
+from pygal.style import Style
+import json
 from flask import Flask, request, flash, redirect, render_template, url_for, make_response
 from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
@@ -65,8 +68,8 @@ def load_user(user_id):
     if not users:
         return
     user = User()
-    user.id = users[0][1]
-    user.name = users[0][1]
+    #user.id = users[0][1]
+    #user.name = users[0][1]
     return user
 
 
@@ -243,10 +246,11 @@ def show_objects(ident):
         name = str(ident)
         iden = None
     if iden:
-        info = db.get_from_object(['name', 'RA', 'DEC', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
+        info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     elif name:
-        info = db.get_from_object(['name', 'RA', 'DEC', 'typedesig', 'epoch', 'id'], {'name': name})[0]
+        info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'name': name})[0]
 
+    print info
     if info[0] == -1:
         # TODO: show a query failed with message ""
         # send report?
@@ -284,8 +288,6 @@ def show_objects(ident):
         observations = db.execute_sql(areq_query)
 
 
-
-
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('show_object.html', object=ident) +
             render_template('footer.html'))
@@ -312,30 +314,32 @@ def project_stats(project):
     observed_time = sum(requests.T[1][observed])/3600.
     # TODO: make time_allocated part of group definition?
     time_allocated = 14.
-    # TODO: use better method than below (pygal or flask-appbuilder?)
-    import StringIO
-    from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-    from matplotlib.figure import Figure
+    # pygal graphing
 
-    fig = Figure()
-    ax = fig.add_subplot(111)
-    labels = ['observed', 'pending', 'over_budget', 'free']
     if observed_time+pending_time > time_allocated:
-        total_time = observed_time+pending_time
-        fracs = [observed_time/total_time, (time_allocated-observed_time)/total_time, (total_time-time_allocated)/total_time, 0.]
+        c_style = Style(
+            background='transparent',
+            colors=('#52e852', '#1a4fba', '#e22626')
+            )
+        pi_chart = pygal.Pie(style=c_style)
+        pi_chart.title = "Time allocation (h)"
+        pi_chart.add('observed', observed_time)
+        pi_chart.add('requested', (time_allocated-observed_time))
+        pi_chart.add('requested beyond allocation', (observed_time+pending_time-time_allocated))
     else:
-        fracs = [observed_time/time_allocated, pending_time/time_allocated, 0., (time_allocated-pending_time-observed_time)]
-    ax.pie(fracs, labels=labels, autopct='%1.1f%%', shadow=True)
-    canvas = FigureCanvas(fig)
-    png_output = StringIO.StringIO()
-    canvas.print_png(png_output)
-    response = make_response(png_output.getvalue())
-    response.headers['Content-Type'] = 'image/png'
-
+        c_style = Style(
+            background='transparent',
+            colors=('#52e852', '#1a4fba', '#e5f2de')
+            )
+        pi_chart = pygal.Pie(style=c_style)
+        pi_chart.title = "Time allocation (h)"
+        pi_chart.add('observed', observed_time)
+        pi_chart.add('requested', pending_time)
+        pi_chart.add('free', (time_allocated-pending_time-observed_time))
 
 # return response
     return (render_template('header.html', current_user=flask_login.current_user) +
-            render_template('project_stats', img_data=response) +
+            render_template('project_stats', img_data=pi_chart.render()) +
             render_template('footer.html'))
 
 
