@@ -39,6 +39,7 @@ with codecs.open(configfile, 'r') as f:
 
 _logpath = parser.get('paths', 'logpath')
 _photpath = parser.get('paths', 'photpath')
+_db = parser.get('persistence', 'db')
 
 
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
