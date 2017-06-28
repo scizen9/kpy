@@ -225,7 +225,7 @@ def objects():
                 message = found[1]
             elif len(found) > 1:
                 urls = [(obj[0], obj[1]) for obj in found]
-                message = "multiple objects matching coordinates:"
+                message = "multiple objects matching request:"
             else:
                 return redirect(url_for('show_objects', ident=found[0][0]))
     # TODO: make an objects "homepage" to have as the base render
@@ -295,12 +295,10 @@ def show_objects(ident):
 
 @app.route('/project_stats/<path:project>')
 def project_stats(project):
-    # TODO: show chart with 'total time allocated', 'time requested', "time observed"
-
     day = datetime.datetime.now()
     start = Time(day - datetime.timedelta(days=day.weekday())).mjd
     end = start + 7 
-
+    # TODO: make a form to set start/end dates
     areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
                   "JOIN request ON request.id = atomicrequest.request_id "
                   "WHERE request.program_id = '%s'"
@@ -316,6 +314,7 @@ def project_stats(project):
     time_allocated = 14.
     # pygal graphing
 
+    # use different color schemes based on whether there is more time requested than allowed
     if observed_time+pending_time > time_allocated:
         c_style = Style(
             background='transparent',
@@ -337,8 +336,26 @@ def project_stats(project):
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
 
+    # retrieve all of the requests submitted for the project
+    request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
+                     "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
+                     "AND r.program_id = '%s';" % (group_dict[project]))
+    req = db.execute_sql(request_query)
+    for n, x in enumerate(req):
+        req[n] = list(x)
+        # decide between name/username
+        if not [0]:
+            del req[n][0]
+        else:
+            del req[n][1]
+        # decide between name/id
+        if not req[n][1]:
+            del req[n][1]
+        else:
+            del req[n][2]
+
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
-            render_template('project_stats.html', img_data=pi_chart.render()) +
+            render_template('project_stats.html', img_data=pi_chart.render(), req_data = req) +
             render_template('footer.html'))
 
 

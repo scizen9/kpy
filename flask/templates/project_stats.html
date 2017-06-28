@@ -7,4 +7,25 @@
             <figure>
                 {{ img_data }}
             </figure>
+                <table id="requests">
+                    <tr>
+                        <td>Requester</td>
+                        <td>Object</td>
+                        <td>Start Date</td>
+                        <td>End Date</td>
+                        <td>Priority</td>
+                        <td>Status</td>
+                        <!-- add time/filters? -->
+                    </tr>
+                    {%- for request in req_data -%}
+                    <tr>
+                        <td>{{ req_data[0] }}</td>
+                        <td>{{ req_data[1] }}</td>
+                        <td>{{ req_data[2] }}</td>
+                        <td>{{ req_data[3] }}</td>
+                        <td>{{ req_data[4] }}</td>
+                        <td>{{ req_data[5] }}</td>
+                    </tr>
+                    {%- endfor -}
+                </table>
         </div>
