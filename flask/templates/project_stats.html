@@ -4,11 +4,12 @@
             </div>
         {% endif %}
         <div class="container container-table">
-            <figure>
-                {{ img_data }}
-            </figure>
-                <table id="requests">
-                    <tr>
+            <div id="chart" style="height: 300px; width: 300px;"> 
+		        <embed type="image/svg+xml" src= {{ img_data|safe }} /> 
+            </div>
+            <table id="requests" class="mytable">
+                <thead>
+                    <tr class="firstline">
                         <td>Requester</td>
                         <td>Object</td>
                         <td>Start Date</td>
@@ -17,15 +18,18 @@
                         <td>Status</td>
                         <!-- add time/filters? -->
                     </tr>
-                    {%- for request in req_data -%}
+                </thead>
+                <tbody>
+                    {% for request in req_data %}
                     <tr>
-                        <td>{{ req_data[0] }}</td>
-                        <td>{{ req_data[1] }}</td>
-                        <td>{{ req_data[2] }}</td>
-                        <td>{{ req_data[3] }}</td>
-                        <td>{{ req_data[4] }}</td>
-                        <td>{{ req_data[5] }}</td>
+                        <td>{{ request[0] }}</td>
+                        <td>{{ request[1] }}</td>
+                        <td>{{ request[2] }}</td>
+                        <td>{{ request[3] }}</td>
+                        <td>{{ request[4] }}</td>
+                        <td>{{ request[5] }}</td>
                     </tr>
-                    {%- endfor -}
-                </table>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>

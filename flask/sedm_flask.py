@@ -320,7 +320,7 @@ def project_stats(project):
             background='transparent',
             colors=('#52e852', '#1a4fba', '#e22626')
             )
-        pi_chart = pygal.Pie(style=c_style)
+        pi_chart = pygal.Pie(style=c_style, height=300, width=300)
         pi_chart.title = "Time allocation (h)"
         pi_chart.add('observed', observed_time)
         pi_chart.add('requested', (time_allocated-observed_time))
@@ -330,12 +330,12 @@ def project_stats(project):
             background='transparent',
             colors=('#52e852', '#1a4fba', '#e5f2de')
             )
-        pi_chart = pygal.Pie(style=c_style)
+        pi_chart = pygal.Pie(style=c_style, height=300, width=300)
         pi_chart.title = "Time allocation (h)"
         pi_chart.add('observed', observed_time)
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
-
+    
     # retrieve all of the requests submitted for the project
     request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
                      "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
@@ -355,7 +355,7 @@ def project_stats(project):
             del req[n][2]
 
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
-            render_template('project_stats.html', img_data=pi_chart.render(), req_data = req) +
+            render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data = req) +
             render_template('footer.html'))
 
 
