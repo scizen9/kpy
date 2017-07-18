@@ -1,0 +1,61 @@
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+        {% endif %}
+        <li> Name: {{ info[0] }}</li>
+        <li> RA: {{ info[1] }}</li>
+        <li> DEC: {{ info[2] }}</li>
+        <li> Epoch: {{ info[4] }}</li>
+        {% if info[3] == e %}
+        {% endif %}
+        <div class="bs-glyphicons">
+            <ul class="bs-glyphicons-list">
+                {% for entry, image in observations %}
+                    <li>
+                        image
+                        <span>mjd {{ entry[0] }}; filter {{ entry[2] }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="container container-table">
+            <div id="chart" style="height: 300px; width: 300px;">
+		        <embed type="image/svg+xml" src= {{ img_data|safe }} />
+            </div>
+            <tr>Requests</tr>
+            <table id="requests" class="mytable">
+                <thead>
+                    <tr class="firstline">
+                        <td>Requester</td>
+                        <td>Project</td>
+                        <td>Start Date</td>
+                        <td>End Date</td>
+                        <td>Priority</td>
+                        <td>Status</td>
+                        <!-- add time/filters? -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in req_data %}
+                    <tr>
+                        <td>{{ request[0] }}</td>
+                        <td>{{ request[1] }}</td>
+                        <td>{{ request[2] }}</td>
+                        <td>{{ request[3] }}</td>
+                        <td>{{ request[4] }}</td>
+                        <td>{{ request[5] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
