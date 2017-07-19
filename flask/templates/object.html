@@ -1,55 +1,56 @@
 {% from "_formhelpers.html" import render_field %}
-        {% if not where %}
-            <div class = "container">
-                <div class="media-body">
-                    {% if message %}
-                            <h5> {{ message }}</h5>
+        <div class = "container">
+            <div class="media-body">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <ul class=flashes>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                        </ul>
                     {% endif %}
-                    {%- for url, name in urls -%}
-                        <a href="{{ url_for('objects', where=url) }}">{{ name }} &nbsp;&nbsp; </a>
-                    {%- endfor -%}
-                </div>
-                <div class="col-md-6">
-                    <div class="well">
-                        <h3>Add Object</h3>
-                        <form method="post">
-                            {{ form1.csrf_token }}
-                            <p>
-                                {{ render_field(form1.object_name) }}
-                                {{ render_field(ssoform.typedesig) }}
-                                {{ render_field(form1.add_obj) }}
-                            </p>
-                        </form>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="well">
-                        <h3>Search Database</h3>
-                        <h4>By coordinates:</h4>
-                        <form method="post">
-                            {{ form2.csrf_token }}
-                            <p>
-                                {{ render_field(form2.RA) }}
-                                {{ render_field(form2.DEC) }}
-                                {{ render_field(form2.radius) }}
-                                {{ render_field(form2.submit_obj) }}
-                            </p>
-                        </form>
-                        <h4>By name:</h4>
-                        <form method="post">
-                            {{ form2.csrf_token }}
-                            <p>
-                                {{ render_field(form2.object_name) }}
-                                {{ render_field(form2.submit_obj) }}
-                            </p>
-                        </form>
-                    </div>
+                {% endwith %}
+                {% if message %}
+                        <h5> {{ message }}</h5>
+                {% endif %}
+                {%- for url, name in urls -%}
+                    <a href="{{ url_for('objects', where=url) }}">{{ name }} &nbsp;&nbsp; </a>
+                {%- endfor -%}
+            </div>
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Add Object</h3>
+                    <form method="post">
+                        {{ form1.csrf_token }}
+                        <p>
+                            {{ render_field(form1.object_name) }}
+                            {{ render_field(ssoform.typedesig) }}
+                            {{ render_field(form1.add_obj) }}
+                        </p>
+                    </form>
                 </div>
             </div>
-        {% else %}
-            <div>
-                <p>
-                    {{ object }}
-                </p>
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Search Database</h3>
+                    <h4>By coordinates:</h4>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.RA) }}
+                            {{ render_field(form2.DEC) }}
+                            {{ render_field(form2.radius) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                    <h4>By name:</h4>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.object_name) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                </div>
             </div>
-        {% endif %}
+        </div>
