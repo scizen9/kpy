@@ -14,7 +14,7 @@
                         <h5> {{ message }}</h5>
                 {% endif %}
                 {%- for url, name in urls -%}
-                    <a href="{{ url_for('objects', where=url) }}">{{ name }} &nbsp;&nbsp; </a>
+                    <a href="{{ url_for('show_objects', ident=url) }}">{{ name }} &nbsp;&nbsp; </a>
                 {%- endfor -%}
             </div>
             <div class="col-md-6">

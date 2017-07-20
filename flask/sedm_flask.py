@@ -23,7 +23,7 @@ import flask_login
 from wtforms import Form, HiddenField
 from astropy.io import fits
 from plotly.offline import plot
-from plotly.graphobjs import Heatmap
+from plotly.graph_objs import Heatmap
 import matplotlib.pyplot as plt
 
 # config
@@ -249,44 +249,42 @@ def show_objects(ident):
         iden = db.get_from_object(['id'], {'name': name})
         if not iden:
             flash("Object with name '%s' not found, please search for object" % (ident,))
-            redirect(url_for('objects'))
+            return redirect(url_for('objects'))
         elif iden[0] == -1:
             flash("Searching for name '%s' caused error '%', please report issue" % (ident, iden[1]))
-            redirect(url_for('objects'))
+            return redirect(url_for('objects'))
         else:
-            redirect(url_for('show_objects', iden[0][0]))
+            return redirect(url_for('show_objects', iden[0][0]))
 
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     # TODO: work in SSO objects
     if info[0] == -1:
         flash("Searching for id '%s' caused error '%s', please report issue")
-        redirect(url_for('objects'))
+        return redirect(url_for('objects'))
     elif not info:
         flash("Searching for id '%s' produced no results, please search for object")
-        redirect(url_for('objects'))
+        return redirect(url_for('objects'))
 
 
     # retrieve all of the requests submitted for the object
-    request_query = ("SELECT u.name, u.username, r.program_id, r.inidate, r.enddate, r.priority, r.status "
-                     "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
+    request_query = ("SELECT u.name, u.username, g.designator, r.inidate, r.enddate, r.priority, r.status "
+                     "FROM request r, users u, object o, groups g  WHERE r.user_id = u.id AND r.object_id = o.id AND g.id = r.program_id "
                      "AND r.object_id = '%s';" % (ident,))
                     # TODO: add ```AND r.program_id IN %s;" % (,flask_login.current_user.groups)```
     req = db.execute_sql(request_query)
     for n, x in enumerate(req):
         req[n] = list(x)
         # decide between name/username
-        if not [0]:
+        if not req[n][0]:
             del req[n][0]
         else:
             del req[n][1]
-        # decode from program_id to program name
-        req[n][1] = group_dict[req[n][1]]
 
     # get the time, duration and file for observations of the object
     a_query = ("SELECT obs.mjd, obs.exptime, a.filter, obs.fitsfile "
-               "FROM observation obs, object obj, atomicrequest a, request r WHERE o.id = obs.object_id AND "
+               "FROM observation obs, object obj, atomicrequest a, request r WHERE obj.id = obs.object_id AND "
                "a.id = obs.atomicrequest_id AND r.id = obs.request_id "
-               "AND WHERE object.id = '%s';" % (ident,))
+               "AND obj.id = '%s';" % (ident,))
                # TODO: add ```AND r.program_id IN %s;" % (, flask_login.current_user.groups)```
     observations = db.execute_sql(a_query)
     obs = []
@@ -363,15 +361,16 @@ def project_stats(project):
                   ";" % (group_dict[project],))
     requests = np.array(db.execute_sql(areq_query))
     # TODO: test for whether there are any matching requests
-    pending = (requests.T[0] == 'PENDING')
-    pending_time = sum(requests.T[1][pending])/3600.
-    observed = ((requests.T[0] == 'OBSERVED') | (requests.T[0] == 'REDUCED'))
-    observed_time = sum(requests.T[1][observed])/3600.
+    pending = (requests.T[1] == 'PENDING')
+    pending_time = sum(requests.T[0][pending].astype(float))/3600.
+    observed = ((requests.T[1] == 'OBSERVED') | (requests.T[0] == 'REDUCED'))
+    observed_time = sum(requests.T[0][observed].astype(float))/3600.
     # TODO: make time_allocated part of group definition?
     time_allocated = 14.
     # pygal graphing
 
     # use different color schemes based on whether there is more time requested than allowed
+    print requests, pending, pending_time
     if observed_time+pending_time > time_allocated:
         c_style = Style(
             background='transparent',
