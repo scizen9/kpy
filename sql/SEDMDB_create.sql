@@ -255,8 +255,6 @@ CREATE TABLE spec (
     observation_id bigint NOT NULL UNIQUE,
     reducedfile text  NULL,
     sexfile text  NULL,
-    biasfile text  NULL,
-    flatfile text  NULL,
     imgset text  NULL,
     quality int  NOT NULL,
     cubefile text  NULL,
@@ -270,6 +268,25 @@ CREATE INDEX spec_marshal_spec_id_key ON spec(
     marshal_spec_id
 );
 
+CREATE TABLE spec_calib (
+    spec_id bigint NOT NULL unique,
+    dome text NULL,
+    bias text NULL,
+    flat text NULL,
+    cosmic_filter boolean Null,
+    DRPVER text NULL,
+    Hg_master text NULL,
+    Cd_master text NULL,
+    Xe_master text NULL,
+    avg_rms text NULL,
+    min_rms decimal(5,2) NULL,
+    max_rms decimal(5,2) NULL
+);
+
+CREATE INDEX spec_calib_spec_id ON spec(
+    spec_id
+);
+
 -- Table: phot
 CREATE TABLE phot (
     id BIGSERIAL,
@@ -278,9 +295,7 @@ CREATE TABLE phot (
     filter text  NOT NULL,
     reducedfile text  NULL,
     sexfile text  NULL,
-    biasfile text  NULL,
     maskfile text  NULL,
-    flatfile text  NULL,
     pipeline text  NULL,
     marshal_phot_id bigint  NULL,
     CONSTRAINT phot_pk PRIMARY KEY (id)
@@ -288,6 +303,16 @@ CREATE TABLE phot (
 
 CREATE INDEX phot_marshal_phot_id ON phot(
     marshal_phot_id
+);
+
+CREATE TABLE phot_calib (
+    phot_id bigint NOT NULL unique,
+    bias text NULL,
+    flat text NULL
+);
+
+CREATE INDEX  phot_calib_phot_id ON phot_calib (
+    phot_id
 );
 
 -- Table: ref_stars
@@ -440,6 +465,26 @@ CREATE TABLE usergroups (
     CONSTRAINT user_groups PRIMARY KEY (user_id, group_id)
 );
 
+-- Table: program
+CREATE TABLE program (
+    id BIGINT NOT NULL UNIQUE,
+    designator text NOT NULL UNIQUE,
+    name text NULL ,
+    group_id BIGINT NOT NULL,
+    PI text NULL,
+    time_allocated decimal(5,2) NULL,
+    priority decimal(5,2) NULL
+);
+
+-- Table: allocation
+CREATE TABLE allocation (
+    pg_designator text NOT NULL,
+    inidate DATE NULL,
+    enddate DATE NULL,
+    time_spent DECIMAL(5,2) NULL,
+    time_allocated DECIMAL(5,2) NULL
+);
+
 -- foreign keys
 -- Reference: atomicrequest_object (table: atomicrequest)
 ALTER TABLE usergroups ADD CONSTRAINT usergroups_users
@@ -452,6 +497,20 @@ ALTER TABLE usergroups ADD CONSTRAINT usergroups_users
 ALTER TABLE usergroups ADD CONSTRAINT usergroups_groups
     FOREIGN KEY (group_id)
     REFERENCES groups (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+ALTER TABLE program ADD CONSTRAINT program_groups
+    FOREIGN KEY (group_id)
+    REFERENCES groups (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+ALTER TABLE allocation ADD CONSTRAINT allocation_program
+    FOREIGN KEY (pg_designator)
+    REFERENCES program (designator)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -509,6 +568,22 @@ ALTER TABLE metrics_spec ADD CONSTRAINT metrics_spec_spec
     FOREIGN KEY (spec_id)
     REFERENCES spec (id)  
     NOT DEFERRABLE 
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: phot_phot_id (table: phot_calib)
+ALTER TABLE phot_calib ADD CONSTRAINT phot_phot_id
+    FOREIGN KEY (phot_id)
+    REFERENCES phot (id)
+    NOT DEFERRABLE
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: spec__specid (table: spec_calib)
+ALTER TABLE spec_calib ADD CONSTRAINT spec_spec_id
+    FOREIGN KEY (spec_id)
+    REFERENCES spec (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
