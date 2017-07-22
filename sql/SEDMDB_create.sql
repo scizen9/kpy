@@ -382,7 +382,7 @@ CREATE TABLE atomicrequest (
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
     order_id int NULL,
-    exptime float  NOT NULL,
+    exptime float NOT NULL,
     filter text NOT NULL,
     status text DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
@@ -390,6 +390,7 @@ CREATE TABLE atomicrequest (
     enddate_plan date  NOT NULL,
     inidate timestamp  NOT NULL,
     enddate timestamp  NOT NULL,
+    time_elapsed float NULL ,
     creationdate timestamp  DEFAULT NOW(),
     lastmodified timestamp  DEFAULT NOW(),
     CONSTRAINT atomicrequest_pk PRIMARY KEY (id)
@@ -472,7 +473,7 @@ CREATE TABLE program (
     name text NULL ,
     group_id BIGINT NOT NULL,
     PI text NULL,
-    time_allocated decimal(5,2) NULL,
+    time_allocated interval NULL,
     priority decimal(5,2) NULL
 );
 
@@ -481,8 +482,8 @@ CREATE TABLE allocation (
     pg_designator text NOT NULL,
     inidate DATE NULL,
     enddate DATE NULL,
-    time_spent DECIMAL(5,2) NULL,
-    time_allocated DECIMAL(5,2) NULL
+    time_spent interval NULL,
+    time_allocated interval NULL
 );
 
 -- foreign keys

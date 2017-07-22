@@ -13,18 +13,10 @@ CREATE TABLE spec_calib (
     max_rms decimal(5,2) NULL
 );
 
-CREATE INDEX spec_calib_spec_id ON spec(
-    spec_id
-);
-
 CREATE TABLE phot_calib (
     phot_id bigint NOT NULL unique,
     bias text NULL,
     flat text NULL
-);
-
-CREATE INDEX  phot_calib_phot_id ON phot_calib (
-    phot_id
 );
 
 -- Table: program
@@ -34,7 +26,7 @@ CREATE TABLE program (
     name text NULL ,
     group_id BIGINT NOT NULL,
     PI text NULL,
-    time_allocated decimal(5,2) NULL,
+    time_allocated interval NULL,
     priority decimal(5,2) NULL
 );
 
@@ -43,8 +35,8 @@ CREATE TABLE allocation (
     pg_designator text NOT NULL,
     inidate DATE NULL,
     enddate DATE NULL,
-    time_spent DECIMAL(5,2) NULL,
-    time_allocated DECIMAL(5,2) NULL
+    time_spent interval NULL,
+    time_allocated interval NULL
 );
 
 ALTER TABLE program ADD CONSTRAINT program_groups

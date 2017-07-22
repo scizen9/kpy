@@ -14,6 +14,12 @@ ALTER TABLE metrics_phot
 ALTER TABLE metrics_spec
     DROP CONSTRAINT metrics_spec_spec;
 
+ALTER TABLE spec_calib
+    DROP CONSTRAINT spec_spec_id;
+
+ALTER TABLE phot_calib
+    DROP CONSTRAINT phot_phot_id;
+
 ALTER TABLE observation
     DROP CONSTRAINT observation_request;
 
@@ -38,6 +44,13 @@ ALTER TABLE telescope_stats
 ALTER TABLE request
     DROP CONSTRAINT users_request;
 
+ALTER TABLE program
+    DROP CONSTRAINT program_groups;
+
+ALTER TABLE allocation
+    DROP CONSTRAINT allocation_program;
+
+
 -- tables
 
 DROP TABLE usergroups;
@@ -50,6 +63,10 @@ DROP TABLE metrics_phot;
 
 DROP TABLE metrics_spec;
 
+DROP TABLE spec_calib;
+
+DROP TABLE phot_calib;
+
 DROP TABLE observation;
 
 DROP TABLE phot;
@@ -61,6 +78,10 @@ DROP TABLE atomicrequest;
 DROP TABLE spec;
 
 DROP TABLE telescope_stats;
+
+DROP TABLE allocation;
+
+DROP TABLE program;
 
 DROP TABLE users;
 

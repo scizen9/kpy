@@ -1602,9 +1602,7 @@ class SedmDB:
                     'filter' (str),
                     'reducedfile' (str),
                     'sexfile' (str),
-                    'biasfile' (str),
                     'maskfile' (str),
-                    'flatfile' (str),
                     'pipeline' (str),
                     'marshal_phot_id' (int)
 
@@ -1616,7 +1614,7 @@ class SedmDB:
             (0, "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
         param_types = {'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
-                       'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int}
+                       'maskfile': str, 'pipeline': str, 'marshal_phot_id': int}
         # TODO: test
         keys = list(pardic.keys())
         if 'observation_id' not in keys:
@@ -1626,8 +1624,8 @@ class SedmDB:
             if phot_id[0] == -1:
                 return phot_id
             for key in reversed(keys):  # TODO: test the updating
-                if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
-                               'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
+                if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile',
+                               'maskfile', 'pipeline', 'marshal_phot_id']:
                     keys.remove(key)
             pardic['id'] = phot_id[0][0]
             type_check = _data_type_check(keys, pardic, param_types)
@@ -1652,14 +1650,14 @@ class SedmDB:
             pass
             # TODO: generate the filter here?
 
-        for key in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
-                    'maskfile', 'flatfile', 'pipeline']:  # include 'marshal_phot_id'?
+        for key in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile',
+                    'maskfile', 'pipeline']:  # include 'marshal_phot_id'?
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):  # remove any invalid keys
-            if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile', 'biasfile',
-                           'maskfile', 'flatfile', 'pipeline', 'marshal_phot_id']:
+            if key not in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile',
+                           'maskfile', 'pipeline', 'marshal_phot_id']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -1698,9 +1696,7 @@ class SedmDB:
                 'filter' (str),
                 'reducedfile' (str),
                 'sexfile' (str),
-                'biasfile' (str),
                 'maskfile' (str),
-                'flatfile' (str),
                 'pipeline' (str),
                 'marshal_phot_id' (int)
 
@@ -1712,7 +1708,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
-                          'biasfile': str, 'maskfile': str, 'flatfile': str, 'pipeline': str, 'marshal_phot_id': int,
+                          'maskfile': str, 'pipeline': str, 'marshal_phot_id': int,
                           'id': int}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, 'phot')  # checks type and
@@ -1737,8 +1733,6 @@ class SedmDB:
                     'observation_id' (int),
                     'reducedfile' (str),
                     'sexfile' (str),
-                    'biasfile' (str),
-                    'flatfile' (str),
                     'imgset' (str),
                     'quality' (int),
                     'cubefile' (str),
@@ -1752,7 +1746,7 @@ class SedmDB:
 
             (0, "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
-        param_types = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
+        param_types = {'observation_id': int, 'reducedfile': str, 'sexfile': str,
                        'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': 'bool'}
         # TODO: which parameters are required? test
         # TODO: update schedule table indicating reduction?
@@ -1764,7 +1758,7 @@ class SedmDB:
             if spec_id[0] == -1:
                 return spec_id
             for key in reversed(keys):  # TODO: test the updating
-                if key not in ['reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
+                if key not in ['reducedfile', 'sexfile', 'imgset', 'quality',
                                'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
                     keys.remove(key)
             pardic['id'] = spec_id[0][0]
@@ -1783,13 +1777,13 @@ class SedmDB:
         elif obs_id[0] == -1:
             return obs_id
 
-        for key in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality', 'cubefile',
+        for key in ['observation_id', 'reducedfile', 'sexfile', 'imgset', 'quality', 'cubefile',
                     'standardfile', 'skysub']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):
-            if key not in ['observation_id', 'reducedfile', 'sexfile', 'biasfile', 'flatfile', 'imgset', 'quality',
+            if key not in ['observation_id', 'reducedfile', 'sexfile', 'imgset', 'quality',
                            'cubefile',
                            'standardfile', 'marshal_spec_id', 'skysub']:
                 keys.remove(key)
@@ -1828,8 +1822,6 @@ class SedmDB:
                 'observation_id' (int),
                 'reducedfile' (str),
                 'sexfile' (str),
-                'biasfile' (str),
-                'flatfile' (str),
                 'imgset' (str),
                 'quality' (int),
                 'cubefile' (str),
@@ -1843,7 +1835,7 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'observation_id': int, 'reducedfile': str, 'sexfile': str, 'biasfile': str, 'flatfile': str,
+        allowed_params = {'observation_id': int, 'reducedfile': str, 'sexfile': str,
                           'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str,
                           'skysub': 'bool', 'id': int}
 
@@ -2067,6 +2059,234 @@ class SedmDB:
         allowed_params = {'spec_id': int, 'fwhm': float, 'background': float, 'line_fwhm': int, 'id': int}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, 'metrics_spec')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
+    def add_phot_calib(self, pardic):
+        """
+        Creates a new object in the phot calib table with the parameters specified in the dictionary.
+        Only one calib exists for each observation. If the calib exists, an update is made.
+
+        Args:
+            pardic:
+                required:
+                    'phot_id' (int)
+                optional:
+                    'bias' (abspath str)
+                    'flat' (abspath str)
+
+        Returns:
+            (-1: "ERROR...") if there is an issue
+
+            (0, "Photometry calibration added") if it completes successfully
+        """
+        param_types = {'phot_id': int, 'bias': str, 'flat': str}
+        # TODO: which parameters are required? test
+        keys = list(pardic.keys())
+        if 'phot_id' not in keys:
+            return (-1, "ERROR: phot_id not provided!")
+        calib_id = self.get_from_phot_calib(['phot_id'], {'phot_id': pardic['phot_id']})
+        if calib_id:  # if there is already an entry for that observation, update instead
+            if calib_id[0] == -1:
+                return calib_id
+            for key in reversed(keys):  # TODO: test the updating
+                if key not in ['bias', 'flat']:
+                    keys.remove(key)
+            pardic['phot_id'] = calib_id[0][0]
+            type_check = _data_type_check(keys, pardic, param_types)
+            if type_check:
+                return (-1, type_check)
+
+            update_sql = _generate_insert_sql(pardic, keys, 'phot_calib')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_phot_calib update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_phot_caliib update sql command failed with a ProgrammingError!")
+            return (0, "Photometry calibration updated for phot_id %s" % (pardic['phot_id'],))
+        sp_id = self.get_from_phot(['id'], {'id': pardic['phot_id']})
+        if not sp_id:
+            return (-1, "ERROR: no photometry exists with the given id!")
+        elif sp_id[0] == -1:
+            return sp_id
+
+        for key in []:  # phot_id already tested
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+
+        for key in reversed(keys):
+            if key not in ['phot_id', 'bias', 'flat']:
+                keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_insert_sql(pardic, keys, 'phot_calib')
+        print sql, type_check
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_phot_calib sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_phot_calib sql command failed with a ProgrammingError!")
+        return (0, "Photometry calibration added")
+
+    def get_from_phot_calib(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'phot_id' (int)
+                'bias' (abspath str)
+                'flat' (abspath str)
+        Returns:
+            list of tuples containing the values for calibration matching the criteria
+
+            empty list if no phot_calib entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'phot_id': int, 'bias': str, 'flat': str}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'phot_calib')  # checks type and
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
+    def add_spec_calib(self, pardic):
+        """
+        Creates a new object in the spec calib table with the parameters specified in the dictionary.
+        Only one calib exists for each observation. If the calib exists, an update is made.
+
+        Args:
+            pardic:
+                required:
+                    'spec_id' (int)
+                optional:
+                    'dome' (abspath str)
+                    'bias' (abspath str)
+                    'flat' (abspath str)
+                    'cosmic_filter' (bool)
+                    'DRPVER' (float)
+                    'Hg_master' (abspath str)
+                    'Cd_master' (abspath str)
+                    'Xe_master' (abspath str)
+                    'avg_rms' (abspath str)
+                    'min_rms' (abspath str)
+                    'max_rms' (abspath str)
+
+        Returns:
+            (-1: "ERROR...") if there is an issue
+
+            (0, "Spectrum calibration added") if it completes successfully
+        """
+        param_types = {'spec_id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'DRPVER': float,
+                       'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
+                       'max_rms': str}
+        # TODO: which parameters are required? test
+        keys = list(pardic.keys())
+        if 'spec_id' not in keys:
+            return (-1, "ERROR: spec_id not provided!")
+        calib_id = self.get_from_spec_calib(['spec_id'], {'spec_id': pardic['spec_id']})
+        if calib_id:  # if there is already an entry for that observation, update instead
+            if calib_id[0] == -1:
+                return calib_id
+            for key in reversed(keys):  # TODO: test the updating
+                if key not in ['dome', 'bias', 'flat', 'cosmic_filter', 'DRPVER', 'Hg_master', 'Cd_master',
+                               'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
+                    keys.remove(key)
+            pardic['spec_id'] = calib_id[0][0]
+            type_check = _data_type_check(keys, pardic, param_types)
+            if type_check:
+                return (-1, type_check)
+
+            update_sql = _generate_insert_sql(pardic, keys, 'spec_calib')
+            try:
+                self.execute_sql(update_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_spec_calib update sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_spec_caliib update sql command failed with a ProgrammingError!")
+            return (0, "Spectrum calibration updated for spec_id %s" % (pardic['spec_id'],))
+        sp_id = self.get_from_spec(['id'], {'id': pardic['spec_id']})
+        if not sp_id:
+            return (-1, "ERROR: no spectrum exists with the given id!")
+        elif sp_id[0] == -1:
+            return sp_id
+
+        for key in []:  # spec_id already tested
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+
+        for key in reversed(keys):
+            if key not in ['spec_id', 'dome', 'bias', 'flat', 'cosmic_filter', 'DRPVER', 'Hg_master', 'Cd_master',
+                           'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
+                keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_insert_sql(pardic, keys, 'spec_calib')
+        print sql, type_check
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_spec_calib sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_spec_calib sql command failed with a ProgrammingError!")
+        return (0, "Spectrum calibration added")
+
+    def get_from_spec_calib(self, values, where_dict):
+        """
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            values/keys options:
+                'spec_id' (int)
+                'dome' (abspath str)
+                'bias' (abspath str)
+                'flat' (abspath str)
+                'cosmic_filter' (bool)
+                'DRPVER' (float)
+                'Hg_master' (abspath str)
+                'Cd_master' (abspath str)
+                'Xe_master' (abspath str)
+                'avg_rms' (abspath str)
+                'min_rms' (abspath str)
+                'max_rms' (abspath str)
+        Returns:
+            list of tuples containing the values for calibration matching the criteria
+
+            empty list if no spec_calib entries match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'spec_id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'DRPVER': float,
+                          'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
+                          'max_rms': str}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, 'spec_calib')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
