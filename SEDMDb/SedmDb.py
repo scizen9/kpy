@@ -156,7 +156,7 @@ class SedmDB:
         else:
             return (-1, "ERROR: username or id required!")
 
-    def get_from_users(self, values, where_dict):
+    def get_from_users(self, values, where_dict, compare_dict={}):
         """
         select values from `users`
 
@@ -165,7 +165,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 ``'param':'value'`` to be used as WHERE clauses
-
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'username' (str),
@@ -183,7 +185,7 @@ class SedmDB:
 
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'username': str, 'name': str, 'email': str, 'password': str}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'users')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'users')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
         try:
@@ -287,7 +289,7 @@ class SedmDB:
                 return (-1, "ERROR: add_to_group sql command failed with a ProgrammingError!")
             return (0, "User removed from group")
 
-    def get_from_usergroups(self, values, where_dict):
+    def get_from_usergroups(self, values, where_dict, compare_dict={}):
         """
         select values from `objects`
 
@@ -296,6 +298,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options: ['user_id', 'group_id']
 
         Returns:
@@ -307,7 +312,7 @@ class SedmDB:
                 """
         # TODO: test, reconsider return styles
         allowed_params = {'user_id': int, 'group_id': int}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'usergroups')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'usergroups')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -397,7 +402,7 @@ class SedmDB:
 #        elif not orbit_params:
 #            return (-1, "ERROR: generating orbit_params from iauname not yet implemented")
 
-    def get_from_object(self, values, where_dict):
+    def get_from_object(self, values, where_dict, compare_dict={}):
         """
         select values from `objects`
 
@@ -406,6 +411,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options: ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']
 
         Returns:
@@ -418,7 +426,7 @@ class SedmDB:
         # TODO: test, reconsider return styles
         allowed_params = {'id': int, 'marshal_id': int, 'name': str, 'iauname': str, 'ra': float, 'dec': float,
                           'typedesig': str, 'epoch': float}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'object')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'object')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -534,7 +542,7 @@ class SedmDB:
             return (-1, "ERROR: add_elliptical_orbit sql command failed with a ProgrammingError!")
         return (0, "Elliptical heliocentric orbit added")
 
-    def get_from_elliptical_heliocentric(self, values, where_dict):
+    def get_from_elliptical_heliocentric(self, values, where_dict, compare_dict={}):
         """
         select values from `elliptical_heliocentric`
 
@@ -543,6 +551,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -570,7 +581,7 @@ class SedmDB:
         allowed_params = {'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
                           'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
                           'M2': float, 's': float, 'id': int}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'elliptical_heliocentric')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'elliptical_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -631,7 +642,7 @@ class SedmDB:
             return (-1, "ERROR: add_hyperbolic_orbit sql command failed with a ProgrammingError!")
         return (0, "Hyperbolic heliocentric orbit added")
 
-    def get_from_hyperbolic_heliocentric(self, values, where_dict):
+    def get_from_hyperbolic_heliocentric(self, values, where_dict, compare_dict={}):
         """
         select values from `hyperbolic_heliocentric`
 
@@ -640,6 +651,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -664,7 +678,7 @@ class SedmDB:
         # TODO: test, reconsider return styles
         allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_O': float,
                           'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'hyperbolic_heliocentric')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'hyperbolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -724,7 +738,7 @@ class SedmDB:
             return (-1, "ERROR: add_parabolic_orbit sql command failed with a ProgrammingError!")
         return (0, "Parabolic heliocentric orbit added")
 
-    def get_from_parabolic_heliocentric(self, values, where_dict):
+    def get_from_parabolic_heliocentric(self, values, where_dict, compare_dict={}):
         """
         select values from `parabolic_heliocentric`
 
@@ -733,6 +747,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id'(int),
@@ -756,7 +773,7 @@ class SedmDB:
         # TODO: test, reconsider return styles
         allowed_params = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_O': float,
                           'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'parabolic_heliocentric')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'parabolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -817,7 +834,7 @@ class SedmDB:
             return (-1, "ERROR: add_earth_satellite_orbit sql command failed with a ProgrammingError!")
         return (0, "Earth satellite orbit added")
 
-    def get_from_earth_satellite(self, values, where_dict):
+    def get_from_earth_satellite(self, values, where_dict, compare_dict={}):
         """
         select values from `earth_satellite`
 
@@ -826,6 +843,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -851,7 +871,7 @@ class SedmDB:
         allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'ra': float,
                           'pedigree': float, 'M': float, 'n': float, 'decay': float, 'reforbit': int,
                           'drag': float, 'id': int}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'earth_satellite')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'earth_satellite')
         print sql
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -1043,7 +1063,7 @@ class SedmDB:
 
         return (0, "Requests and atomicrequests updated")
 
-    def get_from_request(self, values, where_dict):
+    def get_from_request(self, values, where_dict, compare_dict={}):
         """
         select values from `request`
 
@@ -1052,6 +1072,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -1086,7 +1109,7 @@ class SedmDB:
                           'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
                           'filters': str, 'nexposures': str, 'ordering': str, 'creationdate': 'date',
                           'lastmodified': 'date'}
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'request')
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1233,7 +1256,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
         return (0, "Atomicrequest updated")
 
-    def get_from_atomicrequest(self, values, where_dict):
+    def get_from_atomicrequest(self, values, where_dict, compare_dict={}):
         """
         select values from `atomicrequest`
 
@@ -1242,6 +1265,9 @@ class SedmDB:
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -1268,7 +1294,7 @@ class SedmDB:
                           'filter': str, 'status': str, 'priority': float, 'inidate': 'date', 'enddate': 'date',
                           'creationdate': 'date', 'lastmodified': 'date'}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'atomicrequest')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'atomicrequest')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1421,13 +1447,16 @@ class SedmDB:
         except exc.ProgrammingError:
             return (-1, "ERROR: update_observation sql command failed with a ProgrammingError!")
 
-    def get_from_observation(self, values, where_dict):
+    def get_from_observation(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'object_id' (int),
@@ -1462,7 +1491,7 @@ class SedmDB:
                           'tel_dec': str, 'tel_az': float, 'tel_el': float, 'tel_pa': float, 'ra_off': float,
                           'dec_off': float, 'imtype': str, 'camera': str, 'id': int}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'observation')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'observation')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1534,13 +1563,16 @@ class SedmDB:
 
     # TODO: write update_observation() and update_telescope_stats()
 
-    def get_from_telescope_stats(self, values, where_dict):
+    def get_from_telescope_stats(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'observation_id' (int),
@@ -1577,7 +1609,7 @@ class SedmDB:
                           'sec_temp': float, 'flo_temp': float, 'bot_temp': float, 'mid_temp': float, 'top_temp': float,
                           'observation_id': int, 'id': int}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'telescope_stats')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'telescope_stats')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1682,13 +1714,16 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_photometry sql command failed with a ProgrammingError!")
         return (0, "Photometry added")
 
-    def get_from_phot(self, values, where_dict):
+    def get_from_phot(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'observation_id' (int),
@@ -1711,7 +1746,7 @@ class SedmDB:
                           'maskfile': str, 'pipeline': str, 'marshal_phot_id': int,
                           'id': int}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'phot')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'phot')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -1810,13 +1845,16 @@ class SedmDB:
             return (-1, "ERROR: add_reduced_spectrum sql command failed with a ProgrammingError!")
         return (0, "Spectrum added")
 
-    def get_from_spec(self, values, where_dict):
+    def get_from_spec(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'observation_id' (int),
@@ -1839,7 +1877,7 @@ class SedmDB:
                           'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str,
                           'skysub': 'bool', 'id': int}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'spec')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'spec')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -2140,13 +2178,16 @@ class SedmDB:
             return (-1, "ERROR: add_phot_calib sql command failed with a ProgrammingError!")
         return (0, "Photometry calibration added")
 
-    def get_from_phot_calib(self, values, where_dict):
+    def get_from_phot_calib(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'phot_id' (int)
                 'bias' (abspath str)
@@ -2160,7 +2201,7 @@ class SedmDB:
         """
         allowed_params = {'phot_id': int, 'bias': str, 'flat': str}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'phot_calib')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'phot_calib')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -2255,13 +2296,16 @@ class SedmDB:
             return (-1, "ERROR: add_spec_calib sql command failed with a ProgrammingError!")
         return (0, "Spectrum calibration added")
 
-    def get_from_spec_calib(self, values, where_dict):
+    def get_from_spec_calib(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'spec_id' (int)
                 'dome' (abspath str)
@@ -2286,7 +2330,7 @@ class SedmDB:
                           'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
                           'max_rms': str}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'spec_calib')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'spec_calib')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -2353,13 +2397,16 @@ class SedmDB:
             return (-1, "ERROR: add_flexure sql command failed with a ProgrammingError!")
         return (0, "Flexure added")
 
-    def get_from_flexure(self, values, where_dict):
+    def get_from_flexure(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'rms' (float),
@@ -2378,7 +2425,7 @@ class SedmDB:
         allowed_params = {'id': int, 'rms': float, 'spec_id_1': int, 'spec_id_2': int,
                           'timestamp1': 'datetime', 'timestamp2': 'datetime'}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'flexure')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'flexure')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -2529,13 +2576,16 @@ class SedmDB:
             return (-1, "ERROR: update_classification sql command failed with a ProgrammingError!")
         return (0, "Classification updated")
 
-    def get_from_classification(self, values, where_dict):
+    def get_from_classification(self, values, where_dict, compare_dict={}):
         """
         Args:
             values (list): list of str
                 values to be returned
             where_dict (dict):
                 'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int),
                 'spec_id' (int),
@@ -2557,7 +2607,7 @@ class SedmDB:
         allowed_params = {'spec_id': int, 'object_id': int, 'classification': str, 'redshift': float, 'id': int,
                           'redshift_err': float, 'classifier': str, 'score': float, 'phase': float, 'phase_err': float}
 
-        sql = _generate_select_sql(values, where_dict, allowed_params, 'classification')  # checks type and
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'classification')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
 
@@ -2621,7 +2671,7 @@ def _data_type_check(keys, pardic, value_types):
     return None
 
 
-def _generate_select_sql(values, where_dict, allowed_params, table):
+def _generate_select_sql(values, where_dict, allowed_params, compare_dict, table):
     """
     generate the sql for a select query
 
@@ -2632,6 +2682,9 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
             {'param':'value',...} adds WHERE param='value'...
         allowed_params (dict):
             the parameters of the table to be queried and their type {'param':type,...}
+        compare_dict (dict): default is {}
+            {'param': 'inequality',...} (i.e. '>', '<', '>=', '<=', '<>', '!='))
+            if no inequality is provided, '=' is assumed
         table (str):
             name of the table
 
@@ -2662,7 +2715,7 @@ def _generate_select_sql(values, where_dict, allowed_params, table):
     if where_keys:
         sql += " WHERE"
         for key in where_keys:
-            sql += " %s = '%s' AND" % (key, where_dict[key])
+            sql += " %s %s '%s' AND" % (key, compare_dict.get(key, '='), where_dict[key])
         sql = sql[:-4] + ";"
     return sql
 
