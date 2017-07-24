@@ -18,20 +18,13 @@
         <li> Epoch: {{ info[4] }}</li>
         {% if info[3] == e %}
         {% endif %}
-        <div class="bs-glyphicons">
-            <ul class="bs-glyphicons-list">
-                {% for entry, image in observations %}
-                    <li>
-                        image
-                        <span>mjd {{ entry[0] }}; filter {{ entry[2] }}</span>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="container container-table">
-            <div id="chart" style="height: 300px; width: 300px;">
-		        <embed type="image/svg+xml" src= {{ img_data|safe }} />
+        {% for entry, image in observations %}
+            <div class="gallery">
+              image
+              <div class="desc">mjd {{ entry[0] }}; filter {{ entery[1] }} </div>
             </div>
+        {% endfor %}
+        <div class="container container-table">
             <tr>Requests</tr>
             <table id="requests" class="mytable">
                 <thead>

@@ -8,13 +8,13 @@ CREATE TABLE spec_calib (
     Hg_master text NULL,
     Cd_master text NULL,
     Xe_master text NULL,
-    avg_rms text NULL,
-    min_rms decimal(5,2) NULL,
-    max_rms decimal(5,2) NULL
+    avg_rms float NULL,
+    min_rms float NULL,
+    max_rms float NULL
 );
 
 CREATE TABLE phot_calib (
-    phot_id bigint NOT NULL unique,
+    id bigint NOT NULL unique,
     bias text NULL,
     flat text NULL
 );
