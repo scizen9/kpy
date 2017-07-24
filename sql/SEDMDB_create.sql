@@ -350,7 +350,7 @@ CREATE TABLE request (
     id BIGSERIAL,
     object_id bigint NOT NULL,
     user_id bigint NOT NULL,
-    program_id smallint  NOT NULL,
+    program_id bigint  NOT NULL,
     marshal_id bigint NULL,
     exptime integer[]  NOT NULL,
     maxairmass decimal(5,2)  DEFAULT 2.5,
@@ -633,6 +633,14 @@ ALTER TABLE request ADD CONSTRAINT requests_objects
     FOREIGN KEY (object_id)
     REFERENCES object (id)  
     NOT DEFERRABLE 
+    INITIALLY IMMEDIATE
+;
+
+-- Reference: requests_program (table: request)
+ALTER TABLE request ADD CONSTRAINT program_request
+    FOREIGN KEY (program_id)
+    REFERENCES program (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
