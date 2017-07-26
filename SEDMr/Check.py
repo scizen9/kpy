@@ -438,6 +438,28 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         print("Spectrum saved to " + outf)
 
     if 'efficiency' in ss:
+        if savespec:
+            eff = ss['efficiency']*100.
+            eff = eff[roi]
+            outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
+                   '_SEDM_eff.txt'
+            header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
+            header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
+            header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)
+            header += "\nSKYSUB: %s" % ("On" if skysub else "Off")
+            header += "\nQUALITY: %d" % qual
+            header += "\nREDUCER: %s" % reducer
+            header += "\nAIRMASS: %1.2f" % ec
+            if 'radius_as' in ss:
+                header += "\nRAPASEC: %.1f" % ss['radius_as']
+            if 'xfwhm' in ss:
+                header += "\nSKYLFWHMNM: %.1f" % ss['xfwhm']
+            if 'yfwhm' in ss:
+                header += "\nTRACEFWHMPX: %.1f" % ss['yfwhm']
+            np.savetxt(outf, np.array([wl[srt], eff[srt]]).T, fmt='%8.1f  %8.1f',
+                       header=header)
+            print("Efficiency spectrum saved to " + outf)
+
         pl.clf()
         tlab = "%s\n(Air: %1.2f | Expt: %i | Refl %d%% | Area %d cm^s)" % \
                (specname, ec, et, ss['reflectance']*100., ss['area'])

@@ -19,7 +19,7 @@ else
     case $1 in
         what) python $SEDMPATH/SEDMr/What.py "$@";;
         roll) python $SEDMPATH/SEDMr/Roller.py "$@";;
-        check) python $SEDMPATH/SEDMr/Check.py "$@";;
+        check) shift 1; python $SEDMPATH/SEDMr/Check.py "$@";;
         plan) shift 1; python $SEDMPATH/SEDMr/Plan.py "$@";;
         plan2) shift 1; python $SEDMPATH/SEDMr/Plan2.py "$@";;
         extract) python $SEDMPATH/SEDMr/Extractor.py "$@";;
