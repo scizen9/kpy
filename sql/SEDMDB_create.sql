@@ -473,7 +473,6 @@ CREATE TABLE program (
     name text NULL ,
     group_id BIGINT NOT NULL,
     PI text NULL,
-    time_allocated interval NULL,
     priority decimal(5,2) NULL
 );
 
