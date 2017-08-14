@@ -252,9 +252,11 @@ CREATE INDEX observation_object_id_key ON observation(
 -- Table: spec
 CREATE TABLE spec (
     id BIGSERIAL,
+    spec_calib_id bigint NOT NULL,
     observation_id bigint NOT NULL UNIQUE,
-    reducedfile text  NULL,
-    sexfile text  NULL,
+    asciifile text  NULL,
+    npyfile text NULL,
+    fitsfile text NULL,
     imgset text  NULL,
     quality int  NOT NULL,
     cubefile text  NULL,
@@ -269,27 +271,24 @@ CREATE INDEX spec_marshal_spec_id_key ON spec(
 );
 
 CREATE TABLE spec_calib (
-    spec_id bigint NOT NULL unique,
+    id bigint NOT NULL unique,
     dome text NULL,
     bias text NULL,
     flat text NULL,
     cosmic_filter boolean Null,
-    DRPVER text NULL,
+    drpver text NULL,
     Hg_master text NULL,
     Cd_master text NULL,
     Xe_master text NULL,
-    avg_rms text NULL,
-    min_rms decimal(5,2) NULL,
-    max_rms decimal(5,2) NULL
-);
-
-CREATE INDEX spec_calib_spec_id ON spec(
-    spec_id
+    avg_rms float  NULL,
+    min_rms float NULL,
+    max_rms float NULL
 );
 
 -- Table: phot
 CREATE TABLE phot (
     id BIGSERIAL,
+    phot_calib_id bigint NOT NULL,
     observation_id bigint NOT NULL UNIQUE,
     astrometry boolean  NOT NULL,
     filter text  NOT NULL,
@@ -306,13 +305,9 @@ CREATE INDEX phot_marshal_phot_id ON phot(
 );
 
 CREATE TABLE phot_calib (
-    phot_id bigint NOT NULL unique,
+    id bigint NOT NULL unique,
     bias text NULL,
     flat text NULL
-);
-
-CREATE INDEX  phot_calib_phot_id ON phot_calib (
-    phot_id
 );
 
 -- Table: ref_stars
@@ -571,18 +566,18 @@ ALTER TABLE metrics_spec ADD CONSTRAINT metrics_spec_spec
     INITIALLY IMMEDIATE
 ;
 
--- Reference: phot_phot_id (table: phot_calib)
-ALTER TABLE phot_calib ADD CONSTRAINT phot_phot_id
-    FOREIGN KEY (phot_id)
-    REFERENCES phot (id)
+-- Reference: phot_phot_calib (table: phot)
+ALTER TABLE phot ADD CONSTRAINT phot_phot_calib
+    FOREIGN KEY (phot_calib_id)
+    REFERENCES phot_calib (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
--- Reference: spec__specid (table: spec_calib)
-ALTER TABLE spec_calib ADD CONSTRAINT spec_spec_id
-    FOREIGN KEY (spec_id)
-    REFERENCES spec (id)
+-- Reference: spec_spec_calib (table: spec)
+ALTER TABLE spec ADD CONSTRAINT spec_spec_calib
+    FOREIGN KEY (spec_calib_id)
+    REFERENCES spec_calib (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
