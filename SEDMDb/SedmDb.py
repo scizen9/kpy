@@ -336,7 +336,7 @@ class SedmDB:
                 required for a fixed object:
                     'ra' (float) ra in degrees,
                     'dec' (float) dec in degrees,
-                    'epoch' (float)
+                    'epoch' (str)
                 optional:
                     'iauname' (str),
                     'marshal_id' (int)
