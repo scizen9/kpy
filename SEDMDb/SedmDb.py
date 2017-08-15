@@ -298,7 +298,7 @@ class SedmDB:
 
     def get_from_usergroups(self, values, where_dict, compare_dict={}):
         """
-        select values from `objects`
+        select values from `usergroups`
 
         Args:
             values (list): list of str
@@ -311,12 +311,12 @@ class SedmDB:
             values/keys options: ['user_id', 'group_id']
 
         Returns:
-            list of tuples containing the values for each user matching the criteria
+            list of tuples containing the values for each usergroup matching the criteria
 
-            empty list if no objects match ``where_dict`` criteria
+            empty list if no usergroups match ``where_dict`` criteria
 
             (-1, "ERROR...") if there was an issue
-                """
+        """
         # TODO: test, reconsider return styles
         allowed_params = {'user_id': int, 'group_id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'usergroups')
@@ -382,7 +382,91 @@ class SedmDB:
             return (-1, "ERROR: add_program sql command failed with a ProgrammingError!")
         return (id, "Program added")
 
-    # TODO: add update/get_from program functions
+    def update_program(self, pardic):
+        """
+        updates a pragram
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'name' (str)
+                    'PI' (str)
+                    'time_allocated' (datetime.timedelta object or float/int seconds)
+                    'priority' (float)
+                    'inidate' ('year-month-day hour:minute:second')
+                    'enddate' ('year-month-day hour:minute:second')
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "Program updated") if the program is updated successfully
+        """
+        # TODO: reconsider allowed parameters
+        param_types = {'id': int, 'time_allocated': 'timedelta', 'name': str, 'PI': str, 'priority': float,
+                       'inidate': 'datetime', 'enddate': 'datetime'}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM program;')]:
+            return (-1, "ERROR: no program with the id!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['time_allocated', 'name', 'PI', 'priority', 'inidate', 'enddate']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'program')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_program sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_program sql command failed with a ProgrammingError!")
+        return (pardic['id'], "Allocation updated")
+
+    def get_from_program(self, values, where_dict, compare_dict={}):
+        """
+        select values from `program`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
+            values/keys options: ['id', 'designator', 'name', 'group_id', 'PI', 'time_allocated',
+                                  'priority', 'inidate', 'enddate']
+
+        Returns:
+            list of tuples containing the values for each program matching the criteria
+
+            empty list if no programs match ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = {'id': int, 'name': str, 'designator': str, 'group_id': int, 'PI': str,
+                          'time_allocated': 'timedelta', 'priority': float, 'inidate': 'datetime', 'enddate': 'datetime'}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'program')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: get_from_program sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: get_from_program sql command failed with a ProgrammingError!")
+        return results
 
     def add_allocation(self, pardic):
         """
@@ -431,7 +515,90 @@ class SedmDB:
             return (-1, "ERROR: add_program sql command failed with a ProgrammingError!")
         return (id, "Allocation added")
 
-        # TODO: add update/get_from allocation functions
+    def update_allocation(self, pardic):
+        """
+        updates an allocation entry
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'time_allocated' (datetime.timedelta object or float/int seconds)
+                    'time_spent' (datetime.timedelta object or float/int seconds)
+                    'inidate' ('year-month-day hour:minute:second')
+                    'enddate' ('year-month-day hour:minute:second')
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "Allocation updated") if the allocation is updated successfully
+        """
+        # TODO: reconsider allowed parameters
+        param_types = {'id': int, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
+                       'inidate': 'datetime', 'enddate': 'datetime'}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM allocation;')]:
+            return (-1, "ERROR: no allocation with the id!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'allocation')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_allocation sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_allocation sql command failed with a ProgrammingError!")
+        return (pardic['id'], "Allocation updated")
+
+    def get_from_allocation(self, values, where_dict, compare_dict={}):
+        """
+        select values from `allocation`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
+            values/keys options: ['id', 'designator', 'time_spent', 'time_allocated', 'inidate', 'enddate']
+
+        Returns:
+            list of tuples containing the values for each program matching the criteria
+
+            empty list if no programs match ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        # TODO: test, reconsider return styles
+        allowed_params = {'id': int, 'designator': str, 'time_spent': 'timedelta',
+                          'time_allocated': 'timedelta', 'inidate': 'datetime', 'enddate': 'datetime'}
+
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'allocation')
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: get_from_allocation sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: get_from_allocation sql command failed with a ProgrammingError!")
+        return results
+
+    # TODO: add get_from_allocation function
 
     def add_object(self, pardic):
         """
@@ -447,6 +614,7 @@ class SedmDB:
                     'dec' (float) dec in degrees,
                     'epoch' (str)
                 optional:
+                    'magnitude' (float) (preferably 'r' filter)
                     'iauname' (str),
                     'marshal_id' (int/long)
 
@@ -460,7 +628,7 @@ class SedmDB:
             (id (long), "Object added") if the object is added successfully
         """
         param_types = {'id': int, 'name': str, 'typedesig': str, 'ra': float, 'dec': float, 'epoch': str,
-                       'iauname': str, 'marshal_id': int}
+                       'iauname': str, 'marshal_id': int, 'magnitude': float}
         id = _id_from_time()
         pardic['id'] = id
         obj_keys = list(pardic.keys())
@@ -473,7 +641,7 @@ class SedmDB:
             if key not in obj_keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(obj_keys):  # remove any extraneous keys
-            if key not in ['id', 'name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname']:
+            if key not in ['id', 'name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname', 'magnitude']:
                 obj_keys.remove(key)
         type_check = _data_type_check(obj_keys, pardic, param_types)
         if type_check:
@@ -1584,6 +1752,7 @@ class SedmDB:
 
     def get_from_observation(self, values, where_dict, compare_dict={}):
         """
+        select values from `observation`
         Args:
             values (list): list of str
                 values to be returned
@@ -1700,6 +1869,7 @@ class SedmDB:
 
     def get_from_telescope_stats(self, values, where_dict, compare_dict={}):
         """
+        select values from `telescope_stats`
         Args:
             values (list): list of str
                 values to be returned
@@ -1854,6 +2024,7 @@ class SedmDB:
 
     def get_from_phot(self, values, where_dict, compare_dict={}):
         """
+        select values from `phot`
         Args:
             values (list): list of str
                 values to be returned
@@ -1987,6 +2158,7 @@ class SedmDB:
 
     def get_from_spec(self, values, where_dict, compare_dict={}):
         """
+        select values from `spec`
         Args:
             values (list): list of str
                 values to be returned
@@ -2107,6 +2279,7 @@ class SedmDB:
 
     def get_from_metrics_phot(self, values, where_dict):
         """
+        select values from `metrics_phot`
         Args:
             values (list): list of str
                 values to be returned
@@ -2190,6 +2363,7 @@ class SedmDB:
 
     def get_from_phot_calib(self, values, where_dict, compare_dict={}):
         """
+        select values from `phot_calib`
         Args:
             values (list): list of str
                 values to be returned
@@ -2199,7 +2373,7 @@ class SedmDB:
                 'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
                 if no inequality is provided, '=' is assumed
             values/keys options:
-                'phot_id' (int/long)
+                'id' (int/long)
                 'bias' (abspath str)
                 'flat' (abspath str)
         Returns:
@@ -2209,7 +2383,7 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'phot_id': int, 'bias': str, 'flat': str}
+        allowed_params = {'id': int, 'bias': str, 'flat': str}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'phot_calib')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -2236,7 +2410,7 @@ class SedmDB:
                 optional:
                     'dome' (abspath str)
                     'cosmic_filter' (bool)
-                    'DRPVER' (float)
+                    'drpver' (float)
                     'Hg_master' (abspath str)
                     'Cd_master' (abspath str)
                     'Xe_master' (abspath str)
@@ -2249,7 +2423,7 @@ class SedmDB:
 
             (id (long), "Spectrum calibration added") if it completes successfully
         """
-        param_types = {'id': int, 'spec_id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'DRPVER': float,
+        param_types = {'id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'drpver': float,
                        'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
                        'max_rms': str}
         id = _id_from_time()
@@ -2257,12 +2431,12 @@ class SedmDB:
         # TODO: which parameters are required? test
         keys = list(pardic.keys())
 
-        for key in ['bias', 'flat']:  # spec_id already tested
+        for key in ['bias', 'flat']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):
-            if key not in ['id', 'spec_id', 'dome', 'bias', 'flat', 'cosmic_filter', 'DRPVER', 'Hg_master', 'Cd_master',
+            if key not in ['id', 'dome', 'bias', 'flat', 'cosmic_filter', 'drpver', 'Hg_master', 'Cd_master',
                            'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
@@ -2283,6 +2457,7 @@ class SedmDB:
 
     def get_from_spec_calib(self, values, where_dict, compare_dict={}):
         """
+        select values from `spec_calib`
         Args:
             values (list): list of str
                 values to be returned
@@ -2292,12 +2467,12 @@ class SedmDB:
                 'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
                 if no inequality is provided, '=' is assumed
             values/keys options:
-                'spec_id' (int/long)
+                'id' (int/long)
                 'dome' (abspath str)
                 'bias' (abspath str)
                 'flat' (abspath str)
                 'cosmic_filter' (bool)
-                'DRPVER' (float)
+                'drpver' (float)
                 'Hg_master' (abspath str)
                 'Cd_master' (abspath str)
                 'Xe_master' (abspath str)
@@ -2311,7 +2486,7 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'spec_id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'DRPVER': float,
+        allowed_params = {'id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'drpver': float,
                           'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
                           'max_rms': str}
 
@@ -2386,6 +2561,7 @@ class SedmDB:
 
     def get_from_flexure(self, values, where_dict, compare_dict={}):
         """
+        select values from `flexure`
         Args:
             values (list): list of str
                 values to be returned
@@ -2566,6 +2742,7 @@ class SedmDB:
 
     def get_from_classification(self, values, where_dict, compare_dict={}):
         """
+        select values from `classification`
         Args:
             values (list): list of str
                 values to be returned

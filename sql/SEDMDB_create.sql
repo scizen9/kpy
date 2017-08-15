@@ -71,10 +71,11 @@ CREATE TABLE object (
     marshal_id bigint NULL UNIQUE,
     name text NOT NULL,
     iauname text NULL UNIQUE,
-    ra decimal(12,6) NULL,
-    dec decimal(12,6) NULL,
+    ra decimal(12,10) NULL,
+    dec decimal(12,10) NULL,
     typedesig varchar(1),
     epoch text,
+    magnitude decimal(7,5) NULL,
     creationdate timestamp NOT NULL DEFAULT NOW()
 );
 
