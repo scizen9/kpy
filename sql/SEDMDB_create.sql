@@ -58,15 +58,6 @@ CREATE TABLE metrics_phot (
     nsources int  NULL
 );
 
--- Table: metrics_spec
-CREATE TABLE metrics_spec (
-    id BIGINT PRIMARY KEY,
-    spec_id bigint NOT NULL UNIQUE,
-    fwhm decimal(5,2)  NULL,
-    background decimal(5,2)  NULL,
-    line_fwhm int NULL
-);
-
 -- Table: object
 -- f fixed (or at most exhibits constant curvilinear proper motion)
 -- e heliocentric elliptical orbit
