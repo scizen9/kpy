@@ -428,7 +428,7 @@ class SedmDB:
             return (-1, "ERROR: update_program sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_program sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Allocation updated")
+        return (pardic['id'], "Program updated")
 
     def get_from_program(self, values, where_dict, compare_dict={}):
         """
@@ -1934,6 +1934,7 @@ class SedmDB:
         Args:
             pardic (dict):
                 required:
+                    'phot_calib_id' (int/long),
                     'observation_id' (int/long),
                     'astrometry' ('true' or 'false'),
                     'filter' (str),
@@ -1951,7 +1952,7 @@ class SedmDB:
             (id (long), "Photometry updated for observation_id ...") if the photometry existed and was updated
         """
         param_types = {'id': int, 'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
-                       'maskfile': str, 'pipeline': str, 'marshal_phot_id': int}
+                       'maskfile': str, 'pipeline': str, 'marshal_phot_id': int, 'phot_calib_id': int}
         id = _id_from_time()
         pardic['id'] = id
         # TODO: test
@@ -1964,7 +1965,7 @@ class SedmDB:
                 return phot_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile',
-                               'maskfile', 'pipeline', 'marshal_phot_id']:
+                               'maskfile', 'pipeline', 'marshal_phot_id', 'phot_calib_id']:
                     keys.remove(key)
             pardic['id'] = phot_id[0][0]
             type_check = _data_type_check(keys, pardic, param_types)
@@ -1989,14 +1990,20 @@ class SedmDB:
             pass
             # TODO: generate the filter here?
 
+        phot_calib = self.get_from_phot_calib(['id'], {'id': pardic['phot_calib_id']})
+        if not phot_calib:
+            return (-1, "ERROR: no phot_calib with the phot_calib_id")
+        elif phot_calib[0] == -1:
+            return phot_calib
+
         for key in ['observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile',
-                    'maskfile', 'pipeline']:  # include 'marshal_phot_id'?
+                    'maskfile', 'pipeline', 'phot_calib_id']:  # include 'marshal_phot_id'?
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['id', 'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile',
-                           'maskfile', 'pipeline', 'marshal_phot_id']:
+                           'maskfile', 'pipeline', 'marshal_phot_id', 'phot_calib_id']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -2035,6 +2042,7 @@ class SedmDB:
                 if no inequality is provided, '=' is assumed
             values/keys options:
                 'id' (int/long),
+                'phot_calib_id' (int/long),
                 'observation_id' (int/long),
                 'astrometry' ('true' or 'false'),
                 'filter' (str),
@@ -2052,8 +2060,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'observation_id': int, 'astrometry': 'bool', 'filter': str, 'reducedfile': str, 'sexfile': str,
-                          'maskfile': str, 'pipeline': str, 'marshal_phot_id': int,
-                          'id': int}
+                          'maskfile': str, 'pipeline': str, 'marshal_phot_id': int, 'phot_calib_id': int, 'id': int}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'phot')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -2359,7 +2366,47 @@ class SedmDB:
             return (-1, "ERROR: add_phot_calib sql command failed with a ProgrammingError!")
         return (id, "Photometry calibration added")
 
-    # TODO: create an update_phot_calib
+    def update_phot_calib(self, pardic):
+        """
+        updates a phot_calib entry
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'bias' (abspath str)
+                    'flat' (abspath str)
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "Phot_calib updated") if the entry is updated successfully
+        """
+        param_types = {'id': int, 'bias': str, 'flat': str}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM phot_calib;')]:
+            return (-1, "ERROR: no phot_calib entry with the id!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['bias', 'flat']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'phot_calib')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_phot_calib sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_phot_calib sql command failed with a ProgrammingError!")
+        return (pardic['id'], "Phot_calib updated")
 
     def get_from_phot_calib(self, values, where_dict, compare_dict={}):
         """
@@ -2453,7 +2500,59 @@ class SedmDB:
             return (-1, "ERROR: add_spec_calib sql command failed with a ProgrammingError!")
         return (id, "Spectrum calibration added")
 
-    # TODO: create an update spec calib
+    def update_spec_calib(self, pardic):
+        """
+        updates a spec_calib entry
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'bias' (abspath str)
+                    'flat' (abspath str)
+                    'dome' (abspath str)
+                    'cosmic_filter' (bool)
+                    'drpver' (float)
+                    'Hg_master' (abspath str)
+                    'Cd_master' (abspath str)
+                    'Xe_master' (abspath str)
+                    'avg_rms' (abspath str)
+                    'min_rms' (abspath str)
+                    'max_rms' (abspath str)
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "Spec_calib updated") if the entry is updated successfully
+        """
+        param_types = {'id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'drpver': float,
+                       'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
+                       'max_rms': str}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM spec_calib;')]:
+            return (-1, "ERROR: no spec_calib entry with the id!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['dome', 'bias', 'flat', 'cosmic_filter', 'drpver', 'Hg_master', 'Cd_master',
+                           'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'spec_calib')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_spec_calib sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_spec_calib sql command failed with a ProgrammingError!")
+        return (pardic['id'], "Spec_calib updated")
 
     def get_from_spec_calib(self, values, where_dict, compare_dict={}):
         """

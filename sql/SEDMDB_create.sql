@@ -246,7 +246,18 @@ CREATE TABLE spec (
     skysub boolean  NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
-    line_fwhm int  NULL
+    line_fwhm int  NULL,
+    extract_x float NULL,
+    extract_y float NULL,
+    extract_pa float NULL,
+    extract_a float NULL,
+    extract_b float NULL,
+    ad_red float NULL,
+    ad_blue float NULL,
+    prlltc float NULL,
+    flexure_x_corr_nm float NULL,
+    flexure_y_corr_pix float NULL,
+    reducer float NULL
 );
 
 CREATE INDEX spec_marshal_spec_id_key ON spec(
