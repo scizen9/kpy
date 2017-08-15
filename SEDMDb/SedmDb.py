@@ -2969,7 +2969,8 @@ def _generate_select_sql(values, where_dict, allowed_params, compare_dict, table
     where_keys = list(where_dict.keys())
     for param in reversed(where_keys):
         if param not in allowed_params:
-            where_keys.remove(param)
+            return "ERROR: requested condition on nonexistent column!"
+            # where_keys.remove(param)
     type_check = _data_type_check(where_keys, where_dict, allowed_params)
     if type_check:
         return type_check
