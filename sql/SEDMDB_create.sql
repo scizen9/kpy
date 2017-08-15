@@ -440,9 +440,10 @@ CREATE TABLE usergroups (
 CREATE TABLE program (
     id BIGINT PRIMARY KEY,
     designator text NOT NULL UNIQUE,
-    name text NULL ,
+    name text NULL,
     group_id BIGINT NOT NULL,
     PI text NULL,
+    time_allocated interval NULL,
     priority decimal(5,2) NULL,
     inidate timestamp NULL,
     enddate timestamp NULL
@@ -452,8 +453,8 @@ CREATE TABLE program (
 CREATE TABLE allocation (
     id BIGINT PRIMARY KEY,
     pg_designator text NOT NULL,
-    inidate DATE NULL,
-    enddate DATE NULL,
+    inidate timestamp NULL,
+    enddate timestamp NULL,
     time_spent interval NULL,
     time_allocated interval NULL
 );

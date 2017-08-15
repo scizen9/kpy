@@ -5,6 +5,7 @@ import numpy as np
 import subprocess
 import warnings
 from astropy.time import Time
+from datetime import timedelta
 
 
 # Singleton/SingletonPattern.py
@@ -330,6 +331,108 @@ class SedmDB:
             return (-1, "ERROR: get_from_usergroups sql command failed with a ProgrammingError!")
         return results
 
+    def add_program(self, pardic):
+        """
+        creates a new program
+        Args:
+            pardic (dict):
+                required:
+                    'designator' (str) (unique)
+                    'name' (str)
+                    'group_id' (int/long)
+                    'PI' (str)
+                optional:
+                    'time_allocated' (datetime.timedelta object or float/int seconds)
+                    'priority' (float)
+                    'inidate' ('year-month-day hour:minute:second')
+                    'enddate' ('year-month-day hour:minute:second')
+
+        Returns:
+            (-1, "ERROR...") if it failed to add
+
+            (id (long), "Program added") if the program is added successfully
+        """
+        param_types = {'id': int, 'name': str, 'designator': str, 'group_id': int, 'PI': str,
+                       'time_allocated': 'timedelta', 'priority': float, 'inidate': 'datetime', 'enddate': 'datetime'}
+        id = _id_from_time()
+        pardic['id'] = id
+        keys = list(pardic.keys())
+
+        if 'designator' in keys:
+            if pardic['designator'] in [obj[0] for obj in self.execute_sql('SELECT designator FROM program')]:
+                return (-1, "ERROR: a program with that designator already exists!")
+
+        for key in ['designator', 'name', 'group_id', 'PI']:  # check for required keys
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+        for key in reversed(keys):  # remove any extraneous keys
+            if key not in ['id', 'name', 'designator', 'group_id', 'PI',
+                           'time_allocated', 'priority', 'inidate', 'enddate']:
+                keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        program_sql = _generate_insert_sql(pardic, keys, 'program')
+        try:
+            self.execute_sql(program_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_program sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_program sql command failed with a ProgrammingError!")
+        return (id, "Program added")
+
+    # TODO: add update/get_from program functions
+
+    def add_allocation(self, pardic):
+        """
+        creates a new allocation entry
+        Args:
+            pardic (dict):
+                required:
+                    'pg_designator' (str) (designator of related program)
+                optional:
+                    'time_allocated' (datetime.timedelta object or float/int seconds)
+                    'time_spent' (datetime.timedelta object or float/int seconds)
+                    'inidate' ('year-month-day hour:minute:second')
+                    'enddate' ('year-month-day hour:minute:second')
+
+        Returns:
+            (-1, "ERROR...") if it failed to add
+
+            (id (long), "Allocation added") if the program is added successfully
+        """
+        param_types = {'id': int, 'pg_designator': str, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
+                       'inidate': 'datetime', 'enddate': 'datetime'}
+        id = _id_from_time()
+        pardic['id'] = id
+        keys = list(pardic.keys())
+
+        if 'pg_designator' in keys:
+            if pardic['pg_designator'] not in [obj[0] for obj in self.execute_sql('SELECT designator FROM program')]:
+                return (-1, "ERROR: no program with that designator exists!")
+
+        for key in ['pg_designator']:
+            if key not in keys:  # check for required key
+                return (-1, "ERROR: %s not provided!" % (key,))
+        for key in reversed(keys):  # remove any extraneous keys
+            if key not in ['id', 'pg_designator', 'time_allocated', 'time_spent', 'inidate', 'enddate']:
+                keys.remove(key)
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        program_sql = _generate_insert_sql(pardic, keys, 'allocation')
+        try:
+            self.execute_sql(program_sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_program sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_program sql command failed with a ProgrammingError!")
+        return (id, "Allocation added")
+
+        # TODO: add update/get_from allocation functions
+
     def add_object(self, pardic):
         """
         Creates a new object
@@ -356,7 +459,7 @@ class SedmDB:
 
             (id (long), "Object added") if the object is added successfully
         """
-        param_types = {'id': int, 'name': str, 'typedesig': str, 'ra': float, 'dec': float, 'epoch': float,
+        param_types = {'id': int, 'name': str, 'typedesig': str, 'ra': float, 'dec': float, 'epoch': str,
                        'iauname': str, 'marshal_id': int}
         id = _id_from_time()
         pardic['id'] = id
@@ -394,7 +497,7 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            return (long(id), "Fixed object added")
+            return (id, "Fixed object added")
         elif pardic['typedesig'] in ['h', 'E', 'e', 'p']:
             function_dict = {'e': 'add_elliptical_heliocentric', 'h': 'add_hyperbolic_heliocentric',
                              'p': 'add_parabolic_heliocentric', 'E': 'add_earth_satellite'}
@@ -406,7 +509,7 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            return (long(id), "Non-fixed object added, orbit parameters can be added with `%s`"
+            return (id, "Non-fixed object added, orbit parameters can be added with `%s`"
                     % (function_dict[pardic['typedesig']],))
         elif pardic['typedesig'] == 'P':
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
@@ -416,7 +519,7 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
-            return (long(id), "Non-fixed object added")
+            return (id, "Non-fixed object added")
         else:
             return (-1, "ERROR: typedesig provided was invalid, it must be one of ['f', 'h', 'E', 'e', 'p', 'P']!")
 
@@ -2548,6 +2651,12 @@ def _data_type_check(keys, pardic, value_types):
                 pardic[key] = str(Time(pardic[key]))
             except ValueError:
                 return "ERROR: %s must be of the format 'year-month-day hour:minute:second'!" % (key,)
+        elif value_types[key] == 'timedelta':
+            if not isinstance(pardic[key], timedelta):
+                try:
+                    pardic[key] = timedelta(0, pardic[key])
+                except (TypeError, ValueError):
+                    return "ERROR: %s must be a datetime.timedelta object or a float(seconds)!" % (key,)
         elif value_types[key] == 'bool':
             if not (pardic[key] == 'false' or pardic[key] == 'true'):
                 return "ERROR: %s must be either 'true' or 'false'" % (key,)
