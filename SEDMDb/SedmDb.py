@@ -121,7 +121,50 @@ class SedmDB:
             return (-1, "ERROR: add_user sql command failed with a ProgrammingError!")
         return (id, "User added")
 
-    #TODO: add an update_user
+    def update_user(self, pardic):
+        """
+        updates a user
+
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'name' (str),
+                    'email' (str),
+                    'password' (str) (hashed+salted)
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "User updated, columns 'column_names'") if the user is updated successfully
+        """
+        # TODO: reconsider allowed parameters
+        param_types = {'id': int, 'name': str, 'email': str, 'password': str}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
+            return (-1, "ERROR: no user with the id!")
+
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in ['name', 'email', 'password']:
+                keys.remove(key)
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'users')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_user sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_user sql command failed with a ProgrammingError!")
+        return (pardic['id'], "User updated, columns " + str(keys)[1:-1])
 
     def remove_user(self, pardic):
         """
@@ -334,6 +377,7 @@ class SedmDB:
     def add_program(self, pardic):
         """
         creates a new program
+
         Args:
             pardic (dict):
                 required:
@@ -385,6 +429,7 @@ class SedmDB:
     def update_program(self, pardic):
         """
         updates a pragram
+
         Args:
             pardic (dict):
                 required:
@@ -400,7 +445,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if it failed to update
 
-            (id (long), "Program updated") if the program is updated successfully
+            (id (long), "Program updated, columns 'column_names'") if the program is updated successfully
         """
         # TODO: reconsider allowed parameters
         param_types = {'id': int, 'time_allocated': 'timedelta', 'name': str, 'PI': str, 'priority': float,
@@ -428,7 +473,7 @@ class SedmDB:
             return (-1, "ERROR: update_program sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_program sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Program updated")
+        return (pardic['id'], "Program updated, columns " + str(keys)[1:-1])
 
     def get_from_program(self, values, where_dict, compare_dict={}):
         """
@@ -471,6 +516,7 @@ class SedmDB:
     def add_allocation(self, pardic):
         """
         creates a new allocation entry
+
         Args:
             pardic (dict):
                 required:
@@ -518,6 +564,7 @@ class SedmDB:
     def update_allocation(self, pardic):
         """
         updates an allocation entry
+
         Args:
             pardic (dict):
                 required:
@@ -531,7 +578,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if it failed to update
 
-            (id (long), "Allocation updated") if the allocation is updated successfully
+            (id (long), "Allocation updated, columns 'column_names'") if the allocation is updated successfully
         """
         # TODO: reconsider allowed parameters
         param_types = {'id': int, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
@@ -559,7 +606,7 @@ class SedmDB:
             return (-1, "ERROR: update_allocation sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_allocation sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Allocation updated")
+        return (pardic['id'], "Allocation updated, columns " + str(keys)[1:-1])
 
     def get_from_allocation(self, values, where_dict, compare_dict={}):
         """
@@ -1307,7 +1354,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if there was an issue with the updating
 
-            (id, "Requests updated") if the update was successful
+            (id, "Requests updated, columns 'column_names'") if the update was successful
 
             (id, "Requests and atomicrequests updated") if atomicrequests were also updated
         """
@@ -1343,11 +1390,11 @@ class SedmDB:
             return (-1, "ERROR: update_request sql command failed with a ProgrammingError!")
         # update associated atomicrequests
         update_keys = list(pardic.keys())
-        for key in reversed(update_keys):
-            if key not in ['priority', 'inidate', 'enddate']:
-                update_keys.remove(key)
-        if len(update_keys) == 0:
-            return (pardic['id'], "Requests updated")
+        #for key in reversed(update_keys):
+        #    if key not in ['priority', 'inidate', 'enddate']:
+        #        update_keys.remove(key)
+        #if len(update_keys) == 0:
+        return (pardic['id'], "Requests updated, columns " + str(keys)[1:-1])
 
         update_sql = _generate_update_sql(pardic, update_keys, 'atomicrequest')
         try:
@@ -1522,7 +1569,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if there was an issue
 
-            (id, "Atomic request updated") if it completed successfully
+            (id, "Atomic request updated, columns 'column_names'") if it completed successfully
         """
         param_types = {'id': int, 'exptime': float, 'status': str, 'priority': float, 'inidate': 'date',
                        'enddate': 'date'}
@@ -1552,7 +1599,7 @@ class SedmDB:
             return (-1, "ERROR: update_atomic_request sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_atomic_request sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Atomicrequest updated")
+        return (pardic['id'], "Atomicrequest updated, columns " + str(keys)[1:-1])
 
     def get_from_atomicrequest(self, values, where_dict, compare_dict={}):
         """
@@ -1710,7 +1757,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if there was an issue
 
-            (id, "Observation updated") if it completed successfully
+            (id, "Observation updated, columns 'column_names'") if it completed successfully
         """
         # TODO: reconsider allowed parameters
         param_types = {'id': int, 'atomicrequest_id': int, 'mjd': float, 'airmass': float,
@@ -1748,11 +1795,12 @@ class SedmDB:
             return (-1, "ERROR: update_observation sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_observation sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Observation updated")
+        return (pardic['id'], "Observation updated, columns " + str(keys)[1:-1])
 
     def get_from_observation(self, values, where_dict, compare_dict={}):
         """
         select values from `observation`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -1870,6 +1918,7 @@ class SedmDB:
     def get_from_telescope_stats(self, values, where_dict, compare_dict={}):
         """
         select values from `telescope_stats`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -1979,7 +2028,8 @@ class SedmDB:
                 return (-1, "ERROR: add_reduced_photometry update sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_reduced_photometry update sql command failed with a ProgrammingError!")
-            return (phot_id[0][0], "Photometry updated for observation_id %s" % (pardic['observation_id'],))
+            return (phot_id[0][0], "Photometry updated for observation_id %s, columns " % (pardic['observation_id'],)
+                                                                                + str(keys)[1:-1])
 
         obs = self.get_from_observation(['fitsfile'], {'id': pardic['observation_id']})
         if not obs:
@@ -2032,6 +2082,7 @@ class SedmDB:
     def get_from_phot(self, values, where_dict, compare_dict={}):
         """
         select values from `phot`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2123,7 +2174,8 @@ class SedmDB:
                 return (-1, "ERROR: add_reduced_spectrum update sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_reduced_spectrum update sql command failed with a ProgrammingError!")
-            return (spec_id[0][0], "Spectrum updated for observation_id %s" % (pardic['observation_id'],))
+            return (spec_id[0][0], "Spectrum updated for observation_id %s, columns " % (pardic['observation_id'],)
+                                                                                + str(keys)[1:-1])
         obs_id = self.get_from_observation(['id'], {'id': pardic['observation_id']})
         if not obs_id:
             return (-1, "ERROR: no observation exists with the given id!")
@@ -2166,6 +2218,7 @@ class SedmDB:
     def get_from_spec(self, values, where_dict, compare_dict={}):
         """
         select values from `spec`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2257,7 +2310,8 @@ class SedmDB:
                 return (-1, "ERROR: add_metrics_phot update sql command failed with an IntegrityError!")
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_metrics_phot update sql command failed with a ProgrammingError!")
-            return (metric_id[0][0], "Photometry metrics updated for phot_id %s" % (pardic['phot_id'],))
+            return (metric_id[0][0], "Photometry metrics updated for phot_id %s, columns " % (pardic['phot_id'],)
+                                                                                    + str(keys)[1:-1])
         ph_id = self.get_from_phot(['id'], {'id': pardic['phot_id']})
         if not ph_id:
             return (-1, "ERROR: no photometry exists with the given id!")
@@ -2287,6 +2341,7 @@ class SedmDB:
     def get_from_metrics_phot(self, values, where_dict):
         """
         select values from `metrics_phot`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2369,6 +2424,7 @@ class SedmDB:
     def update_phot_calib(self, pardic):
         """
         updates a phot_calib entry
+
         Args:
             pardic (dict):
                 required:
@@ -2380,7 +2436,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if it failed to update
 
-            (id (long), "Phot_calib updated") if the entry is updated successfully
+            (id (long), "Phot_calib updated, columns 'column_names'") if the entry is updated successfully
         """
         param_types = {'id': int, 'bias': str, 'flat': str}
         keys = list(pardic.keys())
@@ -2406,11 +2462,12 @@ class SedmDB:
             return (-1, "ERROR: update_phot_calib sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_phot_calib sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Phot_calib updated")
+        return (pardic['id'], "Phot_calib updated, columns " + str(keys)[1:-1])
 
     def get_from_phot_calib(self, values, where_dict, compare_dict={}):
         """
         select values from `phot_calib`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2447,7 +2504,6 @@ class SedmDB:
     def add_spec_calib(self, pardic):
         """
         Creates a new object in the spec calib table with the parameters specified in the dictionary.
-        Only one calib exists for each observation. If the calib exists, an update is made.
 
         Args:
             pardic:
@@ -2503,6 +2559,7 @@ class SedmDB:
     def update_spec_calib(self, pardic):
         """
         updates a spec_calib entry
+
         Args:
             pardic (dict):
                 required:
@@ -2523,7 +2580,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if it failed to update
 
-            (id (long), "Spec_calib updated") if the entry is updated successfully
+            (id (long), "Spec_calib updated, columns 'column_names'") if the entry is updated successfully
         """
         param_types = {'id': int, 'dome': str, 'bias': str, 'flat': str, 'cosmic_filter': bool, 'drpver': float,
                        'Hg_master': str, 'Cd_master': str, 'Xe_master': str, 'avg_rms': str, 'min_rms': str,
@@ -2552,11 +2609,12 @@ class SedmDB:
             return (-1, "ERROR: update_spec_calib sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_spec_calib sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Spec_calib updated")
+        return (pardic['id'], "Spec_calib updated, columns " + str(keys)[1:-1])
 
     def get_from_spec_calib(self, values, where_dict, compare_dict={}):
         """
         select values from `spec_calib`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2661,6 +2719,7 @@ class SedmDB:
     def get_from_flexure(self, values, where_dict, compare_dict={}):
         """
         select values from `flexure`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2779,7 +2838,7 @@ class SedmDB:
         Returns:
             (-1, "ERROR...") if there is an issue
 
-            (id, "Classification updated") if it was successful
+            (id, "Classification updated, columns 'column_names'") if it was successful
         """
         param_types = {'id': int, 'spec_id': int, 'classifier': str, 'classification': str, 'redshift': float,
                        'redshift_err': float, 'phase': float, 'phase_err': float, 'score': float}
@@ -2837,11 +2896,12 @@ class SedmDB:
             return (-1, "ERROR: update_classification sql command failed with an IntegrityError!")
         except exc.ProgrammingError:
             return (-1, "ERROR: update_classification sql command failed with a ProgrammingError!")
-        return (pardic['id'], "Classification updated")
+        return (pardic['id'], "Classification updated, columns " + str(keys)[1:-1])
 
     def get_from_classification(self, values, where_dict, compare_dict={}):
         """
         select values from `classification`
+
         Args:
             values (list): list of str
                 values to be returned
@@ -2969,7 +3029,7 @@ def _generate_select_sql(values, where_dict, allowed_params, compare_dict, table
     where_keys = list(where_dict.keys())
     for param in reversed(where_keys):
         if param not in allowed_params:
-            return "ERROR: requested condition on nonexistent column!"
+            return "ERROR: requested condition on nonexistent column '%s'!" % (param,)
             # where_keys.remove(param)
     type_check = _data_type_check(where_keys, where_dict, allowed_params)
     if type_check:
