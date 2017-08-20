@@ -458,7 +458,8 @@ CREATE TABLE program (
     time_allocated interval NULL,
     priority decimal(5,2) NULL,
     inidate timestamp NULL,
-    enddate timestamp NULL
+    enddate timestamp NULL,
+    color text NULL
 );
 
 -- Table: allocation
