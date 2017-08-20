@@ -40,9 +40,17 @@ login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
 groups = db.execute_sql("SELECT id, designator FROM groups;")
-group_dict = {}
+group__dict = {}  # make dict with format {group_id: group designator, ...}
 for group in groups:
-    group_dict[group[1]] = group[0]
+    group__dict[group[0]] = group[1]
+
+programs = db.execute_sql("SELECT group_id, id, designator from program;")
+group_programs_dict = {}  # make dict with format {group_id: (group designator, [(program id, program designator), ...]}
+for g_p in programs:
+    if g_p[0] in group_programs_dict.keys():
+        group_programs_dict[g_p[0]] = [group__dict[g_p[0]], [(g_p[1], g_p[2])]]
+    else:
+        group_programs_dict[g_p[0]][1].append((g_p[1], g_p[2]))
 
 
 def radec_str2rad(_ra_str, _dec_str):
@@ -79,7 +87,9 @@ def load_user(user_id):
 @app.route('/')
 def index():
     # TODO: make it pretty
-    return render_template('header.html', current_user=flask_login.current_user) + render_template('footer.html')
+    return render_template('header.html', current_user=flask_login.current_user) + \
+           render_template('index.html') + \
+           render_template('footer.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -125,6 +135,7 @@ def login():
 
 
 @app.route('/request', methods=['GET', 'POST'])
+#@flask_login.login_required
 def requests():
     """
     generate forms for request creation
@@ -133,13 +144,24 @@ def requests():
     form2 = FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
-    form1.project.choices = [(1, 'ZTF'), (2, 'CIT')]
+    form1.program.choices = [(1, 'ZTF'), (2, 'CIT')]
     form1.user_id.data = 1
     if form1.submit_req.data and form1.validate_on_submit():
         print "request submitted"
         if request.method == 'POST':
-            req = db.add_request({'object_id': form1.object_id.data, 'exptime': '{120, 2400}', 'priority': form1.priority.data,
-                                  'inidate': form1.inidate.data, 'enddate': form1.enddate.data, 'user_id':0, 'program_id': form1.project.data})
+            filters = '{'
+            for entry in form1.filters.entries:
+                filters += entry.data['ifu_val'] + ', '
+                filters += entry.data['u_val'] + ', '
+                filters += entry.data['g_val'] + ', '
+                filters += entry.data['r_val'] + ', '
+                filters += entry.data['i_val'] + '}'
+                # TODO: handle 'ordering' in form/parse
+            req = db.add_request({'object_id': form1.object_id.data, 'exptime': '{120, 2400}',
+                                  'priority': form1.priority.data, 'inidate': form1.inidate.data,
+                                  'enddate': form1.enddate.data, 'user_id': 1, 'program_id': form1.program.data,
+                                  'cadence': form1.cadence, 'phasesampes': form1.phasesamples,
+                                  'nexposures': filters})
             # TODO: set up user_id and program_id=
             message = req[1]
             return (render_template('header.html', current_user=flask_login.current_user) +
@@ -348,17 +370,25 @@ def show_objects(ident):
             render_template('footer.html'))
 
 
-@app.route('/project_stats/<path:project>')
-def project_stats(project):
+@app.route('/project_stats/<program>')
+@flask_login.login_required
+def project_stats(program):
     day = datetime.datetime.now()
     start = Time(day - datetime.timedelta(days=day.weekday())).mjd
-    end = start + 7 
+    end = start + 7
+    prog_id = None
+    for lis in group_programs_dict.itervalues():
+        if lis[1][1] == program:
+            prog_id = lis[1][0]
+    if not prog_id:
+        flash('program %s does not exist' % (program,))
+        redirect(url_for('index'))
     # TODO: make a form to set start/end dates
     areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
                   "JOIN request ON request.id = atomicrequest.request_id "
                   "WHERE request.program_id = '%s'"
                   #" AND  atomicrequest.lastmodified < %s AND atomicrequest.lastmodified > %s"
-                  ";" % (group_dict[project],))
+                  ";" % (prog_id,))
     requests = np.array(db.execute_sql(areq_query))
     # TODO: test for whether there are any matching requests
     pending = (requests.T[1] == 'PENDING')
@@ -395,7 +425,7 @@ def project_stats(project):
     # retrieve all of the requests submitted for the project
     request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
                      "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
-                     "AND r.program_id = '%s';" % (group_dict[project],))
+                     "AND r.program_id = '%s';" % (prog_id,))
     req = db.execute_sql(request_query)
     for n, x in enumerate(req):
         req[n] = list(x)
@@ -411,9 +441,13 @@ def project_stats(project):
             del req[n][2]
 
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
-            render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data = req) +
+            render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data=req) +
             render_template('footer.html'))
 
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    return flask.redirect(flask.url_for('login'))
 
 if __name__ == '__main__':
     app.run()
