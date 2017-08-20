@@ -500,7 +500,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
-        allowed_params = {'id': int, 'name': str, 'designator': str, 'group_id': int, 'PI': str, 'color': str, 
+        allowed_params = {'id': int, 'name': str, 'designator': str, 'group_id': int, 'PI': str, 'color': str,
                           'time_allocated': 'timedelta', 'priority': float, 'inidate': 'datetime', 'enddate': 'datetime'}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'program')
@@ -528,6 +528,7 @@ class SedmDB:
                     'time_spent' (datetime.timedelta object or float/int seconds)
                     'inidate' ('year-month-day hour:minute:second')
                     'enddate' ('year-month-day hour:minute:second')
+                    'color' (hex color code)
 
         Returns:
             (-1, "ERROR...") if it failed to add
@@ -535,7 +536,7 @@ class SedmDB:
             (id (long), "Allocation added") if the program is added successfully
         """
         param_types = {'id': int, 'pg_designator': str, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
-                       'inidate': 'datetime', 'enddate': 'datetime'}
+                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str}
         id = _id_from_time()
         pardic['id'] = id
         keys = list(pardic.keys())
@@ -548,7 +549,7 @@ class SedmDB:
             if key not in keys:  # check for required key
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(keys):  # remove any extraneous keys
-            if key not in ['id', 'pg_designator', 'time_allocated', 'time_spent', 'inidate', 'enddate']:
+            if key not in ['id', 'pg_designator', 'time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -576,6 +577,7 @@ class SedmDB:
                     'time_spent' (datetime.timedelta object or float/int seconds)
                     'inidate' ('year-month-day hour:minute:second')
                     'enddate' ('year-month-day hour:minute:second')
+                    'color' (hex color code)
 
         Returns:
             (-1, "ERROR...") if it failed to update
@@ -584,7 +586,7 @@ class SedmDB:
         """
         # TODO: reconsider allowed parameters
         param_types = {'id': int, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
-                       'inidate': 'datetime', 'enddate': 'datetime'}
+                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: id not provided!")
@@ -593,7 +595,7 @@ class SedmDB:
             return (-1, "ERROR: no allocation with the id!")
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate']:
+            if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -622,7 +624,7 @@ class SedmDB:
             compare_dict (dict): default is {}
                 'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
                 if no inequality is provided, '=' is assumed
-            values/keys options: ['id', 'designator', 'time_spent', 'time_allocated', 'inidate', 'enddate']
+            values/keys options: ['id', 'designator', 'time_spent', 'time_allocated', 'inidate', 'enddate', 'color']
 
         Returns:
             list of tuples containing the values for each program matching the criteria
@@ -632,7 +634,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         # TODO: test, reconsider return styles
-        allowed_params = {'id': int, 'designator': str, 'time_spent': 'timedelta',
+        allowed_params = {'id': int, 'designator': str, 'time_spent': 'timedelta', 'color': str, 
                           'time_allocated': 'timedelta', 'inidate': 'datetime', 'enddate': 'datetime'}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'allocation')

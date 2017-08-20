@@ -469,7 +469,8 @@ CREATE TABLE allocation (
     inidate timestamp NULL,
     enddate timestamp NULL,
     time_spent interval NULL,
-    time_allocated interval NULL
+    time_allocated interval NULL,
+    color text NULL
 );
 
 -- foreign keys
