@@ -203,12 +203,13 @@ CREATE TABLE observation (
     id BIGINT PRIMARY KEY,
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
-    atomicrequest_id bigint NOT NULL UNIQUE,
     mjd decimal(10,5)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
     exptime decimal(6,2)  NOT NULL,
+    time_elapsed INTERVAL NULL,
     fitsfile text  NOT NULL UNIQUE,
     imtype text  NULL,
+    filter text NULL,
     lst text  NOT NULL,
     ra decimal(12,6)  NOT NULL,
     dec decimal(12,6)  NOT NULL,
@@ -363,40 +364,6 @@ CREATE INDEX request_status_key ON request(
     status
 );
 
-CREATE TABLE atomicrequest (
-    id BIGINT PRIMARY KEY ,
-    object_id bigint NOT NULL,
-    request_id bigint NOT NULL,
-    order_id int NULL,
-    exptime float NOT NULL,
-    filter text NOT NULL,
-    status text DEFAULT 'PENDING',
-    priority decimal(5,2)  NOT NULL,
-    inidate_plan date  NOT NULL,
-    enddate_plan date  NOT NULL,
-    inidate timestamp  NOT NULL,
-    enddate timestamp  NOT NULL,
-    time_elapsed float NULL ,
-    creationdate timestamp  DEFAULT NOW(),
-    lastmodified timestamp  DEFAULT NOW()
-);
-
-CREATE INDEX atomicrequest_request_id_key ON atomicrequest(
-    request_id
-);
-
-CREATE INDEX atomicrequest_object_id_key ON atomicrequest(
-    object_id
-);
-
-CREATE INDEX atomicrequest_inidate_key ON atomicrequest(
-    inidate
-);
-
-CREATE INDEX atomicrequest_enddate_key ON atomicrequest(
-    enddate
-);
-
 -- Table: telescope_stats
 CREATE TABLE telescope_stats (
     id BIGINT PRIMARY KEY,
@@ -474,7 +441,7 @@ CREATE TABLE allocation (
 );
 
 -- foreign keys
--- Reference: atomicrequest_object (table: atomicrequest)
+
 ALTER TABLE usergroups ADD CONSTRAINT usergroups_users
     FOREIGN KEY (user_id)
     REFERENCES users (id)
@@ -499,21 +466,6 @@ ALTER TABLE program ADD CONSTRAINT program_groups
 ALTER TABLE allocation ADD CONSTRAINT allocation_program
     FOREIGN KEY (pg_designator)
     REFERENCES program (designator)
-    NOT DEFERRABLE
-    INITIALLY IMMEDIATE
-;
-
-ALTER TABLE atomicrequest ADD CONSTRAINT atomicrequest_object
-    FOREIGN KEY (object_id)
-    REFERENCES object (id)
-    NOT DEFERRABLE
-    INITIALLY IMMEDIATE
-;
-
--- Reference: atomicrequest_request (table: atomicrequest)
-ALTER TABLE atomicrequest ADD CONSTRAINT atomicrequest_request
-    FOREIGN KEY (request_id)
-    REFERENCES request (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -587,14 +539,6 @@ ALTER TABLE observation ADD CONSTRAINT observation_object
 ALTER TABLE observation ADD CONSTRAINT observation_request
     FOREIGN KEY (request_id)
     REFERENCES request (id)
-    NOT DEFERRABLE 
-    INITIALLY IMMEDIATE
-;
-
--- Reference: observation_atomic_request (table: observation)
-ALTER TABLE observation ADD CONSTRAINT observation_atomic_request
-    FOREIGN KEY (atomicrequest_id)
-    REFERENCES atomicrequest (id)
     NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
