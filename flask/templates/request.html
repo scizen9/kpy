@@ -1,5 +1,14 @@
 {% from "_formhelpers.html" import render_field %}
         <div class = "container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
             {% if message %}
                 <div class="media-body">
                     <h5> {{ message }}</h5>
@@ -13,9 +22,13 @@
                         <p>
                             {{ render_field(form1.object_id) }}
                             {{ render_field(form1.priority) }}
+                            {{ render_field(form1.program) }}
+                            {{ render_field(form1.filters) }}
                             {{ render_field(form1.inidate) }}
                             {{ render_field(form1.enddate) }}
-                            {{ render_field(form1.project) }}
+                            <h4>Optional</h4>
+                            {{ render_field(form1.cadence) }}
+                            {{ render_field(form1.phasesamples) }}
                             {{ render_field(form1.submit_req) }}
                         </p>
                     </form>

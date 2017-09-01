@@ -1,4 +1,13 @@
 {% from "_formhelpers.html" import render_field %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
         {% if fail %}
             <div class="alert alert-danger fade in" id="login-failed"
                  role="alert" style="margin-bottom:0; display:none">

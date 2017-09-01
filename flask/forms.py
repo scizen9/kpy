@@ -1,18 +1,33 @@
 from flask_wtf import FlaskForm
-from wtforms import fields, validators
+from wtforms import fields, validators, widgets, Field, FormField
 from flask import request, redirect, url_for
 from urlparse import urlparse, urljoin
 
 SECRET_KEY = 'secret'
 
 
+#class IntListField(Field):
+#    widget = widgets.ListWidget()
+
+
+class FilterForm(FlaskForm):
+    ifu_val = fields.IntegerField('ifu')
+    u_val = fields.IntegerField('u')
+    g_val = fields.IntegerField('g')
+    r_val = fields.IntegerField('r')
+    i_val = fields.IntegerField('i')
+
+
 class RequestForm(FlaskForm):
     object_id = fields.IntegerField('object_id', [validators.data_required()])
+    user_id = fields.HiddenField('user_id', [validators.data_required()])
+    program = fields.SelectField('program', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.data_required()])
+    filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
+    cadence = fields.FloatField('cadence')
+    phasesamples = fields.FloatField('samples per period')
     inidate = fields.DateField('start date (Y-M-D)', [validators.data_required()])
     enddate = fields.DateField('end date (Y-M-D)', [validators.data_required()])
-    user_id = fields.HiddenField('user_id', [validators.data_required()])
-    project = fields.SelectField('project', [validators.data_required()], coerce=int, choices=[])
     submit_req = fields.SubmitField('submit request')
 
 
