@@ -10,7 +10,10 @@ import shutil
 import subprocess
 import numpy as np
 import pyfits as pf
-import rcred
+try:
+    import rcred
+except:
+    print "RCRED not imported"
 import datetime
 import fitsutils
 
