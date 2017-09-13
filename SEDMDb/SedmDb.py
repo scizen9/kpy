@@ -1250,7 +1250,7 @@ class SedmDB:
                     'priority' (float),
                     'inidate' ('year-month-day') (start of observing window),
                     'enddate' ('year-month-day') (end of observing window),
-                    'nexposures' or 'ordering' (below)
+                    'nexposures' or 'obs_seq' (below),
 
                 optional:
                     'marshal_id' (int/long),
@@ -1259,10 +1259,14 @@ class SedmDB:
                     'phasesamples' (float) (how many samples in a period),
                     'sampletolerance' (float) (how much tolerance in when the samples can be taken),
                     'nexposures' (str '{# of ifu, # of u, # of g, # of r, # of i}'),
-                    'ordering' (str e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 of g, then 3 of r, then 1 i, 1 ifu, 1 i)
+                    'obs_seq' (str e.g. '{3g, 3r, 1i, 1ifu, 2i}' for 3 of g, then 3 of r, then 1 i, 1 ifu, 1 i),
+                    'max_fwhm' (float),
+                    'min_moon_dist' (float) (default 45 deg?),
+                    'max_moon_illum' (float) (fraction),
+                    'max_cloud_cover' (float) (fraction)
 
                 Note:
-                    the numbers in 'ordering' must be single digit,
+                    the numbers in 'obs_seq' must be single digit,
                     spec/phot_duration should be duration per exp
 
         Returns:
@@ -1273,7 +1277,8 @@ class SedmDB:
         # TODO: get a better description of cadence/phasesamples/sampletolerance
         param_types = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'priority': float,
                        'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float, 'cadence': float,
-                       'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'ordering': str}
+                       'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'obs_seq': str,
+                       'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
         id = _id_from_time()
         pardic['id'] = id
         # TODO: handle exptime/magnitude in-function?
@@ -1289,8 +1294,8 @@ class SedmDB:
             return (-1, "ERROR: user does not exist!")
         # TODO: set default inidate/enddate?
 
-        if 'ordering' in pardic.keys():
-            nexpo = pardic['ordering'][1:-1].split(',')
+        if 'obs_seq' in pardic.keys():
+            nexpo = pardic['obs_seq'][1:-1].split(',')
             nexposure = [0, 0, 0, 0, 0]
             for entry in nexpo:
                 if entry[1:] == 'ifu':
@@ -1304,15 +1309,15 @@ class SedmDB:
                 elif entry[1:] == 'i':
                     nexposure[4] += int(entry[0])
 
-            # make sure that 'nexposures' and 'ordering' are consistent
+            # make sure that 'nexposures' and 'obs_seq' are consistent
             if 'nexposures' in pardic.keys():
                 if not '{%s, %s, %s, %s, %s}' % tuple(nexposure) == pardic['nexposures']:
-                    return (-1, "ERROR: nexposures and ordering are inconsistent!")
+                    return (-1, "ERROR: nexposures and obs_seq are inconsistent!")
             else:
                 pardic['nexposures'] = '{%s, %s, %s, %s, %s}' % tuple(nexposure)
 
-        elif not ('nexposures' in pardic.keys() or 'ordering' in pardic.keys()):
-            return (-1, "ERROR: nexposures or ordering is required!")
+        elif not ('nexposures' in pardic.keys() or 'obs_seq' in pardic.keys()):
+            return (-1, "ERROR: nexposures or obs_seq is required!")
 
         keys = list(pardic.keys())
         default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
@@ -1323,7 +1328,8 @@ class SedmDB:
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'priority',
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
-                           'phasesamples', 'sampletolerance', 'nexposures', 'ordering']:
+                           'phasesamples', 'sampletolerance', 'nexposures', 'obs_seq',
+                           'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -1350,10 +1356,14 @@ class SedmDB:
                 optional:
                     'status' (str),
                     'maxairmass' (float),
+                    'max_fwhm' (float),
+                    'min_moon_dist' (float) (degrees),
+                    'max_moon_illum' (float) (fraction),
+                    'max_cloud_cover' (float) (fraction),
                     'priority' (float),
                     'inidate' ('year-month-day'),
                     'enddate' ('year-month-day')
-                Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', or 'EXPIRED'
+                Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'REDUCED', 'CANCELED', or 'EXPIRED'
 
         Returns:
             (-1, "ERROR...") if there was an issue with the updating
@@ -1362,7 +1372,8 @@ class SedmDB:
         """
         # TODO: determine which parameters shouldn't be changed
         param_types = {'id': int, 'status': str, 'maxairmass': float, 'priority': float,
-                       'inidate': 'date', 'enddate': 'date'}
+                       'inidate': 'date', 'enddate': 'date',
+                       'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: no id provided!")
@@ -1374,7 +1385,8 @@ class SedmDB:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate']:
+            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate',
+                           'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -1420,10 +1432,14 @@ class SedmDB:
                 'sampletolerance' (float),
                 'filters' (str),
                 'nexposures' (str),
-                'ordering' (str)
+                'obs_seq' (str)
                 'status' (str),
                 'creationdate' ('year-month-day'),
-                'lastmodified' ('year-month-day')
+                'lastmodified' ('year-month-day'),
+                'max_fwhm' (float),
+                'min_moon_dist' (float) (default 45 deg?),
+                'max_moon_illum' (float) (fraction),
+                'max_cloud_cover' (float) (fraction)
 
         Returns:
             list of tuples containing the values for each request matching the criteria,
@@ -1436,8 +1452,9 @@ class SedmDB:
         allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
                           'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int,
                           'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
-                          'filters': str, 'nexposures': str, 'ordering': str, 'creationdate': 'date',
-                          'lastmodified': 'date'}
+                          'filters': str, 'nexposures': str, 'obs_seq': str, 'creationdate': 'date',
+                          'lastmodified': 'date',
+                          'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)

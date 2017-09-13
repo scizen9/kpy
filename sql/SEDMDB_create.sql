@@ -342,6 +342,10 @@ CREATE TABLE request (
     marshal_id bigint NULL,
     exptime integer[]  NOT NULL,
     maxairmass decimal(5,2)  DEFAULT 2.5,
+    max_fwhm decimal(4,3) NULL,
+    min_moon_dist decimal(5,2) NULL, /* in degrees */
+    max_moon_illum DECIMAL(5,4) NULL, /* fractional */
+    max_cloud_cover decimal(5,2) NULL, /* not sure what measurement ... */
     status text  DEFAULT 'PENDING',
     priority decimal(5,2)  NOT NULL,
     inidate timestamp  NOT NULL,
@@ -351,7 +355,10 @@ CREATE TABLE request (
     sampletolerance decimal(5,2) NULL,
     filters text[] DEFAULT '{ifu,u,g,r,i}',
     nexposures integer[] NULL,
-    ordering text[] NULL,
+    obs_seq text[] NULL,
+    seq_repeats INT NULL,
+    seq_completed int NULL,
+    last_obs_jd float NULL,
     creationdate timestamp DEFAULT NOW(),
     lastmodified timestamp  DEFAULT NOW()
 );
