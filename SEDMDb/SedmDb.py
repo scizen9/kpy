@@ -6,6 +6,7 @@ import subprocess
 import warnings
 from astropy.time import Time
 from datetime import timedelta
+from werkzeug.security import generate_password_hash
 
 
 # Singleton/SingletonPattern.py
@@ -92,7 +93,7 @@ class SedmDB:
                     'username' (str),
                     'name' (str),
                     'email' (str),
-                    'password' (str) (hashed+salted)
+                    'password' (str) (will be hashed+salted)
 
         Returns:
             (-1, "ERROR...") if there is an issue
@@ -109,6 +110,8 @@ class SedmDB:
         usernames = [user[0] for user in self.execute_sql('SELECT username FROM users')]
         if pardic['username'] in usernames:
             return (-1, "ERROR: user with that username exists!")
+        if 'password' in keys:
+            pardic['password'] = generate_password_hash(pardic['password'])
         for key in reversed(keys):  # remove group keys and any other bad keys
             if key not in ['id', 'username', 'name', 'email', 'password']:
                 keys.remove(key)
@@ -132,7 +135,7 @@ class SedmDB:
                 optional:
                     'name' (str),
                     'email' (str),
-                    'password' (str) (hashed+salted)
+                    'password' (str) (will be hashed+salted)
 
         Returns:
             (-1, "ERROR...") if it failed to update
@@ -147,6 +150,8 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
             return (-1, "ERROR: no user with the id!")
+        if 'password' in keys:
+            pardic['password'] = generate_password_hash(pardic['password'])
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['name', 'email', 'password']:
@@ -670,7 +675,7 @@ class SedmDB:
                     'marshal_id' (int/long)
 
                 'typedesig' should be one of:
-                    'f' (fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
+                    'f' (fixed), 'v' (periodic fixed), 'P' (built-in planet or satellite name), 'e' (heliocentric elliptical),
                     'h' (heliocentric hyperbolic), 'p' (heliocentric parabolic), 'E' (geocentric elliptical)
 
         Returns:
@@ -717,6 +722,25 @@ class SedmDB:
             except exc.ProgrammingError:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             return (id, "Fixed object added")
+        elif pardic['typedesig'] == 'v':
+            for key in ['ra', 'dec', 'epoch']:
+                if key not in obj_keys:
+                    return (-1, "ERROR: %s not provided!" % (key,))
+            dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
+                                   % (pardic['ra'], pardic['dec']))
+            if dup:  # if there is already an object within an arcsecond
+                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+
+            obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
+            try:
+                self.execute_sql(obj_sql)
+            except exc.IntegrityError:
+                return (-1, "ERROR: add_object sql command failed with an IntegrityError!")
+            except exc.ProgrammingError:
+                return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
+            return (id, "Fixed object added, input period data into table `periodic`")
+
         elif pardic['typedesig'] in ['h', 'E', 'e', 'p']:
             function_dict = {'e': 'add_elliptical_heliocentric', 'h': 'add_hyperbolic_heliocentric',
                              'p': 'add_parabolic_heliocentric', 'E': 'add_earth_satellite'}
@@ -1253,6 +1277,7 @@ class SedmDB:
                     'nexposures' or 'obs_seq' (below),
 
                 optional:
+                    'seq_repeats' (int) (defaults to 1),
                     'marshal_id' (int/long),
                     'maxairmass' (float) (max allowable airmass for observation, default 2.5),
                     'cadence' (float) (time between periods),
@@ -1278,7 +1303,8 @@ class SedmDB:
         param_types = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'priority': float,
                        'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float, 'cadence': float,
                        'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'obs_seq': str,
-                       'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
+                       'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float,
+                       'seq_repeats': int}
         id = _id_from_time()
         pardic['id'] = id
         # TODO: handle exptime/magnitude in-function?
@@ -1293,6 +1319,8 @@ class SedmDB:
         if pardic['user_id'] not in [user[0] for user in self.execute_sql('SELECT id FROM users;')]:
             return (-1, "ERROR: user does not exist!")
         # TODO: set default inidate/enddate?
+        if 'seq_repeats' not in pardic.keys():
+            pardic['seq_repeats'] = 1
 
         if 'obs_seq' in pardic.keys():
             nexpo = pardic['obs_seq'][1:-1].split(',')
@@ -1308,7 +1336,7 @@ class SedmDB:
                     nexposure[3] += int(entry[0])
                 elif entry[1:] == 'i':
                     nexposure[4] += int(entry[0])
-
+            nexposure = [n*pardic['seq_repeats'] for n in nexposure]
             # make sure that 'nexposures' and 'obs_seq' are consistent
             if 'nexposures' in pardic.keys():
                 if not '{%s, %s, %s, %s, %s}' % tuple(nexposure) == pardic['nexposures']:
@@ -1328,7 +1356,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'priority',
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
-                           'phasesamples', 'sampletolerance', 'nexposures', 'obs_seq',
+                           'phasesamples', 'sampletolerance', 'nexposures', 'obs_seq', 'seq_repeats',
                            'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
@@ -1361,8 +1389,10 @@ class SedmDB:
                     'max_moon_illum' (float) (fraction),
                     'max_cloud_cover' (float) (fraction),
                     'priority' (float),
+                    'seq_completed' (int),
                     'inidate' ('year-month-day'),
-                    'enddate' ('year-month-day')
+                    'enddate' ('year-month-day'),
+                    'last_obs_jd' (float)
                 Note: 'status' can be 'PENDING', 'ACTIVE', 'COMPLETED', 'REDUCED', 'CANCELED', or 'EXPIRED'
 
         Returns:
@@ -1372,7 +1402,7 @@ class SedmDB:
         """
         # TODO: determine which parameters shouldn't be changed
         param_types = {'id': int, 'status': str, 'maxairmass': float, 'priority': float,
-                       'inidate': 'date', 'enddate': 'date',
+                       'inidate': 'date', 'enddate': 'date', 'seq_completed': int, 'last_obs_jd': float,
                        'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
         keys = list(pardic.keys())
         if 'id' not in keys:
@@ -1385,8 +1415,8 @@ class SedmDB:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 keys.remove('status')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate',
-                           'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
+            if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate', 'seq_completed',
+                           'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover', 'last_obs_jd']:
                 keys.remove(key)
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -1439,7 +1469,10 @@ class SedmDB:
                 'max_fwhm' (float),
                 'min_moon_dist' (float) (default 45 deg?),
                 'max_moon_illum' (float) (fraction),
-                'max_cloud_cover' (float) (fraction)
+                'max_cloud_cover' (float) (fraction),
+                'seq_repeats' (int),
+                'seq_completed' (int),
+                'last_obs_jd' (float)
 
         Returns:
             list of tuples containing the values for each request matching the criteria,
@@ -1453,7 +1486,7 @@ class SedmDB:
                           'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int,
                           'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
                           'filters': str, 'nexposures': str, 'obs_seq': str, 'creationdate': 'date',
-                          'lastmodified': 'date',
+                          'lastmodified': 'date', 'seq_repeats': int, 'seq_completed': int, 'last_obs_jd': float,
                           'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'request')
         if sql[0] == 'E':  # if the sql generation returned an error

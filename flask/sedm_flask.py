@@ -15,7 +15,7 @@ import json
 from flask import Flask, request, flash, redirect, render_template, url_for, make_response, get_flashed_messages
 from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
 from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, SSOForm, is_safe_url
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
@@ -103,13 +103,13 @@ def login():
         user_pass = db.get_from_users(['username', 'password', 'id'], {'username': username})
         if not user_pass:
             message = "Incorrect username or password!"
-            return (render_template('header.html') +#, current_user=flask_login.current_user) +
+            return (render_template('header.html') +
                     render_template('login.html', form=form, message=message) +
                     render_template('footer.html'))
 
         elif user_pass[0] == -1:
             message = user_pass[1]
-            return (render_template('header.html') +#, current_user=flask_login.current_user) +
+            return (render_template('header.html') +
                     render_template('login.html', form=form, message=message) +
                     render_template('footer.html'))
         elif check_password_hash(user_pass[0][1], flask.request.form['password']):
@@ -126,7 +126,7 @@ def login():
             return redirect(flask.url_for('index'))
         else:
             message = "Incorrect username or password!"
-            return (render_template('header.html') +#, current_user=flask_login.current_user) +
+            return (render_template('header.html') +
                     render_template('login.html', form=form, message=message) +
                     render_template('footer.html'))
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
