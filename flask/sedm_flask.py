@@ -390,7 +390,13 @@ def show_objects(ident):
 
 @app.route('/project_stats')
 def projects_home():  # TODO: list groups and projects. require login?
+    # generate a list of (group designator, project id, project designator)
+    projects = []    
+    for group in group_programs_dict.values():
+        for project in group[1]:
+            projects.append((group[0], project[0], project[1]))
     return (render_template('header.html') + 
+            render_template('projects_home.html', projects = projects) + 
             render_template('footer.html'))
 
 
