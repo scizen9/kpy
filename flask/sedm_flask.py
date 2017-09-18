@@ -47,7 +47,7 @@ for group in groups:
 programs = db.execute_sql("SELECT group_id, id, designator from program;")
 group_programs_dict = {}  # make dict with format {group_id: (group designator, [(program id, program designator), ...]}
 for g_p in programs:
-    if g_p[0] in group_programs_dict.keys():
+    if g_p[0] not in group_programs_dict.keys():
         group_programs_dict[g_p[0]] = [group__dict[g_p[0]], [(g_p[1], g_p[2])]]
     else:
         group_programs_dict[g_p[0]][1].append((g_p[1], g_p[2]))
@@ -133,6 +133,12 @@ def login():
             render_template('login.html', form=form, message=None) +
             render_template('footer.html'))
 
+@app.route('/user_info')
+@flask_login.login_required
+def user_info():
+    return (render_template('header.html') +#, current_user=flask_login.current_user) +
+            render_template('footer.html'))
+
 
 @app.route('/request', methods=['GET', 'POST'])
 #@flask_login.login_required
@@ -144,24 +150,35 @@ def requests():
     form2 = FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
-    form1.program.choices = [(1, 'ZTF'), (2, 'CIT')]
+    choices = []
+    # TODO: make this restricted to the user's programs
+    for g_p in group_programs_dict.values():
+        for program in g_p[1]:
+            choices.append(program)
+    print choices
+    form1.program.choices = choices
     form1.user_id.data = 1
     if form1.submit_req.data and form1.validate_on_submit():
         print "request submitted"
         if request.method == 'POST':
             filters = '{'
             for entry in form1.filters.entries:
-                filters += entry.data['ifu_val'] + ', '
-                filters += entry.data['u_val'] + ', '
-                filters += entry.data['g_val'] + ', '
-                filters += entry.data['r_val'] + ', '
-                filters += entry.data['i_val'] + '}'
+                filters += str(entry.data['ifu_val']) + ', '
+                filters += str(entry.data['u_val']) + ', '
+                filters += str(entry.data['g_val']) + ', '
+                filters += str(entry.data['r_val']) + ', '
+                filters += str(entry.data['i_val']) + '}'
                 # TODO: handle 'ordering' in form/parse
-            req = db.add_request({'object_id': form1.object_id.data, 'exptime': '{120, 2400}',
-                                  'priority': form1.priority.data, 'inidate': form1.inidate.data,
-                                  'enddate': form1.enddate.data, 'user_id': 1, 'program_id': form1.program.data,
-                                  'cadence': form1.cadence, 'phasesampes': form1.phasesamples,
-                                  'nexposures': filters})
+            print filters
+            pardic = {'object_id': form1.object_id.data, 'exptime': '{120, 2400}',
+                                  'priority': form1.priority.data, 'inidate': str(form1.inidate.data),
+                                  'enddate': str(form1.enddate.data), 'user_id': 1, 'program_id': form1.program.data,
+                                  'nexposures': filters}
+            if form1.cadence.data:
+                pardic['cadence'] = form1.cadence.data
+            if form1.phasesamples.data:
+                pardic['phasesamples'] = form1.phasesamples.data
+            req = db.add_request(pardic)
             # TODO: set up user_id and program_id=
             message = req[1]
             return (render_template('header.html', current_user=flask_login.current_user) +
@@ -303,10 +320,9 @@ def show_objects(ident):
             del req[n][1]
 
     # get the time, duration and file for observations of the object
-    a_query = ("SELECT obs.mjd, obs.exptime, a.filter, obs.fitsfile "
-               "FROM observation obs, object obj, atomicrequest a, request r WHERE obj.id = obs.object_id AND "
-               "a.id = obs.atomicrequest_id AND r.id = obs.request_id "
-               "AND obj.id = '%s';" % (ident,))
+    a_query = ("SELECT obs.mjd, obs.exptime, obs.filter, obs.fitsfile "
+               "FROM observation obs, object obj, request r WHERE obj.id = obs.object_id AND "
+               "r.id = obs.request_id AND obj.id = '%s';" % (ident,))
                # TODO: add ```AND r.program_id IN %s;" % (, flask_login.current_user.groups)```
     observations = db.execute_sql(a_query)
     obs = []
@@ -317,8 +333,10 @@ def show_objects(ident):
         return mydiv
 
     for ob in observations:
-        obs.append(([ob[0], ob[1], ob[2]], make_image(ob[3])))
-
+        if ob[3]:
+            obs.append(([ob[0], ob[1], ob[2]], make_image(ob[3])))
+        else:
+            obs.append(([ob[0], ob[1], ob[2]], None))
     # TODO: make sure the above works
     # TODO: check again
     # TODO: check even more
@@ -370,6 +388,12 @@ def show_objects(ident):
             render_template('footer.html'))
 
 
+@app.route('/project_stats')
+def projects_home():  # TODO: list groups and projects. require login?
+    return (render_template('header.html') + 
+            render_template('footer.html'))
+
+
 @app.route('/project_stats/<program>')
 @flask_login.login_required
 def project_stats(program):
@@ -378,29 +402,38 @@ def project_stats(program):
     end = start + 7
     prog_id = None
     for lis in group_programs_dict.itervalues():
-        if lis[1][1] == program:
-            prog_id = lis[1][0]
+        for prog in lis[1]:
+            if prog[1] == program:
+                prog_id = prog[0]
     if not prog_id:
         flash('program %s does not exist' % (program,))
-        redirect(url_for('index'))
-    # TODO: make a form to set start/end dates
-    areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
-                  "JOIN request ON request.id = atomicrequest.request_id "
-                  "WHERE request.program_id = '%s'"
-                  #" AND  atomicrequest.lastmodified < %s AND atomicrequest.lastmodified > %s"
-                  ";" % (prog_id,))
-    requests = np.array(db.execute_sql(areq_query))
-    # TODO: test for whether there are any matching requests
-    pending = (requests.T[1] == 'PENDING')
-    pending_time = sum(requests.T[0][pending].astype(float))/3600.
-    observed = ((requests.T[1] == 'OBSERVED') | (requests.T[0] == 'REDUCED'))
-    observed_time = sum(requests.T[0][observed].astype(float))/3600.
-    # TODO: make time_allocated part of group definition?
-    time_allocated = 14.
-    # pygal graphing
+        return redirect(url_for('index'))
 
+    # TODO: make a form to set start/end dates
+    time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
+                       "WHERE o.request_id = r.id AND r.program_id = '%s'"
+                       #" AND r.lastmodified < %s AND r.lastmodified > %s"
+                       ";" % (prog_id,))
+    requests = db.execute_sql(time_used_query)
+    time_allocated = db.get_from_program(['time_allocated'], {'id': prog_id})[0][0]
+    
+    if requests: # check whether there are any requests
+        reqs = np.array(requests)
+        pending = (reqs.T[1] == 'PENDING')
+        pending_time = sum(np.nan_to_num(reqs.T[0][pending].astype(float)))/3600.
+        # TODO: fix status keywords
+        observed = ((reqs.T[1] == 'ACTIVE') | (reqs.T[0] == 'COMPLETED') | (reqs.T[0] == 'REDUCED'))
+        observed_time = sum(np.nan_to_num(reqs.T[0][observed].astype(float)))/3600.
+    else:
+        pending_time = 0.
+        observed_time = 0.
+    if not time_allocated:
+        time_allocated = 0.
+    else:
+        time_allocated = time_allocated.total_seconds()
+    # TODO: make total time show up on graph
+    # pygal graphing
     # use different color schemes based on whether there is more time requested than allowed
-    print requests, pending, pending_time
     if observed_time+pending_time > time_allocated:
         c_style = Style(
             background='transparent',
@@ -421,7 +454,7 @@ def project_stats(program):
         pi_chart.add('observed', observed_time)
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
-    
+        
     # retrieve all of the requests submitted for the project
     request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
                      "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
