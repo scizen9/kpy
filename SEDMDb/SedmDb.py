@@ -1979,13 +1979,28 @@ class SedmDB:
             pardic (dict):
                 required:
                     'observation_id' (int/long),
-                    'reducedfile' (str),
-                    'sexfile' (str),
+                    'fitsfile' (abspath str),
+                    'npyfile' (abspath str),
+                    'asciifile' (abspath str),
                     'imgset' (str),
                     'quality' (int),
                     'cubefile' (str),
                     'standardfile' (str),
-                    'skysub' ('true' or 'false')
+                    'skysub' ('true' or 'false'),
+                    'extract_x' (float),
+                    'extract_y' (float),
+                    'extract_pa' (float),
+                    'extract_a' (float),
+                    'extract_b' (float),
+                    'ad_red' (float),
+                    'ad_blue' (float),
+                    'prlltc' (float),
+                    'flexure_x_corr_nm' (float),
+                    'flexure_y_corr_pix' (float),
+                    'reducer' (float),
+                    'fwhm' (float),
+                    'background' (float),
+                    'line_fwhm' (float)
 
         Returns:
             (-1, "ERROR...") if there was an issue
@@ -1994,8 +2009,12 @@ class SedmDB:
 
             (id (long), "Spectrum updated for observation_id ...") if the spectrum existed and was updated
         """
-        param_types = {'id': int, 'observation_id': int, 'reducedfile': str, 'sexfile': str,
-                       'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': 'bool'}
+        param_types = {'id': int, 'observation_id': int,
+                       'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str, 'skysub': 'bool',
+                       'extract_x': float, 'extract_y': float, 'extract_pa': float, 'extract_a': float,
+                       'extract_b': float, 'ad_red': float, 'ad_blue': float, 'prlltc': float,
+                       'flexure_x_corr_nm': float, 'flexure_y_corr_pix': float, 'reducer': float, 'fwhm': float,
+                       'background': float, 'line_fwhm': float, 'fitsfile': str, 'npyfile': str, 'asciifile': str}
         id = _id_from_time()
         pardic['id'] = id
         # TODO: which parameters are required? test
@@ -2008,8 +2027,10 @@ class SedmDB:
             if spec_id[0] == -1:
                 return spec_id
             for key in reversed(keys):  # TODO: test the updating
-                if key not in ['reducedfile', 'sexfile', 'imgset', 'quality',
-                               'cubefile', 'standardfile', 'marshal_spec_id', 'skysub']:
+                if key not in ['fitsfile', 'npyfile', 'asciifile', 'imgset', 'quality',
+                               'cubefile', 'standardfile', 'marshal_spec_id', 'skysub', 'extract_x', 'extract_y',
+                               'extract_pa', 'extract_a', 'extract_b', 'ad_red', 'ad_blue', 'prlltc',
+                               'flexure_x_corr_nm', 'flexure_y_corr_pix', 'reducer', 'fwhm', 'background', 'line_fwhm']:
                     keys.remove(key)
             pardic['id'] = spec_id[0][0]
             update_sql = _generate_update_sql(pardic, keys, 'spec')
@@ -2028,15 +2049,16 @@ class SedmDB:
         elif obs_id[0] == -1:
             return obs_id
 
-        for key in ['observation_id', 'reducedfile', 'sexfile', 'imgset', 'quality', 'cubefile',
+        for key in ['observation_id', 'fitsfile', 'imgset', 'quality', 'cubefile',
                     'standardfile', 'skysub']:
             if key not in keys:
                 return (-1, "ERROR: %s not provided!" % (key,))
 
         for key in reversed(keys):
-            if key not in ['id', 'observation_id', 'reducedfile', 'sexfile', 'imgset', 'quality',
-                           'cubefile',
-                           'standardfile', 'marshal_spec_id', 'skysub']:
+            if key not in ['id', 'observation_id', 'fitsfile', 'npyfile', 'asciifile', 'imgset', 'quality',
+                           'cubefile', 'standardfile', 'marshal_spec_id', 'skysub', 'extract_x', 'extract_y',
+                           'extract_pa', 'extract_a', 'extract_b', 'ad_red', 'ad_blue', 'prlltc',
+                           'flexure_x_corr_nm', 'flexure_y_corr_pix', 'reducer', 'fwhm', 'background', 'line_fwhm']:
                 keys.remove(key)
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -2065,13 +2087,28 @@ class SedmDB:
             values/keys options:
                 'id' (int/long),
                 'observation_id' (int/long),
-                'reducedfile' (str),
-                'sexfile' (str),
+                'fitsfile' (abspath str),
+                'npyfile' (abspath str),
+                'asciifile' (abspath str),
                 'imgset' (str),
                 'quality' (int),
                 'cubefile' (str),
-                'standardfile' (str),ear
+                'standardfile' (str),
                 'skysub' ('true' or 'false')
+                'extract_x' (float),
+                'extract_y' (float),
+                'extract_pa' (float),
+                'extract_a' (float),
+                'extract_b' (float),
+                'ad_red' (float),
+                'ad_blue' (float),
+                'prlltc' (float),
+                'flexure_x_corr_nm' (float),
+                'flexure_y_corr_pix' (float),
+                'reducer' (float),
+                'fwhm' (float),
+                'background' (float),
+                'line_fwhm' (float)
 
         Returns:
             list of tuples containing the values for spectra matching the criteria
@@ -2080,9 +2117,13 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'observation_id': int, 'reducedfile': str, 'sexfile': str,
+        allowed_params = {'observation_id': int,  'fitsfile': str, 'npyfile': str, 'asciifile': str,
                           'imgset': str, 'quality': int, 'cubefile': str, 'standardfile': str,
-                          'skysub': 'bool', 'id': int}
+                          'skysub': 'bool', 'id': int,
+                          'extract_x': float, 'extract_y': float, 'extract_pa': float, 'extract_a': float,
+                          'extract_b': float, 'ad_red': float, 'ad_blue': float, 'prlltc': float,
+                          'flexure_x_corr_nm': float, 'flexure_y_corr_pix': float, 'reducer': float, 'fwhm': float,
+                          'background': float, 'line_fwhm': float}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'spec')  # checks type and
         if sql[0] == 'E':  # if the sql generation returned an error

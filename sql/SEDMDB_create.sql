@@ -247,7 +247,7 @@ CREATE TABLE spec (
     skysub boolean  NOT NULL,
     fwhm decimal(5,2)  NULL,
     background decimal(5,2)  NULL,
-    line_fwhm int  NULL,
+    line_fwhm decimal(5,3)  NULL,
     extract_x float NULL,
     extract_y float NULL,
     extract_pa float NULL,
