@@ -5,12 +5,80 @@ import numpy as np
 
 db = SedmDb.SedmDB()
 
+
+def basictest():
+    #add_user',
+    user = db.add_user({'username': 'db_test_user', 'name': 'new_user', 'email': '', 'password': 'cvs'})
+    assert user[0] >= 0
+    # get_from_users'
+    assert db.get_from_users(['username', 'name', 'password'], {'id': user[0]}) == [('db_test_user', 'new_user', 'cvs')]
+    #update_user',
+    db.update_user({'name': 'updated_user', 'id': user[0]})
+    assert db.get_from_users(['name'], {'id': user[0]})
+    #remove_user',
+    #add_usergroup',
+    #get_from_usergroups',
+    #add_group',
+    #remove_from_group',
+    #add_program',
+    #get_from_program',
+    #update_program',
+    #add_allocation'
+    all = db.add_allocation()
+    #get_from_allocation',
+    #update_allocation',
+    #add_atomicrequest',
+    #get_from_atomicrequest',
+    #update_atomicrequest',
+    #add_phot_calib',
+    #add_spec_calib',
+    #get_from_phot_calib',
+    #get_from_spec_calib',
+    #update_phot_calib',
+    #update_spec_calib',
+    #add_classification',
+    #get_from_classification',
+    #update_classification',
+    #add_flexure',
+    #get_from_flexure',
+    #add_elliptical_heliocentric',
+    #add_hyperbolic_heliocentric',
+    #add_parabolic_heliocentric',
+    #get_from_elliptical_heliocentric',
+    #get_from_hyperbolic_heliocentric',
+    #get_from_parabolic_heliocentric',
+    #get_object_id_from_name',
+    #get_objects_near',
+    #add_object',
+    #get_from_object',
+    #add_observation',
+    #get_from_observation',
+    #update_observation',
+    #_add_planet_satellite_orbit',
+    #add_metrics_phot',
+    #add_phot',
+    #get_from_metrics_phot',
+    #get_from_phot',
+    #add_request',
+    #get_from_request',
+    #update_request',
+    #expire_requests',
+    #add_earth_satellite',
+    #get_from_earth_satellite',
+    #get_conn_sedmDB',
+    #add_spec',
+    #get_from_spec',
+    #execute_sql',
+    #add_telescope_stats',
+    #get_from_telescope_stats',
+
+
+
 # TODO: make tests that cause IntegrityError (giving a value in of the wrong format e.g. string for a decimal parameter) and ProgrammingError (attempting to insert/update a column that doesn't exist)
 # TODO: make the functions reject pardic keys that aren't columns
 
 # there are groups 'default group' and 'second default group'
 # (user_id = 1, username=default_user) can be tied to the requests
-
 
     
 # TODO: more robust testing of the objects
