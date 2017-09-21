@@ -400,7 +400,8 @@ def to_makefile(objs, calibs):
     stds = ""
     stds_dep = ""
     cogs_dep = ""
-    plots_dep = ""
+    stds_plt_dep = ""
+    plt_dep = ""
     sci = ""
     oth = ""
     auto = ""
@@ -445,7 +446,7 @@ def to_makefile(objs, calibs):
                         # all += a + " "
                         stds_dep += 'sp_' + a + " "
                         cogs_dep += 'cog_' + a + " "
-                        plots_dep += a.split('.')[0] + '_SEDM.pdf' + " "
+                        stds_plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 else:
                     standard = None
@@ -456,6 +457,7 @@ def to_makefile(objs, calibs):
                         MF += m
                         oth += "sp_" + a + " "
                         auto += "sp_" + a + " "
+                        plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
                 continue
 
             # Handle science targets
@@ -464,6 +466,7 @@ def to_makefile(objs, calibs):
 
                 MF += m
                 all += a + " "
+                plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
                     if objname.startswith("PTF"):
@@ -481,6 +484,7 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
+                    plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
                         if objname.startswith("PTF"):
@@ -499,9 +503,10 @@ def to_makefile(objs, calibs):
     automatic = "\n\nauto: %s report\n" % auto
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
     cogs = "\nstd_cogs: %s\n" % cogs_dep
-    plots = "\nstd_plots: %s\n" % plots_dep
+    std_plots = "\nstd_plots: %s\n" % stds_plt_dep
+    plots = "\nsci_plots: %s\n" % plt_dep
 
-    f.write(preamble + corr + cogs + plots + "\nall: stds %s%s%s%s%s" % (all, clean,
+    f.write(preamble + corr + cogs + plots + std_plots + "\nall: stds %s%s%s%s%s" % (all, clean,
                                                                  science,
                                                                  other,
                                                                  automatic) +
