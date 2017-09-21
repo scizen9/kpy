@@ -224,7 +224,7 @@ $(FLEX):
 stds: std-correction.npy
 
 cleanstds:
-	rm STD-*_SEDM.pdf
+	rm -f STD-*_SEDM.pdf
 	rm -f std-correction.npy Standard_Correction.pdf
 
 newstds: cleanstds stds std_plots std_cogs
