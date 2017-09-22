@@ -1037,7 +1037,7 @@ def handle_flat(flfile, fine, outname=None):
 
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
-               flat_corrections=None, lmin=650., lmax=700., fillf=0.25,
+               flat_corrections=None, lmin=650., lmax=700.,
                refl=0.78, area=18000., no_stamp=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
@@ -1051,7 +1051,6 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
             correcting the extraction
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
-        fillf (float): filling factor for spaxels (def: 1/4)
         refl (float): Telescope reflectance factor (assuming .78 for P60)
         area (float): Telescope area (assuming 18000. cm^2 for P60)
         no_stamp (bool): set to prevent printing DRP version stamp on plots
@@ -1192,7 +1191,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     sixa, posa, adcpos, ellipse, status = \
         identify_spectra_gauss_fit(ex,
                                    prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                   lmin=lmin, lmax=lmax,
+                                   lmin=lmin, lmax=lmax, sigfac=5.0,
                                    airmass=meta['airmass'])
 
     if status > 0:
@@ -1335,7 +1334,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     earea = (res[0]['ph_10m_nm'] / 600.) / (int_flpho(res[0]['nm']) *
                                             int_dw(res[0]['nm']))
     # Efficiency assuming given reflectance (refl) and area in cm^2
-    eff = earea / (area * refl * fillf)
+    eff = earea / (area * refl)
     # interpolation function for reference flux
     int_flux = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
     # Divide reference flux by observed photons to get correction
