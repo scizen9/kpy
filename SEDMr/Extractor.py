@@ -1038,7 +1038,7 @@ def handle_flat(flfile, fine, outname=None):
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                flat_corrections=None, lmin=650., lmax=700.,
-               refl=0.78, area=18000., no_stamp=False):
+               refl=0.82, area=18000., no_stamp=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
