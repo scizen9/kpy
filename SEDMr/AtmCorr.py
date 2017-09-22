@@ -53,7 +53,7 @@ def handle_corr(filename, outname='corrected.npy'):
     if "std-correction" not in dat.keys():
         print("Not a known standard extraction, returning")
         return
-    erg_s_cm2_ang = dat['std-correction'] * 1e-16
+    erg_s_cm2_ang = dat['std-correction']
     maxnm = dat['std-maxnm']
 
     objname = filename.split('-')[1].split('.')[0]
@@ -189,7 +189,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
 
         # Rescale each correction and scale to erg/s/cm2/Ang
         corrs = np.array(corrs)
-        erg_s_cm2_ang = corrs * np.nanmedian(corr_vals) * 1e-16
+        erg_s_cm2_ang = corrs * np.nanmedian(corr_vals)
         # Take the median of the correction vectors
         the_corr = np.nanmedian(erg_s_cm2_ang, 0)
         # Fit red end unless we are calibrated out there
@@ -276,8 +276,8 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
             pl.savefig("Standard_Correction.pdf")
 
         print("Mean cor: %10.3g, Sigma cor: %10.3g" %
-              (float(np.mean(corr_vals) * 1e-16),
-               float(np.std(corr_vals) * 1e-16)))
+              (float(np.mean(corr_vals)),
+               float(np.std(corr_vals))))
         maxnm = np.min([maxnm, np.max(ll)])
         print("Max nm: %7.2f" % maxnm)
 

@@ -501,14 +501,12 @@ def wavelength_extract(HDUlist_par, wavecalib_par,
     SSs = [(ix, flexure_x_corr_nm, flexure_y_corr_pix)
            for ix in range(len(wavecalib))]
 
-    # print("SgID  LamRMS     Flat")
     n_done = 0
     update_rate = int(len(SSs) / Bar.setup(toolbar_width=74)) + 1
     p = Pool(8)
-    extractions = p.map(wavelength_extract_helper, SSs)
+    extracts = p.map(wavelength_extract_helper, SSs)
     p.close()
     Bar.done(mapped=True)
-    # print("")
 
     meta = {"inname": inname, "extract_width": extract_width_par,
             "when": "%s" % datetime.datetime.now(),
@@ -517,7 +515,7 @@ def wavelength_extract(HDUlist_par, wavecalib_par,
             "flexure_y_corr_pix": flexure_y_corr_pix,
             "outname": filename}
 
-    return [extractions, meta]
+    return [extracts, meta]
 
 
 def extract_helper(ss):
