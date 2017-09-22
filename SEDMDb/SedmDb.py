@@ -114,7 +114,7 @@ class SedmDB:
             pardic['password'] = generate_password_hash(pardic['password'])
         for key in reversed(keys):  # remove group keys and any other bad keys
             if key not in ['id', 'username', 'name', 'email', 'password']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         sql = _generate_insert_sql(pardic, keys, 'users')
         try:
             self.execute_sql(sql)
@@ -155,7 +155,7 @@ class SedmDB:
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['name', 'email', 'password']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -418,7 +418,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any extraneous keys
             if key not in ['id', 'name', 'designator', 'group_id', 'PI', 'color'
                            'time_allocated', 'priority', 'inidate', 'enddate']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -466,7 +466,7 @@ class SedmDB:
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['time_allocated', 'name', 'PI', 'priority', 'inidate', 'enddate', 'color']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -555,7 +555,7 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(keys):  # remove any extraneous keys
             if key not in ['id', 'pg_designator', 'time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -601,7 +601,7 @@ class SedmDB:
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -698,7 +698,7 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(obj_keys):  # remove any extraneous keys
             if key not in ['id', 'name', 'typedesig', 'ra', 'dec', 'epoch', 'marshal_id', 'iauname', 'magnitude']:
-                obj_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(obj_keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -823,7 +823,7 @@ class SedmDB:
         """
         for value in values[::-1]:
             if value not in ['id', 'marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch']:
-                values.remove(value)
+                return (-1, "ERROR: %s is an invalid column name!" % (key,))
         if not (isinstance(ra, float) or isinstance(ra, int)):
             return (-1, "ERROR: parameter ra must be of type 'float' or type 'int'!")
         if not (isinstance(dec, float) or isinstance(dec, int)):
@@ -893,7 +893,7 @@ class SedmDB:
         for key in reversed(orb_keys):
             if key not in ['id', 'inclination', 'longascnode_O', 'perihelion_o', 'a', 'n', 'e',
                            'M', 'mjdepoch', 'D', 'M1', 'M2', 's', 'object_id']:
-                orb_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
         if type_check:
             return (-1, type_check)
@@ -995,7 +995,7 @@ class SedmDB:
         for key in reversed(orb_keys):
             if key not in ['id', 'T', 'inclination', 'longascnode_O', 'perihelion_o', 'e', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
-                orb_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
         if type_check:
             return (-1, type_check)
@@ -1093,7 +1093,7 @@ class SedmDB:
         for key in reversed(orb_keys):
             if key not in ['id', 'T', 'inclination', 'longascnode_O', 'perihelion_o', 'q', 'D',
                            'M1', 'M2', 's', 'object_id']:
-                orb_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
         if type_check:
             return (-1, type_check)
@@ -1191,7 +1191,7 @@ class SedmDB:
         for key in reversed(orb_keys):
             if key not in ['id', 'T', 'inclination', 'ra', 'e', 'pedigree', 'M', 'n',
                            'decay', 'reforbit', 'drag', 'object_id']:
-                orb_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(orb_keys, orbit_params, param_types)
         if type_check:
             return (-1, type_check)
@@ -1358,7 +1358,7 @@ class SedmDB:
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
                            'phasesamples', 'sampletolerance', 'nexposures', 'obs_seq', 'seq_repeats',
                            'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -1413,11 +1413,11 @@ class SedmDB:
             return (-1, "ERROR: request does not exist!")
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
-                keys.remove('status')
+                return (-1, "ERROR: %s is an invalid status value!" % (pardic['status'],))
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['status', 'maxairmass', 'priority', 'inidate', 'enddate', 'seq_completed',
                            'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover', 'last_obs_jd']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -1569,7 +1569,7 @@ class SedmDB:
             if key not in ['id', 'object_id', 'request_id', 'mjd', 'airmass', 'exptime',
                            'fitsfile', 'imtype', 'lst', 'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az',
                            'tel_el', 'tel_pa', 'ra_off', 'dec_off', 'camera', 'filter', 'time_elapsed']:
-                header_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(header_keys, header_dict, header_types)
         if type_check:
             return (-1, type_check)
@@ -1636,7 +1636,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['mjd', 'airmass', 'exptime', 'fitsfile', 'lst', 'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az',
                             'tel_el', 'tel_pa', 'ra_off', 'dec_off', 'imtype', 'camera', 'filter', 'time_elapsed']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -1756,7 +1756,7 @@ class SedmDB:
             if key not in ['id', 'date', 'dome_status', 'in_temp', 'in_humidity', 'in_dew', 'out_temp', 'out_humidity',
                            'out_dew', 'wind_dir', 'wsp_cur', 'wsp_avg', 'mir_temp', 'top_air', 'pri_temp', 'sec_temp',
                            'flo_temp', 'bot_temp', 'mid_temp', 'top_temp', 'observation_id']:
-                stat_keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(stat_keys, tel_stats, telstat_types)
         if type_check:
             return (-1, type_check)
@@ -1873,7 +1873,7 @@ class SedmDB:
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['astrometry', 'filter', 'reducedfile', 'sexfile',
                                'maskfile', 'pipeline', 'marshal_phot_id', 'phot_calib_id']:
-                    keys.remove(key)
+                    return (-1, "ERROR: %s is an invalid key!" % (key,))
             pardic['id'] = phot_id[0][0]
             type_check = _data_type_check(keys, pardic, param_types)
             if type_check:
@@ -1912,7 +1912,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['id', 'observation_id', 'astrometry', 'filter', 'reducedfile', 'sexfile',
                            'maskfile', 'pipeline', 'marshal_phot_id', 'phot_calib_id']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2031,7 +2031,7 @@ class SedmDB:
                                'cubefile', 'standardfile', 'marshal_spec_id', 'skysub', 'extract_x', 'extract_y',
                                'extract_pa', 'extract_a', 'extract_b', 'ad_red', 'ad_blue', 'prlltc',
                                'flexure_x_corr_nm', 'flexure_y_corr_pix', 'reducer', 'fwhm', 'background', 'line_fwhm']:
-                    keys.remove(key)
+                    return (-1, "ERROR: %s is an invalid key!" % (key,))
             pardic['id'] = spec_id[0][0]
             update_sql = _generate_update_sql(pardic, keys, 'spec')
             print update_sql
@@ -2059,7 +2059,7 @@ class SedmDB:
                            'cubefile', 'standardfile', 'marshal_spec_id', 'skysub', 'extract_x', 'extract_y',
                            'extract_pa', 'extract_a', 'extract_b', 'ad_red', 'ad_blue', 'prlltc',
                            'flexure_x_corr_nm', 'flexure_y_corr_pix', 'reducer', 'fwhm', 'background', 'line_fwhm']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2173,7 +2173,7 @@ class SedmDB:
                 return metric_id
             for key in reversed(keys):  # TODO: test the updating
                 if key not in ['fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
-                    keys.remove(key)
+                    return (-1, "ERROR: %s is an invalid key!" % (key,))
             pardic['id'] = metric_id[0][0]
             type_check = _data_type_check(keys, pardic, param_types)
             if type_check:
@@ -2200,7 +2200,7 @@ class SedmDB:
 
         for key in reversed(keys):
             if key not in ['id', 'phot_id', 'fwhm', 'background', 'zp', 'zperr', 'ellipticity', 'nsources']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2282,7 +2282,7 @@ class SedmDB:
 
         for key in reversed(keys):
             if key not in ['id', 'bias', 'flat']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2324,7 +2324,7 @@ class SedmDB:
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['bias', 'flat']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -2417,7 +2417,7 @@ class SedmDB:
         for key in reversed(keys):
             if key not in ['id', 'dome', 'bias', 'flat', 'cosmic_filter', 'drpver', 'Hg_master', 'Cd_master',
                            'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
             return (-1, type_check)
@@ -2471,7 +2471,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['dome', 'bias', 'flat', 'cosmic_filter', 'drpver', 'Hg_master', 'Cd_master',
                            'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
         type_check = _data_type_check(keys, pardic, param_types)
@@ -2567,7 +2567,7 @@ class SedmDB:
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(keys):
             if key not in ['id', 'rms', 'spec_id_1', 'spec_id_2', 'timestamp1', 'timestamp2']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
         sp1_id = self.get_from_spec(['id'], {'id': pardic['spec_id_1']})
         if not sp1_id:
             return (-1, "ERROR: no spectrum exists with the given spec_id_1!")
@@ -2676,7 +2676,7 @@ class SedmDB:
         for key in reversed(keys):  # remove any invalid keys
             if key not in ['id', 'spec_id', 'object_id', 'classification', 'redshift', 'redshift_err', 'classifier', 'score',
                            'phase', 'phase_err']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
 
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -2746,7 +2746,7 @@ class SedmDB:
 
         for key in reversed(keys):  # remove 'object_id', 'classifier' and any invalid keys
             if key not in ['id', 'classification', 'redshift', 'redshift_err', 'phase', 'phase_err', 'score']:
-                keys.remove(key)
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
 
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -2901,12 +2901,11 @@ def _generate_select_sql(values, where_dict, allowed_params, compare_dict, table
     """
     for value in reversed(values):
         if value not in allowed_params.keys():
-            values.remove(value)
+            return (-1, "ERROR: %s is an invalid column name!" % (value,))
     where_keys = list(where_dict.keys())
     for param in reversed(where_keys):
         if param not in allowed_params:
             return "ERROR: requested condition on nonexistent column '%s'!" % (param,)
-            # where_keys.remove(param)
     type_check = _data_type_check(where_keys, where_dict, allowed_params)
     if type_check:
         return type_check
