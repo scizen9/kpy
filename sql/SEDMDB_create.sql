@@ -510,14 +510,6 @@ ALTER TABLE metrics_phot ADD CONSTRAINT metrics_phot_phot
     INITIALLY IMMEDIATE
 ;
 
--- Reference: metrics_spec_spec (table: metrics_spec)
-ALTER TABLE metrics_spec ADD CONSTRAINT metrics_spec_spec
-    FOREIGN KEY (spec_id)
-    REFERENCES spec (id)  
-    NOT DEFERRABLE 
-    INITIALLY IMMEDIATE
-;
-
 -- Reference: phot_phot_calib (table: phot)
 ALTER TABLE phot ADD CONSTRAINT phot_phot_calib
     FOREIGN KEY (phot_calib_id)
