@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 
 class SedmDB:
     class __SedmDB:
-        def __init__(self):
+        def __init__(self, dbname, host):
             """
             Creates the instance of db connections.
             Needs the username as a parameter.
@@ -23,6 +23,8 @@ class SedmDB:
 
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
             self.user_sedmdb = p.stdout.read().replace('\n', '')
+            self.dbname = dbname
+            self.host = host
 
             self.pool_sedmdb = pool.QueuePool(self.__getSedmDBConn__, max_overflow=10, pool_size=2, recycle=True)
 
@@ -33,18 +35,18 @@ class SedmDB:
             """
             Creates the connection to SedmDB.
             """
-            sedmdbcon = psycopg2.connect(host="localhost", port="5432", dbname="sedmdbtest",
+            sedmdbcon = psycopg2.connect(host=self.host, port="5432", dbname=self.dbname,
                                          user=self.user_sedmdb)
             return sedmdbcon
 
     instance = None
 
-    def __init__(self):
+    def __init__(self, dbname='sedmdbtest', host='localhost'):
         """
         Makes sure only one instance is created.
         """
         if not SedmDB.instance:
-            SedmDB.instance = SedmDB.__SedmDB()
+            SedmDB.instance = SedmDB.__SedmDB(dbname, host)
 
         self.sso_objects = None
 
