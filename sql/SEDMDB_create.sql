@@ -433,7 +433,8 @@ CREATE TABLE program (
     priority decimal(5,2) NULL,
     inidate timestamp NULL,
     enddate timestamp NULL,
-    color text NULL
+    color text NULL,
+    active boolean NULL
 );
 
 -- Table: allocation
