@@ -141,7 +141,7 @@ class QueryCatalogue:
 
         return catalog
             
-    def query_catalogue(self, catalogue="PS1V3OBJECTS"):
+    def query_catalogue(self, catalogue="PS1V3OBJECTS", filtered=True):
         '''
         Sends a VO query to the PS1 catalogue.
         Filters the result by mangitude.
@@ -200,8 +200,10 @@ class QueryCatalogue:
         #If it is PS1, we know what fields we want. 
         #Otherwise, we just return everything.
         if (catalogue == "PS1V3OBJECTS"):
-            #Filter spurious sources/ Objects where the majority of pixels where not masked (QFperfect >=0.9) and likely stars (rmeanpsfmag - rmeankronmag < 0.5)
-            catalog = catalog[ (catalog["ng"]>3)*(catalog["nr"]>3)* (catalog["ni"]>3)\
+            
+            if (filtered):
+                #Filter spurious sources/ Objects where the majority of pixels where not masked (QFperfect >=0.9) and likely stars (rmeanpsfmag - rmeankronmag < 0.5)
+                catalog = catalog[ (catalog["ng"]>3)*(catalog["nr"]>3)* (catalog["ni"]>3)\
                 *(catalog["gQfPerfect"]>=0.95) *(catalog["rQfPerfect"]>=0.95)*(catalog["iQfPerfect"]>=0.95) * (catalog["rMeanPSFMag"] - catalog["rMeanKronMag"] < 0.5)]        
             
             newcat = np.zeros(len(catalog), dtype=[("ra", np.double), ("dec", np.double), ("objid", np.long), ("mag", np.float), \

@@ -1,26 +1,42 @@
 from flask_wtf import FlaskForm
-from wtforms import fields, validators
+from wtforms import fields, validators, widgets, Field, FormField
 from flask import request, redirect, url_for
 from urlparse import urlparse, urljoin
 
 SECRET_KEY = 'secret'
 
 
+#class IntListField(Field):
+#    widget = widgets.ListWidget()
+
+
+class FilterForm(FlaskForm):
+    ifu_val = fields.IntegerField('ifu', default=0, validators=(validators.Optional(),))
+    u_val = fields.IntegerField('u', default=0, validators=(validators.Optional(),))
+    g_val = fields.IntegerField('g', default=0, validators=(validators.Optional(),))
+    r_val = fields.IntegerField('r', default=0, validators=(validators.Optional(),))
+    i_val = fields.IntegerField('i', default=0, validators=(validators.Optional(),))
+
+
 class RequestForm(FlaskForm):
     object_id = fields.IntegerField('object_id', [validators.data_required()])
-    priority = fields.FloatField('priority', [validators.data_required()])
-    inidate = fields.DateField('start date (Y-M-D)', [validators.data_required()])
-    enddate = fields.DateField('end date (Y-M-D)', [validators.data_required()])
     user_id = fields.HiddenField('user_id', [validators.data_required()])
-    project = fields.SelectField('project', [validators.data_required()], coerce=int, choices=[])
+    program = fields.SelectField('program', [validators.data_required()], coerce=int, choices=[])
+    priority = fields.FloatField('priority', [validators.data_required()])
+    filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
+    ab = fields.BooleanField('A B pair', [validators.data_required()])
+    cadence = fields.FloatField('cadence', default=None, validators=(validators.Optional(),))
+    phasesamples = fields.FloatField('samples per period', default=None, validators=(validators.Optional(),))
+    inidate = fields.DateField('start date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
+    enddate = fields.DateField('end date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
     submit_req = fields.SubmitField('submit request')
 
 
 class FindObjectForm(FlaskForm):
-    object_name = fields.StringField('object name contains')
-    RA = fields.FloatField('Right Ascension (deg)')
-    DEC = fields.FloatField('Declination (deg)')
-    radius = fields.FloatField('radius (arcsec)')
+    object_name = fields.StringField('object name contains', validators=(validators.Optional(),))
+    RA = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
+    DEC = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
+    radius = fields.FloatField('radius (arcsec)', validators=(validators.Optional(),))
     submit_obj = fields.SubmitField('seach for object')
 
 

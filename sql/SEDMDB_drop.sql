@@ -61,8 +61,6 @@ DROP TABLE flexure;
 
 DROP TABLE metrics_phot;
 
-DROP TABLE metrics_spec;
-
 DROP TABLE spec_calib;
 
 DROP TABLE phot_calib;
@@ -72,8 +70,6 @@ DROP TABLE observation;
 DROP TABLE phot;
 
 DROP TABLE ref_stars;
-
-DROP TABLE atomicrequest;
 
 DROP TABLE spec;
 

@@ -12,19 +12,24 @@
                 <h5> {{ message }}</h5>
             </div>
         {% endif %}
-        <li> Name: {{ info[0] }}</li>
-        <li> RA: {{ info[1] }}</li>
-        <li> DEC: {{ info[2] }}</li>
-        <li> Epoch: {{ info[4] }}</li>
+        <!--
         {% if info[3] == e %}
         {% endif %}
         {% for entry, image in observations %}
             <div class="gallery">
               image
-              <div class="desc">mjd {{ entry[0] }}; filter {{ entery[1] }} </div>
+              <div class="desc">mjd {{ entry[0] }}; filter {{ entry[1] }} </div>
             </div>
         {% endfor %}
+        -->
         <div class="container container-table">
+            <pre> 
+  Name:  {{ info[0] }}
+  RA:    {{ info[1] }}
+  DEC:   {{ info[2] }}
+  Epoch: {{ info[4] }}
+            </pre>
+
             <tr>Requests</tr>
             <table id="requests" class="mytable">
                 <thead>

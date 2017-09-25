@@ -251,9 +251,10 @@ $(FLEX): cube.npy
 stds: flat-dome-700to900.npy std-correction.npy
 
 cleanstds:
+	rm -f STD-*_SEDM.pdf
 	rm -f std-correction.npy Standard_Correction.pdf
 
-newstds: cleanstds stds
+newstds: cleanstds stds std_plots std_cogs
 
 report:
 	$(REPORT) | tee report.txt
@@ -350,6 +351,7 @@ def MF_standard(objname, obsnum, ifile, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['plotname'] = "%(objname)s%(num)s_SEDM.pdf" % tp
     tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
 
@@ -358,13 +360,14 @@ def MF_standard(objname, obsnum, ifile, standard=None):
         tp['specplot'] = ''
     else:
         tp['STD'] = "--std %s" % standard
-        tp['specplot'] = "\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
+        tp['specplot'] = "%(plotname)s: %(outname)s\n\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
 
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
     first = """# %(outname)s
 sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
+
 %(specplot)s
 
 cube_%(outname)s.fits: %(outname)s
@@ -424,6 +427,8 @@ def to_makefile(objs, calibs):
     stds = ""
     stds_dep = ""
     cogs_dep = ""
+    stds_plt_dep = ""
+    plt_dep = ""
     sci = ""
     oth = ""
     auto = ""
@@ -468,6 +473,7 @@ def to_makefile(objs, calibs):
                         # all += a + " "
                         stds_dep += 'sp_' + a + " "
                         cogs_dep += 'cog_' + a + " "
+                        stds_plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 else:
                     standard = None
@@ -478,6 +484,7 @@ def to_makefile(objs, calibs):
                         MF += m
                         oth += "sp_" + a + " "
                         auto += "sp_" + a + " "
+                        plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
                 continue
 
             # Handle science targets
@@ -486,6 +493,7 @@ def to_makefile(objs, calibs):
 
                 MF += m
                 all += a + " "
+                plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
                     if objname.startswith("PTF"):
@@ -503,6 +511,7 @@ def to_makefile(objs, calibs):
 
                     MF += m
                     all += a + " "
+                    plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
                         if objname.startswith("PTF"):
@@ -520,9 +529,11 @@ def to_makefile(objs, calibs):
     other = "\n\nother: %s report\n" % oth
     automatic = "\n\nauto: %s report\n" % auto
     corr = "std-correction.npy: %s \n\t$(ATM) CREATE --outname std-correction.npy --files sp_STD*npy \n" % stds_dep
-    cogs = "cogs.done: %s \n\ttouch cogs.done \n" % cogs_dep
+    cogs = "\nstd_cogs: %s\n" % cogs_dep
+    std_plots = "\nstd_plots: %s\n" % stds_plt_dep
+    plots = "\nsci_plots: %s\n" % plt_dep
 
-    f.write(preamble + corr + cogs + "\nall: stds %s%s%s%s%s" % (all, clean,
+    f.write(preamble + corr + cogs + plots + std_plots + "\nall: stds %s%s%s%s%s" % (all, clean,
                                                                  science,
                                                                  other,
                                                                  automatic) +

@@ -1038,20 +1038,20 @@ def handle_flat(flfile, fine, outname=None):
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                flat_corrections=None, lmin=650., lmax=700.,
-               refl=0.9, area=18000., no_stamp=False):
+               refl=0.82, area=18000., no_stamp=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
         stdfile (string): filename of ifu FITS file to extract from.
         fine (string): filename of NumPy file with locations + wavelength soln
         outname (string): filename to write results to
-        standard (string): name of standard star
+        standard (numpy array): calibrated flux data for standard star
         offset (2tuple): X (nm)/Y (pix) shift to apply for flexure correction
         flat_corrections (list): A list of FlatCorrection objects for
             correcting the extraction
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
-        refl (float): Telescope reflectance factor (assuming .90 for P60)
+        refl (float): Telescope reflectance factor (assuming .78 for P60)
         area (float): Telescope area (assuming 18000. cm^2 for P60)
         no_stamp (bool): set to prevent printing DRP version stamp on plots
 
@@ -1191,7 +1191,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     sixa, posa, adcpos, ellipse, status = \
         identify_spectra_gauss_fit(ex,
                                    prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                   lmin=lmin, lmax=lmax,
+                                   lmin=lmin, lmax=lmax, sigfac=5.0,
                                    airmass=meta['airmass'])
 
     if status > 0:
@@ -1312,27 +1312,39 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Process standard star objects
     print("STANDARD")
     # Extract reference data
+    # waves in Angstroms
     wav = standard[:, 0]
-    flux = standard[:, 1]
-    # Flux in photons/s/cm^2/A
-    flpho = 5.0341125e-9 * flux * wav
+    # flux in ergs/s/cm^2/A
+    flux = standard[:, 1] * 1e-16
+    # delta wave of observation in nm
+    dw = np.roll(res[0]['nm'], 1) - res[0]['nm']
+    # remove singular point
+    dw = dw[1:]
+    # wavelength scale for dw
+    wdw = res[0]['nm'][1:] + dw * 0.5
+    # interpolation function for dw
+    int_dw = interp1d(wdw, dw, bounds_error=False, fill_value=np.nan)
+    # Flux in photons/s/cm^2/nm
+    flpho = 5.0341125e07 * flux * wav * 10.
     # convert wav to nm
     wav /= 10.
-    fun = interp1d(wav, flpho, bounds_error=False, fill_value=np.nan)
-    # Effective area
-    earea = (res[0]['ph_10m_nm'] / 600.) / (fun(res[0]['nm']) * 10.)
+    # interpolation function for flpho
+    int_flpho = interp1d(wav, flpho, bounds_error=False, fill_value=np.nan)
+    # Effective area accounting for wavelength bins of observation
+    earea = (res[0]['ph_10m_nm'] / 600.) / (int_flpho(res[0]['nm']) *
+                                            int_dw(res[0]['nm']))
     # Efficiency assuming given reflectance (refl) and area in cm^2
-    eff = earea * refl / area
-    # Calculate/Interpolate correction onto object wavelengths
-    fun = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
-    # Divide reference spectrum by observed to get correction
-    correction0 = fun(res[0]['nm']) / res[0]['ph_10m_nm']
+    eff = earea / (area * refl)
+    # interpolation function for reference flux
+    int_flux = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
+    # Divide reference flux by observed photons to get correction
+    correction0 = int_flux(res[0]['nm']) / res[0]['ph_10m_nm']
     # Filter for resolution
     flxf = filters.gaussian_filter(flux, 19.)
-    # Calculate/Interpolate filtered correction
-    fun = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
+    # interpolation function for filtered flux
+    int_flxf = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
     # Divide reference spectrum by observed to get correction
-    correction = fun(res[0]['nm']) / res[0]['ph_10m_nm']
+    correction = int_flxf(res[0]['nm']) / res[0]['ph_10m_nm']
     # Use unfiltered for H-beta region
     roi = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
     correction[roi] = correction0[roi]

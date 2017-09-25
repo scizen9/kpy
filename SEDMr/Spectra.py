@@ -110,6 +110,9 @@ class Spectra(object):
             except: 
                 continue
 
+            if XY[0] == -999. or XY[1] == -999.:
+                continue
+
             ok = (l > lmin) & (l <= lmax)
 
             Xs.append(XY[0])
