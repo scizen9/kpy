@@ -446,7 +446,7 @@ def add_to_zp_cal(ref_stars, image, logname):
         r = np.array([r])
     
     band = fitsutils.get_par(image, 'filter')
-    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(my["ph_mag"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"]))
+    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(my["sum"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"]))
     
     r = r[mask_valid1]
     my = my[mask_valid1]
@@ -585,7 +585,7 @@ def calibrate_zp_fourshot(logfile, plot=True):
                 plt.close()
     return
     
-def lsq_zeropoint(logfile, plotdir=None, plot=True):
+def lsq_zeropoint(logfile, plotdir=".", plot=True):
     '''
     Uses least squares approach to compute the optimum coefficients for ZP, colour term, airmass and time.
     Check this one:
@@ -618,24 +618,27 @@ def lsq_zeropoint(logfile, plotdir=None, plot=True):
         ab = ab[ (ab["color"]>mincol) * (ab["color"]<maxcol) ] '''       
         
         #Remove detections which are too far
-        coefs, residuals, rank, singular_values, rcond = np.polyfit(ab["std"], ab["inst"], w=1./np.maximum(0.3, np.sqrt(ab["stderr"]**2 + ab["insterr"]**2)), deg=1, full=True)
-        p = np.poly1d(coefs)
-        
-        if (plot):
-            plt.figure()
-            plt.title("Filter %s"%(b))
-            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="bo", alpha=0.5, ms=2)
-            plt.plot(ab["std"], p(ab["std"]), "b-")
-     
-        #Removing outliers that deviate 5 times from the general trend.       
-        mad = stats.funcs.median_absolute_deviation(ab["inst"] - p(ab["std"]))
-        ab = ab[np.abs(ab["inst"] - p(ab["std"]))<mad*5]
-        
-                
-        if (plot):
-            plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="ro", alpha=0.5, ms=2)
-            plt.plot(ab["std"], p(ab["std"]), "r-")
-            plt.savefig(os.path.join(plotdir, "filter_%s.png"%b))           
+        try:
+            coefs, residuals, rank, singular_values, rcond = np.polyfit(ab["std"], ab["inst"], w=1./np.maximum(0.3, np.sqrt(ab["stderr"]**2 + ab["insterr"]**2)), deg=1, full=True)
+            p = np.poly1d(coefs)
+            
+            if (plot):
+                plt.figure()
+                plt.title("Filter %s"%(b))
+                plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="bo", alpha=0.5, ms=2)
+                plt.plot(ab["std"], p(ab["std"]), "b-")
+         
+            #Removing outliers that deviate 5 times from the general trend.       
+            mad = stats.funcs.median_absolute_deviation(ab["inst"] - p(ab["std"]))
+            ab = ab[np.abs(ab["inst"] - p(ab["std"]))<mad*5]
+            
+                    
+            if (plot):
+                plt.errorbar(ab["std"], ab["inst"], yerr=np.sqrt(ab["stderr"]**2 + ab["insterr"]**2), fmt="ro", alpha=0.5, ms=2)
+                plt.plot(ab["std"], p(ab["std"]), "r-")
+                plt.savefig(os.path.join(plotdir, "filter_%s.png"%b))        
+        except TypeError as e:
+            print "Could not eliminate outliers. Probably too few observations"
             
         #Find the coefficients.
         M = np.zeros((len(ab), 10))
@@ -1166,7 +1169,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     #Add the data to a later stage zeropoint calibrtion with all-sky data.
     zplogname = os.path.join(os.path.dirname(image), "allstars_zp.log")
     
-    add_to_zp_cal("/tmp/sdss_cat_det_%s.txt"%creationdate, image, zplogname)
+    #add_to_zp_cal("/tmp/sdss_cat_det_%s.txt"%creationdate, image, zplogname)
 
 
     if (not os.path.isfile(logname)):
@@ -1191,15 +1194,16 @@ def plot_zp(zpfile, plotdir=None):
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
     
     for fi in ['u', 'g', 'r', 'i']:
+        print "Found %d points for filter %s"%(len(a[a['filter']==fi]), fi)
         for i in range(len(a[a['filter']==fi])):
             plt.errorbar( (a[a['filter']==fi]['date'][i]-np.min(a[a['filter']==fi]['date'], axis=0))*24., \
-            a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i]*5)
+            a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i]*2)
         logger.info( "Median zeropoint for filter %s: %.2f mag"%(fi, np.median(a[a['filter']==fi]['zeropoint'])))
 
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
     plt.ylabel("ZP [mag]")
-    plt.ylim(25,18)
+    plt.ylim(25,15)
     if (plotdir is None):
         plt.show()
     else:
