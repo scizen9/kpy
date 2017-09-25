@@ -24,6 +24,7 @@ class RequestForm(FlaskForm):
     program = fields.SelectField('program', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.data_required()])
     filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
+    ab = fields.BooleanField('A B pair', [validators.data_required()])
     cadence = fields.FloatField('cadence', default=None, validators=(validators.Optional(),))
     phasesamples = fields.FloatField('samples per period', default=None, validators=(validators.Optional(),))
     inidate = fields.DateField('start date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
