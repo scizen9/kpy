@@ -638,7 +638,7 @@ def lsq_zeropoint(logfile, plotdir=".", plot=True):
                 plt.plot(ab["std"], p(ab["std"]), "r-")
                 plt.savefig(os.path.join(plotdir, "filter_%s.png"%b))        
         except TypeError as e:
-            print "Could not eliminate outliers. Probably too few observations"
+            print ("Could not eliminate outliers. Probably too few observations")
             
         #Find the coefficients.
         M = np.zeros((len(ab), 10))
@@ -1194,7 +1194,7 @@ def plot_zp(zpfile, plotdir=None):
     cols = {'u':'purple', 'g':'green', 'r':'red', 'i':'orange'}
     
     for fi in ['u', 'g', 'r', 'i']:
-        print "Found %d points for filter %s"%(len(a[a['filter']==fi]), fi)
+        print ("Found %d points for filter %s"%(len(a[a['filter']==fi]), fi))
         for i in range(len(a[a['filter']==fi])):
             plt.errorbar( (a[a['filter']==fi]['date'][i]-np.min(a[a['filter']==fi]['date'], axis=0))*24., \
             a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i]*2)
