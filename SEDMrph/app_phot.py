@@ -189,6 +189,7 @@ def get_xy_coords(image, ra, dec):
     cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     output = proc.stdout.read()    
+    print output
     output = output.split("->")[1]
     
     coords = []
@@ -197,7 +198,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=None, box=15, ra=None, dec=None):
+def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin="logical", fwhm=None, box=15, arcsecpix=0.394):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -223,6 +224,7 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
         else:
             ra, dec = cc.hour2deg(fitsutils.get_par(image, 'RA'), fitsutils.get_par(image, 'DEC'))
+        print "Assuming ra=%.5f, dec=%.5f"%(ra, dec)
         pra, pdec = get_xy_coords(image, ra, dec)
 
     else:
@@ -230,8 +232,10 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
             pra, pdec = ra, dec
         else:
         #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
-            pra, pdec = get_xy_coords(image, ra, dec)
-            #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
+            try:
+                pra, pdec = get_xy_coords(image, ra, dec)
+            except IndexError:
+                pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
             #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
 
     shape = impf[0].data.shape
@@ -262,6 +266,9 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
         #Put some default value for Palomar
         fwhm_value=1.5
         
+    if (wcsin == 'logical'):
+        fwhm_value = fwhm_value / arcsecpix 
+        
     if (fitsutils.has_par(image, 'AIRMASS')):
         airmass_value = fitsutils.get_par(image, 'AIRMASS')
     else:
@@ -287,11 +294,17 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
     np.savetxt("/tmp/coords.dat", np.array([[pra, pdec]]), fmt="%.4f %.4f")
 
 
-    if (plot):    
-        zmin, zmax = zscale.zscale(impf[0].data)
+    if (plot):
+        
+        #zmin, zmax = zscale.zscale(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50])
+        
+        #zmin, zmax = zscale.zscale(impf[0].data)
            
-        im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
-        plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
+        #im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
+        print np.percentile(impf[0].data, 5), np.percentile(impf[0].data, 95)
+        im = plt.imshow(impf[0].data)#, vmin=np.percentile(impf[0].data, 5), vmax=np.percentile(impf[0].data, 95), origin="bottom")
+
+        #plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
         plt.savefig(os.path.join(plotdir, imname+".png"))
         plt.clf()
     
@@ -330,8 +343,8 @@ def get_app_phot_target(image, plot=False, store=True, wcsin="logical", fwhm=Non
 
     
 
-    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
-        ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    ma = np.genfromtxt(clean_name, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), \
+        ("stdev","<f4"), ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     if (ma.size > 0):  
         ma = np.array([ma])
         m = ma[~np.isnan(ma["fit_mag"])]
