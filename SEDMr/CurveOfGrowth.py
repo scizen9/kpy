@@ -321,7 +321,7 @@ def interp_spectra(all_spectra, six, onto=None, sky=False):
         if sky and all_spectra[ix].is_obj:
             continue
 
-        l, s = spectrum.get_counts(the_spec='specw')
+        l, s = spectrum.get_counts(the_spec='specf')
         pix = np.arange(*spectrum.xrange)
 
         # check for saturated traces

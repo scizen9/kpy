@@ -124,7 +124,7 @@ class Extraction:
         if getattr(self, the_spec) is not None:
             sp = getattr(self, the_spec)
         else:
-            sp = self.specw
+            sp = self.spec
         return [lam, sp]
     
     def get_flambda(self, the_spec='specf'):
@@ -150,7 +150,7 @@ class Extraction:
         if getattr(self, the_spec) is not None:
             ss = getattr(self, the_spec)
         else:
-            ss = self.specw
+            ss = self.spec
 
         el_p10m = ss*(minute*10)/self.get_exptime()
         return [lam, el_p10m/dlam]
