@@ -434,7 +434,7 @@ CREATE TABLE program (
     inidate timestamp NULL,
     enddate timestamp NULL,
     color text NULL,
-    active boolean NULL
+    active boolean DEFAULT TRUE
 );
 
 -- Table: allocation
