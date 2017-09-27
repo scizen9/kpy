@@ -222,7 +222,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
                 continue
         
             #if ("RAINBOW CAM" in str.upper(fitsutils.get_par(f, "CAM_NAME")) and  ("DOME" in  obj or "FLAT" in obj or "Twilight" in obj or "TWILIGHT" in imtype or "DOME" in imtype)):
-            if ( "TWILIGHT" in imtype):
+            if ( "twilight" in imtype.lower()):
 
                 if (fitsutils.get_par(f, "ADCSPEED")==2):
                     lfflat.append(f)
