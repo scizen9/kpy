@@ -674,11 +674,16 @@ def ObsLoop(rawlist=None, redd=None):
             sys.stdout.flush()
             time.sleep(60)
             print("checking %s for new raw cal files..." % srcdir)
-            ncp = cpcal(srcdir, outdir)
-            print("Copied %d raw cal files from %s" % (ncp, srcdir))
+            now = ephem.now()
+            if now.tuple()[3] == 23:
+                ncp = cpprecal(rawlist, outdir)
+                print("Copied %d raw cal files from %s" % (ncp, rawlist[-2]))
+            else:
+                ncp = cpcal(srcdir, outdir)
+                print("Copied %d raw cal files from %s" % (ncp, srcdir))
             sys.stdout.flush()
             if ncp <= 0:
-                # Check to see if we are still before and hour after sunset
+                # Check to see if we are still before an hour after sunset
                 now = ephem.now()
                 if now < sunset + ephem.hour:
                     print("UT  = %02d:%02d < sunset (%02d:%02d) + 1hr, "
