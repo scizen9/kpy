@@ -866,11 +866,11 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
                         print("UT = %02d:%02d No new directories yet, "
                               "so keep waiting" % (gm.tm_hour, gm.tm_min))
                         sys.stdout.flush()
+            print("Found %d raw directories in %s: putting reduced data in %s" %
+                  (nraw, rawd, redd))
             print("Latest raw directory is %s" % rawlist[-1])
             stat = ObsLoop(rawlist, redd)
             its += 1
-            print("Found %d raw directories in %s: putting reduced data in %s" %
-                  (nraw, rawd, redd))
             print("Finished SEDM observing iteration %d in raw dir %s" %
                   (its, rawlist[-1]))
     # Handle a ctrl-C
