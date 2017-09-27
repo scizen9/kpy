@@ -991,7 +991,6 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
     #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
 
-    #WRONG!!!
     my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
         ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
     '''try:
@@ -1007,7 +1006,7 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     band = fitsutils.get_par(image, 'filter')
     col_band = coldic[band]
     
-    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(my["ph_mag"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"]))
+    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(my["fit_mag"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"]))
     
     N = len(r)
     r = r[mask_valid1]
