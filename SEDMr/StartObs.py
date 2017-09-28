@@ -672,9 +672,9 @@ def ObsLoop(rawlist=None, redd=None):
             # Wait a minute
             print("waiting 60s...")
             sys.stdout.flush()
-            time.sleep(60)
             now = ephem.now()
-            if now.tuple()[3] == 23:
+            time.sleep(60)
+            if now.tuple()[3] >= 20:
                 print("checking %s for new raw cal files..." % rawlist[-2])
                 ncp = cpprecal(rawlist, outdir)
                 print("Copied %d raw cal files from %s" % (ncp, rawlist[-2]))
