@@ -84,6 +84,7 @@ pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
 pl.legend(loc=2)
 pl.grid(True)
+pl.ylim(-1, 15)
 ofil = os.path.join(sdir, 'SEDM_eff_trend.pdf')
 pl.savefig(ofil)
 with open('SEDM_eff_trend.txt', 'wb') as dfil:
