@@ -88,6 +88,6 @@ ofil = os.path.join(sdir, 'SEDM_eff_trend.pdf')
 pl.savefig(ofil)
 with open('SEDM_eff_trend.txt', 'wb') as dfil:
     dat_writer = csv.writer(dfil, delimiter=" ", quoting=csv.QUOTE_MINIMAL)
-    dat_writer.writerows(izip(efs, ef1, ef2, ef3, ef4, ef5))
+    dat_writer.writerows(izip(jd, ef1, ef2, ef3, ef4, ef5, efs))
 
 
