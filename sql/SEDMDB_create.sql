@@ -8,7 +8,7 @@ CREATE TABLE classification (
     object_id bigint NOT NULL,
     spec_id bigint NOT NULL,
     classification text  NULL,
-    redshift decimal(7,5)  NULL,
+    redshift decimal(7,4)  NULL,
     redshift_err decimal(7,5)  NULL,
     phase decimal(5,2)  NULL,
     phase_err decimal(5,2)  NULL,
@@ -51,7 +51,7 @@ CREATE TABLE metrics_phot (
     id BIGINT PRIMARY KEY ,
     phot_id bigint NOT NULL UNIQUE,
     fwhm decimal(5,2)  NULL,
-    background decimal(5,2)  NULL,
+    background decimal(6,2)  NULL,
     zp decimal(5,2)  NULL,
     zperr decimal(5,2)  NULL,
     ellipticity decimal(5,2)  NULL,
@@ -71,8 +71,8 @@ CREATE TABLE object (
     marshal_id bigint NULL UNIQUE,
     name text NOT NULL,
     iauname text NULL UNIQUE,
-    ra decimal(12,10) NULL,
-    dec decimal(12,10) NULL,
+    ra decimal(12,8) NULL,
+    dec decimal(12,8) NULL,
     typedesig varchar(1),
     epoch text,
     magnitude decimal(7,5) NULL,
@@ -92,27 +92,27 @@ CREATE TABLE elliptical_heliocentric (
     id BIGINT PRIMARY KEY,
     object_id bigint not null UNIQUE,
     --inclination
-    inclination decimal(10,8),
+    inclination decimal(12,8),
     -- longitude of ascending node
-    longascnode_O decimal(10,8),
+    longascnode_O decimal(12,8),
     -- argument of perihelion
-    perihelion_o decimal(10,8),
+    perihelion_o decimal(12,8),
     -- mean distance AU
-    a decimal(10,8),
+    a decimal(13,8),
     -- mean daily motion: deg/day
     n decimal(10,8),
     -- eccentricity (<1)
     e decimal(10,8),
     -- Mean anomaly
-    M decimal(10,8),
+    M decimal(12,8),
     --epoch date. Time of M
     mjdepoch int,
     -- equinox year
     D int,
     -- first abd second components of magnitude model
-    M1 decimal(5,4),
-    M2 decimal(5,4),
-    -- angula size at 1 AU
+    M1 decimal(7,4),
+    M2 decimal(7,4),
+    -- angular size at 1 AU
     s decimal(10,8) NULL
 );
 
@@ -122,20 +122,20 @@ CREATE TABLE hyperbolic_heliocentric (
     -- date of the epoch of perihelion
     T timestamp,
     --inclination
-    inclination decimal(10,8),
+    inclination decimal(12,8),
     -- longitude of ascending node
-    longascnode_O decimal(10,8),
+    longascnode_O decimal(12,8),
     -- argument of perihelion
-    perihelion_o decimal(10,8),
+    perihelion_o decimal(12,8),
     -- eccentricity (<1)
     e decimal(10,8),
     -- perihelion distance, AU
-    q decimal(10,8),
+    q decimal(13,8),
     -- equinox year
     D int,
     -- first and second components of magnitude model
-    M1 decimal(5,4),
-    M2 decimal(5,4),
+    M1 decimal(7,4),
+    M2 decimal(7,4),
     -- angular size at 1 AU
     s decimal(10,8) NULL
 );
@@ -146,18 +146,18 @@ CREATE TABLE parabolic_heliocentric (
     -- date of the epoch of perihelion
     T timestamp,
     --inclination
-    inclination decimal(10,8),
+    inclination decimal(12,8),
     -- argument of perihelion
-    perihelion_o decimal(10,8),
+    perihelion_o decimal(12,8),
     -- perihelion distance, AU
-    q decimal(10,8),
+    q decimal(13,8),
     -- longitude of ascending node
-    longascnode_O decimal(10,8),
+    longascnode_O decimal(12,8),
     -- equinox year
     D int,
     -- first and second components of magnitude model
-    M1 decimal(5,4),
-    M2 decimal(5,4),
+    M1 decimal(7,4),
+    M2 decimal(7,4),
     -- angular size at 1 AU
     s decimal(10,8) NULL
 );
@@ -168,17 +168,17 @@ CREATE TABLE earth_satellite (
     -- first date the elements are valid
     T timestamp,
     --inclination
-    inclination decimal(10,8),
+    inclination decimal(12,8),
     -- RA of ascending node
-    ra decimal(10,8),
+    ra decimal(12,8),
     -- eccentricity (<1)
     e decimal(10,8),
     -- argument of pedigree
-    pedigree decimal(10,8),
+    pedigree decimal(12,8),
     -- Mean anomaly
-    M decimal(10,8),
+    M decimal(12,8),
     -- mean motion, revs/day
-    n decimal(10,8),
+    n decimal(12,8),
     -- orbit decay rate, rev/day^2
     decay decimal(10,8),
     -- integral reference orbit number at epoch
@@ -190,8 +190,8 @@ CREATE TABLE earth_satellite (
 CREATE TABLE periodic (
     id BIGINT PRIMARY KEY,
     object_id bigint not null,
-    mjd0 decimal (10,8),
-    phasedays decimal(10,8)
+    mjd0 decimal (14,8),
+    phasedays decimal(12,8)
 );
 
 CREATE INDEX periodic_object_id_key ON periodic(
@@ -203,16 +203,16 @@ CREATE TABLE observation (
     id BIGINT PRIMARY KEY,
     object_id bigint NOT NULL,
     request_id bigint NOT NULL,
-    mjd decimal(10,5)  NOT NULL,
+    mjd decimal(14,8)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
-    exptime decimal(6,2)  NOT NULL,
+    exptime decimal(7,2)  NOT NULL,
     time_elapsed INTERVAL NULL,
     fitsfile text  NOT NULL UNIQUE,
     imtype text  NULL,
     filter text NULL,
     lst text  NOT NULL,
-    ra decimal(12,6)  NOT NULL,
-    dec decimal(12,6)  NOT NULL,
+    ra decimal(12,8)  NOT NULL,
+    dec decimal(12,8)  NOT NULL,
     tel_ra text  NOT NULL,
     tel_dec text  NOT NULL,
     tel_az decimal(5,2)  NOT NULL,
@@ -246,7 +246,7 @@ CREATE TABLE spec (
     marshal_spec_id bigint  NULL,
     skysub boolean  NOT NULL,
     fwhm decimal(5,2)  NULL,
-    background decimal(5,2)  NULL,
+    background decimal(7,2)  NULL,
     line_fwhm decimal(5,3)  NULL,
     extract_x float NULL,
     extract_y float NULL,
@@ -308,15 +308,15 @@ CREATE TABLE phot_calib (
 CREATE TABLE ref_stars (
     id BIGINT PRIMARY KEY ,
     phot_id bigint NOT NULL,
-    ra decimal(12,6)  NOT NULL,
-    dec decimal(12,6)  NOT NULL,
+    ra decimal(12,8)  NOT NULL,
+    dec decimal(12,8)  NOT NULL,
     survey text  NOT NULL,
     filter text  NOT NULL,
-    mag decimal(5,2)  NOT NULL,
+    mag decimal(7,4)  NOT NULL,
     magerr decimal(5,2)  NOT NULL,
     instmag decimal(5,2)  NOT NULL,
     istmagerr decimal(5,2)  NOT NULL,
-    mjd decimal(8,4)  NOT NULL,
+    mjd decimal(14,8)  NOT NULL,
     x int  NOT NULL,
     y int  NOT NULL
 );
