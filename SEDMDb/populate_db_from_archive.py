@@ -9,13 +9,13 @@ from __future__ import print_function
 import os, glob, shutil
 import numpy as np
 import argparse
-import fitsutils
+from SEDMrph import fitsutils
 from astropy.time import Time
 import datetime
 from astropy.io import fits
 import SedmDb
 
-sdb = SedmDb.SedmDb()
+sdb = SedmDb.SedmDB(dbname='sedmdbtest', host='pharos.caltech.edu')
 
 def fill_par_dic_obs(fitsfile):
     '''
@@ -105,30 +105,30 @@ def create_cal_request(files, inidate, enddate, caltype):
     Creates a default calibration request assigned to sedmcal, the calibration user.
     It also looks at each file and creates an atomic request associated to each observation.
     '''
+    caltype_obj = {'bias': 3, 'twilight':4, 'dome':5, 'focus':6, 'test':7, 'test2':8, 'test3':9}
+    obj_id = caltype_obj[caltype]
     
     #First check that there is no request for that night
-    res = sdb.get_from_request(['object_id'], \
-    {'user_id':32, 'program_id':0, 'inidate':inidate, 'enddate':enddate}, \
-    {'inidate':'>'}, {'enddate':'<'})
+    res = sdb.get_from_request(['object_id'],
+    {'object_id': obj_id, 'user_id':32, 'program_id':3, 'inidate':inidate, 'enddate':enddate},
+    {'inidate':'>=', 'enddate':'<='})
     
     #If there is no request, we add it.
     if len(res) == 0:
         exptime = fitsutils.get_par(files[0], "EXPTIME")
-        d1 = datetime.datetime.now().isoformat()
-        reqid = int(d1.replace("-","").replace(":","").replace(".",""))
-
-        pardic = {'id':reqid,
-                    'object_id':0,
-                    'user_id':32,
-                    'program_id':0,
-                    'exptime':'{0, %d}'%exptime,
-                    'priority':0,
-                    'inidate': inidate, #('year-month-day') (start of observing window),
-                    'enddate': enddate, #('year-month-day') (end of observing window),
-                    'nexposures':len(files)}
-        sdb.add_request(pardic)
-        
-        return reqid
+        pardic = {'object_id':obj_id,
+                  'user_id':32,
+                  'program_id':3,
+                  'exptime':'{0, %d}'%exptime,
+                  'priority':0,
+                  'inidate': inidate, #('year-month-day') (start of observing window),
+                  'enddate': enddate, #('year-month-day') (end of observing window),
+                  'nexposures':'{0, %s, 0, 0, 0}' % len(files)}
+        req = sdb.add_request(pardic)
+        if req >= 0:
+            return req[0]
+        else:
+            print(req[1])
         
 def create_atomic_and_obs(reqid, files, inidate, enddate, caltype):
     '''
@@ -202,7 +202,7 @@ def log_calibrations(lfiles, caltype="test"):
     reqid = create_cal_request(inidate, enddate, caltype)
     
     #Then associate all the files to that request id.
-    create_atomic_and_obs(reqid, files, inidate, enddate, caltype)
+    # create_atomic_and_obs(reqid, files, inidate, enddate, caltype)
     
     
     
@@ -274,13 +274,13 @@ if __name__ == '__main__':
                 imgtype = fitsutils.has_par(f, "IMGTYPE")
                 myfiles[imgtype].append(f)
         except:
-            print "problems opening file %s"%f
+            print("problems opening file %s" %f)
          
     log_calibrations(myfiles["BIAS"], caltype="bias")
-    log_calibrations(myfiles["DOME"], caltype="dome")
-    log_calibrations(myfiles["FOCUS"], caltype="focus")
-    log_calibrations(myfiles["TWILIGHT"], caltype="twilight")
+    #log_calibrations(myfiles["DOME"], caltype="dome")
+    #log_calibrations(myfiles["FOCUS"], caltype="focus")
+    #log_calibrations(myfiles["TWILIGHT"], caltype="twilight")
     
-    log_science(myfiles["SCIENCE"], "science")
-    log_science(myfiles["GUIDER"], "guider")
-    log_science(myfiles["ACQUISITION"], "acquisition")    
+    #log_science(myfiles["SCIENCE"], "science")
+    #log_science(myfiles["GUIDER"], "guider")
+    #log_science(myfiles["ACQUISITION"], "acquisition")
