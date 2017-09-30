@@ -107,7 +107,7 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %9-s  %s  %6s" %
+        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %-9s  %s  %6s" %
               (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
                air, reducer, ctype, zmed, rlap))
     print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
