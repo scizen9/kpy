@@ -9,7 +9,7 @@ def report():
 
     flist = [f for f in glob.glob("sp_*.npy")
              if "_A_" not in f and "_B_" not in f]
-    flist.sort(key=os.path.getmtime)
+    flist.sort()
     print("\nReport generated on %s" % time.strftime("%c"))
     print("\nSEDM DRP run in %s\nFound %d sp_*.npy files\n" %
           (os.getcwd(), len(flist)))
