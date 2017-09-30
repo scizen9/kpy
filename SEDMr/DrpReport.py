@@ -16,7 +16,7 @@ def report():
     totexpt = 0.
     lostexp = 0.
     print("Object                     Obs Method  Exptime Qual Skysb Airmass "
-          "   Reducer       Type  z")
+          "   Reducer       Type  z       Rlap")
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
@@ -26,6 +26,7 @@ def report():
         sfile = objname[3:] + "_SEDM.txt"
         ctype = ""
         zmed = ""
+        rlap = ""
         if os.path.exists(sfile):
             with open(sfile, "r") as sfl:
                 lines = sfl.readlines()
@@ -34,13 +35,19 @@ def report():
                 ctype = ""
                 if len(clas) > 0:
                     for cl in clas:
-                        ctype += cl.split()[-1]
+                        ctype += (" %s" % cl.split()[-1])
                 # get redshift
                 zmed = [li for li in lines if "ZMED" in li and "ERR" not in li]
                 if len(zmed) > 0:
                     zmed = zmed[0].split()[-1]
                 else:
                     zmed = ""
+                # get rlap
+                rlap = [li for li in lines if "RLAP" in li]
+                if len(rlap) > 0:
+                    rlap = rlap[0].split()[-1]
+                else:
+                    rlap = ""
                 sfl.close()
 
         # load the spectrum file
@@ -100,12 +107,13 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %9s  %s" %
+        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %9s  %s  %s" %
               (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
-               air, reducer, ctype, zmed))
+               air, reducer, ctype, zmed, rlap))
     print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
     if lostexp > 0:
         print("Total exposure time lost to bad targets = %.1f s\n" % lostexp)
+
 
 if __name__ == '__main__':
     report()
