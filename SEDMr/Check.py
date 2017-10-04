@@ -230,7 +230,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         parts = utc.split(":")
         date = datetime.datetime(int(parts[0]), 1, 1) + \
                datetime.timedelta(int(parts[1]) - 1)
-        utc = date.strftime("%Y %m %d") + " %s:%s:%s" % \
+        utc = date.strftime("%Y-%m-%d") + " %s:%s:%s" % \
                                           (parts[2], parts[3], parts[4])
     except:
         utc = ''

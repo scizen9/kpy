@@ -3,6 +3,8 @@
 """
 import glob
 import os
+import csv
+from itertools import izip
 
 import pylab as pl
 import numpy as np
@@ -18,6 +20,7 @@ ef2 = []
 ef3 = []
 ef4 = []
 ef5 = []
+efs = []
 for d in dlist:
     print(d)
     ddate = d.split('/')[-1]
@@ -67,6 +70,7 @@ for d in dlist:
         ef3.append(e3)
         ef4.append(e4)
         ef5.append(e5)
+        efs.append(s)
 
         jd.append(dtime.jd)
 
@@ -80,7 +84,11 @@ pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
 pl.legend(loc=2)
 pl.grid(True)
+pl.ylim(-1, 15)
 ofil = os.path.join(sdir, 'SEDM_eff_trend.pdf')
 pl.savefig(ofil)
+with open('SEDM_eff_trend.txt', 'wb') as dfil:
+    dat_writer = csv.writer(dfil, delimiter=" ", quoting=csv.QUOTE_MINIMAL)
+    dat_writer.writerows(izip(jd, ef1, ef2, ef3, ef4, ef5, efs))
 
 

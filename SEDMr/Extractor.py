@@ -544,7 +544,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
             continue
         if x.lamcoeff is None:
             continue
-        if x.specw is None:
+        if x.specf is None:
             continue
         ix = np.arange(*x.xrange)
         ll = chebval(ix, x.lamcoeff)
@@ -554,7 +554,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
             ys.append(x.Y_as)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                vs.append(np.nanmedian(x.specw[ok]))
+                vs.append(np.nanmedian(x.specf[ok]))
 
     if bgd_sub:
         vs -= np.nanmedian(vs)
@@ -639,9 +639,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         all_spectra:
         six:
         sign:
+        outname:
         plot:
         corrfile:
-        outname:
         dnm: Offset (usually for flexure) in nm
         onto:
         sky:
@@ -662,7 +662,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         if sky and all_spectra[ix].is_obj:
             continue
 
-        l, s = spectrum.get_counts(the_spec='specw')
+        l, s = spectrum.get_counts(the_spec='specf')
         pix = np.arange(*spectrum.xrange)
 
         # check for saturation
@@ -719,7 +719,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             if sky and all_spectra[ix].is_obj:
                 continue
 
-            l, s = spectrum.get_counts(the_spec='specw')
+            l, s = spectrum.get_counts(the_spec='specf')
             pix = np.arange(*spectrum.xrange)
 
             # Preference to lamcoeff over mdn_coeff
@@ -962,7 +962,7 @@ def bgd_level(extractions):
         if 'spec' in spectrum.__dict__ and spectrum.spec is not None \
           and spectrum.lamcoeff is not None:
 
-            l, fl = spectrum.get_counts(the_spec='specw')
+            l, fl = spectrum.get_counts(the_spec='specf')
 
             levels.append(np.nanmedian(fl))
 
@@ -1051,7 +1051,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
             correcting the extraction
         lmin (float): lower wavelength limit for image generation
         lmax (float): upper wavelength limit for image generation
-        refl (float): Telescope reflectance factor (assuming .78 for P60)
+        refl (float): Telescope reflectance factor (assuming .82 for P60)
         area (float): Telescope area (assuming 18000. cm^2 for P60)
         no_stamp (bool): set to prevent printing DRP version stamp on plots
 

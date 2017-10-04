@@ -4,11 +4,11 @@ source activate astroconda
 
 SEDMPATH=$HOME/kpy
 
-if [ -z ${PYTHONPATH+X} ]
-then PYTHONPATH=${PYTHONPATH}:${SEDMPATH}
-else
-    PYTHONPATH=${SEDMPATH}
-fi
+# if [ -z ${PYTHONPATH+X} ]
+# then PYTHONPATH=${PYTHONPATH}:${SEDMPATH}
+# else
+PYTHONPATH=${SEDMPATH}
+# fi
 export PYTHONPATH
 
 if [ "$#" -eq 0 ]

@@ -151,6 +151,7 @@ FLEXCMD = $(PY) $(PYC)/Flexure.py
 IMCOMBINE = $(PY) $(PYC)/Imcombine.py
 PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
+CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
 PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
@@ -263,9 +264,12 @@ upload:
 	$(SPCCPY) --specdir $(dir $(mkfile_path))
 
 ptfreport: upload
-	$(PTFREPORT) 
+	$(PTFREPORT)
 
-finalreport: ptfreport
+classify:
+	$(CLASS) --specdir $(dir $(mkfile_path))
+
+finalreport: classify
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
 
 """

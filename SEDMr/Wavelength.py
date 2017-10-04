@@ -365,9 +365,11 @@ def fractional_sum(FS_Y, FS_EW, FS_dat, FS_Yx1):
 def make_profile(sl, sigma2=4):
     """ Return a gaussian profile with the same dimensions as the slice """
 
+    # create Gaussian profile
     profile = np.arange(np.round(sl.stop)-np.round(sl.start))
     profile = profile - (len(profile)-1)/2.0
     profile = np.exp(- profile*profile/(2*sigma2))
+    # normalize it, (why mean and not sum?)
     profile /= np.mean(profile)
 
     return profile
@@ -389,7 +391,7 @@ def wavelength_extract_helper(SS):
                                      trace_sigma=ss.trace_sigma,
                                      Q_ix=ss.Q_ix, R_ix=ss.R_ix,
                                      X_as=ss.X_as, Y_as=ss.Y_as,
-                                     X_pix=ss.X_pix,Y_pix=ss.Y_pix)
+                                     X_pix=ss.X_pix, Y_pix=ss.Y_pix)
 
     minx = np.max((0, ss.xrange[0]-5))
     maxx = np.min((minx + 265, 2047))
@@ -760,106 +762,6 @@ def median_fine_grid(fine, doPlot=False):
     return fine
 
 
-def median_rough_grid(gridded, Hg_E, outname='median_rough_wavelength.npy'):
-    """ Using the 7 nearest neighbors, median the wavelength soln coeffs
-
-    this code is of very little use
-
-        median_rough grid was used to test the idea
-        as of 20 jan 2015, the algorithm tested by this code does not
-        work.
-    """
-    xs = []
-    ys = []
-    ids = []
-    for gix, g in enumerate(gridded):
-        if not g.ok:
-            continue
-        if 546.1 not in g.hg_lines:
-            continue
-
-        xs.append(g.hg_lines[546.1] + g.xrange[0])
-        ys.append(np.mean(g.yrange))
-        ids.append(g.seg_id)
-
-    xs = np.array(xs)
-    ys = np.array(ys)
-    ids = np.array(ids)
-    dat = np.array((xs, ys)).T
-    KD = KDTree(dat)
-
-    for ix, id in enumerate(ids):
-        loc = dat[ix]
-        dist, nearest_ixs = KD.query(loc, k=14)
-        # print(dist, nearest_ixs)
-
-        lls = []
-        num_in = 0
-        for nix, nearest in enumerate(ids[nearest_ixs]):
-            # print(nearest, dist[nix])
-            # if dist[nix] > 100: continue
-            if gridded[nearest-1].hgcoef is None:
-                continue
-            xx = np.arange(265)
-            ll = chebval(xx, gridded[nearest-1].hgcoef)
-            if np.any(np.diff(ll) > 0):
-                continue
-
-            lls.append(ll)
-            num_in += 1
-            if num_in > 30:
-                break
-
-        if len(lls) == 0:
-            import pdb
-            pdb.set_trace()
-        lls = np.array(lls)
-
-        try:
-            new_lls = np.nanmedian(lls, 0)
-            # new_lls_std = np.nanstd(lls, 0)
-        except:
-            import pdb
-            pdb.set_trace()
-
-        diff = (lls - new_lls) / new_lls
-        bad = np.abs(diff) > .05
-        lls[bad] = np.nan
-        new_lls = np.nanmedian(lls, 0)
-
-        diff = (lls - new_lls) / new_lls
-        bad = np.abs(diff) > .05
-        lls[bad] = np.nan
-        new_lls = np.nanmedian(lls, 0)
-
-        gridded[ix].mdn_hgcoef = chebfit(np.arange(len(new_lls)), new_lls, 4)
-        import pdb
-        pdb.set_trace()
-
-    pl.figure(3)
-    pl.clf()
-    pl.xlim(360, 1100)
-    pl.ioff()
-    for g in gridded:
-        if "mdn_hgcoef" not in g.__dict__:
-            continue
-        if g.specw is None:
-            continue
-        if g.hgcoef is None:
-            continue
-        if len(g.specw) < 30:
-            continue
-
-        ix = np.arange(len(g.specw))
-        ll = chebval(ix, g.mdn_hgcoef)
-        pl.plot(ll, g.specw, '.')
-
-    pl.ion()
-    pl.show()
-    import pdb
-    pdb.set_trace()
-
-
 def scale_on_547(spec):
     if spec is None:
         return None
@@ -929,7 +831,7 @@ def stretch_fit_helper(specno):
 
 
 def get_stretched(fid_ix, coeffs, spec1, spec2=None):
-    """ Reinterpolate spec1 and spec2 onto the fiducial index set by
+    """ Re-interpolate spec1 and spec2 onto the fiducial index set by
     stretching and scaling the spectra
 
     This is used after a call that looks something like:
@@ -1611,7 +1513,7 @@ def fit_all_lines(fiducial, hg_spec, xe_spec, xxs, cd_spec=None, he_spec=None):
 
 
 def coeffs_to_spec(fix, gridded, rgrd_coef, lam_coef):
-    """ Returns the spectrum given the unadultered spectrum and fits.
+    """ Returns the spectrum given the unadulterated spectrum and fits.
 
     Args:
         fix(array) -- Fiducial index positions

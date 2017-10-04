@@ -672,13 +672,19 @@ def ObsLoop(rawlist=None, redd=None):
             # Wait a minute
             print("waiting 60s...")
             sys.stdout.flush()
+            now = ephem.now()
             time.sleep(60)
-            print("checking %s for new raw cal files..." % srcdir)
-            ncp = cpcal(srcdir, outdir)
-            print("Copied %d raw cal files from %s" % (ncp, srcdir))
+            if now.tuple()[3] >= 20:
+                print("checking %s for new raw cal files..." % rawlist[-2])
+                ncp = cpprecal(rawlist, outdir)
+                print("Copied %d raw cal files from %s" % (ncp, rawlist[-2]))
+            else:
+                print("checking %s for new raw cal files..." % srcdir)
+                ncp = cpcal(srcdir, outdir)
+                print("Copied %d raw cal files from %s" % (ncp, srcdir))
             sys.stdout.flush()
             if ncp <= 0:
-                # Check to see if we are still before and hour after sunset
+                # Check to see if we are still before an hour after sunset
                 now = ephem.now()
                 if now < sunset + ephem.hour:
                     print("UT  = %02d:%02d < sunset (%02d:%02d) + 1hr, "
@@ -866,6 +872,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
                         print("UT = %02d:%02d No new directories yet, "
                               "so keep waiting" % (gm.tm_hour, gm.tm_min))
                         sys.stdout.flush()
+            print("Found %d raw directories in %s: putting reduced data in %s" %
+                  (nraw, rawd, redd))
             print("Latest raw directory is %s" % rawlist[-1])
             stat = ObsLoop(rawlist, redd)
             its += 1
