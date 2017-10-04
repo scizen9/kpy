@@ -12,9 +12,11 @@ def objects_from_csv(filename):
         reader = csv.reader(csvfile, )
         next(reader, None)
         for row in reader:  # For each row, create the dictionary and submit
-            pardic = {'name': row[0], 'ra': ra_to_decimal(row[1]), 'dec': dec_to_decimal(row[2]), 'mag': row[3]}
+            pardic = {'name': row[0], 'ra': ra_to_decimal(row[1]), 'dec': dec_to_decimal(row[2])}
             pardic['typedesig'] = 'f'
-            db.add_object(pardic)
+            mag = row[3] #not currently stored in object table
+            obj = db.add_object(pardic)
+            print(obj)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
