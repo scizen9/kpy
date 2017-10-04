@@ -152,15 +152,16 @@ class Throughput():
             
             
             Fluxnu = (10 ** ( -0.4 * (l["std"][mask]+48.6 + self.get_Palomar_extinction(self.lameff[f], l["airmass"][mask]))) * u.erg * u.cm**-2 * u.s**-1 * u.Hz**-1).to(u.Jy)
-            Flam = Fluxnu * cnt.c / (self.lameff[f]*u.angstrom)**2
+            Flam = Fluxnu * (cnt.c).to(u.angstrom/u.s) / (self.lameff[f]*u.angstrom)**2
             Flam =  Flam.to(u.erg /u.cm**2 / u.s/u.angstrom)
             
             predflux =  al_reflectivity * \
-                qefilt * l["exptime"][mask] * u.s *\
+                qefilt * \
                 self.A * u.cm**2 *\
                 (Flam / Ephot) * \
-                self.lameff[f] * u.angstrom #* \
-                #self.deltalam[f] * u.angstrom 
+                self.lameff[f] * u.angstrom * \
+                self.deltalam[f] * u.angstrom  * \
+                l["exptime"][mask] * u.s 
                 #(((self.lameff[f]+self.deltalam[f]/2)* u.angstrom)**2 - ((self.lameff[f]-self.deltalam[f]/2)* u.angstrom)**2 )
                 
             
@@ -183,7 +184,7 @@ class Throughput():
         
         plt.figure()
         for f in ["u", "g", "r", "i"]:
-            plt.errorbar(self.lameff[f], avgth[f], yerr=stdth[f], fmt="o", color=cols[f], )
+            plt.errorbar(self.lameff[f], avgth[f]*1e6, yerr=stdth[f], fmt="o", color=cols[f], )
             
         plt.ylabel("Throughput (N$_{obs}$/N$_{pred}$)")
         plt.xlabel("Wavelength [$\\AA$]")

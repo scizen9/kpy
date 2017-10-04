@@ -202,6 +202,8 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
     '''
     coords: files: 
     wcsin: can be "world", "logic"
+    fwhm: in arcsec
+    
     '''
     # Load packages; splot is in the onedspec package, which is in noao. 
     # The special keyword _doprint=0 turns off displaying the tasks 
@@ -228,13 +230,16 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
         pra, pdec = get_xy_coords(image, ra, dec)
 
     else:
-        if(wcsin == "logical"):
+        if("logic" in wcsin):
             pra, pdec = ra, dec
         else:
         #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
             try:
+                #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
+                #print "Retrieved the pixel number"
                 pra, pdec = get_xy_coords(image, ra, dec)
             except IndexError:
+                print "Error with astrometry.net. trying the rudimentary method."
                 pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
             #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
 
@@ -293,21 +298,7 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
     coords = "/tmp/coords.dat"    
     np.savetxt("/tmp/coords.dat", np.array([[pra, pdec]]), fmt="%.4f %.4f")
 
-
-    if (plot):
-        
-        #zmin, zmax = zscale.zscale(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50])
-        
-        #zmin, zmax = zscale.zscale(impf[0].data)
-           
-        #im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
-        print np.percentile(impf[0].data, 5), np.percentile(impf[0].data, 95)
-        im = plt.imshow(impf[0].data)#, vmin=np.percentile(impf[0].data, 5), vmax=np.percentile(impf[0].data, 95), origin="bottom")
-
-        #plt.scatter(pra, pdec, marker="o", s=100, facecolor="none")
-        plt.savefig(os.path.join(plotdir, imname+".png"))
-        plt.clf()
-    
+   
     
     if os.path.isfile(out_name): os.remove(out_name)
     if os.path.isfile(clean_name): os.remove(clean_name)
@@ -355,7 +346,7 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
 
     insmag =  np.round(ma['fit_mag'][0] , 3)
     insmagerr = np.round(ma['fiterr'][0], 3)  
-    if (fitsutils.has_par(image, "ZEROPT")):
+    if (fitsutils.has_par(image, "ZEROPT") and fitsutils.has_par(image, "ZEROPTU")):
         mag =  insmag + float(fitsutils.get_par(image, "ZEROPT"))
         magerr = np.sqrt(insmagerr**2+ float(fitsutils.get_par(image, "ZEROPTU"))**2)  
     else:
@@ -374,6 +365,18 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
 
          
     if (plot):
+        
+        #zmin, zmax = zscale.zscale(impf[0].data.T[pra-50:pra+50,pdec-50:pdec+50])
+        
+        #zmin, zmax = zscale.zscale(impf[0].data)
+           
+        #im = plt.imshow(impf[0].data, vmin=zmin, vmax=zmax, origin="bottom")
+        print np.percentile(impf[0].data, 5), np.percentile(impf[0].data, 95)
+        impf[0].data[np.isnan(impf[0].data)] = np.nanmedian(impf[0].data)
+        print np.percentile(impf[0].data, 5), np.percentile(impf[0].data, 95)
+
+        im = plt.imshow(impf[0].data, vmin=np.percentile(impf[0].data, 5), vmax=np.percentile(impf[0].data, 95), origin="bottom")
+       
         X = int(ma["X"][0])
         Y = int(ma["Y"][0])
         pra = int(pra)
@@ -381,7 +384,7 @@ def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin=
         
         plt.scatter(X, Y, marker="o", s=100, facecolor="none", edgecolor="red")
         plt.colorbar(im)
-        plt.savefig(os.path.join(plotdir, imname+".png"))
+        plt.savefig(os.path.join(plotdir, imname+".png"), dpi=200)
         plt.clf()
         
         zmin, zmax = zscale.zscale(impf[0].data.T[X-50:X+50,Y-50:Y+50].T)
