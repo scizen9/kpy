@@ -663,10 +663,10 @@ class SedmDB:
                     'typedesig' (str),
                 required for a fixed object:
                     'ra' (float) ra in degrees,
-                    'dec' (float) dec in degrees,
-                    'epoch' (str)
+                    'dec' (float) dec in degrees
                 optional:
-                    'magnitude' (float) (preferably 'r' filter)
+                    'magnitude' (float) (preferably 'r' filter),
+                    'epoch' (str),
                     'iauname' (str),
                     'marshal_id' (int/long)
 
@@ -700,7 +700,7 @@ class SedmDB:
 
         pardic['name'] = pardic['name'].lower()  # make all of the names the same format for consistant searching
         if pardic['typedesig'] == 'f':
-            for key in ['ra', 'dec', 'epoch']:
+            for key in ['ra', 'dec']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
@@ -718,7 +718,7 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             return (id, "Fixed object added")
         elif pardic['typedesig'] == 'v':
-            for key in ['ra', 'dec', 'epoch']:
+            for key in ['ra', 'dec']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
