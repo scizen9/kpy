@@ -705,8 +705,8 @@ class SedmDB:
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (dup[0][0], dup[0][1]))
+                print(-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+                          "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -723,8 +723,8 @@ class SedmDB:
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (dup[0][0], dup[0][1]))
+                print(-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
+                          "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
