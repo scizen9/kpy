@@ -35,7 +35,7 @@ CREATE INDEX classification_redshift_key ON classification(
 -- Table: flexure
 CREATE TABLE flexure (
     id BIGINT PRIMARY KEY,
-    rms decimal(8,4)  NOT NULL,
+    rms decimal(8,4) NULL,
     spec_id_1 bigint  NOT NULL,
     spec_id_2 bigint  NOT NULL,
     timestamp1 TIMESTAMP NOT NULL,
@@ -205,7 +205,7 @@ CREATE TABLE observation (
     request_id bigint NOT NULL,
     mjd decimal(14,8)  NOT NULL,
     airmass decimal(5,2)  NOT NULL,
-    exptime decimal(7,2)  NOT NULL,
+    exptime decimal(7,2)  NULL,
     time_elapsed INTERVAL NULL,
     fitsfile text  NOT NULL UNIQUE,
     imtype text  NULL,
@@ -213,13 +213,13 @@ CREATE TABLE observation (
     lst text  NOT NULL,
     ra decimal(12,8)  NOT NULL,
     dec decimal(12,8)  NOT NULL,
-    tel_ra text  NOT NULL,
-    tel_dec text  NOT NULL,
-    tel_az decimal(5,2)  NOT NULL,
-    tel_el decimal(5,2)  NOT NULL,
-    tel_pa decimal(5,2)  NOT NULL,
-    ra_off decimal(5,2)  NOT NULL,
-    dec_off decimal(5,2)  NOT NULL,
+    tel_ra text NULL,
+    tel_dec text NULL,
+    tel_az decimal(7,2) NULL,
+    tel_el decimal(7,2) NULL,
+    tel_pa decimal(7,2) NULL,
+    ra_off decimal(13,3) NULL,
+    dec_off decimal(13,3) NULL,
     camera text  NULL
 );
 
@@ -308,17 +308,17 @@ CREATE TABLE phot_calib (
 CREATE TABLE ref_stars (
     id BIGINT PRIMARY KEY ,
     phot_id bigint NOT NULL,
-    ra decimal(12,8)  NOT NULL,
-    dec decimal(12,8)  NOT NULL,
+    ra decimal(12,8) NULL,
+    dec decimal(12,8 NULL,
     survey text  NOT NULL,
     filter text  NOT NULL,
-    mag decimal(7,4)  NOT NULL,
-    magerr decimal(5,2)  NOT NULL,
+    mag decimal(7,4) NULL,
+    magerr decimal(5,2) NULL,
     instmag decimal(5,2)  NOT NULL,
-    istmagerr decimal(5,2)  NOT NULL,
+    istmagerr decimal(5,2) NULL,
     mjd decimal(14,8)  NOT NULL,
-    x int  NOT NULL,
-    y int  NOT NULL
+    x int NULL,
+    y int NULL
 );
 
 CREATE INDEX ref_stars_coordsq3c ON ref_stars(
@@ -338,7 +338,7 @@ CREATE TABLE request (
     id BIGINT PRIMARY KEY,
     object_id bigint NOT NULL,
     user_id bigint NOT NULL,
-    program_id bigint  NOT NULL,
+    allocation_id bigint  NOT NULL,
     marshal_id bigint NULL,
     exptime integer[]  NOT NULL,
     maxairmass decimal(5,2)  DEFAULT 2.5,
@@ -433,19 +433,20 @@ CREATE TABLE program (
     priority decimal(5,2) NULL,
     inidate timestamp NULL,
     enddate timestamp NULL,
-    color text NULL,
-    active boolean DEFAULT TRUE
+    color text NULL
 );
 
 -- Table: allocation
 CREATE TABLE allocation (
     id BIGINT PRIMARY KEY,
-    pg_designator text NOT NULL,
+    program_id BIGINT NOT NULL,
+    designator text UNIQUE,
     inidate timestamp NULL,
     enddate timestamp NULL,
     time_spent interval NULL,
     time_allocated interval NULL,
-    color text NULL
+    color text NULL,
+    active boolean DEFAULT TRUE
 );
 
 -- foreign keys
@@ -472,8 +473,8 @@ ALTER TABLE program ADD CONSTRAINT program_groups
 ;
 
 ALTER TABLE allocation ADD CONSTRAINT allocation_program
-    FOREIGN KEY (pg_designator)
-    REFERENCES program (designator)
+    FOREIGN KEY (program_id)
+    REFERENCES program (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
@@ -568,9 +569,9 @@ ALTER TABLE request ADD CONSTRAINT requests_objects
 ;
 
 -- Reference: requests_program (table: request)
-ALTER TABLE request ADD CONSTRAINT program_request
-    FOREIGN KEY (program_id)
-    REFERENCES program (id)
+ALTER TABLE request ADD CONSTRAINT request_allocation
+    FOREIGN KEY (allocation_id)
+    REFERENCES allocation (id)
     NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
