@@ -1204,7 +1204,7 @@ def plot_zp(zpfile, plotdir=None):
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
     plt.ylabel("ZP [mag]")
-    plt.ylim(25,15)
+    plt.ylim(24,20.5)
     if (plotdir is None):
         plt.show()
     else:
@@ -1258,7 +1258,7 @@ def main(reduced):
         os.makedirs(plotdir)
     
 
-    for f in glob.glob("a*.fits"):
+    for f in glob.glob("*_a_*.fits"):
         logger.info("Starting calibration of zeropoint for %s"% f)
         if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=None)
