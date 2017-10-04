@@ -705,8 +705,13 @@ class SedmDB:
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                print(-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                          "id: %s, name: %s" % (dup[0][0], dup[0][1]))
+                if pardic['name'] in [x[1] for x in dup]:  # check for same coords, same name
+                    lis = [x[1] for x in dup]
+                    idx = lis.index(pardic['name'])
+                    return(-1, "ERROR: The object '%s' is already in the database with id %s"
+                               % (pardic['name'], dup[idx][0]))
+                print("there is already an object within 1 arcsec of given coordinates with "
+                      "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -723,8 +728,13 @@ class SedmDB:
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                print(-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                          "id: %s, name: %s" % (dup[0][0], dup[0][1]))
+                if pardic['name'] in [x[1] for x in dup]:  # check for same coords, same name
+                    lis = [x[1] for x in dup]
+                    idx = lis.index(pardic['name'])
+                    return(-1, "ERROR: The object '%s' is already in the database with id %s"
+                               % (pardic['name'], dup[idx][0])) 
+                print("there is already an object within 1 arcsec of given coordinates with "
+                      "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
