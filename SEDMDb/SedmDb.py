@@ -706,7 +706,7 @@ class SedmDB:
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
                 return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+                            "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -724,7 +724,7 @@ class SedmDB:
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
                 return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+                            "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
