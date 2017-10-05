@@ -27,6 +27,7 @@ else
         report) python $SEDMPATH/SEDMr/DrpReport.py;;
         effplot) python $SEDMPATH/SEDMr/EffTrend.py;;
         posplot) python $SEDMPATH/SEDMr/PosTrend.py;;
+        flexplot) python $SEDMPATH/SEDMr/FlexTrend.py;;
         *) python -u "$@";;
     esac
 fi

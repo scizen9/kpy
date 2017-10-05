@@ -51,7 +51,7 @@ pl.ylabel('Flexure')
 pl.title( 'Flexure Trend')
 pl.legend(loc=2)
 pl.grid(True)
-pl.ylim(-1, 15)
+pl.ylim(-2, 2)
 ofil = os.path.join(sdir, 'SEDM_flex_trend.pdf')
 pl.savefig(ofil)
 with open('SEDM_flex_trend.txt', 'wb') as dfil:
