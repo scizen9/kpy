@@ -44,8 +44,8 @@ for d in dlist:
 
         jd.append(dtime.jd)
 
-pl.plot(jd-jd0, flxx, 'bD', ms=2.0, label='dX nm')
-pl.plot(jd-jd0, flxy, 'g^', ms=2.0, label='dY pix')
+pl.plot(jd-jd0, flxx, 'bD', markersize=2.0, label='dX nm')
+pl.plot(jd-jd0, flxy, 'g^', markersize=2.0, label='dY pix')
 
 pl.xlabel('JD - 2457000')
 pl.ylabel('Flexure')
