@@ -377,9 +377,13 @@ def get_par(myfits, par):
     '''
     Returns the header parameter from the fits.
     '''
-    hdu = pf.open(myfits, ignore_missing_end=True)
-    header = hdu[0].header
-    return header[str.upper(par)]
+    
+    try:
+        hdu = pf.open(myfits, ignore_missing_end=True)
+        header = hdu[0].header
+        return header[str.upper(par)]
+    except IOError:
+        return None        
     
 def update_par(myfits, par, value):
     '''

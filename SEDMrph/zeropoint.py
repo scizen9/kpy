@@ -210,7 +210,7 @@ def clean_tmp_files():
         if os.path.isfile(f):
             os.remove(f)
     
-def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, refstars=None, plotdir="."):
+def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, refstars=None, plotdir=".", pix2ang = 0.394):
     '''
     Given a fits image: imfile and a the name of the band which we want to extract the sources from,
     it saves the extracted sources into  '/tmp/sdss_cat_det.txt' file.
@@ -275,7 +275,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             
     elif (survey=='ps1'):
 
-        catalog = qc.query_catalogue()
+        catalog = qc.query_catalogue(filtered=False)
 
         if (np.ndim(catalog)==0 or catalog is None):
             return False
@@ -296,6 +296,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
             return False
 
 
+    print ("Catalogue has %d entries"%len(cat_ra))
     #Convert ra, dec position of all stars to pixels.
     star_pix = np.array([0,0])
     for i in range(len(cat_ra)):
@@ -304,7 +305,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='sdss', debug=False, r
         #s = wcs.wcs_sky2pix(np.array([cat_ra[i], cat_dec[i]], ndmin=2), 1)[0]
         star_pix = np.row_stack((star_pix, np.array([ra, dec])))
     star_pix = star_pix[1:]
-    pix2ang = 0.394
+
     rad = math.ceil(25./pix2ang)
     
     #Select only the stars within the image.
@@ -1204,7 +1205,7 @@ def plot_zp(zpfile, plotdir=None):
     plt.gca().invert_yaxis()
     plt.xlabel("Obs Date (JD - min(JD)) [h]")
     plt.ylabel("ZP [mag]")
-    plt.ylim(25,15)
+    plt.ylim(24,20.5)
     if (plotdir is None):
         plt.show()
     else:
@@ -1258,7 +1259,7 @@ def main(reduced):
         os.makedirs(plotdir)
     
 
-    for f in glob.glob("a*.fits"):
+    for f in glob.glob("*_a_*.fits"):
         logger.info("Starting calibration of zeropoint for %s"% f)
         if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=None)
