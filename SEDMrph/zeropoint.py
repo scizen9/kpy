@@ -1212,15 +1212,14 @@ def plot_zp(zpfile, plotdir=None):
     a = np.genfromtxt(zpfile, names=True, dtype=None, delimiter=',')
     
     #We add 5h to the UTC date, so it alwasy keeps the date of the end of the night.
-    day = time_utils.jd2utc(a['date'][-1]).split()[0]
+    day = time_utils.jd2utc(a['date'][-1], string=True).split()[0]
 
     
     for fi in ['u', 'g', 'r', 'i']:
         print ("Found %d points for filter %s"%(len(a[a['filter']==fi]), fi))
         for i in range(len(a[a['filter']==fi])):
             jd = a[a['filter']==fi]['date'][i]
-            datestat = time_utils.jd2utc(jd)
-            datestat = mkdate(datestat) + day_frac_diff
+            datestat = time_utils.jd2utc(jd) + day_frac_diff
     
             plt.errorbar( datestat, a[a['filter']==fi]['zeropoint'][i], yerr=a[a['filter']==fi]['err'][i], marker='o', mfc=cols[fi], \
                 mec='k', ecolor=cols[fi], ls='none', ms=a[a['filter']==fi]['fwhm_pix'][i]*2)
