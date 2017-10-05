@@ -43,8 +43,8 @@ for d in dlist:
 
         jd.append(dtime.jd)
 
-pl.plot(jd, flxx, label='dX nm')
-pl.plot(jd, flxy, label='dY pix')
+pl.plot(jd, flxx, 'bD', label='dX nm')
+pl.plot(jd, flxy, 'g^', label='dY pix')
 
 pl.xlabel('JD')
 pl.ylabel('Flexure')
