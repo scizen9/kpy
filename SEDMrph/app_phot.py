@@ -84,8 +84,8 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     noise = fitsutils.get_par(image, 'RDNOISE')
 
     
-    print "FWHM: %.1f pixels, %.1f arcsec"%(fwhm_value, fwhm*arcsecpix)
-    aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
+    print "FWHM: %.1f pixels, %.1f arcsec"%(fwhm_value, fwhm_value*arcsecpix)
+    aperture_rad = math.ceil(float(fwhm_value)*1.5)      # Set aperture radius to three times the PSF radius
     sky_rad= math.ceil(aperture_rad)*4
     
 
@@ -141,24 +141,27 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     outerrad = sky_rad+10
     cutrad = outerrad + 15
     
-    plt.suptitle("FWHM=%.2f arcsec"%(fwhm_value*arcsecpix))
-    k = 0
+    print "Cutrad %.1f"%cutrad
+
+    plt.suptitle("FWHM=%.2f arcsec. %d stars"%(fwhm_value*arcsecpix, len(m)))
     for i in np.arange(dimX):
         for j in np.arange(dimY):
-            if ( i*dimX + (j+1) < len(m)):
+            if ( i*dimY + j < len(m)):
+                k = i*dimY + j
+		#print dimX, dimY, i, j, k
                 ax = plt.subplot2grid((dimX,dimY),(i, j))
                 y1, y2, x1, x2 = m[k]["X"]-cutrad, m[k]["X"]+cutrad, m[k]["Y"]-cutrad, m[k]["Y"]+cutrad
                 y1, y2, x1, x2 = int(y1), int(y2), int(x1), int(x2)
+                y1 = np.maximum(y1, 0); y2=np.maximum(y2, 0); x1=np.maximum(x1, 0); x2 = np.maximum(x2, 0)
                 try:
                     zmin, zmax = zscale.zscale(img[x1:x2,y1:y2], nsamples=1000, contrast=0.25)
-                except:
+                except ValueError:
+		    print y1, y2, x1, x2 
+		    print img[x1:x2,y1:y2]
                     sh= img[x1:x2,y1:y2].shape
                     if sh[0]>0 and sh[1]>0:
                         zmin = np.nanmin(img[x1:x2,y1:y2])
                         zmax = np.nanmax(img[x1:x2,y1:y2])
-                        continue
-                    else:
-                        continue
                 ax.imshow(img[x1:x2,y1:y2], aspect="equal", extent=(-cutrad, cutrad, -cutrad, cutrad), origin="lower", cmap=matplotlib.cm.gray_r, interpolation="none", vmin=zmin, vmax=zmax)
                 c1 = plt.Circle( (0, 0), edgecolor="r", facecolor="none", radius=aperture_rad)
                 c2 = plt.Circle( (0, 0), edgecolor="orange", facecolor="none", radius=sky_rad)
@@ -171,6 +174,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         
                 plt.text(+5, +5, "%d"%m[k]["id"])
                 plt.text(-cutrad, -cutrad, "%.2f$\pm$%.2f"%(m[k]["fit_mag"], m[k]["fiterr"]), color="b")
+		
     plt.tight_layout()
     plt.savefig(os.path.join(plotdir, imname + "plot.png"))
     plt.clf()

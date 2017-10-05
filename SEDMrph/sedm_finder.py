@@ -73,7 +73,8 @@ def finder(myfile,searchrad=0.2/60.):
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
     gc.add_label(0.05, 0.84, 'Filter: SDSS %s'%filter, relative=True, color="white", horizontalalignment="left")
     
-    findername = 'finder_%s_%s.jpg'%(name, filter)
+    findername = 'finders/finder_%s_%s.jpg'%(name, filter)
+
     gc.save(findername)
     
     return findername
@@ -105,6 +106,9 @@ if __name__=="__main__":
     os.chdir(photdir)
     print "Changed to directory where the data is. %s"%photdir
     
+    if not (os.path.isdir("finders")):
+	os.makedirs("finders")
+
     #We only generate onle finder with the first image.
     files = glob.glob("a_*fits")
     files.sort()
@@ -112,7 +116,7 @@ if __name__=="__main__":
 	object = fitsutils.get_par(f, "OBJECT")
         if (fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" ) and "STD" not in object and "BD" not in object and "SA" not in object:
 	    findername = 'finder_%s_%s.jpg'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-	    if(not os.path.isfile(findername)):
+	    if(not os.path.isfile("finders/" + findername)):
             	findername = finder(f)
             if(os.path.isfile(findername)):
                 cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/."%(findername, timestamp)

@@ -224,7 +224,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, re
     
     survey = str.lower(survey)
     minmag = 13.5
-    maxmag = 20.2
+    maxmag = 20.0
         
     f = pf.open(imfile)
     wcs = pywcs.WCS(f[0].header)
@@ -275,7 +275,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, re
             
     elif (survey=='ps1'):
 
-        catalog = qc.query_catalogue(filtered=False)
+        catalog = qc.query_catalogue(filtered=True)
 
         if (np.ndim(catalog)==0 or catalog is None):
             return False
@@ -314,7 +314,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, re
         mask = mask * (mag < 20)
         
     #Select only stars isolated in a radius of ~12 arcsec.
-    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 15.))
+    mask2 = np.array(are_isolated(cat_ra[mask], cat_dec[mask], 10.))
     if (len(mask2)==0):
 	logger.error("No good stars left")
 	return False   
@@ -431,11 +431,11 @@ def add_to_zp_cal(ref_stars, image, logname):
     
     minst = M + c0 + c1(AIRMASS) + c2(color) + c3(UT)    
     '''
-    
+   
     coldic = {'u':'g', 'g':'r', 'r':'i', 'i':'r', 'z':'i', 'U':'B', 'B':'V', 'V':'R', 'R':'I', 'I':'R'}
 
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
-    imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
+    imapp = os.path.join(os.path.join(os.path.dirname(image), "zeropoint"), os.path.basename(image) + ".app.mag")
     #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
 
     my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
@@ -447,12 +447,14 @@ def add_to_zp_cal(ref_stars, image, logname):
         r = np.array([r])
     
     band = fitsutils.get_par(image, 'filter')
-    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(my["sum"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"]))
+    mask_valid1 = np.array(my["fwhm"]<9000) * np.array(~ np.isnan(r[band])) * np.array(~ np.isnan(my["fit_mag"])) * np.array(my["fit_mag"]<9000)
     
     r = r[mask_valid1]
     my = my[mask_valid1]
     N = len(r)
     
+    logger.info("Adding %d stars to the ZP calibration file %s"%(N, logname)) 
+
     my["fiterr"][np.isnan( my["fiterr"])] = 100
 
     col_band = coldic[band]
@@ -502,8 +504,6 @@ def lsq_test():
     coef = lsq_result[0]
     res = lsq_result[1]
     
-    print ( coef, res)
-    
     f, (ax1, ax2) = plt.subplots(2, 1)
     ax1.plot(X.flatten(), depend -coef[0] -Y.flatten()*coef[2] , ".")
     ax1.plot(X.flatten(),  X.flatten()*coef[1])
@@ -526,7 +526,7 @@ def calibrate_zp_fourshot(logfile, plot=True):
     a.sort(order=['jd'], axis=0)
     a = a[a['inst']!=0]
 
-    plotdir = os.path.join(os.path.dirname(os.path.abspath(logfile)), "photometry")
+    plotdir = os.path.join(os.path.dirname(os.path.abspath(logfile)), "zeropoint")
 
     for name in set(a['object']):    
         for b in set(a['filter']):
@@ -565,7 +565,6 @@ def calibrate_zp_fourshot(logfile, plot=True):
             
             mad = stats.funcs.median_absolute_deviation(p(aib["color"]) - (aib["std"] - aib["inst"]))
              
-            print (coefs, residuals, mad)
             
             for f in aib["filename"]:
                 #Add these values to the header.
@@ -989,11 +988,11 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     logger.info("Reference stars used: %s"% ref_stars)
     
     r = np.genfromtxt(ref_stars, delimiter=" ", dtype=None, names=True)
-    imapp = os.path.join(os.path.join(os.path.dirname(image), "photometry"), os.path.basename(image) + ".app.mag")
-    #imapp = os.path.join(os.path.dirname(image), os.path.basename(image) + ".app.mag")
+    imapp = os.path.join(os.path.join(os.path.dirname(image), "zeropoint"), os.path.basename(image) + ".app.mag")
 
     my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"),  ("image","|S20"), ("X","<f4"), ("Y","<f4"), ("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("msky","<f4"), ("stdev","<f4"),\
         ("flags", np.int), ("rapert", "<f4"), ("sum", "<f4"), ("area", "<f4"), ("nsky","<f4") , ("flux", "<f4"), ("itime", "<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
+    logger.info("Reading aperture magnitude from %s file. %d stars found here.\n The reference stars are in file %s, of length %d"%(imapp, len(my), ref_stars, len(r)))
     '''try:
     except:
         my = np.genfromtxt(imapp, comments="#", dtype=[("id","<f4"), ("X","<f4"), ("Y","<f4"),("Xshift","<f4"), ("Yshift","<f4"),("fwhm","<f4"), ("ph_mag","<f4"), ("stdev","<f4"), ("fit_mag","<f4"), ("fiterr","<f4")])
@@ -1019,9 +1018,18 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
         
     my["fiterr"][np.isnan( my["fiterr"])] = 100
     
+   
+    mask_color = np.abs(r[band]-r[col_band]) < 0.8
+
     ids = np.arange(N)+1
     ids = ids[mask_valid1]
-    
+
+    if np.count_nonzero(mask_color) > 2:
+    	r = r[mask_color]
+    	my = my[mask_color]
+        ids = ids[mask_color]
+ 
+
     coefs, residuals, rank, singular_values, rcond = np.polyfit(r[band]-r[col_band], r[band] - my["fit_mag"], w=1./np.maximum(0.1, np.sqrt(my["fiterr"]**2 + r['d'+band]**2)), deg=1, full=True)
     p = np.poly1d(coefs)
     
@@ -1033,7 +1041,7 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     measured = r[band]- my["fit_mag"]
     mad = stats.funcs.median_absolute_deviation(pred-measured)
     
-    print ("MAD1",  mad)
+    #print ("MAD1",  mad)
     
     if len(r) > 4:
         mask = np.abs(pred-measured)/mad < 3
@@ -1054,11 +1062,10 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
         pred = p(r[band]-r[col_band])
         measured = r[band]- my["fit_mag"]
         mad = stats.funcs.median_absolute_deviation(pred-measured)
-        print ("MAD2",  mad)
+        #print ("MAD2",  mad)
 
         
     if (plot):
-        print ("Plotting...")
         plt.errorbar(r[band]-r[col_band], r[band] - my["fit_mag"] , yerr=np.sqrt(my["fiterr"]**2 + r['d'+band]**2), marker="o", ls="None")
         for i, myid in enumerate(ids):
             plt.text(r[band][i]-r[col_band][i] + 0.01, r[band][i] - my["fit_mag"][i]+ 0.01, str(myid))
@@ -1067,8 +1074,11 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
         plt.title("Best fit ZP: %.2f colour term: %.2f MAD: %.2f"%(p[0], p[1], mad))
         plt.xlabel("{:} - {:}".format(band, col_band))
         plt.ylabel("ZP")
-        plt.savefig( os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png").replace('.new', ".zp.png")))
+        plotname = os.path.join( plotdir, os.path.basename(image).replace('.fits', ".zp.png").replace('.new', ".zp.png"))
+	plt.tight_layout()
+        plt.savefig( plotname)
 
+        print ("Plotting into %s."%plotname)
         plt.clf()
     
     logger.info("%s - %s = %.3f, %.3f"%(band, col_band, p[0], p[1]))
@@ -1091,7 +1101,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     
     
     if plot and plotdir is None:
-        plotdir = os.path.join(os.path.dirname(image), "photometry")
+        plotdir = os.path.join(os.path.dirname(image), "zeropoint")
         if not os.path.isdir(plotdir):
             print ("Creating diretory", plotdir)
             os.makedirs(plotdir)
@@ -1152,7 +1162,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     fwhm_pix = fwhm / 0.394
 
     #Run aperture photometry on the positions of the stars.
-    app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=25)
+    app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=15)
     
     #Compute the zeropoint for the specific image.
     z, c, err = find_zeropoint_noid("/tmp/sdss_cat_det_%s.txt"%creationdate, image, plot=plot, plotdir=plotdir)
@@ -1171,7 +1181,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     #Add the data to a later stage zeropoint calibrtion with all-sky data.
     zplogname = os.path.join(os.path.dirname(image), "allstars_zp.log")
     
-    #add_to_zp_cal("/tmp/sdss_cat_det_%s.txt"%creationdate, image, zplogname)
+    add_to_zp_cal("/tmp/sdss_cat_det_%s.txt"%creationdate, image, zplogname)
 
 
     if (not os.path.isfile(logname)):
@@ -1262,7 +1272,7 @@ def main(reduced):
     for f in glob.glob("*_a_*.fits"):
         logger.info("Starting calibration of zeropoint for %s"% f)
         if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
-            calibrate_zeropoint(f, plotdir=None)
+            calibrate_zeropoint(f, plotdir=plotdir)
     if (os.path.isfile("zeropoint.log")):
         plot_zp("zeropoint.log", plotdir)
     if (os.path.isfile("allstars_zp.log")):
