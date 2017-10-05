@@ -914,7 +914,9 @@ def interpolate_zp(reduced, logfile):
         jd = np.maximum(np.percentile(a['jd']-jdmin, 10), fitsutils.get_par(image, "JD") - jdmin)
         jd = np.minimum(np.percentile(a['jd']-jdmin, 90), fitsutils.get_par(image, "JD") - jdmin)
         airmass = fitsutils.get_par(image, "AIRMASS")
-        
+        x= a['x']
+        y = a['y']
+        fwhm = a['fwhm']
         #If there are coefficients for that filter, load them and interpolate.
         #Otherwise, skip this file.
         if not coefs.has_key(filt):
@@ -922,8 +924,9 @@ def interpolate_zp(reduced, logfile):
         
         #est_zp = coef[0] +ab['color']*coef[1] +(ab['airmass']-1.3)*coef[2] + coef[3]*ab['jd'] + coef[4]*ab['jd']**2 + coef[5]*ab['jd']**3 + coef[6]*ab['jd']**4 + coef[7]*ab['jd']**5
 
-        values = np.array([1, 0, airmass-1.3, jd, jd**2])
-        est_zp = np.sum(coefs[filt]*values)
+        
+        values = np.array([1, 0, airmass-1.3, jd, jd**2, jd**3, x, y, x**2, y**2, x**3, y**3, fwhm-1.5])
+        est_zp = np.sum(coefs[filt][0:-1]*values)
         
         #Update the header with the computed zeropoint.
         pardic = {
