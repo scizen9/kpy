@@ -37,7 +37,7 @@ def fxn():
     warnings.warn("deprecated", DeprecationWarning)
 
 
-def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=3.5, plotdir=None, box=15, arcsecpix=0.394):
+def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm=2.5, plotdir=None, box=15, arcsecpix=0.394):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -136,16 +136,16 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
 
     
     
-    dimX = int(4)
-    dimY = int(np.ceil(len(m)*1./4))
+    dimX = int(np.floor(np.sqrt(len(m))))
+    dimY = int(np.ceil(len(m)*1./dimX))
     outerrad = sky_rad+10
     cutrad = outerrad + 15
     
-    plt.suptitle("FWHM="+str(fwhm_value))
+    plt.suptitle("FWHM=%.2f arcsec"%(fwhm_value*arcsecpix))
     k = 0
     for i in np.arange(dimX):
         for j in np.arange(dimY):
-            if ( k < len(m)):
+            if ( i*dimX + (j+1) < len(m)):
                 ax = plt.subplot2grid((dimX,dimY),(i, j))
                 y1, y2, x1, x2 = m[k]["X"]-cutrad, m[k]["X"]+cutrad, m[k]["Y"]-cutrad, m[k]["Y"]+cutrad
                 y1, y2, x1, x2 = int(y1), int(y2), int(x1), int(x2)
@@ -171,8 +171,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
         
                 plt.text(+5, +5, "%d"%m[k]["id"])
                 plt.text(-cutrad, -cutrad, "%.2f$\pm$%.2f"%(m[k]["fit_mag"], m[k]["fiterr"]), color="b")
-            k = k+1
-    
+    plt.tight_layout()
     plt.savefig(os.path.join(plotdir, imname + "plot.png"))
     plt.clf()
 
