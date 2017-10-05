@@ -446,7 +446,6 @@ class SedmDB:
                     'inidate' ('year-month-day hour:minute:second')
                     'enddate' ('year-month-day hour:minute:second')
                     'color' (hex color code)
-                    'active' (boolean)
 
         Returns:
             (-1, "ERROR...") if it failed to update
@@ -454,7 +453,7 @@ class SedmDB:
             (id (long), "Program updated, columns 'column_names'") if the program is updated successfully
         """
         param_types = {'id': int, 'time_allocated': 'timedelta', 'name': str, 'PI': str, 'priority': float,
-                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str, 'active': bool}
+                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: id not provided!")
@@ -463,7 +462,7 @@ class SedmDB:
             return (-1, "ERROR: no program with the id!")
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['time_allocated', 'name', 'PI', 'priority', 'inidate', 'enddate', 'color', 'active']:
+            if key not in ['time_allocated', 'name', 'PI', 'priority', 'inidate', 'enddate', 'color']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -493,7 +492,7 @@ class SedmDB:
                 'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
                 if no inequality is provided, '=' is assumed
             values/keys options: ['id', 'designator', 'name', 'group_id', 'PI', 'time_allocated',
-                                  'priority', 'inidate', 'enddate', 'color', 'active']
+                                  'priority', 'inidate', 'enddate', 'color']
 
         Returns:
             list of tuples containing the values for each program matching the criteria
@@ -504,7 +503,7 @@ class SedmDB:
         """
         allowed_params = {'id': int, 'name': str, 'designator': str, 'group_id': int, 'PI': str, 'color': str,
                           'time_allocated': 'timedelta', 'priority': float,
-                          'inidate': 'datetime', 'enddate': 'datetime', 'active': bool}
+                          'inidate': 'datetime', 'enddate': 'datetime'}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'program')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -525,7 +524,8 @@ class SedmDB:
         Args:
             pardic (dict):
                 required:
-                    'pg_designator' (str) (designator of related program)
+                    'program_id' (int) (id of associated program)
+                    'designator' (str) (e.g. 2016A-I0001)
                 optional:
                     'time_allocated' (datetime.timedelta object or float/int seconds)
                     'time_spent' (datetime.timedelta object or float/int seconds)
@@ -538,21 +538,21 @@ class SedmDB:
 
             (id (long), "Allocation added") if the program is added successfully
         """
-        param_types = {'id': int, 'pg_designator': str, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
-                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str}
+        param_types = {'id': int, 'program_id': int, 'designator': str, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
+                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str, 'active': bool}
         id = _id_from_time()
         pardic['id'] = id
         keys = list(pardic.keys())
 
-        if 'pg_designator' in keys:
-            if pardic['pg_designator'] not in [obj[0] for obj in self.execute_sql('SELECT designator FROM program')]:
-                return (-1, "ERROR: no program with that designator exists!")
+        if 'program_id' in keys:
+            if pardic['program_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM program;')]:
+                return (-1, "ERROR: no program with that id exists!")
 
-        for key in ['pg_designator']:
+        for key in ['program_id', 'designator']:
             if key not in keys:  # check for required key
                 return (-1, "ERROR: %s not provided!" % (key,))
         for key in reversed(keys):  # remove any extraneous keys
-            if key not in ['id', 'pg_designator', 'time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
+            if key not in ['id', 'program_id', 'designator', 'time_allocated', 'time_spent', 'inidate', 'enddate', 'color', 'active']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
         type_check = _data_type_check(keys, pardic, param_types)
         if type_check:
@@ -581,6 +581,7 @@ class SedmDB:
                     'inidate' ('year-month-day hour:minute:second')
                     'enddate' ('year-month-day hour:minute:second')
                     'color' (hex color code)
+                    'active' (boolean)
 
         Returns:
             (-1, "ERROR...") if it failed to update
@@ -588,7 +589,7 @@ class SedmDB:
             (id (long), "Allocation updated, columns 'column_names'") if the allocation is updated successfully
         """
         param_types = {'id': int, 'time_allocated': 'timedelta', 'time_spent': 'timedelta',
-                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str}
+                       'inidate': 'datetime', 'enddate': 'datetime', 'color': str, 'active': bool}
         keys = list(pardic.keys())
         if 'id' not in keys:
             return (-1, "ERROR: id not provided!")
@@ -597,7 +598,7 @@ class SedmDB:
             return (-1, "ERROR: no allocation with the id!")
 
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
-            if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate', 'color']:
+            if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate', 'color', 'active']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
         if len(keys) == 0:
             return (-1, "ERROR: no parameters given to update!")
@@ -626,7 +627,7 @@ class SedmDB:
             compare_dict (dict): default is {}
                 'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
                 if no inequality is provided, '=' is assumed
-            values/keys options: ['id', 'designator', 'time_spent', 'time_allocated', 'inidate', 'enddate', 'color']
+            values/keys options: ['id', 'designator', 'program_id, 'time_spent', 'time_allocated', 'inidate', 'enddate', 'color', 'active']
 
         Returns:
             list of tuples containing the values for each program matching the criteria
@@ -635,8 +636,8 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'id': int, 'designator': str, 'time_spent': 'timedelta', 'color': str,
-                          'time_allocated': 'timedelta', 'inidate': 'datetime', 'enddate': 'datetime'}
+        allowed_params = {'id': int, 'program_id': int, 'designator': str, 'time_spent': 'timedelta', 'color': str,
+                          'time_allocated': 'timedelta', 'inidate': 'datetime', 'enddate': 'datetime', 'active': bool}
 
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'allocation')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -650,8 +651,6 @@ class SedmDB:
             return (-1, "ERROR: get_from_allocation sql command failed with a ProgrammingError!")
         return results
 
-    # TODO: add get_from_allocation function
-
     def add_object(self, pardic):
         """
         Creates a new object
@@ -663,10 +662,10 @@ class SedmDB:
                     'typedesig' (str),
                 required for a fixed object:
                     'ra' (float) ra in degrees,
-                    'dec' (float) dec in degrees,
-                    'epoch' (str)
+                    'dec' (float) dec in degrees
                 optional:
-                    'magnitude' (float) (preferably 'r' filter)
+                    'magnitude' (float) (preferably 'r' filter),
+                    'epoch' (str),
                     'iauname' (str),
                     'marshal_id' (int/long)
 
@@ -700,14 +699,19 @@ class SedmDB:
 
         pardic['name'] = pardic['name'].lower()  # make all of the names the same format for consistant searching
         if pardic['typedesig'] == 'f':
-            for key in ['ra', 'dec', 'epoch']:
+            for key in ['ra', 'dec']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+                if pardic['name'] in [x[1] for x in dup]:  # check for same coords, same name
+                    lis = [x[1] for x in dup]
+                    idx = lis.index(pardic['name'])
+                    return(-1, "ERROR: The object '%s' is already in the database with id %s"
+                               % (pardic['name'], dup[idx][0]))
+                print("there is already an object within 1 arcsec of given coordinates with "
+                      "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -718,14 +722,19 @@ class SedmDB:
                 return (-1, "ERROR: add_object sql command failed with a ProgrammingError!")
             return (id, "Fixed object added")
         elif pardic['typedesig'] == 'v':
-            for key in ['ra', 'dec', 'epoch']:
+            for key in ['ra', 'dec']:
                 if key not in obj_keys:
                     return (-1, "ERROR: %s not provided!" % (key,))
             dup = self.execute_sql("SELECT id, name FROM object WHERE q3c_radial_query(ra, dec, '%s', '%s', .000278)"
                                    % (pardic['ra'], pardic['dec']))
             if dup:  # if there is already an object within an arcsecond
-                return (-1, "ERROR: there is already an object within 1 arcsec of given coordinates with "
-                            "id: %s, name: %s" % (object[0][0], object[0][1]))
+                if pardic['name'] in [x[1] for x in dup]:  # check for same coords, same name
+                    lis = [x[1] for x in dup]
+                    idx = lis.index(pardic['name'])
+                    return(-1, "ERROR: The object '%s' is already in the database with id %s"
+                               % (pardic['name'], dup[idx][0])) 
+                print("there is already an object within 1 arcsec of given coordinates with "
+                      "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
             obj_sql = _generate_insert_sql(pardic, obj_keys, 'object')
             try:
@@ -1259,7 +1268,7 @@ class SedmDB:
                 required:
                     'object_id' (int/long),
                     'user_id' (int/long),
-                    'program_id' (int/long),
+                    'allocation_id' (int/long),
                     'exptime' (str '{spec_duration, phot_duration}'),
                     'priority' (float),
                     'inidate' ('year-month-day') (start of observing window),
@@ -1290,17 +1299,17 @@ class SedmDB:
             (id (long), "Request added") if there are no errors
         """
         # TODO: get a better description of cadence/phasesamples/sampletolerance
-        param_types = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'priority': float,
+        param_types = {'id': int, 'object_id': int, 'user_id': int, 'allocation_id': int, 'exptime': str, 'priority': float,
                        'inidate': 'date', 'enddate': 'date', 'marshal_id': int, 'maxairmass': float, 'cadence': float,
                        'phasesamples': float, 'sampletolerance': float, 'nexposures': str, 'obs_seq': str,
                        'max_fwhm': float, 'min_moon_dist': float, 'max_moon_illum': float, 'max_cloud_cover': float,
                        'seq_repeats': int}
         id = _id_from_time()
         pardic['id'] = id
-        requests = self.execute_sql("SELECT object_id, program_id FROM request WHERE status != 'EXPIRED';")
-        # check program_id, issue warning if it is a repeat, but allow
-        if (pardic['object_id'], pardic['program_id']) in requests:
-            print "program %s has already requested object: %s" % (pardic['program_id'], pardic['object_id'])
+        requests = self.execute_sql("SELECT object_id, allocation_id FROM request WHERE status != 'EXPIRED';")
+        # check allocation_id, issue warning if it is a repeat, but allow
+        if (pardic['object_id'], pardic['allocation_id']) in requests:
+            print "program %s has already requested object: %s" % (pardic['allocation_id'], pardic['object_id'])
             # TODO: add to output
         if pardic['object_id'] not in [obj[0] for obj in self.execute_sql('SELECT id FROM object;')]:
             return (-1, "ERROR: object does not exist!")
@@ -1335,13 +1344,13 @@ class SedmDB:
             return (-1, "ERROR: nexposures or obs_seq is required!")
 
         keys = list(pardic.keys())
-        default_params = ['object_id', 'user_id', 'program_id', 'exptime', 'priority',
+        default_params = ['object_id', 'user_id', 'allocation_id', 'exptime', 'priority',
                           'inidate', 'enddate']
         for param in default_params:  # check that all required values are provided
             if param not in keys:
                 return (-1, "ERROR: %s not in dictionary!" % (param,))
         for key in reversed(keys):  # remove any invalid keys
-            if key not in ['id', 'object_id', 'user_id', 'program_id', 'exptime', 'priority',
+            if key not in ['id', 'object_id', 'user_id', 'allocation_id', 'exptime', 'priority',
                            'inidate', 'enddate', 'marshal_id', 'maxairmass', 'cadence',
                            'phasesamples', 'sampletolerance', 'nexposures', 'obs_seq', 'seq_repeats',
                            'max_fwhm', 'min_moon_dist', 'max_moon_illum', 'max_cloud_cover']:
@@ -1435,7 +1444,7 @@ class SedmDB:
                 'id' (int/long),
                 'object_id' (int/long),
                 'user_id' (int/long),
-                'program_id' (int/long),
+                'allocation_id' (int/long),
                 'exptime' (str),
                 'priority' (float),
                 'inidate' ('year-month-day'),
@@ -1466,7 +1475,7 @@ class SedmDB:
 
             (-1, "ERROR...") if there was an issue
         """
-        allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'program_id': int, 'exptime': str, 'status': str,
+        allowed_params = {'id': int, 'object_id': int, 'user_id': int, 'allocation_id': int, 'exptime': str, 'status': str,
                           'priority': float, 'inidate': 'date', 'enddate': 'date', 'marshal_id': int,
                           'maxairmass': float, 'cadence': float, 'phasesamples': float, 'sampletolerance': float,
                           'filters': str, 'nexposures': str, 'obs_seq': str, 'creationdate': 'date',
@@ -1541,10 +1550,11 @@ class SedmDB:
         id = _id_from_time()
         header_dict['id'] = id
 
-        if header_dict['filter']:
+        header_keys = list(header_dict.keys())
+        if 'filter' in header_keys:
             if header_dict['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:  # check the filter is valid
                 return (-1, "ERROR: invalid filter given!")
-        header_keys = list(header_dict.keys())
+
         for key in ['object_id', 'request_id', 'mjd', 'airmass', 'exptime', 'fitsfile', 'lst',
                     'ra', 'dec', 'tel_ra', 'tel_dec', 'tel_az', 'tel_el', 'tel_pa', 'ra_off', 'dec_off']:
             if key not in header_keys:
@@ -1610,7 +1620,7 @@ class SedmDB:
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM observation;')]:
             return (-1, "ERROR: observation does not exist!")
 
-        if pardic['filter']:
+        if 'filter' in keys:
             if pardic['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:  # check the filter is valid
                 return (-1, "ERROR: invalid filter given!")
 
@@ -2819,22 +2829,22 @@ def _data_type_check(keys, pardic, value_types):
         elif value_types[key] == float:
             try:
                 pardic[key] = float(pardic[key])
-            except ValueError:
+            except (ValueError, TypeError):
                 return "ERROR: %s must be of %s!" % (key, str(float)[1:-1])
         elif value_types[key] == int:
             try:
                 pardic[key] = long(pardic[key])
-            except ValueError:
+            except (ValueError, TypeError):
                 return "ERROR: %s must be of %s or %s!" % (key, str(int)[1:-1], str(long)[1:-1])
         elif value_types[key] == 'date':
             try:
                 pardic[key] = str(Time(pardic[key])).split(' ')[0]
-            except ValueError:
+            except (ValueError, TypeError):
                 return "ERROR: %s must be of the format 'year-month-day'!" % (key,)
         elif value_types[key] == 'datetime':
             try:
                 pardic[key] = str(Time(pardic[key]))
-            except ValueError:
+            except (ValueError, TypeError):
                 return "ERROR: %s must be of the format 'year-month-day hour:minute:second'!" % (key,)
         elif value_types[key] == 'timedelta':
             if not isinstance(pardic[key], timedelta):

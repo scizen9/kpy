@@ -13,9 +13,21 @@ from SEDMrph import fitsutils
 from astropy.time import Time
 import datetime
 from astropy.io import fits
-import SedmDb
+import archive_pop_sedmdb
 
-sdb = SedmDb.SedmDB(dbname='sedmdbtest', host='pharos.caltech.edu')
+#cur_dir = os.getcwd()
+#os.chdir('/home/sedm/kpy/SEDMDb')
+sdb = archive_pop_sedmdb.SedmDB(dbname='sedmdbtest', host='localhost')
+#os.chdir(cur_dir)
+
+def ra_to_decimal(ra):
+    hms = ra.split(':')
+    return float(hms[0])*15+float(hms[1])/4+float(hms[2])/240
+
+
+def dec_to_decimal(dec):
+    dms = dec.split(':')
+    return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
 
 def fill_par_dic_obs(fitsfile):
     '''
@@ -25,7 +37,6 @@ def fill_par_dic_obs(fitsfile):
     'id': 0,
     'object_id': 0, 
     'request_id': 0, 
-    'atomicrequest_id': 0, 
     'mjd': 0.0, 
     'airmass': 0.0,
     'exptime': 0.0, 
@@ -47,13 +58,18 @@ def fill_par_dic_obs(fitsfile):
     f = fits.open(fitsfile)
     
     for k in pardic_obs.keys():
-        if f[0].header.has_key(k):
+        if k in f[0].header:
             pardic_obs[k] = f[0].header[k]
+    pardic_obs['mjd'] = f[0].header['JD'] - 2400000.5
+    pardic_obs['ra'] = ra_to_decimal(f[0].header['RA'])
+    pardic_obs['dec'] = dec_to_decimal(f[0].header['DEC'])
+    pardic_obs['camera'] = f[0].header['CAM_NAME']   
+    
         
     #Rtrieve the old obs_id from the header
     obs_id = f[0].header['obs_id']
     pardic_obs['id'] = obs_id
-    
+
     return pardic_obs
 
 
@@ -95,7 +111,7 @@ def create_program(f):
     else:
         #TODO - create a new program with that ID
         #progid
-    
+        pass
     
     
     
@@ -110,7 +126,7 @@ def create_cal_request(files, inidate, enddate, caltype):
     
     #First check that there is no request for that night
     res = sdb.get_from_request(['object_id'],
-    {'object_id': obj_id, 'user_id':32, 'program_id':3, 'inidate':inidate, 'enddate':enddate},
+    {'object_id': obj_id, 'user_id':32, 'allocation_id':1, 'inidate':inidate, 'enddate':enddate},
     {'inidate':'>=', 'enddate':'<='})
     
     #If there is no request, we add it.
@@ -118,9 +134,9 @@ def create_cal_request(files, inidate, enddate, caltype):
         exptime = fitsutils.get_par(files[0], "EXPTIME")
         pardic = {'object_id':obj_id,
                   'user_id':32,
-                  'program_id':3,
+                  'allocation_id':1,
                   'exptime':'{0, %d}'%exptime,
-                  'priority':0,
+                  'priority':.1,
                   'inidate': inidate, #('year-month-day') (start of observing window),
                   'enddate': enddate, #('year-month-day') (end of observing window),
                   'nexposures':'{0, %s, 0, 0, 0}' % len(files)}
@@ -130,47 +146,34 @@ def create_cal_request(files, inidate, enddate, caltype):
         else:
             print(req[1])
         
-def create_atomic_and_obs(reqid, files, inidate, enddate, caltype):
+def create_obs(reqid, files, inidate, enddate, caltype):
     '''
-    For each type, creates an atomic request corresponding to the characteristics of the file,
-    and logs the observation that has been made associated to the atomic request.
+    For each file, creates the observation associated with the file.
     
     '''
-    
-        for f in files:
-            
-            ###change d2 not to now, but rather the initial UTC of the exposure.
-            d2 = datetime.datetime.now().isoformat()
-            atomicreqid = int(d2.replace("-","").replace(":","").replace(".","").replace("T",""))
-            
-            jd_init = fitsutils.get_par(f, "JD")
-            jd_end = jd_init + fitsutils.get_par(f, "EXPTIME")/(3600*24.)
-    
-            inidate = Time(jd_init, format='jd').iso
-            enddate = Time(jd_end, format='jd').iso
-    
-            pardic = {
-                        'request_id':reqid,
-                        'exptime' : fitsutils.get_par(f, "EXPTIME"),
-                        'filter': fitsutils.get_par(f, "FILTER"),
-                        'priority':0,
-                        'inidate': inidate,
-                        'enddate': enddate,
-                        'object_id':0,
-                        'status': 'OBSERVED'
-                        }
+    caltype_obj = {'bias': 3, 'twilight':4, 'dome':5, 'focus':6, 'test':7, 'test2':8, 'test3':9}
+    obj_id = caltype_obj[caltype]
+
+    for f in files:
+                
+        jd_init = fitsutils.get_par(f, "JD")
+        jd_end = jd_init + fitsutils.get_par(f, "EXPTIME")/(3600*24.)
+
+        inidate = Time(jd_init, format='jd').iso
+        enddate = Time(jd_end, format='jd').iso
                         
-            #We also add the atomic requests.
-            sdb.add_atomicrequest(pardic)
-            
-            pardic_obs = fill_par_dic_obs(f)
-            pardic_obs["object_id"] = 0
-            pardic_obs["request_id"] = reqid
-            pardic_obs["atomicrequest_id"] = atomicreqid
-            
-            
-            #Also add the observation
-            sdb.add_observation(pardic_obs)
+        pardic_obs = fill_par_dic_obs(f)
+        pardic_obs["object_id"] = obj_id
+        pardic_obs["request_id"] = reqid
+        pardic_obs['fitsfile'] = f
+        pardic_obs['imtype'] = caltype
+        
+        #Also add the observation
+
+        obs = sdb.add_observation(pardic_obs)
+        if obs[0] < 0:
+            print(obs[1])
+
 
     
 def log_calibrations(lfiles, caltype="test"):
@@ -199,10 +202,12 @@ def log_calibrations(lfiles, caltype="test"):
     enddate = Time(jd_end, format='jd').iso
     
     #First make sure that we have a Calibration Request to which assign all the registers.
-    reqid = create_cal_request(inidate, enddate, caltype)
+    reqid = create_cal_request(lfiles, inidate, enddate, caltype)
     
     #Then associate all the files to that request id.
-    # create_atomic_and_obs(reqid, files, inidate, enddate, caltype)
+    create_obs(reqid, lfiles, inidate, enddate, caltype)
+
+    sdb.update_request({'id': reqid, 'STATUS': 'COMPLETED'})
     
     
     
@@ -226,12 +231,13 @@ def log_science(lfiles, scitype):
     
     if scitype == "GUIDER":
         #log guider
-    
+        pass
     elif scitype== "SCIENCE":
         #log science file
+        pass
     elif scitype== "ACQUISITON":
         #log acquisition file
-    
+        pass
     #Call fill_part_dic_obs 
     #to retrieve all the dicitonary fields needed to fill in the OBSERVATION table
     
@@ -271,7 +277,7 @@ if __name__ == '__main__':
     for f in glob.glob(os.path.join(mydir, "rc*fits")):
         try:
             if (fitsutils.has_par(f, "IMGTYPE")):
-                imgtype = fitsutils.has_par(f, "IMGTYPE")
+                imgtype = fitsutils.get_par(f, "IMGTYPE")
                 myfiles[imgtype].append(f)
         except:
             print("problems opening file %s" %f)
