@@ -74,11 +74,11 @@ for d in dlist:
 
         jd.append(dtime.jd)
 
-pl.plot(jd, ef1, '^', linestyle='None', label='400-500 nm')
-pl.plot(jd, ef2, 'v', linestyle='None', label='500-600 nm')
-pl.plot(jd, ef3, 'x', linestyle='None', label='600-700 nm')
-pl.plot(jd, ef4, 'D', linestyle='None', label='700-800 nm')
-pl.plot(jd, ef5, 'o', linestyle='None', label='800-900 nm')
+pl.plot(jd, ef1, '^', linestyle='None', markersize=2.0, label='400-500 nm')
+pl.plot(jd, ef2, 'v', linestyle='None', markersize=2.0, label='500-600 nm')
+pl.plot(jd, ef3, 'x', linestyle='None', markersize=2.0, label='600-700 nm')
+pl.plot(jd, ef4, 'D', linestyle='None', markersize=2.0, label='700-800 nm')
+pl.plot(jd, ef5, 'o', linestyle='None', markersize=2.0, label='800-900 nm')
 pl.xlabel('JD')
 pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
