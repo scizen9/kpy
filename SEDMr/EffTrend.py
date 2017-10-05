@@ -14,7 +14,9 @@ sdir = '/scr2/sedmdrp/redux'
 fspec = os.path.join(sdir, '20??????')
 dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
+jd0 = 2457000.0
 jd = []
+pjd = []
 ef1 = []
 ef2 = []
 ef3 = []
@@ -73,13 +75,14 @@ for d in dlist:
         efs.append(s)
 
         jd.append(dtime.jd)
+        pjd.append(dtime.jd - jd0)
 
-pl.plot(jd, ef1, '^', linestyle='None', markersize=2.0, label='400-500 nm')
-pl.plot(jd, ef2, 'v', linestyle='None', markersize=2.0, label='500-600 nm')
-pl.plot(jd, ef3, 'x', linestyle='None', markersize=2.0, label='600-700 nm')
-pl.plot(jd, ef4, 'D', linestyle='None', markersize=2.0, label='700-800 nm')
-pl.plot(jd, ef5, 'o', linestyle='None', markersize=2.0, label='800-900 nm')
-pl.xlabel('JD')
+pl.plot(pjd, ef1, '^', linestyle='None', markersize=2.0, label='400-500 nm')
+pl.plot(pjd, ef2, 'v', linestyle='None', markersize=2.0, label='500-600 nm')
+pl.plot(pjd, ef3, 'x', linestyle='None', markersize=2.0, label='600-700 nm')
+pl.plot(pjd, ef4, 'D', linestyle='None', markersize=2.0, label='700-800 nm')
+pl.plot(pjd, ef5, 'o', linestyle='None', markersize=2.0, label='800-900 nm')
+pl.xlabel('JD - 2457000')
 pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
 pl.legend(loc=2)

@@ -12,7 +12,9 @@ sdir = '/scr2/sedmdrp/redux'
 fspec = os.path.join(sdir, '20??????')
 dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
+jd0 = 2457000.0
 jd = []
+pjd = []
 xas = []
 yas = []
 ras = []
@@ -34,11 +36,12 @@ for d in dlist:
         ras.append(np.sqrt(ss['position'][0]**2 + ss['position'][1]**2))
 
         jd.append(dtime.jd)
+        pjd.append(dtime.jd - jd0)
 
-pl.plot(jd, xas, label='X (RA)')
-pl.plot(jd, yas, label='Y (Dec)')
-pl.plot(jd, ras, label='R')
-pl.xlabel('JD')
+pl.plot(pjd, xas, label='X (RA)')
+pl.plot(pjd, yas, label='Y (Dec)')
+pl.plot(pjd, ras, label='R')
+pl.xlabel('JD - 2457000')
 pl.ylabel('Offset (asec)')
 pl.title('Position Trend')
 pl.legend(loc=2)
