@@ -18,15 +18,17 @@ import os
 import glob
 import argparse
 import subprocess
-    
+from matplotlib import pylab as plt
+ 
 def finder(myfile,searchrad=0.2/60.):
     
-    ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "RA"), fitsutils.get_par(myfile, "DEC"))
+    ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
 
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
-    
+    img = img.T
+
     wcs = pywcs.WCS(hdulist.header)
 
     target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
@@ -36,16 +38,17 @@ def finder(myfile,searchrad=0.2/60.):
     imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
     #zmin, zmax = zscale.zscale()
     zmin = np.percentile(imgslice.flatten(), 5)
-    zmax = np.percentile(imgslice.flatten(), 99)
-    
+    zmax = np.percentile(imgslice.flatten(), 98)
+   
+    print "Min: %.1f, max: %.1f"%(zmin, zmax) 
     gc = aplpy.FITSFigure(myfile, figsize=(10,9), north=True)
-    gc.show_grayscale(vmin=zmin, vmax=zmax)
+    gc.show_grayscale(vmin=zmin, vmax=zmax, smooth=1, kernel="gauss")
     gc.show_scalebar(0.1/60.)
     gc.scalebar.set_label('10 arcsec')
     gc.scalebar.set_color('white')
     gc.recenter(ra, dec, searchrad)
-    gc.show_markers(ra,dec+searchrad/20.,edgecolor='red',facecolor='none',marker="|",s=250, lw=10)
-    gc.show_markers(ra-(searchrad/20.)/np.cos(np.deg2rad(dec)),dec,edgecolor='red',facecolor='none',marker="_",s=250, lw=10)
+    #gc.show_markers(ra,dec+searchrad/20.,edgecolor='red',facecolor='none',marker="|",s=250, lw=10)
+    #gc.show_markers(ra-(searchrad/20.)/np.cos(np.deg2rad(dec)),dec,edgecolor='red',facecolor='none',marker="_",s=250, lw=10)
 
     ras = np.array([ra , ra])
     decs = np.array([dec, dec])
@@ -64,12 +67,13 @@ def finder(myfile,searchrad=0.2/60.):
     gc.add_label(ras[1]+dxs[1]*1.1, decs[1]+dys[1]*1.1, 'E', relative=False, color="k", horizontalalignment="center")
 
 
-    name = fitsutils.get_par(myfile, "OBJECT")
+    name = fitsutils.get_par(myfile, "NAME")
+    filter = fitsutils.get_par(myfile, "FILTER")
     gc.add_label(0.05, 0.95, 'Object: %s'%(name), relative=True, color="white", horizontalalignment="left")                   
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
-    gc.add_label(0.05, 0.84, 'Filter: SDSS r', relative=True, color="white", horizontalalignment="left")
+    gc.add_label(0.05, 0.84, 'Filter: SDSS %s'%filter, relative=True, color="white", horizontalalignment="left")
     
-    findername = '%s_finder.jpg'%(name)
+    findername = 'finder_%s_%s.jpg'%(name, filter)
     gc.save(findername)
     
     return findername
@@ -97,22 +101,25 @@ if __name__=="__main__":
         photdir = os.path.join("/scr2/sedm/phot/", timestamp)
     else:
 	timestamp = os.path.basename(os.path.abspath(photdir))
+
     os.chdir(photdir)
+    print "Changed to directory where the data is. %s"%photdir
     
     #We only generate onle finder with the first image.
     files = glob.glob("a_*fits")
     files.sort()
     for f in files:
-        if fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" and "STD" not in fitsutils.get_par(f, "OBJECT"):
-	    findername = '%s_finder.jpg'%(fitsutils.get_par(f, "OBJECT"))
+	object = fitsutils.get_par(f, "OBJECT")
+        if (fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" ) and "STD" not in object and "BD" not in object and "SA" not in object:
+	    findername = 'finder_%s_%s.jpg'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
 	    if(not os.path.isfile(findername)):
             	findername = finder(f)
             if(os.path.isfile(findername)):
-                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/."%(findername, timestamp)
+                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/."%(findername, timestamp)
 		print cmd
 		subprocess.call(cmd, shell=True)
 
-    cmd = "rcp /tmp/finders.php sedm@agn.caltech.edu:/usr/apache/htdocs/sedm/stats/%s/."%(timestamp)
+    cmd = "rcp /tmp/finders.php sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/."%(timestamp)
     print cmd
     subprocess.call(cmd, shell=True)
 
