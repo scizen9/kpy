@@ -14,6 +14,7 @@ sdir = '/scr2/sedmdrp/redux'
 fspec = os.path.join(sdir, '20??????')
 dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
+jd0 = 2457000.0
 jd = []
 flxy = []
 flxx = []
@@ -43,10 +44,10 @@ for d in dlist:
 
         jd.append(dtime.jd)
 
-pl.plot(jd, flxx, 'bD', label='dX nm')
-pl.plot(jd, flxy, 'g^', label='dY pix')
+pl.plot(jd-jd0, flxx, 'bD', ms=2.0, label='dX nm')
+pl.plot(jd-jd0, flxy, 'g^', ms=2.0, label='dY pix')
 
-pl.xlabel('JD')
+pl.xlabel('JD - 2457000')
 pl.ylabel('Flexure')
 pl.title( 'Flexure Trend')
 pl.legend(loc=2)
