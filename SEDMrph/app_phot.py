@@ -84,11 +84,10 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     noise = fitsutils.get_par(image, 'RDNOISE')
 
     
-    print "FWHM pixels", fwhm_value
+    print "FWHM: %.1f pixels, %.1f arcsec"%(fwhm_value, fwhm*arcsecpix)
     aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to three times the PSF radius
     sky_rad= math.ceil(aperture_rad)*4
     
-    print aperture_rad, sky_rad
 
     if (not plot_only):
 
@@ -189,7 +188,6 @@ def get_xy_coords(image, ra, dec):
     cmd = "wcs-rd2xy -w %s -r %.5f -d %.5f"%(image, ra, dec)
     proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     output = proc.stdout.read()    
-    print output
     output = output.split("->")[1]
     
     coords = []
@@ -198,7 +196,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, ra=None, dec=None, plot=False, store=True, wcsin="logical", fwhm=None, box=15, arcsecpix=0.394):
+def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="logical", fwhm=None, box=15, arcsecpix=0.394):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
