@@ -16,6 +16,7 @@ dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
 jd0 = 2457000.0
 jd = []
+pjd = []
 flxy = []
 flxx = []
 ffs = []
@@ -32,6 +33,10 @@ for d in dlist:
         ss = np.load(s)[0]
         if 'dXnm' not in ss or 'dYpix' not in ss:
             continue
+        if 'xfwhm' not in ss or 'yfwhm' not in ss:
+            continue
+        if ss['xfwhm'] == 0. or ss['yfwhm'] == 0.:
+            continue
 
         dx = ss['dXnm']
         dy = ss['dYpix']
@@ -43,16 +48,17 @@ for d in dlist:
         ffs.append(s)
 
         jd.append(dtime.jd)
+        pjd.append(dtime.jd-jd0)
 
-pl.plot(jd-jd0, flxx, 'bD', markersize=2.0, label='dX nm')
-pl.plot(jd-jd0, flxy, 'g^', markersize=2.0, label='dY pix')
+pl.plot(pjd, flxx, 'bD', markersize=2.0, linestyle='None', label='dX nm')
+pl.plot(pjd, flxy, 'g^', markersize=2.0, linestyle='None', label='dY pix')
 
 pl.xlabel('JD - 2457000')
 pl.ylabel('Flexure')
 pl.title( 'Flexure Trend')
 pl.legend(loc=2)
 pl.grid(True)
-pl.ylim(-2, 2)
+pl.ylim(-5, 5)
 ofil = os.path.join(sdir, 'SEDM_flex_trend.pdf')
 pl.savefig(ofil)
 with open('SEDM_flex_trend.txt', 'wb') as dfil:
