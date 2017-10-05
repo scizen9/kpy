@@ -38,9 +38,9 @@ for d in dlist:
         jd.append(dtime.jd)
         pjd.append(dtime.jd - jd0)
 
-pl.plot(pjd, xas, label='X (RA)')
-pl.plot(pjd, yas, label='Y (Dec)')
-pl.plot(pjd, ras, label='R')
+pl.plot(pjd, xas, 'x', markersize=2.0, linestyle='None', label='X (RA)')
+pl.plot(pjd, yas, 'D', markersize=2.0, linestyle='None', label='Y (Dec)')
+pl.plot(pjd, ras, '^', markersize=2.0, linestyle='None', label='R')
 pl.xlabel('JD - 2457000')
 pl.ylabel('Offset (asec)')
 pl.title('Position Trend')
