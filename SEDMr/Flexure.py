@@ -15,7 +15,7 @@ drp_ver = Version.ifu_drp_version()
 
 
 def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
-                      lamstart=1000.0, lamratio=239./240., lamlen=250,
+                      lamstart=1050.0, lamratio=239./240., lamlen=265,
                       extract_width=3, skywidth=9, outfile='dX', plot=False):
     """Measures flexure in X direction, returns pixel offset
 

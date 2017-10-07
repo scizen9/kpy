@@ -142,8 +142,12 @@ def fiducial_spectrum(lamstart=1050.0, lamratio=239./240., npx=265):
     """
 
     xx = np.arange(npx)
+    cs = [1.06697198e+03,  -5.82924699e+00,   9.12740701e-03,
+          -5.84149923e-06, -7.65158285e-10]
+    lams = chebval(xx, cs)
 
-    return lamstart * lamratio**xx
+    # return lamstart * lamratio**xx
+    return lams
 
 
 def assoc_hg_with_flats_helper(idx):

@@ -1275,14 +1275,16 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Re-sample spectra onto fiducial spectrum
     ll = Wavelength.fiducial_spectrum()
 
-    # Re-sample sky spectrum
+    # Re-sample mean sky spectrum
     sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'], bounds_error=False)
+
+    # Calculate sky
     sky = sky_a(ll)
 
-    # Re-sample flux variance spectrum
+    # Re-sample mean flux variance spectrum
     var_a = interp1d(vara[0]['nm'], vara[0]['ph_10m_nm'], bounds_error=False)
 
-    # Re-sample sky variance spectrum
+    # Re-sample mean sky variance spectrum
     vky_a = interp1d(vkya[0]['nm'], vkya[0]['ph_10m_nm'], bounds_error=False)
 
     # Calculate summed variance
@@ -1312,45 +1314,40 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Process standard star objects
     print("STANDARD")
     # Extract reference data
-    # waves in Angstroms
-    wav = standard[:, 0]
-    # flux in ergs/s/cm^2/A
-    flux = standard[:, 1] * 1e-16
+    # reference waves in Angstroms
+    rwav = standard[:, 0]
+    # reference flux in ergs/s/cm^2/A
+    rflux = standard[:, 1] * 1e-16
     # delta wave of observation in nm
-    dw = np.roll(res[0]['nm'], 1) - res[0]['nm']
-    # remove singular point
-    dw = dw[1:]
-    # wavelength scale for dw
-    wdw = res[0]['nm'][1:] + dw * 0.5
+    dw = abs(np.diff(ll))
     # interpolation function for dw
-    int_dw = interp1d(wdw, dw, bounds_error=False, fill_value=np.nan)
+    int_dw = interp1d(ll[1:], dw, bounds_error=False, fill_value=np.nan)
     # Flux in photons/s/cm^2/nm
-    flpho = 5.0341125e07 * flux * wav * 10.
-    # convert wav to nm
-    wav /= 10.
-    # interpolation function for flpho
-    int_flpho = interp1d(wav, flpho, bounds_error=False, fill_value=np.nan)
+    rflpho = 5.0341125e07 * rflux * rwav * 10.
+    # convert rwav to nm
+    rwav /= 10.
+    # interpolation function for rflpho
+    int_rflpho = interp1d(rwav, rflpho, bounds_error=False, fill_value=np.nan)
     # Effective area accounting for wavelength bins of observation
-    earea = (res[0]['ph_10m_nm'] / 600.) / (int_flpho(res[0]['nm']) *
-                                            int_dw(res[0]['nm']))
+    earea = (res[0]['ph_10m_nm'] / 600.) / (int_rflpho(ll) * int_dw(ll))
     # Efficiency assuming given reflectance (refl) and area in cm^2
     eff = earea / (area * refl)
     # interpolation function for reference flux
-    int_flux = interp1d(wav, flux, bounds_error=False, fill_value=np.nan)
+    int_rflux = interp1d(rwav, rflux, bounds_error=False, fill_value=np.nan)
     # Divide reference flux by observed photons to get correction
-    correction0 = int_flux(res[0]['nm']) / res[0]['ph_10m_nm']
+    correction0 = int_rflux(ll) / res[0]['ph_10m_nm']
     # Filter for resolution
-    flxf = filters.gaussian_filter(flux, 19.)
+    rflxf = filters.gaussian_filter(rflux, 19.)
     # interpolation function for filtered flux
-    int_flxf = interp1d(wav, flxf, bounds_error=False, fill_value=np.nan)
+    int_rflxf = interp1d(rwav, rflxf, bounds_error=False, fill_value=np.nan)
     # Divide reference spectrum by observed to get correction
-    correction = int_flxf(res[0]['nm']) / res[0]['ph_10m_nm']
+    correction = int_rflxf(ll) / res[0]['ph_10m_nm']
     # Use unfiltered for H-beta region
-    roi = (res[0]['nm'] > 470.) & (res[0]['nm'] < 600.)
+    roi = (ll > 470.) & (ll < 600.)
     correction[roi] = correction0[roi]
     # Store correction and max calibrated wavelength
     res[0]['std-correction'] = correction
-    res[0]['std-maxnm'] = np.max(wav)
+    res[0]['std-maxnm'] = np.max(rwav)
     res[0]['reflectance'] = refl
     res[0]['area'] = area
     res[0]['ea'] = earea
@@ -1380,11 +1377,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     res[0]['quality'] = quality
     res[0]['drp_version'] = drp_ver
     # Calculate wavelength offsets
-    coef = chebfit(np.arange(len(ll)), ll, 4)
-    xs = np.arange(len(ll)+1)
-    newll = chebval(xs, coef)
-    # Store offsets
-    res[0]['dlam'] = np.diff(newll)
+    res[0]['dlam'] = int_dw(ll)
     # Save the final spectrum
     np.save("sp_" + outname, res)
     print("Wrote sp_"+outname+".npy")
@@ -1686,6 +1679,11 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Re-sample spectra onto fiducual spectrum
         ll = Wavelength.fiducial_spectrum()
 
+        # delta wave of observation in nm
+        dw = abs(np.diff(ll))
+        # interpolation function for dw
+        int_dw = interp1d(ll[1:], dw, bounds_error=False, fill_value=np.nan)
+
         # Re-sample sky spectrum
         sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                          bounds_error=False)
@@ -1760,11 +1758,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         res[0]['quality'] = quality
         res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
-        coef = chebfit(np.arange(len(ll)), ll, 4)
-        xs = np.arange(len(ll)+1)
-        newll = chebval(xs, coef)
-        # Store offsets
-        res[0]['dlam'] = np.diff(newll)
+        res[0]['dlam'] = int_dw(ll)
         # Save the final spectrum
         np.save("sp_" + outname, res)
         print("Wrote sp_"+outname+".npy")
@@ -2086,6 +2080,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         # Re-sample spectra onto fiducial spectrum
         ll = Wavelength.fiducial_spectrum()
 
+        # delta wave of observation in nm
+        dw = abs(np.diff(ll))
+        # interpolation function for dw
+        int_dw = interp1d(ll[1:], dw, bounds_error=False, fill_value=np.nan)
+
         # Re-sample sky spectra (A/B)
         sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                          bounds_error=False)
@@ -2187,11 +2186,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['quality'] = quality
         res[0]['drp_version'] = drp_ver
         # Calculate wavelength offsets
-        coef = chebfit(np.arange(len(ll)), ll, 4)
-        xs = np.arange(len(ll)+1)
-        newll = chebval(xs, coef)
-        # Store offsets
-        res[0]['dlam'] = np.diff(newll)
+        res[0]['dlam'] = int_dw(ll)
         # Save the final spectrum
         np.save("sp_" + outname, res)
         print("Wrote sp_"+outname+".npy")
