@@ -15,7 +15,6 @@ drp_ver = Version.ifu_drp_version()
 
 
 def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
-                      lamstart=1050.0, lamratio=239./240., lamlen=265,
                       extract_width=3, skywidth=9, outfile='dX', plot=False):
     """Measures flexure in X direction, returns pixel offset
 
@@ -25,11 +24,6 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
         hdulist (astropy.io.fits obj): Pyfits object for the spectrum to measure
         drow (float): offset in rows for flexure (y-axis)
         skylines (float, float): The night skylines to centroid on in nm
-
-        - See Wavelength.fiducial spectrum for following:
-        lamstart (float): Wavelength to start the grid on, default 1000 nm
-        lamratio (float): Resolution of sed machine
-        lamlen (int): Length of spectrum
 
         extract_width(int): Number of pixels to extract spectrum around
 
@@ -46,10 +40,7 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
     # select 70 representative spaxels
     spec_ixs = np.arange(500, 1200, 10)
     # fiducial wavelength grid
-    lamgrid = Wavelength.fiducial_spectrum(lamstart=lamstart,
-                                           lamratio=lamratio, npx=lamlen)
-    # initialize grid of spaxel spectra
-    specgrid = np.zeros((len(lamgrid), len(spec_ixs)))
+    lamgrid = None
 
     # loop over selected spaxels
     for i, ix in enumerate(spec_ixs):
@@ -90,6 +81,11 @@ def measure_flexure_x(cube, hdulist, drow=0., skylines=(557.0, 589.0),
             ll = f.get_lambda_nm()
         except:
             continue
+
+        if lamgrid is None:
+            lamgrid = ll
+            # initialize grid of spaxel spectra
+            specgrid = np.zeros((len(lamgrid), len(spec_ixs)))
 
         # resample spectrum on fiducial wavelength grid
         specfun = interp1d(ll, spec, bounds_error=False)
@@ -316,9 +312,6 @@ if __name__ == '__main__':
                                  plot=args.plot)
     dx, xwid = measure_flexure_x(fine, HDU, drow=float(dy),
                                  skylines=args.skylines,
-                                 lamstart=args.lamstart,
-                                 lamratio=args.lamratio,
-                                 lamlen=args.lamlen,
                                  extract_width=args.extract_width,
                                  skywidth=args.skywidth,
                                  outfile=args.outfile,

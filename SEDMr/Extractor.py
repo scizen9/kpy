@@ -662,6 +662,13 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         if sky and all_spectra[ix].is_obj:
             continue
 
+        # Options for the_spec:
+        # spec   - simple sum in extraction window
+        # specf  - sum accounting for fractional pixels
+        # specw  - weighted simple sum
+        # specwf - weighted sum accounting for fractional pixels
+        # using specf because weighted sums artificially boost signal
+        # due to profile normalization
         l, s = spectrum.get_counts(the_spec='specf')
         pix = np.arange(*spectrum.xrange)
 
@@ -1273,7 +1280,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # / End Plot
 
     # Re-sample spectra onto fiducial spectrum
-    ll = Wavelength.fiducial_spectrum()
+    ll = resa[0]['nm']
 
     # Re-sample mean sky spectrum
     sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'], bounds_error=False)
@@ -1299,9 +1306,6 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Insert fiducial wavelengths
     res[0]['nm'] = np.copy(ll)
 
-    # Re-sample mean flux spectrum
-    f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
-
     # Calculate extinction correction
     airmass = meta['airmass']
     extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
@@ -1309,7 +1313,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     # Calculate output corrected spectrum
     # Account for sky, airmass and aperture
-    res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(sixa)
+    res[0]['ph_10m_nm'] = (resa[0]['ph_10m_nm']-sky) * extcorr * len(sixa)
 
     # Process standard star objects
     print("STANDARD")
@@ -1677,7 +1681,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # / End Plot
 
         # Re-sample spectra onto fiducual spectrum
-        ll = Wavelength.fiducial_spectrum()
+        ll = resa[0]['nm']
 
         # delta wave of observation in nm
         dw = abs(np.diff(ll))
@@ -1714,9 +1718,6 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # Insert fiducial wavelengths
         res[0]['nm'] = np.copy(ll)
 
-        # Re-sample mean flux spectrum
-        f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
-
         # Calculate extinction correction
         airmass = meta['airmass']
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
@@ -1727,12 +1728,12 @@ def handle_single(imfile, fine, outname=None, offset=None,
         if stats['nosky']:
             print("Sky subtraction off")
             # Account for airmass and aperture
-            res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
+            res[0]['ph_10m_nm'] = resa[0]['ph_10m_nm'] * extcorr * len(nsxa)
         # Do subtract sky if nosky is false
         else:
             print("Sky subtraction on")
             # Account for sky, airmass and aperture
-            res[0]['ph_10m_nm'] = (f1(ll)-sky_a(ll)) * extcorr * len(nsxa)
+            res[0]['ph_10m_nm'] = (resa[0]['ph_10m_nm']-sky) * extcorr*len(nsxa)
 
         # Store flexure data
         res[0]['dXnm'] = flexure_x_corr_nm
@@ -2078,7 +2079,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         # / End Plot
 
         # Re-sample spectra onto fiducial spectrum
-        ll = Wavelength.fiducial_spectrum()
+        ll = resa[0]['nm']
 
         # delta wave of observation in nm
         dw = abs(np.diff(ll))
@@ -2112,13 +2113,15 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         if stats['nosky']:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                varspec = np.nansum([var_a(ll), var_b(ll)], axis=0)
+                varspec = np.nansum([var_a(ll)*len(nsxA),
+                                     var_b(ll)*len(nsxB)], axis=0)
         # Do include sky variance if sky subtraction is on
         else:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                varspec = np.nansum([var_a(ll), var_b(ll),
-                                     vky_a(ll), vky_b(ll)], axis=0)
+                varspec = np.nansum([var_a(ll)*len(nsxA), var_b(ll)*len(nsxB),
+                                     vky_a(ll)*len(nsxA), vky_b(ll)*len(nsxB)],
+                                    axis=0)
 
         # Initialize results data structure
         res = [{"doc": resa[0]["doc"],
@@ -2170,8 +2173,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['Extinction Correction'] = 'Applied using Hayes & Latham'
         res[0]['extinction_corr_A'] = extcorra
         res[0]['extinction_corr_B'] = extcorrb
-        res[0]['skyph'] = sky * ((len(nsxA) + len(nsxB))/2.)
-        res[0]['var'] = varspec * ((len(nsxA) + len(nsxB))/2.)**2
+        res[0]['skyph'] = sky * (len(nsxA) + len(nsxB))
+        res[0]['var'] = varspec
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
         res[0]['positionB'] = posa

@@ -431,7 +431,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
     skya = interp_spectra(ex, kixa, sky=True)
 
     # Define our standard wavelength grid
-    ll = Wavelength.fiducial_spectrum()
+    ll = None
     # Resample sky onto standard wavelength grid
     sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                      bounds_error=False)
@@ -476,16 +476,21 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
             # get the summed spectrum over the selected spaxels
             resa = interp_spectra(ex, sixa)
 
+            # get common wavelength scale
+            if ll is None:
+                ll = resa[0]['nm']
             # Copy and resample object spectrum onto standard wavelength grid
             res = {
                 "doc": resa[0]["doc"],
                 "ph_10m_nm": np.copy(resa[0]["ph_10m_nm"]),
                 "spectra": np.copy(resa[0]["spectra"]),
                 "coefficients": np.copy(resa[0]["coefficients"]),
-                "nm": np.copy(resa[0]["ph_10m_nm"]), 'nm': np.copy(ll)
+                "nm": np.copy(ll)
                 }
+
             fl = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'],
                           bounds_error=False)
+
             # Calculate output corrected spectrum
             # Account for sky and aperture
             res['ph_10m_nm'] = (fl(ll)-sky_a(ll)) * len(sixa)
