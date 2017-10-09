@@ -688,7 +688,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         l = c_to_nm(cs, pix, offset=dnm)
 
         # skip short spectra (on or near edge of IFU)
-        if l.max() - l.min() < 300:
+        if l.max() - l.min() < 700:
             continue
 
         # Check if our wavelength grid is defined,
@@ -739,7 +739,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             l = c_to_nm(cs, pix, offset=dnm)
 
             # skip short spectra (on or near edge of IFU)
-            if l.max() - l.min() < 300:
+            if l.max() - l.min() < 700:
                 continue
 
             # Check if our wavelength grid is defined,
