@@ -687,21 +687,29 @@ def ObsLoop(rawlist=None, redd=None):
                 # Check to see if we are still before an hour after sunset
                 now = ephem.now()
                 if now < sunset + ephem.hour:
-                    print("UT  = %02d:%02d < sunset (%02d:%02d) + 1hr, "
-                          "so keep waiting" % (now.tuple()[3],
-                                               now.tuple()[4],
+                    print("UT  = %02d/%02d %02d:%02d < sunset (%02d/%02d %02d:%02d) + 1hr, "
+                          "so keep waiting" % (now.tuple()[1], now.tuple()[2],
+                                               now.tuple()[3], now.tuple()[4],
+                                               sunset.tuple()[1],
+                                               sunset.tuple()[2],
                                                sunset.tuple()[3],
                                                sunset.tuple()[4]))
                 else:
-                    print("UT = %02d:%02d >= sunset (%02d:%02d) + 1hr, "
-                          "time to get a cal set" % (now.tuple()[3],
-                                                  now.tuple()[4],
-                                                  sunset.tuple()[3],
-                                                  sunset.tuple()[4]))
+                    print("UT = %02d/%02d %02d:%02d >= sunset (%02d/%02d %02d:%02d) + 1hr, "
+                          "time to get a cal set" % (now.tuple()[1],
+                                                     now.tuple()[2],
+                                                     now.tuple()[3],
+                                                     now.tuple()[4],
+                                                     sunset.tuple()[1],
+                                                     sunset.tuple()[2],
+                                                     sunset.tuple()[3],
+                                                     sunset.tuple()[4]))
                     break
             else:
                 # Get new listing
                 retcode = os.system("~/spy what ifu*.fits > what.list")
+                if retcode > 0:
+                    print("what oops!")
 
         # Process calibrations if we are using them
         if cal_proc_ready(outdir, mintest=True):
@@ -782,18 +790,22 @@ def ObsLoop(rawlist=None, redd=None):
                 now = ephem.now()
                 if now >= sunrise:
                     # No new observations and sun is probably up!
-                    print("No new images for %d minutes and UT = %02d:%02d > "
-                          "%02d:%02d so sun is up!" %
-                          (nnc, now.tuple()[3], now.tuple()[4],
+                    print("No new images for %d minutes and UT = %02d/%02d %02d:%02d > "
+                          "%02d/%02d %02d:%02d so sun is up!" %
+                          (nnc, now.tuple()[1], now.tuple()[2],
+                           now.tuple()[3], now.tuple()[4],
+                           sunrise.tuple()[1],sunrise.tuple()[2],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
                     print("Time to wait until we have a new raw directory")
                     doit = False
                     # Normal termination
                     ret = True
                 else:
-                    print("No new image for %d minutes but UT = %02d:%02d <= "
-                          "%02d:%02d, so sun is still down, keep waiting" %
-                          (nnc, now.tuple()[3], now.tuple()[4],
+                    print("No new image for %d minutes but UT = %02d/%02d %02d:%02d <= "
+                          "%02d/%02d %02d:%02d, so sun is still down, keep waiting" %
+                          (nnc, now.tuple()[1], now.tuple()[2],
+                           now.tuple()[3], now.tuple()[4],
+                           sunrise.tuple()[1],sunrise.tuple()[2],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
         # do automatic processing
         auto_status = proc_auto()

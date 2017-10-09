@@ -273,10 +273,10 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
         # Calculate ratio in select region of spectrum
         lroi = (lam > 4500) & (lam < 6500)
-        lmed = np.nanmedian(spec[lroi])
+        lmed = np.nanmean(spec[lroi])
 
         sroi = (slam > 4500) & (slam < 6500)
-        smed = np.nanmedian(sflx[sroi])
+        smed = np.nanmean(sflx[sroi])
 
         rat = (lmed / smed)
 

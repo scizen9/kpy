@@ -41,7 +41,6 @@ from numpy.polynomial.chebyshev import chebfit
 from scipy.interpolate import interp1d
 
 import NPK.Standards as Stds
-import Wavelength
 
 
 def handle_corr(filename, outname='corrected.npy'):
@@ -127,7 +126,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
     if outname is None:
         outname = 'atm-corr.npy'
 
-    ll = Wavelength.fiducial_spectrum()
+    ll = None
     corrs = []
     corr_vals = []
     legend = ["corr", ]
@@ -155,7 +154,14 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
         if "std-correction" not in data.keys():
             print("No std-correction vector in %s" % ifile)
             continue
-        correction = data['std-correction']
+
+        if ll is None:
+            ll = data['nm']
+            correction = data['std-correction']
+        else:
+            corf = interp1d(data['nm'], data['std-correction'],
+                            bounds_error=False, fill_value=np.nan)
+            correction = corf(ll)
 
         # What was the maximum wavelength?
         if "std-maxnm" in data.keys():
