@@ -401,7 +401,7 @@ def extraction_to_cube(exts, outname="G.npy"):
         ex.X_as = ex.Xhex_as
         ex.Y_as = ex.Yhex_as
         # Use central spaxels for fiducial wavelengths
-        if abs(ex.X_as) <= 2.0 and abs(ex.Y_as) <= 2.0:
+        if abs(ex.X_as) <= 5.0 and abs(ex.Y_as) <= 5.0:
             # lamcoeff has precedence
             if ex.lamcoeff is not None:
                 coeff = ex.lamcoeff

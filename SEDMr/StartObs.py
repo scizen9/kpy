@@ -376,10 +376,11 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
-            copied.append(fn)
-            # Record copies
-            ncp += nc
-            nstd += ns
+            if nc >= 1:
+                copied.append(fn)
+                # Record copies
+                ncp += nc
+                nstd += ns
     # We copied files
     print("Copied %d files" % ncp)
     # Do bias subtraction, CR rejection
