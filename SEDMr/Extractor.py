@@ -1280,7 +1280,10 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # / End Plot
 
     # Re-sample spectra onto fiducial spectrum
-    ll = resa[0]['nm']
+    if 'fid_coeffs' in fmeta:
+        ll = chebval(np.arange(265), fmeta['fid_coeffs'])
+    else:
+        ll = resa[0]['nm']
 
     # Re-sample mean sky spectrum
     sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'], bounds_error=False)
@@ -1311,9 +1314,12 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
     print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
 
+    # Resample input photon spectrum
+    f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
+
     # Calculate output corrected spectrum
     # Account for sky, airmass and aperture
-    res[0]['ph_10m_nm'] = (resa[0]['ph_10m_nm']-sky) * extcorr * len(sixa)
+    res[0]['ph_10m_nm'] = (f1(ll)-sky) * extcorr * len(sixa)
 
     # Process standard star objects
     print("STANDARD")
@@ -1681,7 +1687,10 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # / End Plot
 
         # Re-sample spectra onto fiducual spectrum
-        ll = resa[0]['nm']
+        if 'fid_coeffs' in fmeta:
+            ll = chebval(np.arange(265), fmeta['fid_coeffs'])
+        else:
+            ll = resa[0]['nm']
 
         # delta wave of observation in nm
         dw = abs(np.diff(ll))
@@ -1723,17 +1732,20 @@ def handle_single(imfile, fine, outname=None, offset=None,
         extcorr = 10**(Atm.ext(ll*10) * airmass/2.5)
         print("Median airmass corr: %.4f" % np.nanmedian(extcorr))
 
+        # Resample input photon spectrum
+        f1 = interp1d(resa[0]['nm'], resa[0]['ph_10m_nm'], bounds_error=False)
+
         # Calculate output corrected spectrum
         # Don't subtract sky if nosky is true
         if stats['nosky']:
             print("Sky subtraction off")
             # Account for airmass and aperture
-            res[0]['ph_10m_nm'] = resa[0]['ph_10m_nm'] * extcorr * len(nsxa)
+            res[0]['ph_10m_nm'] = f1(ll) * extcorr * len(nsxa)
         # Do subtract sky if nosky is false
         else:
             print("Sky subtraction on")
             # Account for sky, airmass and aperture
-            res[0]['ph_10m_nm'] = (resa[0]['ph_10m_nm']-sky) * extcorr*len(nsxa)
+            res[0]['ph_10m_nm'] = (f1(ll) - sky) * extcorr * len(nsxa)
 
         # Store flexure data
         res[0]['dXnm'] = flexure_x_corr_nm
@@ -2079,7 +2091,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         # / End Plot
 
         # Re-sample spectra onto fiducial spectrum
-        ll = resa[0]['nm']
+        if 'fid_coeffs' in fmeta:
+            ll = chebval(np.arange(265), fmeta['fid_coeffs'])
+        else:
+            ll = resa[0]['nm']
 
         # delta wave of observation in nm
         dw = abs(np.diff(ll))
