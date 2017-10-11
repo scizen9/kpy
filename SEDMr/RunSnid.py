@@ -139,7 +139,8 @@ def run_snid(spec_file=None, overwrite=False):
     Runs snid in batch mode on the input file.  If a given file was already
     classified, it skips it, unless overwrite is requested.
     """
-    
+
+    ran = False
     if spec_file is not None:
         fl = spec_file
         # retrieve the quality and classification of the spectra.
@@ -166,6 +167,7 @@ def run_snid(spec_file=None, overwrite=False):
             print cm
             try:
                 subprocess.call(cm, shell=True)
+                ran = True
                 snidoutput = fl.replace(".txt", "_snid.output")
                 snid_type = parse_and_fill(fl, snidoutput)
                 psoutput = fl.replace(".txt", "_comp0001_snidflux.ps")
@@ -180,9 +182,30 @@ def run_snid(spec_file=None, overwrite=False):
                 print "low quality spectrum"
             if len(clas) > 0:
                 print "already classified"
+    return ran
     # END run_snid
-            
-    
+
+
+def record_snid(spec_file=None):
+    """
+    Records snid results in specfile. If a given file was already
+    classified, it skips it, unless overwrite is requested.
+    """
+
+    if spec_file is not None:
+        fl = spec_file
+        try:
+            snidoutput = fl.replace(".txt", "_snid.output")
+            snid_type = parse_and_fill(fl, snidoutput)
+            psoutput = fl.replace(".txt", "_comp0001_snidflux.ps")
+            if os.path.exists(psoutput):
+                pngfile = fl.replace(".txt", "_" + snid_type + ".png")
+                cm = "convert -flatten -rotate 90 " + psoutput + " " + pngfile
+                subprocess.call(cm, shell=True)
+        except:
+            print "Error recording snid"
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
         """
@@ -196,11 +219,17 @@ if __name__ == '__main__':
                         default=None)
     parser.add_argument('--overwrite', action="store_true", default=False,
                         help='Overwrite existing classification')
+    parser.add_argument('--update', action="store_true", default=False,
+                        help='Update existing classification')
 
     args = parser.parse_args()
-    
-    spec_file = args.specfile
 
-    # Run snid on extracted spectra
-    print "Running snid on %s" % args.specfile
-    run_snid(spec_file=args.specfile, overwrite=args.overwrite)
+    # Run snid on extracted spectra and record results in specfile
+    if args.update:
+        print "Updating snid results in %s" % args.specfile
+        record_snid(spec_file=args.specfile)
+    else:
+        print "Running snid on and recording results in %s" % args.specfile
+        good = run_snid(spec_file=args.specfile, overwrite=args.overwrite)
+        if good:
+            record_snid(spec_file=args.specfile)

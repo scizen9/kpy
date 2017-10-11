@@ -56,7 +56,10 @@ def classify(spec_dir='./', overwrite=False):
                 continue
             
         # If we are here, we run the classification with snid
-        RunSnid.run_snid(spec_file=fl, overwrite=overwrite)
+        good = RunSnid.run_snid(spec_file=fl, overwrite=overwrite)
+        # If we actually ran, record the results
+        if good:
+            RunSnid.record_snid(spec_file=fl)
     # END loop over each file matching *_SEDM.txt
             
     
