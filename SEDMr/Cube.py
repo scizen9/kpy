@@ -47,7 +47,7 @@ import numpy as np
 import astropy.io.fits as pf
 from scipy.spatial import KDTree 
 
-from numpy.polynomial.chebyshev import chebval
+from numpy.polynomial.chebyshev import chebval, chebfit
 from scipy.interpolate import interp1d
 import SEDMr.Wavelength as Wavelength
 
@@ -387,6 +387,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     rot = np.array([[np.cos(t), -np.sin(t)],
                     [np.sin(t),  np.cos(t)]])
 
+    # Make a fiducial spectrum from cube
+    flam = []
     # Loop over extractions and project onto X,Y
     for ix, ex in enumerate(exts):
         # Project into X,Y frame
@@ -398,6 +400,26 @@ def extraction_to_cube(exts, outname="G.npy"):
         ex.Yhex_as = p[1] * 0.355
         ex.X_as = ex.Xhex_as
         ex.Y_as = ex.Yhex_as
+        # Use central spaxels for fiducial wavelengths
+        if abs(ex.X_as) <= 5.0 and abs(ex.Y_as) <= 5.0:
+            # lamcoeff has precedence
+            if ex.lamcoeff is not None:
+                coeff = ex.lamcoeff
+                # get pixel and wavelength vectors
+                ixs = np.arange(*ex.xrange)
+                if len(ixs) == 265:
+                    flam.append(chebval(ixs, coeff))
+                else:
+                    print("Short spectrum at X,Y %.2f, %.2f with %d pix" %
+                          (ex.X_as, ex.Y_as, len(ixs)))
+    # Mean of wavelengths
+    flam = np.nanmean(flam, axis=0)
+    # Fit wavelengths to get coeffs
+    ixs = np.arange(len(flam))
+    cs = chebfit(ixs, flam, 4)
+
+    # Record fiducial coeffs
+    meta_data['fid_coeffs'] = cs
 
     # Record DRP version
     meta_data['drp_version'] = drp_ver

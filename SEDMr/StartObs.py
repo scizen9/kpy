@@ -223,7 +223,7 @@ def proc_bias_crrs(ncp=1, oldcals=False):
             if ncp < 4:
                 retcode3 = os.system("make bias")
             else:
-                cmd = "make -j%d bias" % min([ncp, 16])
+                cmd = "make -j%d bias" % min([ncp, 8])
                 retcode3 = os.system(cmd)
             if retcode3 == 0:
                 # Make CR rejection
@@ -376,10 +376,11 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
-            copied.append(fn)
-            # Record copies
-            ncp += nc
-            nstd += ns
+            if nc >= 1:
+                copied.append(fn)
+                # Record copies
+                ncp += nc
+                nstd += ns
     # We copied files
     print("Copied %d files" % ncp)
     # Do bias subtraction, CR rejection
