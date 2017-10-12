@@ -82,8 +82,9 @@ def parse_and_fill(spec, snidoutput):
                 pars["bestMatchSubtype"] = '-'
             pars["bestMatchRedshift"] = float(lines[best_match_line].split()[5])
 
-    print ("%(bestMatchType)s, Rlap=%(rlap).2f: %(agem).2f += %(agemerr)s day, "
-           "%(zmed).4f +- %(zmederr).4f" % pars)
+    print ("%(bestMatchType)s: Rlap=%(rlap).2f, "
+           "Age=%(agem).2f+-%(agemerr)s day, "
+           "z=%(zmed).4f+-%(zmederr).4f" % pars)
 
     with open(spec, "r") as specIn:
         spec_lines = specIn.readlines()
