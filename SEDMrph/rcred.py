@@ -174,7 +174,7 @@ def create_masterbias(biasdir=None, channel='rc'):
     else:
         copy_ref_calib(biasdir, outs)
 
-def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
+def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
     '''
     Creates a masterflat from both dome flats and sky flats if the number of counts in the given filter
     is not saturated and not too low (between 3000 and 40000). 
@@ -186,6 +186,9 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
     if (biasdir == None or biasdir==""): biasdir = "."
         
     os.chdir(flatdir)
+    
+    if (plot and not os.path.isdir("reduced/flats")):
+        os.makedirs("reduced/flats")
     
     if (len(glob.glob("Flat_%s*norm.fits"%channel)) == 4):
         logger.info( "Master Flat exists!")
@@ -281,14 +284,23 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         lfiles = []
         for f in glob.glob('b_*_%s.fits'%b):
             d = fits.open(f)[0].data
-            if np.percentile(d, 90)>4000 and np.percentile(d, 90)<40000:
-                lfiles.append(f)
+            
+            if (plot):
+                plt.title("Flat filter %s"%b)
+                plt.imshow(d.T, vmin=4000, vmax=45000, cmap=plt.get_cmap("gnuplot"))
+                plt.savefig("reduced/flats/%s"%(f.replace(".fits", ".png")))
+                plt.close()
+            #Make sure that the optimum number of counts is not too low and not saturated.
+            if np.percentile(d, 90)>4000 and np.percentile(d, 90)<45000:
+                #Make sure that we do not have very bright stars in there.
+                if np.count_nonzero(d.flatten()>50000) < 10:
+                    lfiles.append(f)
 
         if len(lfiles) == 0:
             logger.error( "WARNING!!! Could not find suitable flats for band %s"%b)
             continue
-        if len(lfiles) < 3:
-            logger.error( "WARNING!!! Could find less than 3 flats for band %s. Skipping, as it is not reliable..."%b)
+        if len(lfiles) < 2:
+            logger.error( "WARNING!!! Could find less than 2 flats for band %s. Skipping, as it is not reliable..."%b)
             continue
         ffile ="lflat_"+b
         np.savetxt(ffile, np.array(lfiles), fmt="%s")
@@ -303,7 +315,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc'):
         #Combine flats
         iraf.imcombine(input = "@"+ffile, \
                         output = out, \
-                        combine = "median",\
+                        combine = "average",\
                         scale = "mode",
                         weight = "exposure")
         iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="Flat_stats")
