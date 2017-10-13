@@ -151,6 +151,7 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM users;')]:
             return (-1, "ERROR: no user with the id!")
+        keys.remove('id')
         if 'password' in keys:
             pardic['password'] = generate_password_hash(pardic['password'])
 
@@ -460,7 +461,7 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM program;')]:
             return (-1, "ERROR: no program with the id!")
-
+        keys.remove('id')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['time_allocated', 'name', 'PI', 'priority', 'inidate', 'enddate', 'color']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
@@ -596,7 +597,7 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM allocation;')]:
             return (-1, "ERROR: no allocation with the id!")
-
+        keys.remove('id')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['time_allocated', 'time_spent', 'inidate', 'enddate', 'color', 'active']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
@@ -1408,6 +1409,7 @@ class SedmDB:
             return (-1, "ERROR: parameter id must be of type 'int'!")
         if pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM request;')]:
             return (-1, "ERROR: request does not exist!")
+        keys.remove('id')
         if 'status' in keys:
             if pardic['status'] not in ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELED', 'EXPIRED']:
                 return (-1, "ERROR: %s is an invalid status value!" % (pardic['status'],))
@@ -1622,7 +1624,7 @@ class SedmDB:
             return (-1, "ERROR: id not provided!")
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM observation;')]:
             return (-1, "ERROR: observation does not exist!")
-
+        keys.remove('id')
         if 'filter' in keys:
             if pardic['filter'] not in ['u', 'g', 'r', 'i', 'ifu', 'ifu_a', 'ifu_b']:  # check the filter is valid
                 return (-1, "ERROR: invalid filter given!")
@@ -2312,7 +2314,7 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM phot_calib;')]:
             return (-1, "ERROR: no phot_calib entry with the id!")
-
+        keys.remove('id')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['bias', 'flat']:
                 return (-1, "ERROR: %s is an invalid key!" % (key,))
@@ -2458,7 +2460,7 @@ class SedmDB:
 
         elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM spec_calib;')]:
             return (-1, "ERROR: no spec_calib entry with the id!")
-
+        keys.remove('id')
         for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
             if key not in ['dome', 'bias', 'flat', 'cosmic_filter', 'drpver', 'Hg_master', 'Cd_master',
                            'Xe_master', 'avg_rms', 'min_rms', 'max_rms']:
@@ -2720,6 +2722,7 @@ class SedmDB:
             if 'spec_id' in keys:
                 if not pardic['spec_id'] == id_classifier[0][0]:
                     return (-1, "ERROR: spec_id provided does not match classification id!")
+            keys.remove('id')
         elif 'spec_id' in keys and 'classifier' in keys:
             id = self.get_from_classification(['id'], {'spec_id': pardic['spec_id'],
                                                        'classifier': pardic['classifier']})
