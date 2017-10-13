@@ -82,6 +82,7 @@ def load_user(user_id):
     user = User()
     user.id = users[0][1]
     user.name = users[0][1]
+    flask_login.login_user(user, remember=True)
     get_user_permissions()
     return user
 
@@ -485,7 +486,7 @@ def project_stats(program):
 
 def get_user_permissions():
     """returns ([groups], [programs], [allocations]) allowed for the current user"""
-    if flask_login.current_user.id == 2:  # user_id == 2 is admin
+    if flask_login.current_user.get_id() == 2:  # user_id == 2 is admin
         gr = db.execute_sql("SELECT id FROM groups;")
         groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
         pg = db.execute_sql("SELECT id FROM program;")
@@ -498,7 +499,7 @@ def get_user_permissions():
         return
     group_query = ("SELECT g.id FROM groups g, usergroups ug "
                    "WHERE ug.group_id = g.id "
-                   "AND ug.user_id = '%s';" % (flask_login.current_user.id))
+                   "AND ug.user_id = '%s';" % (flask_login.current_user.get_id()))
     gr = db.execute_sql(group_query)
     groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
     program_query = ("SELECT p.id FROM program p, groups g "
