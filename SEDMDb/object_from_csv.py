@@ -24,6 +24,15 @@ def objects_from_csv(filename):
             print(obj)
 
 
+def objects_from_csv_allow_dup(filename):
+    with open(filename, 'r') as csvfile:
+        reader = csv.reader(csvfile, )
+        next(reader, None)
+        for row in reader:  # For each row, create the dictionary and submit
+            db.execute_sql("INSERT INTO object (name, ra, dec, typedesig) VALUES ('%s', %s, %s, '%s')"
+                           % (row[0], ra_to_decimal(row[1]), dec_to_decimal(row[2]), 'f'))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--file', type=str)
