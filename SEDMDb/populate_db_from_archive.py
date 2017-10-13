@@ -10,15 +10,20 @@ import os, glob, shutil
 import numpy as np
 import argparse
 from SEDMrph import fitsutils
+from astropy.coordinates import SkyCoord
 from astropy.time import Time
+import astropy.units as u
 import datetime
 from astropy.io import fits
-import archive_pop_sedmdb
+import archive_mod_sedmdb  # this file requires being able to submit observations with pre-determined id values, which isn't allowed in the original
+
 
 #cur_dir = os.getcwd()
 #os.chdir('/home/sedm/kpy/SEDMDb')
-sdb = archive_pop_sedmdb.SedmDB(dbname='sedmdbtest', host='localhost')
+sdb = archive_mod_sedmdb.SedmDB(dbname='sedmdbtest', host='localhost')
 #os.chdir(cur_dir)
+
+program_dict = {}
 
 def ra_to_decimal(ra):
     hms = ra.split(':')
@@ -94,36 +99,75 @@ def create_user(f):
         sdb.add_group({'designator': ''})
         return res[0]
     
-def create_program(f):
+def create_allocation(f, allocation_desig):
     '''
-    Creates a program registry in the program table.
+    Creates an allocation registry in the program table.
     
     '''
-    program_id = fitsutils.get_par(f, "P60PRID").uppercase()
-    program_name = fitsutils.get_par(f, "P60PRNM")
+    #program_name = fitsutils.get_par(f, "P60PRNM")
     program_pi = fitsutils.get_par(f, "P60PRPI")
-    target_id = fitsutils.get_par(f, "TARGID")
+    #target_id = fitsutils.get_par(f, "TARGID")
     
-    pgrogid = sdb.get_from_program(["id"], {"descriptor":program_id})
-    
-    if (len(res)==0):
-        print ("Program with program id %s not found"%program_id)
+    if allocation_desig:
+        program_ident = allocation_desig.split('-')[1]
     else:
-        #TODO - create a new program with that ID
-        #progid
-        pass
+        return -1
     
+    # based on the content after ...- assign the allocation to the correct program
+    if program_ident[:2] == 'C0':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002171957334})
+    elif program_ident[:2] == 'T0':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002171926014})
+    elif program_ident[:2] == 'I0':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002165908206})
+    elif program_ident[:2] == 'J0':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002171903862})
+    elif program_ident[:2] == 'EN':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 3})
+    elif program_ident[:2] == 'CA':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 3})
+    elif program_ident[:2] == 'GU':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002163457445})
+    elif program_ident[:2] == 'D0':
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002163457445})
+    elif program_ident[:2] == "SE":
+        al = sdb.add_allocation({'designator': allocation_desig, 'program_id': 20171002163457445})
+    return al[0]
+
+def create_sci_request(files, inidate, enddate, scitype, object_id, allocation):
+    filt = fitsutils.get_par(files[0], 'FILTER')
+    if filt not in ['u','g','r','i']:
+        nex = '{0, %s, 0, 0, 0}' % len(files)
+    elif filt == 'u':
+        nex = '{0, %s, 0, 0, 0}' % len(files)
+    elif filt == 'g':
+        nex = '{0, 0, %s, 0, 0}' % len(files)
+    elif filt == 'r':
+        nex = '{0, 0, 0, %s, 0}' % len(files)
+    elif filt == 'i':
+        nex = '{0, 0, 0, 0, %s}' % len(files)
     
-    
+    exptime = fitsutils.get_par(files[0], "EXPTIME")
+    pardic = {'object_id':object_id,
+              'user_id':2,  #user_id 2 is the admin user
+              'allocation_id':allocation,
+              'exptime':'{0, %d}'%exptime,
+              'priority':.1,
+              'inidate': inidate, #('year-month-day') (start of observing window),
+              'enddate': enddate, #('year-month-day') (end of observing window),
+              'nexposures': nex}
+    req = sdb.add_request(pardic)
+    if req >= 0:
+        return req[0]
+    else:
+        print(req[1])
+
                             
-def create_cal_request(files, inidate, enddate, caltype):
+def create_cal_request(files, inidate, enddate, caltype, obj_id):
     '''
     Creates a default calibration request assigned to sedmcal, the calibration user.
     It also looks at each file and creates an atomic request associated to each observation.
-    '''
-    caltype_obj = {'bias': 3, 'twilight':4, 'dome':5, 'focus':6, 'test':7, 'test2':8, 'test3':9}
-    obj_id = caltype_obj[caltype]
-    
+    '''    
     #First check that there is no request for that night
     res = sdb.get_from_request(['object_id'],
     {'object_id': obj_id, 'user_id':32, 'allocation_id':1, 'inidate':inidate, 'enddate':enddate},
@@ -141,19 +185,15 @@ def create_cal_request(files, inidate, enddate, caltype):
                   'enddate': enddate, #('year-month-day') (end of observing window),
                   'nexposures':'{0, %s, 0, 0, 0}' % len(files)}
         req = sdb.add_request(pardic)
-        if req >= 0:
-            return req[0]
-        else:
-            print(req[1])
+        if req[0] == -1:
+            print(req[1], files)
+        return req[0]
         
-def create_obs(reqid, files, inidate, enddate, caltype):
+def create_obs(reqid, files, inidate, enddate, caltype, obj_id):
     '''
     For each file, creates the observation associated with the file.
     
     '''
-    caltype_obj = {'bias': 3, 'twilight':4, 'dome':5, 'focus':6, 'test':7, 'test2':8, 'test3':9}
-    obj_id = caltype_obj[caltype]
-
     for f in files:
                 
         jd_init = fitsutils.get_par(f, "JD")
@@ -201,11 +241,15 @@ def log_calibrations(lfiles, caltype="test"):
     inidate = Time(jd_init, format='jd').iso
     enddate = Time(jd_end, format='jd').iso
     
+    #Select the object_id
+    caltype_obj = {'bias': 3, 'twilight':4, 'dome':5, 'focus':6, 'test':7, 'test2':8, 'test3':9}
+    obj_id = caltype_obj[caltype]
+    
     #First make sure that we have a Calibration Request to which assign all the registers.
-    reqid = create_cal_request(lfiles, inidate, enddate, caltype)
+    reqid = create_cal_request(lfiles, inidate, enddate, caltype, obj_id)
     
     #Then associate all the files to that request id.
-    create_obs(reqid, lfiles, inidate, enddate, caltype)
+    create_obs(reqid, lfiles, inidate, enddate, caltype, obj_id)
 
     sdb.update_request({'id': reqid, 'STATUS': 'COMPLETED'})
     
@@ -225,26 +269,64 @@ def log_science(lfiles, scitype):
         inidate = Time(jd_init, format='jd').iso
         enddate = Time(jd_end, format='jd').iso
     
-        #First make sure that we have an Observation Request to which assign all the registers.
-        #For observations with the same object name we will consider that they are associated with the same request id.
-        reqid = create_cal_request(inidate, enddate, caltype)
-    
-    if scitype == "GUIDER":
-        #log guider
-        pass
-    elif scitype== "SCIENCE":
-        #log science file
-        pass
-    elif scitype== "ACQUISITON":
-        #log acquisition file
-        pass
-    #Call fill_part_dic_obs 
-    #to retrieve all the dicitonary fields needed to fill in the OBSERVATION table
-    
-    #Add the observation to the DB with the right user/group/request
+        #First make sure that its allocation exists
+        if fitsutils.has_par(f, "P60PRID"):
+            allocation = fitsutils.get_par(f, "P60PRID").upper()
+        else:
+            continue  #skip if there is no allocation
+        allocations = sdb.get_from_allocation(['designator', 'id'])
+        if allocation not in [al[0] for al in allocations]:
+            all_id = create_allocation(f, allocation)
+        else:
+            all_id = [al[1] for al in allocations if al[0] == allocation][0]
+        if all_id == -1:  # if there was an issue creat_allocation will return -1
+            print("Error finding or creating the allocation for file %s!" % (f,))
+            continue  # skip to next file if we can't get a valid allocation
+        
+
+        #Next make sure that its object exists
+        name = fitsutils.get_par(f, "OBJNAME").replace('"', '').lower()
+        RA = ra_to_decimal(fitsutils.get_par(f, "RA"))
+        DEC = dec_to_decimal(fitsutils.get_par(f, "DEC"))
+        exists = sdb.get_from_object(['id', 'ra', 'dec'],{'name': name})
+
+        # check if there was an object found with the same name and coordinates
+        if exists and SkyCoord(ra=exists[0][1]*u.deg, dec=exists[0][2]*u.deg, frame='icrs').separation(SkyCoord(ra=RA*u.deg, dec=DEC*u.deg, frame='icrs')) < .001*u.deg:
+            obj_id = exists[0][0]
+        else:
+            obj_id = sdb.add_object({'name': name, 'typedesig': 'f', 'ra': RA, 'dec': DEC})[0]
+        
+        if obj_id == -1:
+            print("Error adding the object for file %s!" % (f,))
+            continue  # skip to next file if we can't get a valid object
+        
+        # create individual requests for each file
+        req_id = create_sci_request([f], inidate, enddate, scitype, obj_id, all_id)
+        if req_id == -1:
+            continue
+        # create observations linked to the requests
+        create_obs(req_id, [f], inidate, enddate, scitype, obj_id)
     
     
 if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description=\
+        '''
+
+        Parses a directory with nights of photometric data in sub_directories.
+        Obtains the relevant values from the headers and populates the DB.
+        
+        %run populate_db_from_archive.py -d DIR 
+            
+        ''', formatter_class=argparse.RawTextHelpFormatter)
+
+
+    parser.add_argument('-d', '--dir', type=str, help='Directory containing the nightly science fits directories.', default=None)
+    
+    args = parser.parse_args()
+    directory = args.dir
+
+    """
     parser = argparse.ArgumentParser(description=\
         '''
 
@@ -260,33 +342,44 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    photdir = args.photdir
-    
-
-    myfiles = {
-        "ACQUISITION":[],
-        "BIAS":[],
-        "DOME":[],
-        "FOCUS":[],
-        "GUIDER":[],
-        "SCIENCE":[],
-        "TWILIGHT":[]}
+    photdir = args.photdir"""
         
-    mydir = os.path.abspath(photdir)
-    #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
-    for f in glob.glob(os.path.join(mydir, "rc*fits")):
-        try:
-            if (fitsutils.has_par(f, "IMGTYPE")):
-                imgtype = fitsutils.get_par(f, "IMGTYPE")
-                myfiles[imgtype].append(f)
-        except:
-            print("problems opening file %s" %f)
-         
-    log_calibrations(myfiles["BIAS"], caltype="bias")
-    #log_calibrations(myfiles["DOME"], caltype="dome")
-    #log_calibrations(myfiles["FOCUS"], caltype="focus")
-    #log_calibrations(myfiles["TWILIGHT"], caltype="twilight")
-    
-    #log_science(myfiles["SCIENCE"], "science")
-    #log_science(myfiles["GUIDER"], "guider")
-    #log_science(myfiles["ACQUISITION"], "acquisition")
+    for photdir in os.listdir(directory):
+        print(directory+photdir)
+        if os.path.isdir(directory+photdir):
+            myfiles = {
+                "ACQUISITION":[],
+                "BIAS":[],
+                "DOME":[],
+                "FOCUS":[],
+                "GUIDER":[],
+                "SCIENCE":[],
+                "TWILIGHT":[]}
+                
+            mydir = os.path.abspath(directory+photdir)
+            #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
+            for f in glob.glob(os.path.join(mydir, "rc*fits")):
+                try:
+                    if (fitsutils.has_par(f, "IMGTYPE")):
+                        imgtype = fitsutils.get_par(f, "IMGTYPE").upper()
+                        if imgtype == "ACQUISTION":
+                            myfiles["ACQUISITION"].append(f)
+                        myfiles[imgtype].append(f)
+                except:
+                    print("problems opening file %s" %f)
+
+            if myfiles["BIAS"]:
+                log_calibrations(myfiles["BIAS"], caltype="bias")
+            if myfiles["DOME"]:
+                log_calibrations(myfiles["DOME"], caltype="dome")
+            if myfiles["FOCUS"]:
+                log_calibrations(myfiles["FOCUS"], caltype="focus")
+            if myfiles["TWILIGHT"]:
+                log_calibrations(myfiles["TWILIGHT"], caltype="twilight")
+            
+            if myfiles["SCIENCE"]:
+                log_science(myfiles["SCIENCE"], "science")
+            if myfiles["GUIDER"]:
+                log_science(myfiles["GUIDER"], "guider")
+            if myfiles["ACQUISITION"]:
+                log_science(myfiles["ACQUISITION"], "acquisition")
