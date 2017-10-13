@@ -1617,7 +1617,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 print("Now making outputs...")
 
             # Use an annulus for sky spaxels for Science Objects
-            kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
+            kixa = identify_bgd_spectra(ex, adcpos, ellipse=ellipse, expfac=1.5)
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
@@ -1992,12 +1992,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                  lmin=lmin, lmax=lmax,
                  cmin=stats["cmin"], cmax=stats["cmax"], no_stamp=no_stamp)
 
-        kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
+        kixa = identify_bgd_spectra(ex, adc_a, ellipse=ellipse)
         for ix in kixa:
             ex[ix].is_sky = True
             if ex[ix].is_obj:
                 kixa.remove(ix)
-        kixb = identify_bgd_spectra(ex, posb, ellipse=ellipseb)
+        kixb = identify_bgd_spectra(ex, adc_b, ellipse=ellipseb)
         for ix in kixb:
             ex[ix].is_sky = True
             if ex[ix].is_obj:
