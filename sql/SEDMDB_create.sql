@@ -309,7 +309,7 @@ CREATE TABLE ref_stars (
     id BIGINT PRIMARY KEY ,
     phot_id bigint NOT NULL,
     ra decimal(12,8) NULL,
-    dec decimal(12,8 NULL,
+    dec decimal(12,8) NULL,
     survey text  NOT NULL,
     filter text  NOT NULL,
     mag decimal(7,4) NULL,

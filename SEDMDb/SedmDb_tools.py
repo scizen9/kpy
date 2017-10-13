@@ -1,12 +1,63 @@
 import SedmDb
 import numpy as np
 from astropy.io import fits
+import ephem
 
 
 class DbTools(object):
     def __init__(self, db_class):
         self.db = db_class
     # TODO: refactor and move functions into the class
+
+    def submit_asteroids_edb(self, file = '/home/kpy/ephem/asteroids.edb', delimiter=','):
+        f = open(file)
+        for line in f:
+            if line[0] != '#':
+                """
+                ob = ephem.readdb(line)
+                if isinstance(ob, ephem.EllipticalBody):
+                    obj_dict = {}
+                    self.db.add_object()
+                    if hasattr(ob, '_g'):
+                        m1 = ob._g
+                        m2 = ob._h
+                    if hasattr(ob, '_G'):
+                        m1 = ob._G
+                        m2 = ob._H
+                    pardic = {'object_id': int, 'inclination': ob._inc, 'longascnode_O': ob._Om, 'perihelion_o': ob.om,
+                       'a': ob._a, 'n': xxx, 'e': ob._e, 'M': ob._M, 'mjdepoch': ob._epoch, 'D': int, 'M1': m1,
+                       'M2': m2, 's': float}"""
+                par = line.split(',')
+                if par[-1][-1] == 'n':  # remove /n from the end of the line
+                    par[-1] = par[-1][:-1]
+                obj_dict = {'name': par[0], 'typedesig': par[1]}
+                obj_id = self.db.add_object(obj_dict)[0]
+                if obj_id == -1:
+                    print "object %s failed to be created" % (par[0],)
+                    continue
+                if par[1] == 'e':
+                    pardic = {'object_id': obj_id, 'inclination': par[2], 'longascnode_O': par[3], 'perihelion_o': par[4],
+                    'a': par[5], 'n': par[6], 'e': par[7], 'M': par[8], 'mjdepoch': par[9], 'D': par[10], 'M1': par[11],
+                    'M2': par[12]}
+                    if len(par) == 14:
+                        pardic['s'] = par[13]
+                    self.db.add_elliptical_heliocentric(pardic)
+                if par[1] == 'h':
+                    pardic = {'object_id': obj_id, 'T': par[2], 'e': par[6], 'inclination': par[3], 'longascnode_O': par[4],
+                       'perihelion_o': par[5], 'q': par[7], 'D': par[8], 'M1': par[9], 'M2': par[10]}
+                    if len(par) == 12:
+                        pardic['s'] =par[11]
+                    self.db.add_hyperbolic_heliocentric(pardic)
+                if par[1] == 'p':
+                    pardic = {'object_id': obj_id, 'T': par[2], 'inclination': par[3], 'longascnode_O': par[5],
+                       'perihelion_o': par[4], 'q': par[5], 'D': par[7], 'M1': par[8], 'M2': par[9]}
+                    if len(par) == 11:
+                        pardic['s'] =par[10]
+                    self.db.add_parabolic_heliocentric(pardic)
+                if par[1] == 'E':
+                    pardic = {'object_id': obj_id, 'T': par[2], 'e': par[5], 'inclination': par[3], 'ra': par[4],
+                       'pedigree': par[6], 'M': par[7], 'n': par[8], 'decay': par[9], 'reforbit': par[10], 'drag': par[11]}
+                    self.db.add_earth_satellite(pardic)
 
     def get_object_parameters(self, object_id):
         """
@@ -22,7 +73,7 @@ class DbTools(object):
 
             [('marshal_id', 'name', 'iauname', 'ra', 'dec', typedesig', 'epoch'), (orbit params arranged in ephem ordering)]
         """  # TODO: test if the orbit_params can be input directly into an ephem call
-        object = db.get_from_object(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
+        object = self.db.get_from_object(['marshal_id', 'name', 'iauname', 'ra', 'dec', 'typedesig', 'epoch'],
                                     {'id': object_id})
         if not object:
             return (-1, "ERROR: no object found matching the given object_id")
@@ -33,7 +84,7 @@ class DbTools(object):
             return [object[0], None]
 
         elif object[0][5] == 'e':
-            orbit_params = db.get_elliptical_orbit(['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e', 'M',
+            orbit_params = self.db.get_elliptical_orbit(['inclination', 'longascnode_0', 'perihelion_o', 'a', 'n', 'e', 'M',
                                                     'mjdepoch', 'D', 'M1', 'M2', 's'], {'object_id': object_id})
             if not orbit_params:
                 return [object[0], None]

@@ -686,6 +686,9 @@ class SedmDB:
         if 'marshal_id' in obj_keys:
             if pardic['marshal_id'] in [obj[0] for obj in self.execute_sql('SELECT marshal_id FROM object')]:
                 return (-1, "ERROR: object exists!")
+        if 'epoch' not in obj_keys:
+            obj_keys.append('epoch')
+            pardic['epoch'] = 'J2000'
 
         for key in ['name', 'typedesig']:  # check if 'name' and 'typedesig' are provided
             if key not in obj_keys:
@@ -732,7 +735,7 @@ class SedmDB:
                     lis = [x[1] for x in dup]
                     idx = lis.index(pardic['name'])
                     return(-1, "ERROR: The object '%s' is already in the database with id %s"
-                               % (pardic['name'], dup[idx][0])) 
+                               % (pardic['name'], dup[idx][0]))
                 print("there is already an object within 1 arcsec of given coordinates with "
                       "id: %s, name: %s" % (dup[0][0], dup[0][1]))
 
@@ -2884,7 +2887,7 @@ def _generate_select_sql(values, where_dict, allowed_params, compare_dict, table
     """
     for value in reversed(values):
         if value not in allowed_params.keys():
-            return (-1, "ERROR: %s is an invalid column name!" % (value,))
+            return "ERROR: %s is an invalid column name!" % (value,)
     where_keys = list(where_dict.keys())
     for param in reversed(where_keys):
         if param not in allowed_params:
