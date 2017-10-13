@@ -18,7 +18,8 @@ def classify(spec_dir='./', overwrite=False):
     directory.  If a given file was already classified, it skips it, unless
     overwrite is requested.
     """
-    
+
+    summary = []
     for fl in glob.glob(os.path.join(spec_dir, "*_SEDM.txt")):
         print fl
         # don't classify standard stars
@@ -59,9 +60,12 @@ def classify(spec_dir='./', overwrite=False):
         good = RunSnid.run_snid(spec_file=fl, overwrite=overwrite)
         # If we actually ran, record the results
         if good:
-            RunSnid.record_snid(spec_file=fl)
+            res = fl.split('/')[-1] + " " + RunSnid.record_snid(spec_file=fl)
+            summary.append(res)
     # END loop over each file matching *_SEDM.txt
-            
+    for res in summary:
+        print res
+
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=

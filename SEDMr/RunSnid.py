@@ -82,7 +82,7 @@ def parse_and_fill(spec, snidoutput):
                 pars["bestMatchSubtype"] = '-'
             pars["bestMatchRedshift"] = float(lines[best_match_line].split()[5])
 
-    print ("%(bestMatchType)s: Rlap=%(rlap).2f, "
+    print ("SNID RESULTS: Type=%(bestMatchType)s, Rlap=%(rlap).2f, "
            "Age=%(agem).2f+-%(agemerr)s day, "
            "z=%(zmed).4f+-%(zmederr).4f" % pars)
 
@@ -133,7 +133,7 @@ def parse_and_fill(spec, snidoutput):
     with open(spec, "w") as specOut:
         specOut.write("".join(spec_lines))
 
-    return pars["bestMatchType"]
+    return pars["bestMatchType"], pars
 
 
 def run_snid(spec_file=None, overwrite=False):
@@ -191,14 +191,19 @@ def record_snid(spec_file=None):
         fl = spec_file
         try:
             snidoutput = fl.replace(".txt", "_snid.output")
-            snid_type = parse_and_fill(fl, snidoutput)
+            snid_type, pars = parse_and_fill(fl, snidoutput)
             psoutput = fl.replace(".txt", "_comp0001_snidflux.ps")
             if os.path.exists(psoutput):
                 pngfile = fl.replace(".txt", "_" + snid_type + ".png")
                 cm = "convert -flatten -rotate 90 " + psoutput + " " + pngfile
                 subprocess.call(cm, shell=True)
+            res = ("SNID RESULTS: Type=%(bestMatchType)s, Rlap=%(rlap).2f, "
+                   "Age=%(agem).2f+-%(agemerr)s day, "
+                   "z=%(zmed).4f+-%(zmederr).4f" % pars)
         except:
             print "Error recording snid"
+            res = ""
+        return res
 
 
 if __name__ == '__main__':

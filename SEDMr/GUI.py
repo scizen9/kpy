@@ -34,11 +34,30 @@ class MouseCross(object):
     def __init__(self, ax, ellipse=None, nosky=False, **kwargs):
         self.ax = ax
         self.radius_as = ellipse[0]
+        self.theta = ellipse[4]
+        while self.theta < 0.:
+            self.theta += 360.
+        while self.theta > 360.:
+            self.theta -= 360.
+        self.pa = self.theta - 270.
+        while self.pa < 0.:
+            self.pa += 360.
+        while self.pa > 360.:
+            self.pa -= 360.
+        self.axrat = ellipse[1]/ellipse[0]
         self.nosky = nosky
         self.ellipse = ellipse
 
-        print("semimajor axis is %s arcsec" % self.radius_as)
-        print("x - expand ap, z - shrink ap, y - toggle sky/host sub")
+        if self.nosky:
+            print("Skysub is off")
+        else:
+            print("Skysub is on")
+        print("semimajor axis is %.1f arcsec" % self.radius_as)
+        print("PA is %.1f" % self.pa)
+        print("b/a is %.2f" % self.axrat)
+        print("y - toggle sky/host sub")
+        print("x - expand, z - shrink, , - rotate CCW, . - rotate CW, "
+              "[ - -b/a, ] - +b/a, ")
 
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
@@ -60,30 +79,67 @@ class MouseCross(object):
 
     def size_cross(self, event):
         self.line.set_visible(False)
+
+        # Make smaller
         if event.key == "z":
             self.radius_as -= 0.2
+            print("a = %.1f arcsec" % self.radius_as)
+        # Make larger
         elif event.key == "x":
             self.radius_as += 0.2
+            print("a = %.1f arcsec" % self.radius_as)
+
+        # Toggle sky subtraction
         elif event.key == "y":
             if self.nosky:
                 self.nosky = False
+                print("Skysub off")
             else:
                 self.nosky = True
+                print("Skysub on")
 
-        print("semimajor axis is %s arcsec" % self.radius_as)
+        # Rotate ellipse CW
+        elif event.key == ",":
+            self.theta += 10.0
+            if self.theta > 360:
+                self.theta -= 360.0
+            self.pa = self.theta - 270.
+            while self.pa < 0.:
+                self.pa += 360.
+            while self.pa > 360.:
+                self.pa -= 360.
+            print("PA = %.1f deg" % self.pa)
+        # Rotate ellipse CCW
+        elif event.key == ".":
+            self.theta -= 10.0
+            if self.theta < 0:
+                self.theta += 360.0
+            self.pa = self.theta - 270.
+            while self.pa < 0.:
+                self.pa += 360.
+            while self.pa > 360.:
+                self.pa -= 360.
+            print("PA = %.1f deg" % self.pa)
 
-        self.ellipse = (self.radius_as,
-                        self.radius_as * (self.ellipse[1]/self.ellipse[0]),
-                        event.xdata, event.ydata, self.ellipse[4])
+        # Make ellipse skinnier
+        elif event.key == "[":
+            self.axrat -= 0.1
+            if self.axrat < 0.1:
+                self.axrat = 0.1
+            print("b/a = %.2f" % self.axrat)
+        # Make ellipse fatter
+        elif event.key == "]":
+            self.axrat += 0.1
+            if self.axrat > 1.0:
+                self.axrat = 1.0
+            print("b/a = %.2f" % self.axrat)
+
+        self.ellipse = (self.radius_as, self.radius_as * self.axrat,
+                        event.xdata, event.ydata, self.theta)
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
                                   visible=True, color='red', linewidth=2.)
         self.line.set_visible(True)
-
-        if self.nosky:
-            print("Sky subtraction off")
-        else:
-            print("Sky subtraction on")
 
         pl.draw()
 

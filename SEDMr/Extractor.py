@@ -329,24 +329,29 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
-                         objname=None, airmass=1.0, nosky=False, message=None):
+                         objname=None, airmass=1.0, nosky=False, message=None,
+                         ellipse_in=None):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
     """
 
     # Set ellipse parameters
-    elfl = glob.glob("ell_STD-*.npy")
-    if len(elfl) > 0:
-        inell = np.load(elfl[0])
-        inell[1] = radius*(inell[1]/inell[0])
-        inell[0] = radius
-        inell[2] = 0.
-        inell[3] = 0.
-        print("Loaded ellipse parameters from %s" % elfl[0])
+    if ellipse_in is None:
+        elfl = glob.glob("ell_STD-*.npy")
+        if len(elfl) > 0:
+            inell = np.load(elfl[0])
+            inell[1] = radius*(inell[1]/inell[0])
+            inell[0] = radius
+            inell[2] = 0.
+            inell[3] = 0.
+            print("Loaded ellipse parameters from %s" % elfl[0])
+        else:
+            inell = (radius, radius, 0., 0., 20.5)
+            print("Using default ellipse parameters")
     else:
-        inell = (radius, radius, 0., 0., 20.5)
-        print("Using default ellipse parameters")
+        inell = ellipse_in
+        radius = inell[0]
     print("\nStarting with a %s arcsec semimajor axis" % radius)
 
     # Get spectral extractions
@@ -1214,7 +1219,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
-    kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
     # Mark sky spaxels
     for ix in kixa:
         ex[ix].is_sky = True
@@ -1271,7 +1276,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
-    pl.axes().set_aspect('equal', 'datalim')
+    pl.axes().set_aspect('equal')
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
     if not no_stamp:
@@ -1677,7 +1682,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
         pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
         tlab = "%d selected spaxels for %s" % (len(xsa), objname)
-        pl.axes().set_aspect('equal', 'datalim')
+        pl.axes().set_aspect('equal')
         if 'airmass' in meta:
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
@@ -1957,7 +1962,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  cmin=stats["cmin"], cmax=stats["cmax"],
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=stats["nosky"],
-                                 message=message)
+                                 message=message, ellipse_in=ellipse)
         for ix in sixb:
             ex[ix].is_obj = True
 
@@ -2086,7 +2091,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
-        pl.axes().set_aspect('equal', 'datalim')
+        pl.axes().set_aspect('equal')
         if not no_stamp:
             pl.title(tlab)
             plot_drp_ver()
