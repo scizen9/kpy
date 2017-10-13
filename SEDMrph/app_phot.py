@@ -199,7 +199,7 @@ def get_xy_coords(image, ra, dec):
         
     return coords
     
-def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="logical", fwhm=None, box=15, arcsecpix=0.394):
+def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="logical", fwhm=None, box=15, arcsecpix=0.394, app=2):
     '''
     coords: files: 
     wcsin: can be "world", "logic"
@@ -288,8 +288,8 @@ def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="
     gain = fitsutils.get_par(image, 'GAIN')
     
     #print "FWHM", fwhm_value
-    aperture_rad = math.ceil(float(fwhm_value)*2)      # Set aperture radius to two times the PSF radius
-    sky_rad= math.ceil(aperture_rad*4)
+    aperture_rad = math.ceil(float(fwhm_value)*app)      # Set aperture radius to two times the PSF radius
+    sky_rad= math.ceil(aperture_rad*app*2)
     
     #print aperture_rad, sky_rad
 

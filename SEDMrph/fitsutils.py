@@ -381,9 +381,13 @@ def get_par(myfits, par):
     try:
         hdu = pf.open(myfits, ignore_missing_end=True)
         header = hdu[0].header
-        return header[str.upper(par)]
+	if str.upper(par) in header.keys():
+	        return header[str.upper(par)]
+	else:
+		return None
     except IOError:
-        return None        
+        return None       
+	 
     
 def update_par(myfits, par, value):
     '''

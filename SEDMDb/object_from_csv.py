@@ -24,13 +24,13 @@ def objects_from_csv(filename):
             print(obj)
 
 
-def objects_from_csv_allow_dup(filename, lastid=250910):
+def objects_from_csv_allow_dup(filename, lastid=250920):
     with open(filename, 'r') as csvfile:
         reader = csv.reader(csvfile, )
         next(reader, None)
         for row in reader:  # For each row, create the dictionary and submit
-            db.execute_sql("INSERT INTO object (id, name, ra, dec, typedesig, magnitude) VALUES (%d, '%s', %s, %s, '%s', mag)"
-                           % (lastid, row[0], ra_to_decimal(row[1]), dec_to_decimal(row[2]), 'f', row[3]))
+            db.execute_sql("INSERT INTO object (id, name, ra, dec, typedesig, magnitude) VALUES (%d, '%s', %.5f, %.5f, '%s', %.3f)"
+                           % (lastid, row[0], ra_to_decimal(row[1]), dec_to_decimal(row[2]), 'f', float(row[3])))
             lastid = lastid + 1
 
 

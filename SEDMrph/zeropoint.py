@@ -462,6 +462,8 @@ def add_to_zp_cal(ref_stars, image, logname):
     col_band = coldic[band]
     exptime = fitsutils.get_par(image, "exptime")
     fwhm = fitsutils.get_par(image, "FWHM")
+    if fwhm is None:
+	fwhm = 0
     airmass = 1.3
     name = "object"
     if (fitsutils.has_par(image, "NAME")):
@@ -1164,7 +1166,12 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
 
     #If extraction worked, we can get the FWHM        
     fwhm = fitsutils.get_par(image, "fwhm")
-    fwhm_pix = fwhm / 0.394
+    if (not fwhm is None):
+	fwhm_pix = fwhm / 0.394
+    else:
+	fwhm = 0
+	fwhm_pix = 0
+	logger.error("No FWHM value has been computed for soruce %s."%image)
 
     #Run aperture photometry on the positions of the stars.
     app_phot.get_app_phot("/tmp/sdss_cat_det_%s.txt"%creationdate, image, wcsin='logic', plotdir=plotdir, box=15)
@@ -1296,7 +1303,7 @@ def main(reduced):
         plot_zp("zeropoint.log", plotdir)
     if (os.path.isfile("allstars_zp.log")):
         lsq_zeropoint("allstars_zp.log", plotdir)
-        interpolate_zp(reduced, "allstars_zp.log")
+        #interpolate_zp(reduced, "allstars_zp.log")
         
     clean_tmp_files()
      
