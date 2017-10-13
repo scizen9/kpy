@@ -70,14 +70,19 @@ def fill_par_dic_obs(fitsfile):
         if k in f[0].header:
             pardic_obs[k] = f[0].header[k]
     pardic_obs['mjd'] = f[0].header['JD'] - 2400000.5
-    pardic_obs['ra'] = ra_to_decimal(f[0].header['RA'])
-    pardic_obs['dec'] = dec_to_decimal(f[0].header['DEC'])
+    if fitsutils.has_par(fitsfile, 'ra'):
+        pardic_obs['ra'] = ra_to_decimal(f[0].header['RA'])
+        pardic_obs['dec'] = dec_to_decimal(f[0].header['DEC'])
+    else:
+        pardic_obs['ra'] = ra_to_decimal(f[0].header['TEL_RA'])
+        pardic_obs['dec'] = dec_to_decimal(f[0].header['TEL_DEC'])
     pardic_obs['camera'] = f[0].header['CAM_NAME']   
     
         
     #Rtrieve the old obs_id from the header
-    obs_id = f[0].header['obs_id']
-    pardic_obs['id'] = obs_id
+    if fitsutils.has_par(fitsfile, 'obs_id'):
+        obs_id = f[0].header['obs_id']
+        pardic_obs['id'] = obs_id  # if there is no obs_id, add_observation will add its own
 
     return pardic_obs
 
