@@ -78,10 +78,11 @@ class User(flask_login.UserMixin):
 def load_user(user_id):
     users = db.get_from_users(['id', 'username'], {'id': user_id})
     if not users:
-        return
+        return None
     user = User()
-    #user.id = users[0][1]
-    #user.name = users[0][1]
+    user.id = users[0][1]
+    user.name = users[0][1]
+    get_user_permissions()
     return user
 
 
@@ -118,12 +119,8 @@ def login():
             user.id = user_pass[0][2]
             user.name = username
             flask_login.login_user(user, remember=True)
-            group_query = ("SELECT groups.id FROM groups "
-                           "JOIN usergroups ON usergroups.group_id = groups.id "
-                           "WHERE usergroups.user_id = '%s'" % (flask_login.current_user.id))
-            gr = db.execute_sql(group_query)
-            groups = tuple([group[0] for group in gr])  # will be a tuple of the ids
-            flask_login.current_user.groups = groups
+            get_user_permissions()
+            flash("Logged in as %s" % (username,))
             return redirect(flask.url_for('index'))
         else:
             message = "Incorrect username or password!"
@@ -142,7 +139,7 @@ def user_info():
 
 
 @app.route('/request', methods=['GET', 'POST'])
-#@flask_login.login_required
+@flask_login.login_required
 def requests():
     """
     generate forms for request creation
@@ -483,6 +480,38 @@ def project_stats(program):
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data=req) +
             render_template('footer.html'))
+
+
+def get_user_permissions():
+    """returns ([groups], [programs], [allocations]) allowed for the current user"""
+    if flask_login.current_user.id == 2:  # user_id == 2 is admin
+        gr = db.execute_sql("SELECT id FROM groups;")
+        groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
+        pg = db.execute_sql("SELECT id FROM program;")
+        programs_tuple = tuple([int(program[0]) for program in pg])
+        al = db.execute_sql("SELECT id FROM allocation;")
+        allocation_tuple = tuple([int(alloc[0]) for alloc in al])
+        flask_login.current_user.groups = groups
+        flask_login.current_user.program = programs_tuple
+        flask_login.current_user.allocation = allocation_tuple
+        return
+    group_query = ("SELECT g.id FROM groups g, usergroups ug "
+                   "WHERE ug.group_id = g.id "
+                   "AND ug.user_id = '%s';" % (flask_login.current_user.id))
+    gr = db.execute_sql(group_query)
+    groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
+    program_query = ("SELECT p.id FROM program p, groups g "
+                     "WHERE p.group_id = g.id AND g.id IN %s;" % (groups,))
+    pg= db.execute_sql(program_query)
+    programs_tuple = tuple([int(program[0]) for program in pg])
+    allocation_query = ("SELECT a.id FROM allocation a, program p "
+                        "WHERE a.program_id = p.id and p.id IN %s;" % (programs_tuple,))
+    al = db.execute_sql(allocation_query)
+    allocation_tuple = tuple([int(alloc[0]) for alloc in al])
+    flask_login.current_user.groups = groups
+    flask_login.current_user.program = programs_tuple
+    flask_login.current_user.allocation = allocation_tuple
+    return
 
 
 @login_manager.unauthorized_handler

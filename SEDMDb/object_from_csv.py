@@ -1,6 +1,7 @@
 from __future__ import print_function
 import csv
 import SedmDb
+from SedmDb import _id_from_time
 from SedmDb_tools import dec_to_decimal, ra_to_decimal
 import argparse
 
@@ -24,7 +25,8 @@ def objects_from_csv(filename):
             print(obj)
 
 
-def objects_from_csv_allow_dup(filename, lastid=250920):
+def objects_from_csv_allow_dup(filename):
+    lastid = db.execute_sql("SELECT MAX(id) FROM object;")[0] + 1
     with open(filename, 'r') as csvfile:
         reader = csv.reader(csvfile, )
         next(reader, None)

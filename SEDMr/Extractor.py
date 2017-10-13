@@ -94,7 +94,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
                                                                 prlltc.degree))
 
     dx = -np.sin(prlltc.radian)
-    dy = np.cos(prlltc.radian)
+    dy = -np.cos(prlltc.radian)
 
     delta = 0.1
     bpos = np.array(pos) - np.array([dx, dy]) * blue_ad  # * delta
@@ -110,7 +110,7 @@ def atm_dispersion_positions(prlltc, pos, leff, airmass):
     dx = positions[0][0] - positions[-1][0]
     dy = positions[0][1] - positions[-1][1]
 
-    print("DX %2.1f, DY %2.1f, D %2.1f" % (dx, dy, np.sqrt(dx*dx + dy*dy)))
+    print("DX %2.1f, DY %2.1f, DR %2.1f" % (dx, dy, np.sqrt(dx*dx + dy*dy)))
     return positions
 
 
@@ -285,8 +285,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Gather spaxels
         all_kix = []
         for the_pos in positions:
-            all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                       -theta)))
+            all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                       the_pos[0], the_pos[1],
+                                                       a, b, -theta)))
 
         all_kix = list(itertools.chain(*all_kix))
         kix = list(set(all_kix))
@@ -311,10 +312,10 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 def find_positions_ellipse(xy, h, k, a, b, theta):
     """
     xy: Vector with pairs [[x0, y0], [x1, y1]] of coordinates.
-    a: semi-major axis of ellipse in X axis.
-    b: semi-minor axis of ellipse in Y axis.
     h: central point ellipse in X axis.
     k: central point ellipse in Y axis.
+    a: semi-major axis of ellipse in X axis.
+    b: semi-minor axis of ellipse in Y axis.
     theta: angle of rotation of ellipse in radians (clockwise).
     """
     positions = np.arange(len(xy))
@@ -389,7 +390,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     all_kix = []
     for the_pos in positions:
         all_kix.append(list(find_positions_ellipse(kt.KT.data,
-                                                   ellipse[2], ellipse[3],
+                                                   the_pos[0], the_pos[1],
                                                    ellipse[0], ellipse[1],
                                                    -ellipse[4]*(np.pi/180.))))
 
@@ -419,8 +420,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   a, b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     objs = kt.good_positions[kix]
@@ -487,18 +489,18 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc,
-                                                   a, b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   a, b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     objs = kt.good_positions[kix]
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc,
-                                                   sky_a, sky_b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   sky_a, sky_b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     skys = kt.good_positions[kix].tolist()
@@ -1269,6 +1271,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
     pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
+    pl.axes().set_aspect('equal', 'datalim')
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
     if not no_stamp:
@@ -1614,7 +1617,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 print("Now making outputs...")
 
             # Use an annulus for sky spaxels for Science Objects
-            kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse, expfac=1.5)
+            kixa = identify_bgd_spectra(ex, adcpos, ellipse=ellipse, expfac=1.5)
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
@@ -1674,6 +1677,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
         pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
         tlab = "%d selected spaxels for %s" % (len(xsa), objname)
+        pl.axes().set_aspect('equal', 'datalim')
         if 'airmass' in meta:
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
@@ -1682,8 +1686,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
             pl.title(tlab)
             plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
-        print("Wrote XYs_%s.pdf" % outname)
         pl.close()
+        print("Wrote XYs_%s.pdf" % outname)
         # / End Plot
 
         # Re-sample spectra onto fiducual spectrum
@@ -1988,12 +1992,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                  lmin=lmin, lmax=lmax,
                  cmin=stats["cmin"], cmax=stats["cmax"], no_stamp=no_stamp)
 
-        kixa = identify_bgd_spectra(ex, posa, ellipse=ellipse)
+        kixa = identify_bgd_spectra(ex, adc_a, ellipse=ellipse)
         for ix in kixa:
             ex[ix].is_sky = True
             if ex[ix].is_obj:
                 kixa.remove(ix)
-        kixb = identify_bgd_spectra(ex, posb, ellipse=ellipseb)
+        kixb = identify_bgd_spectra(ex, adc_b, ellipse=ellipseb)
         for ix in kixb:
             ex[ix].is_sky = True
             if ex[ix].is_obj:
@@ -2082,12 +2086,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
         pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
         pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
+        pl.axes().set_aspect('equal', 'datalim')
         if not no_stamp:
             pl.title(tlab)
             plot_drp_ver()
         pl.savefig("XYs_%s.pdf" % outname)
-        print("Wrote XYs_%s.pdf" % outname)
         pl.close()
+        print("Wrote XYs_%s.pdf" % outname)
         # / End Plot
 
         # Re-sample spectra onto fiducial spectrum
