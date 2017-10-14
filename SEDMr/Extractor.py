@@ -2077,12 +2077,6 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         if posb is not None:
             pl.axvline(posb[0], color='black', linewidth=.5)
             pl.axhline(posb[1], color='black', linewidth=.5)
-        if adc_a is not None:
-            for p in adc_a:
-                pl.plot(p[0], p[1], 'kx', mew=0.5)
-        if adc_b is not None:
-            for p in adc_b:
-                pl.plot(p[0], p[1], 'kx', mew=0.5)
 
         if ellipse is not None:
             xys = get_ellipse_xys(ellipse)
@@ -2091,6 +2085,13 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         if ellipseb is not None:
             xys = get_ellipse_xys(ellipseb)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+
+        if adc_a is not None:
+            for p in adc_a:
+                pl.plot(p[0], p[1], 'kx', mew=0.5)
+        if adc_b is not None:
+            for p in adc_b:
+                pl.plot(p[0], p[1], 'kx', mew=0.5)
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
