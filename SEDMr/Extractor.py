@@ -614,7 +614,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
 
     if adcpos is not None:
         for p in adcpos:
-            pl.plot(p[0], p[1], 'rx', mew=0.1)
+            pl.plot(p[0], p[1], 'kx', mew=0.1)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
@@ -1270,6 +1270,9 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     if ellipse is not None:
         xys = get_ellipse_xys(ellipse)
         pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+    if adcpos is not None:
+        for p in adcpos:
+            pl.plot(p[0], p[1], 'kx', mew=0.1)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
@@ -1676,6 +1679,9 @@ def handle_single(imfile, fine, outname=None, offset=None,
         if ellipse is not None:
             xys = get_ellipse_xys(ellipse)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+        if adcpos is not None:
+            for p in adcpos:
+                pl.plot(p[0], p[1], 'kx', mew=0.1)
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
@@ -2070,6 +2076,12 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         if posb is not None:
             pl.axvline(posb[0], color='black', linewidth=.5)
             pl.axhline(posb[1], color='black', linewidth=.5)
+        if adc_a is not None:
+            for p in adc_a:
+                pl.plot(p[0], p[1], 'kx', mew=0.1)
+        if adc_b is not None:
+            for p in adc_b:
+                pl.plot(p[0], p[1], 'kx', mew=0.1)
 
         if ellipse is not None:
             xys = get_ellipse_xys(ellipse)
