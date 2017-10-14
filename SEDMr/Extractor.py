@@ -1277,8 +1277,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
-    pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-    pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
+    pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+    pl.scatter(xsk, ysk, color='cyan', marker='H', s=40, linewidth=0)
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
     pl.axes().set_aspect('equal')
     if 'airmass' in meta:
@@ -1686,8 +1686,8 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
-        pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-        pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
+        pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+        pl.scatter(xsk, ysk, color='cyan', marker='H', s=40, linewidth=0)
         tlab = "%d selected spaxels for %s" % (len(xsa), objname)
         pl.axes().set_aspect('equal')
         if 'airmass' in meta:
@@ -2101,10 +2101,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             tlab += ", Airmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
-        pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-        pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
-        pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
-        pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
+        pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+        pl.scatter(xsb, ysb, color='blue', marker='H', s=40, linewidth=0)
+        pl.scatter(xka, yka, color='cyan', marker='H', s=40, linewidth=0)
+        pl.scatter(xkb, ykb, color='cyan', marker='H', s=40, linewidth=0)
         pl.axes().set_aspect('equal')
         if not no_stamp:
             pl.title(tlab)
