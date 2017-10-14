@@ -1580,7 +1580,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                      "cmin": None, "cmax": None}
 
             # Use all sky spaxels in image
-            kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+            kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
         else:
             message = "\nMark positive (red) target"
