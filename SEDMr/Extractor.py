@@ -614,7 +614,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
 
     if adcpos is not None:
         for p in adcpos:
-            pl.plot(p[0], p[1], 'kx', mew=0.5)
+            pl.plot(p[0], p[1], 'rx', mew=0.5)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
@@ -914,6 +914,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         # Adjust FITS header
         hdr['airmass1'] = hdr['airmass']
         hdr['airmass2'] = inhdu2[0].header['airmass']
+        hdr['airmass'] = (hdr['airmass1'] + hdr['airmass2']) / 2.
 
     hdr.add_history('SEDMr.Extractor.imarith run on %s' % time.strftime("%c"))
     hdr['DRPVER'] = drp_ver
@@ -943,7 +944,7 @@ def gzip(a, b):
 
 def add(a, b, outname):
     a, b = gunzip(a, b)
-    imarith(a, "+", b, outname)
+    imarith(a, "+", b, outname, doairmass=True)
     gzip(a, b)
 
     return pf.open(outname)
@@ -2095,8 +2096,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         pl.ylabel("Dec offset [asec]")
         tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
                                                meta['outname'])
-        air = (meta['airmass1'] + meta['airmass2']) / 2.
-        tlab += ", Airmass: %.3f" % air
+        if 'airmass' in meta:
+            tlab += ", Airmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
         pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
