@@ -80,9 +80,9 @@ def load_user(user_id):
     if not users:
         return None
     user = User()
-    user.id = users[0][1]
+    user.id = users[0][0]
     user.name = users[0][1]
-    flask_login.login_user(user, remember=True)
+    flask_login.login_user(user) # , remember=True)
     get_user_permissions()
     return user
 
@@ -118,8 +118,10 @@ def login():
         elif check_password_hash(user_pass[0][1], flask.request.form['password']):
             user = User()
             user.id = user_pass[0][2]
+            print user.get_id()
+            print user.id
             user.name = username
-            flask_login.login_user(user, remember=True)
+            flask_login.login_user(user) # , remember=True)
             get_user_permissions()
             flash("Logged in as %s" % (username,))
             return redirect(flask.url_for('index'))
@@ -131,6 +133,14 @@ def login():
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('login.html', form=form, message=None) +
             render_template('footer.html'))
+
+
+@app.route("/logout")
+@flask_login.login_required
+def logout():
+    flask_login.logout_user()
+    return redirect(flask.url_for('login'))
+
 
 @app.route('/user_info')
 @flask_login.login_required
@@ -306,10 +316,10 @@ def show_objects(ident):
 
 
     # retrieve all of the requests submitted for the object
-    request_query = ("SELECT u.name, u.username, g.designator, r.inidate, r.enddate, r.priority, r.status "
-                     "FROM request r, users u, object o, groups g  WHERE r.user_id = u.id AND r.object_id = o.id AND g.id = r.program_id "
-                     "AND r.object_id = '%s';" % (ident,))
-                    # TODO: add ```AND r.program_id IN %s;" % (,flask_login.current_user.groups)```
+    request_query = ("SELECT u.name, u.username, p.designator, r.inidate, r.enddate, r.priority, r.status "
+                     "FROM request r, users u, program p, allocation a WHERE r.user_id = u.id AND a.program_id = p.id "
+                     "AND a.id = r.allocation_id AND r.object_id = '%s' AND r.allocation_id IN %s;"
+                     % (ident, '(' + str(flask_login.current_user.allocation)[1:-1] +')'))
     req = db.execute_sql(request_query)
     for n, x in enumerate(req):
         req[n] = list(x)
@@ -323,7 +333,7 @@ def show_objects(ident):
     a_query = ("SELECT obs.mjd, obs.exptime, obs.filter, obs.fitsfile "
                "FROM observation obs, object obj, request r WHERE obj.id = obs.object_id AND "
                "r.id = obs.request_id AND obj.id = '%s';" % (ident,))
-               # TODO: add ```AND r.program_id IN %s;" % (, flask_login.current_user.groups)```
+               # TODO: add ```AND r.program_id IN %s;" % (, '(' + str(flask_login.current_user.groups)[1:-1] + ')')```
     observations = db.execute_sql(a_query)
     obs = []
 
@@ -414,13 +424,20 @@ def project_stats(program):
     if not prog_id:
         flash('program %s does not exist' % (program,))
         return redirect(url_for('index'))
-
-    # TODO: make a form to set start/end dates
-    time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
-                       "WHERE o.request_id = r.id AND r.program_id = '%s'"
-                       #" AND r.lastmodified < %s AND r.lastmodified > %s"
-                       ";" % (prog_id,))
-    requests = db.execute_sql(time_used_query)
+    if prog_id not in flask_login.current_user.program:
+        flash('you do not have permissions to view %s' % (program,))
+        return redirect(url_for('index'))
+    pg_alloc = db.get_from_allocation(['id'], {'program_id': prog_id})
+    pg_allocations = '(' +str([int(alloc_id[0]) for alloc_id in pg_alloc])[1:-1] + ')'
+    if pg_allocations == '()':
+        requests = ()
+    else:
+        # TODO: make a form to set start/end dates
+        time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
+                           "WHERE o.request_id = r.id AND r.allocation_id IN %s"
+                           #" AND r.lastmodified < %s AND r.lastmodified > %s"
+                           ";" % (pg_allocations,))
+        requests = db.execute_sql(time_used_query)
     time_allocated = db.get_from_program(['time_allocated'], {'id': prog_id})[0][0]
     
     if requests: # check whether there are any requests
@@ -461,11 +478,14 @@ def project_stats(program):
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
         
-    # retrieve all of the requests submitted for the project
-    request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
-                     "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
-                     "AND r.program_id = '%s';" % (prog_id,))
-    req = db.execute_sql(request_query)
+    if pg_allocations == '()':
+        req = ()
+    else:
+        # retrieve all of the requests submitted for the project
+        request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
+                         "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
+                         "AND r.allocation_id IN %s;" % (pg_allocations,))
+        req = db.execute_sql(request_query)
     for n, x in enumerate(req):
         req[n] = list(x)
         # decide between name/username
@@ -486,33 +506,33 @@ def project_stats(program):
 
 def get_user_permissions():
     """returns ([groups], [programs], [allocations]) allowed for the current user"""
-    if flask_login.current_user.get_id() == 2:  # user_id == 2 is admin
+    if int(flask_login.current_user.get_id()) == 2:  # user_id == 2 is admin
         gr = db.execute_sql("SELECT id FROM groups;")
-        groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
+        groups = [int(group[0]) for group in gr]  # will be a list of the ids
         pg = db.execute_sql("SELECT id FROM program;")
-        programs_tuple = tuple([int(program[0]) for program in pg])
+        programs = [int(program[0]) for program in pg]
         al = db.execute_sql("SELECT id FROM allocation;")
-        allocation_tuple = tuple([int(alloc[0]) for alloc in al])
+        allocations = [int(alloc[0]) for alloc in al]
         flask_login.current_user.groups = groups
-        flask_login.current_user.program = programs_tuple
-        flask_login.current_user.allocation = allocation_tuple
+        flask_login.current_user.program = programs
+        flask_login.current_user.allocation = allocations
         return
     group_query = ("SELECT g.id FROM groups g, usergroups ug "
                    "WHERE ug.group_id = g.id "
                    "AND ug.user_id = '%s';" % (flask_login.current_user.get_id()))
     gr = db.execute_sql(group_query)
-    groups = tuple([int(group[0]) for group in gr])  # will be a tuple of the ids
+    groups = [int(group[0]) for group in gr]  # will be a list of the ids
     program_query = ("SELECT p.id FROM program p, groups g "
-                     "WHERE p.group_id = g.id AND g.id IN %s;" % (groups,))
+                     "WHERE p.group_id = g.id AND g.id IN %s;" % ('(' + str(groups)[1:-1] + ')',))
     pg= db.execute_sql(program_query)
-    programs_tuple = tuple([int(program[0]) for program in pg])
+    programs = [int(program[0]) for program in pg]
     allocation_query = ("SELECT a.id FROM allocation a, program p "
-                        "WHERE a.program_id = p.id and p.id IN %s;" % (programs_tuple,))
+                        "WHERE a.program_id = p.id and p.id IN %s;" % ('(' + str(programs)[1:-1] + ')',))
     al = db.execute_sql(allocation_query)
-    allocation_tuple = tuple([int(alloc[0]) for alloc in al])
+    allocations = [int(alloc[0]) for alloc in al]
     flask_login.current_user.groups = groups
-    flask_login.current_user.program = programs_tuple
-    flask_login.current_user.allocation = allocation_tuple
+    flask_login.current_user.program = programs
+    flask_login.current_user.allocation = allocations
     return
 
 
