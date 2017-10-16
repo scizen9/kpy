@@ -33,6 +33,10 @@ def classify(spec_dir='./', overwrite=False):
         if "NGC" in fl or "PGC" in fl or "MCG" in fl or "2MASX" in fl:
             print("galaxy")
             continue
+        # don't classify stars
+        if "TYC" in fl or "SAO" in fl:
+            print("star")
+            continue
         # retrieve the quality of the spectra.
         with open(fl, "r") as sfl:
             l = sfl.readlines()
