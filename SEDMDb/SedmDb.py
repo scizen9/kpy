@@ -877,7 +877,7 @@ class SedmDB:
                     'e' (float) (eccentricity),
                     'M' (float) (mean anomaly),
                     'mjdepoch' (int/long) (epoch, time of 'M'),
-                    'D' (int/long) (equinox year),
+                    'D': (float) (equinox year),
                     'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
                 optional:
@@ -887,7 +887,7 @@ class SedmDB:
 
         """
         param_types = {'id': int, 'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
-                       'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
+                       'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': float, 'M1': float,
                        'M2': float, 's': float}
         id = _id_from_time()
         orbit_params['id'] = id
@@ -937,7 +937,7 @@ class SedmDB:
                 'e' (float) (eccentricity),
                 'M' (float) (mean anomaly),
                 'mjdepoch' (int) (epoch, time of 'M'),
-                'D' (int) (equinox year),
+                'D': (float) (equinox year),
                 'M1' (float),
                 'M2' (float) (first and second components of magnitude model),
                 's' (float) (angular size at 1 AU)
@@ -950,7 +950,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
-                          'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': int, 'M1': float,
+                          'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': float, 'M1': float,
                           'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'elliptical_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
@@ -978,7 +978,7 @@ class SedmDB:
                     'perihelion_o' (float) (arg. of perihelion),
                     'e' (float) (eccentricity),
                     'q' (float) (perihelion distance AU),
-                    'D' (int) (equinox year),
+                    'D': (float) (equinox year),
                     'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
 
@@ -989,7 +989,7 @@ class SedmDB:
 
         """
         param_types = {'id': int, 'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_O': float,
-                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
+                       'perihelion_o': float, 'q': float, 'D': float, 'M1': float, 'M2': float, 's': float}
         id = _id_from_time()
         orbit_params['id'] = id
         # TODO: query associated table for object already existing, test
@@ -1036,7 +1036,7 @@ class SedmDB:
                 'perihelion_o' (float) (arg. of perihelion),
                 'e' (float) (eccentricity),
                 'q' (float) (perihelion distance AU),
-                'D' (int) (equinox year),
+                'D': (float) (equinox year),
                 'M1' (float),
                 'M2' (float) (first and second components of magnitude model),
                 's' (float) (angular size at 1 AU)
@@ -1049,7 +1049,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'object_id': int, 'T': 'date', 'e': float, 'inclination': float, 'longascnode_O': float,
-                          'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
+                          'perihelion_o': float, 'q': float, 'D': float, 'M1': float, 'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'hyperbolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)
@@ -1075,7 +1075,7 @@ class SedmDB:
                     'perihelion_o' (float) (arg. of perihelion),
                     'q' (float) (perihelion distance),
                     'longascnode_O' (float) (lon. of ascending node),
-                    'D' (int) (equinox year),
+                    'D': (float) (equinox year),
                     'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
 
@@ -1086,7 +1086,7 @@ class SedmDB:
 
         """
         param_types = {'id': int, 'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_O': float,
-                       'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float}
+                       'perihelion_o': float, 'q': float, 'D': float, 'M1': float, 'M2': float, 's': float}
         id = _id_from_time()
         orbit_params['id'] = id
         # TODO: query associated table for object already existing, test
@@ -1132,7 +1132,7 @@ class SedmDB:
                 'perihelion_o' (float) (arg. of perihelion),
                 'q' (float) (perihelion distance),
                 'longascnode_O' (float) (lon. of ascending node),
-                'D' (int) (equinox year),
+                'D': (float) (equinox year),
                 'M1' (float),
                 'M2' (float) (first and second components of magnitude model),
                 's' (float) (angular size at 1 AU)
@@ -1145,7 +1145,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'object_id': int, 'T': 'date', 'inclination': float, 'longascnode_O': float,
-                          'perihelion_o': float, 'q': float, 'D': int, 'M1': float, 'M2': float, 's': float, 'id': int}
+                          'perihelion_o': float, 'q': float, 'D': float, 'M1': float, 'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'parabolic_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error
             return (-1, sql)

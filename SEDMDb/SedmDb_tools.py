@@ -1,5 +1,6 @@
 import SedmDb
 import numpy as np
+from astropy.time import Time
 from astropy.io import fits
 import ephem
 
@@ -9,24 +10,10 @@ class DbTools(object):
         self.db = db_class
     # TODO: refactor and move functions into the class
 
-    def submit_asteroids_edb(self, file = '/home/kpy/ephem/asteroids.edb', delimiter=','):
+    def submit_asteroids_edb(self, file = '/home/sedm/kpy/ephem/asteroids.edb', delimiter=','):
         f = open(file)
         for line in f:
             if line[0] != '#':
-                """
-                ob = ephem.readdb(line)
-                if isinstance(ob, ephem.EllipticalBody):
-                    obj_dict = {}
-                    self.db.add_object()
-                    if hasattr(ob, '_g'):
-                        m1 = ob._g
-                        m2 = ob._h
-                    if hasattr(ob, '_G'):
-                        m1 = ob._G
-                        m2 = ob._H
-                    pardic = {'object_id': int, 'inclination': ob._inc, 'longascnode_O': ob._Om, 'perihelion_o': ob.om,
-                       'a': ob._a, 'n': xxx, 'e': ob._e, 'M': ob._M, 'mjdepoch': ob._epoch, 'D': int, 'M1': m1,
-                       'M2': m2, 's': float}"""
                 par = line.split(',')
                 if par[-1][-1] == 'n':  # remove /n from the end of the line
                     par[-1] = par[-1][:-1]
@@ -36,28 +23,35 @@ class DbTools(object):
                     print "object %s failed to be created" % (par[0],)
                     continue
                 if par[1] == 'e':
-                    pardic = {'object_id': obj_id, 'inclination': par[2], 'longascnode_O': par[3], 'perihelion_o': par[4],
-                    'a': par[5], 'n': par[6], 'e': par[7], 'M': par[8], 'mjdepoch': par[9], 'D': par[10], 'M1': par[11],
-                    'M2': par[12]}
+                    time=par[9].split('/')
+                    pardic = {'object_id': obj_id, 'inclination': float(par[2]), 'longascnode_O': float(par[3]), 'perihelion_o': float(par[4]),
+                    'a': float(par[5]), 'n': float(par[6]), 'e': float(par[7]), 'M': float(par[8]), 'mjdepoch': Time(time[2]+'-'+time[0]+'-'+time[1]).mjd, 'D': float(par[10]), 'M1': float(par[11]),
+                    'M2': float(par[12])}
                     if len(par) == 14:
-                        pardic['s'] = par[13]
-                    self.db.add_elliptical_heliocentric(pardic)
+                        pardic['s'] = float(par[13])
+                    add = self.db.add_elliptical_heliocentric(pardic)
+                    print add
+                """
                 if par[1] == 'h':
                     pardic = {'object_id': obj_id, 'T': par[2], 'e': par[6], 'inclination': par[3], 'longascnode_O': par[4],
-                       'perihelion_o': par[5], 'q': par[7], 'D': par[8], 'M1': par[9], 'M2': par[10]}
+                       'perihelion_o': par[5], 'q': par[7], 'D': float(par[8]), 'M1': par[9], 'M2': par[10]}
                     if len(par) == 12:
                         pardic['s'] =par[11]
-                    self.db.add_hyperbolic_heliocentric(pardic)
+                    add=self.db.add_hyperbolic_heliocentric(pardic)
+                    print add
                 if par[1] == 'p':
                     pardic = {'object_id': obj_id, 'T': par[2], 'inclination': par[3], 'longascnode_O': par[5],
-                       'perihelion_o': par[4], 'q': par[5], 'D': par[7], 'M1': par[8], 'M2': par[9]}
+                       'perihelion_o': par[4], 'q': par[5], 'D': float(par[7]), 'M1': par[8], 'M2': par[9]}
                     if len(par) == 11:
                         pardic['s'] =par[10]
-                    self.db.add_parabolic_heliocentric(pardic)
+                    add=self.db.add_parabolic_heliocentric(pardic)
+                    print add
                 if par[1] == 'E':
                     pardic = {'object_id': obj_id, 'T': par[2], 'e': par[5], 'inclination': par[3], 'ra': par[4],
                        'pedigree': par[6], 'M': par[7], 'n': par[8], 'decay': par[9], 'reforbit': par[10], 'drag': par[11]}
-                    self.db.add_earth_satellite(pardic)
+                    add=self.db.add_earth_satellite(pardic)
+                    print add
+                """
 
     def get_object_parameters(self, object_id):
         """
