@@ -157,6 +157,7 @@ def requests():
     form1.program.choices = choices
     form1.user_id.data = 1
     if form1.submit_req.data and form1.validate_on_submit():
+        # TODO: modify following to accomodate new forms
         print "request submitted"
         if request.method == 'POST':
             filters = '{'

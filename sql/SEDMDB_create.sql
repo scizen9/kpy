@@ -108,7 +108,7 @@ CREATE TABLE elliptical_heliocentric (
     --epoch date. Time of M
     mjdepoch int,
     -- equinox year
-    D int,
+    D decimal(7,2),
     -- first abd second components of magnitude model
     M1 decimal(7,4),
     M2 decimal(7,4),
@@ -132,7 +132,7 @@ CREATE TABLE hyperbolic_heliocentric (
     -- perihelion distance, AU
     q decimal(13,8),
     -- equinox year
-    D int,
+    D decimal(7,2),
     -- first and second components of magnitude model
     M1 decimal(7,4),
     M2 decimal(7,4),
@@ -154,7 +154,7 @@ CREATE TABLE parabolic_heliocentric (
     -- longitude of ascending node
     longascnode_O decimal(12,8),
     -- equinox year
-    D int,
+    D decimal(7,2),
     -- first and second components of magnitude model
     M1 decimal(7,4),
     M2 decimal(7,4),

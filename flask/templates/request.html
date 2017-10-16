@@ -23,12 +23,18 @@
                             {{ render_field(form1.object_id) }}
                             {{ render_field(form1.priority) }}
                             {{ render_field(form1.program) }}
-                            {{ render_field(form1.filters) }}
+                            {{ render_field(form1.filters_op) }}
+                            {{ render_field(form1.seq_repeats) }}
+                            {{ render_field(form1.ifu) }}
+                            {{ render_field(form1.ab) }}
                             {{ render_field(form1.inidate) }}
                             {{ render_field(form1.enddate) }}
                             <h4>Optional</h4>
                             {{ render_field(form1.cadence) }}
                             {{ render_field(form1.phasesamples) }}
+                            {{ render_field(fomr1.min_moon_dist) }}
+                            {{ render_field(form1.max_moon_illum) }}
+                            {{ render_field(form1.max_cloud_cover) }}
                             {{ render_field(form1.submit_req) }}
                         </p>
                     </form>

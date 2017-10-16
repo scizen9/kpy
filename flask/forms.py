@@ -21,11 +21,21 @@ class FilterForm(FlaskForm):
 class RequestForm(FlaskForm):
     object_id = fields.IntegerField('object_id', [validators.data_required()])
     user_id = fields.HiddenField('user_id', [validators.data_required()])
-    program = fields.SelectField('program', [validators.data_required()], coerce=int, choices=[])
+    allocation = fields.SelectField('allocation', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.data_required()])
-    filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
+    # filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
+    filters_op = fields.SelectField('filters', [validators.data_required()],
+                                    choices=[([1, 1, 1, 1], 'u-g-r-i'), ([0, 1, 1, 1], "g-r-i")])
+    seq_repeats = fields.IntegerField('# of repeats')
+    ifu = fields.BooleanField('IFU image', [validators.data_required()])
     ab = fields.BooleanField('A B pair', [validators.data_required()])
     cadence = fields.FloatField('cadence', default=None, validators=(validators.Optional(),))
+    min_moon_dist = fields.FloatField('minimum moon distance (degrees)',
+                                      validators=(validators.Optional(), validators.number_range(0., 180.)))
+    max_moon_illum = fields.FloatField('maximum moon illumination (fractional)',
+                                       validators=(validators.Optional(), validators.number_range(0., 1.)))
+    max_cloud_cover = fields.FloatField('maximum cloud cover (fractional)',
+                                        validators=(validators.Optional(), validators.number_range(0., 1.)))
     phasesamples = fields.FloatField('samples per period', default=None, validators=(validators.Optional(),))
     inidate = fields.DateField('start date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
     enddate = fields.DateField('end date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
