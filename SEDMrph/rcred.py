@@ -5,7 +5,7 @@ Created on Sun Jun 14 13:11:52 2015
 @author: nadiablago
 """
 import fitsutils
-import os, glob, shutil
+import os, glob, shutil, sys
 import numpy as np
 try:
     from pyraf import iraf 
@@ -17,7 +17,6 @@ from astropy import wcs
 from matplotlib import pylab as plt
 import subprocess
 import argparse
-import shutil
 import time_utils
 import time
 import datetime
@@ -25,6 +24,7 @@ import logging
 import sextractor
 import zeropoint
 from astropy.io import fits
+import scipy
 
 from ConfigParser import SafeConfigParser
 import codecs
@@ -147,7 +147,7 @@ def create_masterbias(biasdir=None, channel='rc'):
             os.makedirs(newdir)
         shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )
     else:
-        copy_ref_calib(biasdir, outf)
+        copy_ref_calib(biasdir, "Bias")
 
 
     if len(lslowbias) > 0 and doslow:
@@ -283,24 +283,29 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         
         lfiles = []
         for f in glob.glob('b_*_%s.fits'%b):
-            d = fits.open(f)[0].data
-            
+            fi = fits.open(f)
+	    d = fi[0].data
+            status = "rejected" 
+            if np.percentile(d, 90)>4000 and np.percentile(d, 90)<45000:
+                lfiles.append(f)
+		mymode = 1. * np.median(d.flatten())
+		d[d>45000] = mymode
+		fi[0].data = d
+		fi.writeto(f, clobber=True)
+		status = "accepted"
+
             if (plot):
-                plt.title("Flat filter %s"%b)
-                plt.imshow(d.T, vmin=4000, vmax=45000, cmap=plt.get_cmap("gnuplot"))
+                plt.title("Flat filter %s. %s"%(b, status))
+                plt.imshow(d.T, cmap=plt.get_cmap("nipy_spectral"))
+		plt.colorbar()
                 plt.savefig("reduced/flats/%s"%(f.replace(".fits", ".png")))
                 plt.close()
             #Make sure that the optimum number of counts is not too low and not saturated.
-            if np.percentile(d, 90)>4000 and np.percentile(d, 90)<45000:
-                #Make sure that we do not have very bright stars in there.
-                if np.count_nonzero(d.flatten()>50000) < 10:
-                    lfiles.append(f)
-
         if len(lfiles) == 0:
             logger.error( "WARNING!!! Could not find suitable flats for band %s"%b)
             continue
-        if len(lfiles) < 2:
-            logger.error( "WARNING!!! Could find less than 2 flats for band %s. Skipping, as it is not reliable..."%b)
+        if len(lfiles) < 3:
+            logger.error( "WARNING!!! Could find less than 3 flats for band %s. Skipping, as it is not reliable..."%b)
             continue
         ffile ="lflat_"+b
         np.savetxt(ffile, np.array(lfiles), fmt="%s")
@@ -315,9 +320,9 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         #Combine flats
         iraf.imcombine(input = "@"+ffile, \
                         output = out, \
-                        combine = "average",\
+                        combine = "median",\
                         scale = "mode",
-                        weight = "exposure")
+                        reject = "sigclip", lsigma = 2., hsigma = 2, gain=1.7, rdnoise=4.)
         iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="Flat_stats")
         st = np.genfromtxt("Flat_stats", names=True, dtype=None)
         #Normalize flats
@@ -341,6 +346,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         if (not os.path.isdir(newdir)):
             os.makedirs(newdir)
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
+    copy_ref_calib(flatdir, "Flat")	
 
 def mask_stars(image, sexfile, plot=False, overwrite=False):
     ''' 
@@ -490,6 +496,28 @@ def copy_ref_calib(curdir, calib="Flat"):
     The files are copied if they are not found in the folder where the photometry is being reduced.
     '''
 
+    if calib == "Bias": 
+   	calib_dic = { 	"Bias_rc_fast.fits" : False,
+			"Bias_rc_slow.fits" : False}
+    else:
+    	calib_dic = { 	"Flat_rc_u_norm.fits" : False,
+			"Flat_rc_g_norm.fits" : False,
+			"Flat_rc_r_norm.fits" : False,
+			"Flat_rc_i_norm.fits" : False}
+
+    #Get the date of the current directory
+    curdir = os.path.abspath(curdir)
+
+    #Check if we have all the calibrations we need.
+    for cal in calib_dic.keys():
+	calib_dic[cal] = os.path.isfile(os.path.join(curdir, cal))
+
+    print calib_dic
+
+    #If all the calibration files are in place, nothing to do.
+    if np.all(calib_dic.values()):
+	return
+
     #Check which dates have the calibration files that we need.
     listcalib = glob.glob(os.path.join(curdir, "../../refphot/*/", calib+"*"))
     #Obtain the folder name
@@ -497,9 +525,7 @@ def copy_ref_calib(curdir, calib="Flat"):
     #Unique name
     calibdates = np.array(list(set(listdirs)))
     
-    #Get the date of the current directory
-    curdir = os.path.abspath(curdir)
-    
+
     #compile the dates in datetime format
     dates = []
     for f in calibdates:
@@ -509,13 +535,25 @@ def copy_ref_calib(curdir, calib="Flat"):
     dates = np.array(dates)    
     curdate = datetime.datetime.strptime(os.path.basename(curdir), "%Y%m%d")
     
-    #Select the folder that is closes to the date of the current directory
+    #Select the folder that is closer to the date of the current directory
     lastdir = np.array(calibdates)[np.argmin(np.abs(curdate-dates))]
-    
-    #Copy all calibration files that match the calib filter.
-    for c in glob.glob(os.path.join(lastdir, calib+"*")):    
-        shutil.copy(c, os.path.join(curdir, os.path.basename(c)))     
-        
+   
+    #Try to go 100 days before the data was taken.
+    i = 0
+    while i < 100 and not np.all(calib_dic.values()):
+	i = i+1
+	newdate = curdate - datetime.timedelta(i)
+	newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
+	print "Checking day %s"%newdatedir
+	for cal in np.array(calib_dic.keys())[~np.array(calib_dic.values())]:
+		c = os.path.join(curdir, "../../refphot/", newdatedir, cal)
+		#print "testing %s"%c
+		if os.path.isfile(c):
+			print "Copying calibration file %s to directory %s"%(c, curdir)
+        		shutil.copy(c, os.path.join(curdir, os.path.basename(c)))     
+			calib_dic[cal] = True
+			
+
         
 
 def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
@@ -909,7 +947,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
 
         if (not os.path.isfile(flat)):
             logger.warn( "Master flat not found in %s"% flat)
-            copy_ref_calib(mydir, "Flat_%s_%s_norm"%(channel, b))
+            copy_ref_calib(mydir, "Flat")
             continue
         else:
             logger.info( "Using flat %s"%flat)
@@ -1010,12 +1048,14 @@ if __name__ == '__main__':
         if (os.path.isdir(os.path.join(photdir, "reduced"))):
             shutil.rmtree(os.path.join(photdir, "reduced"))
 
-    elif (not filelist is None ):
+    if (not filelist is None ):
         mydir = os.path.dirname(filelist)
         if (mydir==""):
             mydir = "."
         os.chdir(mydir)
-        
+
+        photdir = mydir
+
         myfiles = np.genfromtxt(filelist, dtype=None)
         myfiles = [os.path.abspath(f) for f in myfiles]
         
@@ -1024,7 +1064,7 @@ if __name__ == '__main__':
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
             try:
-            	if (fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE")=="SCIENCE"):
+            	if (fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE")=="SCIENCE") or (fitsutils.get_par(f, "IMGTYPE")=="ACQUISITION") ):
                 	myfiles.append(f)
             except:
             	print "problems opening file %s"%f
@@ -1034,9 +1074,11 @@ if __name__ == '__main__':
         OR
         - The name of the directory which you want to reduce [-d].'''
 
-    if (False): #len(myfiles)>0):
-    	create_masterbias()
-    	create_masterflat()  
+    if (len(myfiles)== 0):
+	sys.exit()
+
+    create_masterbias(photdir)
+    create_masterflat(photdir)  
     
     #Reduce them
     reducedfiles = []
