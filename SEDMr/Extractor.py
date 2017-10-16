@@ -329,24 +329,29 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
-                         objname=None, airmass=1.0, nosky=False, message=None):
+                         objname=None, airmass=1.0, nosky=False, message=None,
+                         ellipse_in=None):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
     """
 
     # Set ellipse parameters
-    elfl = glob.glob("ell_STD-*.npy")
-    if len(elfl) > 0:
-        inell = np.load(elfl[0])
-        inell[1] = radius*(inell[1]/inell[0])
-        inell[0] = radius
-        inell[2] = 0.
-        inell[3] = 0.
-        print("Loaded ellipse parameters from %s" % elfl[0])
+    if ellipse_in is None:
+        elfl = glob.glob("ell_STD-*.npy")
+        if len(elfl) > 0:
+            inell = np.load(elfl[0])
+            inell[1] = radius*(inell[1]/inell[0])
+            inell[0] = radius
+            inell[2] = 0.
+            inell[3] = 0.
+            print("Loaded ellipse parameters from %s" % elfl[0])
+        else:
+            inell = (radius, radius, 0., 0., 20.5)
+            print("Using default ellipse parameters")
     else:
-        inell = (radius, radius, 0., 0., 20.5)
-        print("Using default ellipse parameters")
+        inell = ellipse_in
+        radius = inell[0]
     print("\nStarting with a %s arcsec semimajor axis" % radius)
 
     # Get spectral extractions
@@ -609,7 +614,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
 
     if adcpos is not None:
         for p in adcpos:
-            pl.plot(p[0], p[1], 'rx', mew=0.1)
+            pl.plot(p[0], p[1], 'rx', mew=0.5)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
@@ -909,6 +914,7 @@ def imarith(operand1, op, operand2, result, doairmass=False):
         # Adjust FITS header
         hdr['airmass1'] = hdr['airmass']
         hdr['airmass2'] = inhdu2[0].header['airmass']
+        hdr['airmass'] = (hdr['airmass1'] + hdr['airmass2']) / 2.
 
     hdr.add_history('SEDMr.Extractor.imarith run on %s' % time.strftime("%c"))
     hdr['DRPVER'] = drp_ver
@@ -938,7 +944,7 @@ def gzip(a, b):
 
 def add(a, b, outname):
     a, b = gunzip(a, b)
-    imarith(a, "+", b, outname)
+    imarith(a, "+", b, outname, doairmass=True)
     gzip(a, b)
 
     return pf.open(outname)
@@ -1214,7 +1220,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
-    kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
     # Mark sky spaxels
     for ix in kixa:
         ex[ix].is_sky = True
@@ -1265,13 +1271,16 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     if ellipse is not None:
         xys = get_ellipse_xys(ellipse)
         pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+    if adcpos is not None:
+        for p in adcpos:
+            pl.plot(p[0], p[1], 'kx', mew=0.5)
 
     pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
     pl.ylabel("Dec offset [asec]")
-    pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-    pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
+    pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+    pl.scatter(xsk, ysk, color='cyan', marker='H', s=40, linewidth=0)
     tlab = "%d selected spaxels for %s" % (len(xsa), objname)
-    pl.axes().set_aspect('equal', 'datalim')
+    pl.axes().set_aspect('equal')
     if 'airmass' in meta:
         tlab += "\nAirmass: %.3f" % meta['airmass']
     if not no_stamp:
@@ -1575,7 +1584,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                      "cmin": None, "cmax": None}
 
             # Use all sky spaxels in image
-            kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+            kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
         else:
             message = "\nMark positive (red) target"
@@ -1671,13 +1680,16 @@ def handle_single(imfile, fine, outname=None, offset=None,
         if ellipse is not None:
             xys = get_ellipse_xys(ellipse)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
+        if adcpos is not None:
+            for p in adcpos:
+                pl.plot(p[0], p[1], 'kx', mew=0.5)
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
-        pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-        pl.scatter(xsk, ysk, color='green', marker='H', s=50, linewidth=0)
+        pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+        pl.scatter(xsk, ysk, color='cyan', marker='H', s=40, linewidth=0)
         tlab = "%d selected spaxels for %s" % (len(xsa), objname)
-        pl.axes().set_aspect('equal', 'datalim')
+        pl.axes().set_aspect('equal')
         if 'airmass' in meta:
             tlab += "\nAirmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
@@ -1957,7 +1969,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  cmin=stats["cmin"], cmax=stats["cmax"],
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=stats["nosky"],
-                                 message=message)
+                                 message=message, ellipse_in=ellipse)
         for ix in sixb:
             ex[ix].is_obj = True
 
@@ -2074,19 +2086,26 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             xys = get_ellipse_xys(ellipseb)
             pl.plot(xys[:, 0], xys[:, 1], 'g.-')
 
+        if adc_a is not None:
+            for p in adc_a:
+                pl.plot(p[0], p[1], 'kx', mew=0.5)
+        if adc_b is not None:
+            for p in adc_b:
+                pl.plot(p[0], p[1], 'kx', mew=0.5)
+
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
         tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
                                                meta['outname'])
-        air = (meta['airmass1'] + meta['airmass2']) / 2.
-        tlab += ", Airmass: %.3f" % air
+        if 'airmass' in meta:
+            tlab += ", Airmass: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
-        pl.scatter(xsa, ysa, color='red', marker='H', s=50, linewidth=0)
-        pl.scatter(xsb, ysb, color='blue', marker='H', s=50, linewidth=0)
-        pl.scatter(xka, yka, color='green', marker='H', s=50, linewidth=0)
-        pl.scatter(xkb, ykb, color='green', marker='H', s=50, linewidth=0)
-        pl.axes().set_aspect('equal', 'datalim')
+        pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
+        pl.scatter(xsb, ysb, color='blue', marker='H', s=40, linewidth=0)
+        pl.scatter(xka, yka, color='cyan', marker='H', s=40, linewidth=0)
+        pl.scatter(xkb, ykb, color='cyan', marker='H', s=40, linewidth=0)
+        pl.axes().set_aspect('equal')
         if not no_stamp:
             pl.title(tlab)
             plot_drp_ver()
