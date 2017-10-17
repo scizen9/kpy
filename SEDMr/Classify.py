@@ -94,7 +94,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     specdir = args.specdir
-    print "Directory where reduced spectra reside: ", specdir
     
     if specdir is None:
         timestamp = datetime.datetime.isoformat(datetime.datetime.utcnow())
@@ -108,5 +107,4 @@ if __name__ == '__main__':
     print os.getcwd()
 
     # Run snid on extracted spectra
-    print "Running snid on *_SEDM.txt files in %s" % specdir
     classify(spec_dir=specdir, overwrite=args.overwrite)
