@@ -134,8 +134,18 @@ class MouseCross(object):
                 self.axrat = 1.0
             print("b/a = %.2f" % self.axrat)
 
+        # Check ellipse position
+        if event.xdata is None:
+            xdat = 0.
+        else:
+            xdat = event.xdata
+        if event.ydata is None:
+            ydat = 0.
+        else:
+            ydat = event.ydata
+
         self.ellipse = (self.radius_as, self.radius_as * self.axrat,
-                        event.xdata, event.ydata, self.theta)
+                        xdat, ydat, self.theta)
         marker = get_ellipse_xys(self.ellipse)
         self.line, = self.ax.plot(marker[:, 0], marker[:, 1], '-',
                                   visible=True, color='red', linewidth=2.)
