@@ -200,7 +200,7 @@ $(BIAS): bias0.1.fits bias2.0.fits
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 
-	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
+	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 4.8 \\
 		--sigclip 8.0 --fsmode convolve --psfmodel gaussy --psffwhm=2 \\
 		$(subst crr_,,$@) $@ mask$@
 
