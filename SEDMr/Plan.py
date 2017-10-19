@@ -172,7 +172,7 @@ mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 
 crr_b_% : b_%
-	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 1.8 \\
+	$(CRRSUB) --niter 4 --sepmed --gain 1.0 --readnoise 5.0 --objlim 4.8 \\
 		--sigclip 8.0 --fsmode convolve --psfmodel gaussy --psffwhm=2 \\
 		$< $@ mask$@
 
