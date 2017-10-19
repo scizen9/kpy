@@ -278,13 +278,13 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         leffmic = (lmax+lmin)/2000.0    # convert to microns
 
         if prlltc is not None:
-            positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
+            adc_pos = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
         else:
-            positions = [pos]
+            adc_pos = [pos]
 
         # Gather spaxels
         all_kix = []
-        for the_pos in positions:
+        for the_pos in adc_pos:
             all_kix.append(list(find_positions_ellipse(kt.KT.data,
                                                        the_pos[0], the_pos[1],
                                                        a, b, -theta)))
@@ -306,7 +306,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         pl.ylim(-14, 14)
         pl.show()
 
-    return kt.good_positions[kix], pos, positions, ellipse, status
+    return kt.good_positions[kix], pos, adc_pos, ellipse, status
 
 
 def find_positions_ellipse(xy, h, k, a, b, theta):
@@ -388,12 +388,12 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
 
     if prlltc is not None:
-        positions = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
+        adc_pos = atm_dispersion_positions(prlltc, pos, leffmic, airmass)
     else:
-        positions = [pos]
+        adc_pos = [pos]
 
     all_kix = []
-    for the_pos in positions:
+    for the_pos in adc_pos:
         all_kix.append(list(find_positions_ellipse(kt.KT.data,
                                                    the_pos[0], the_pos[1],
                                                    ellipse[0], ellipse[1],
@@ -406,7 +406,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
              "lmin": lmin, "lmax": lmax,
              "cmin": cmin, "cmax": cmax}
 
-    return kt.good_positions[kix], pos, positions, ellipse, stats
+    return kt.good_positions[kix], pos, adc_pos, ellipse, stats
 
 
 def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
@@ -721,10 +721,8 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         if f_lim < 0:
             print("WARNING: If A/B pair, sky level has changed between A and B")
             print("         Consider single mode extraction")
-        l_grid = onto
         s_grid = []
         newsix = []
-        lamcoeff = None
         nrej = 0
         # for ix,spectrum in enumerate(all_spectra):
         for ix in six:
@@ -749,16 +747,9 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
             if l.max() - l.min() < 700:
                 continue
 
-            # Check if our wavelength grid is defined,
-            if l_grid is None:
-                # use the first set of wavelengths and store
-                l_grid = l
-                fl = s * pon
-                lamcoeff = spectrum.lamcoeff
-            else:
-                # Interpolate onto our wavelength grid and store
-                fun = interp1d(l, s * pon, bounds_error=False, fill_value=0)
-                fl = fun(l_grid)
+            # Interpolate onto our wavelength grid and store
+            fun = interp1d(l, s * pon, bounds_error=False, fill_value=0)
+            fl = fun(l_grid)
 
             f_test = np.nansum(fl[(l_grid > 500)*(l_grid < 900)])
 
