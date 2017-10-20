@@ -279,8 +279,10 @@ def MF_single(objname, obsnum, ifile, standard=None):
     tp = {'objname': objname, 'obsfile': "bs_crr_b_%s" % ifile}
     tp['num'] = '_obs%s' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['plotname'] = "%(objname)s%(num)s_SEDM.pdf" % tp
     tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
+    tp['specplot'] = "%(plotname)s: %(specnam)s\n\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
 
     if standard is None:
         tp['STD'] = ''
@@ -301,6 +303,8 @@ def MF_single(objname, obsnum, ifile, standard=None):
 sp_%(outname)s: %(outname)s
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig %(interact)s
+
+%(specplot)s
 
 redo_%(name)s:
 \t@echo re-make-ing sp_%(outname)s
@@ -337,7 +341,7 @@ def MF_standard(objname, obsnum, ifile, standard=None):
         tp['specplot'] = ''
     else:
         tp['STD'] = "--std %s" % standard
-        tp['specplot'] = "%(plotname)s: %(outname)s\n\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
+        tp['specplot'] = "%(plotname)s: %(specnam)s\n\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
 
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
@@ -350,7 +354,7 @@ sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 
-cog_%(outname)s: %(outname)s
+cog_%(outname)s: %(specnam)s
 \t$(COG) --inname %(outname)s
 """ % tp
     second = """
@@ -374,8 +378,10 @@ def MF_AB(objname, obsnum, A, B):
     else:
         tp['num'] = '_obs%i' % obsnum
     tp['outname'] = "%(objname)s%(num)s.npy" % tp
+    tp['plotname'] = "%(objname)s%(num)s_SEDM.pdf" % tp
     tp['name'] = "%(objname)s%(num)s" % tp
     tp['specnam'] = "sp_%(objname)s%(num)s.npy" % tp
+    tp['specplot'] = "%(plotname)s: %(specnam)s\n\t$(PLOT) --spec %(specnam)s --savespec --savefig" % tp
     # we only use the flexure from the A image
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(A)[0]
 
@@ -388,6 +394,8 @@ def MF_AB(objname, obsnum, A, B):
 sp_%(outname)s: %(outname)s
 \t$(EXTPAIR) cube.npy --A %(A)s.gz --B %(B)s.gz --outname %(outname)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract
 \t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
+
+%(specplot)s
 
 redo_%(name)s:
 \t@echo re-make-ing sp_%(outname)s
