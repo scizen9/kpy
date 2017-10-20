@@ -93,10 +93,10 @@ class MouseCross(object):
         elif event.key == "y":
             if self.nosky:
                 self.nosky = False
-                print("Skysub off")
+                print("Skysub on")
             else:
                 self.nosky = True
-                print("Skysub on")
+                print("Skysub off")
 
         # Rotate ellipse CW
         elif event.key == ",":
