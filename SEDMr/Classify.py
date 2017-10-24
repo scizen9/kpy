@@ -34,7 +34,7 @@ def classify(spec_dir='./', overwrite=False):
             print("galaxy")
             continue
         # don't classify stars
-        if "TYC" in fl or "SAO" in fl or "HD" in fl:
+        if "TYC" in fl or "SAO" in fl or "HD" in fl or "Tycho" in fl:
             print("star")
             continue
         # retrieve the quality of the spectra.
