@@ -6,29 +6,87 @@ from urlparse import urlparse, urljoin
 SECRET_KEY = 'secret'
 
 
-#class IntListField(Field):
-#    widget = widgets.ListWidget()
+class HeliocentricEllipticalForm(FlaskForm):
+    class Meta:
+        csrf=False
+    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
+    a = fields.FloatField('mean distance (AU)', validators=[validators.data_required()])
+    n = fields.FloatField('mean daily motion (degrees/day)', validators=[validators.data_required()])
+    e = fields.FloatField('eccentricity', validators=[validators.data_required()])
+    M = fields.FloatField('mean anomaly', validators=[validators.data_required()])
+    E = fields.DateField('epoch date (time of mean anomaly) (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    D = fields.FloatField('equinox year', validators=[validators.data_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
 
 
-class FilterForm(FlaskForm):
-    ifu_val = fields.IntegerField('ifu', default=0, validators=(validators.Optional(),))
-    u_val = fields.IntegerField('u', default=0, validators=(validators.Optional(),))
-    g_val = fields.IntegerField('g', default=0, validators=(validators.Optional(),))
-    r_val = fields.IntegerField('r', default=0, validators=(validators.Optional(),))
-    i_val = fields.IntegerField('i', default=0, validators=(validators.Optional(),))
+class HeliocentricHyperbolicForm(FlaskForm):
+    class Meta:
+        csrf=False
+    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
+    e = fields.FloatField('eccentricity', validators=[validators.data_required()])
+    q = fields.FloatField('perihelion distance (AU)', validators=[validators.data_required()])
+    D = fields.FloatField('equinox year', validators=[validators.data_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
+
+
+class HeliocentricParabolicForm(FlaskForm):
+    class Meta:
+        csrf=False
+    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
+    q = fields.FloatField('perihelion distance (AU)', validators=[validators.data_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
+    D = fields.FloatField('equinox year', validators=[validators.data_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
+
+
+class EarthSatelliteForm(FlaskForm):
+    class Meta:
+        csrf=False
+    T = fields.DateField('Epoch of following fields (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
+    ra = fields.FloatField('RA of ascending node (degrees)', validators=[validators.data_required()])
+    e = fields.FloatField('Eccentricity', validators=[validators.data_required()])
+    P = fields.FloatField('argument of perigee (degrees)', validators=[validators.data_required()])
+    M = fields.FloatField('mean anomaly (degrees)', validators=[validators.data_required()])
+    n = fields.FloatField('mean motion (revs/day)', validators=[validators.data_required()])
+    d = fields.FloatField('orbit decay rate (revs/day^2)', validators=[validators.data_required()])
+    r = fields.FloatField('integral reference orbit no. at Epoch', validators=[validators.data_required()])
+    #dr = fields.FloatField('drag coefficient (1/earth radii)', validators=[validators.Optional()])
+
+
+class PeriodicForm(FlaskForm):
+    class Meta:
+        csrf=False
+    mdj0 = fields.IntegerField('mjd of period start', validators=[validators.data_required()])
+    phasedays = fields.FloatField('period length (days)', validators=[validators.data_required()])
 
 
 class RequestForm(FlaskForm):
-    object_id = fields.IntegerField('object_id', [validators.data_required()])
-    user_id = fields.HiddenField('user_id', [validators.data_required()])
+    # object data
+    obj_name = fields.StringField('Object Name', [validators.data_required()])
+    obj_ra = fields.StringField('RA', [validators.Optional()])
+    obj_dec = fields.StringField('DEC', [validators.Optional()])
+    typedesig = fields.SelectField('object type', [validators.data_required()], coerce=str, 
+                                   choices=[('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
+                                            ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
+    # required and optional fields for requests
     allocation = fields.SelectField('allocation', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.data_required()])
-    # filters = fields.FieldList(FormField(FilterForm), min_entries=1, label='Obs per filter')
-    filters_op = fields.SelectField('filters', [validators.data_required()],
-                                    choices=[([1, 1, 1, 1], 'u-g-r-i'), ([0, 1, 1, 1], "g-r-i")])
-    seq_repeats = fields.IntegerField('# of repeats')
-    ifu = fields.BooleanField('IFU image', [validators.data_required()])
-    ab = fields.BooleanField('A B pair', [validators.data_required()])
+    filters_op = fields.SelectField('filters', [validators.data_required()], coerce=str, 
+                                    choices=[(' 1, 1, 1, 1}', 'u-g-r-i'), (' 0, 1, 1, 1}', "g-r-i")])
+    seq_repeats = fields.IntegerField('# of repeats', default = 1)
+    ifu = fields.BooleanField('IFU image', [validators.Optional()])
+    ab = fields.BooleanField('A B pair', [validators.Optional()])
     cadence = fields.FloatField('cadence', default=None, validators=(validators.Optional(),))
     min_moon_dist = fields.FloatField('minimum moon distance (degrees)',
                                       validators=(validators.Optional(), validators.number_range(0., 180.)))
@@ -37,8 +95,12 @@ class RequestForm(FlaskForm):
     max_cloud_cover = fields.FloatField('maximum cloud cover (fractional)',
                                         validators=(validators.Optional(), validators.number_range(0., 1.)))
     phasesamples = fields.FloatField('samples per period', default=None, validators=(validators.Optional(),))
-    inidate = fields.DateField('start date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
-    enddate = fields.DateField('end date (Y-M-D)', validators=[validators.data_required()], format='%Y-%m-%d')
+    inidate = fields.DateField('start date (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    enddate = fields.DateField('end date (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    #elliptical = fields.FormField(HeliocentricEllipticalForm, validators=(validators.Optional(),))
+    #hyperbolic = fields.FormField(HeliocentricHyperbolicForm, validators=(validators.Optional(),))
+    #parabolic = fields.FormField(HeliocentricParabolicForm, validators=(validators.Optional(),))
+    #satellite = fields.FormField(EarthSatelliteForm, validators=(validators.Optional(),))
     submit_req = fields.SubmitField('submit request')
 
 

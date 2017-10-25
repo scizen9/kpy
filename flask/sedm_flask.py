@@ -7,8 +7,10 @@ sys.path.append(os.path.abspath('../'))
 
 import os
 import sys
-import datetime
+from datetime import datetime, timedelta
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 import numpy as np
 import pygal
 from pygal.style import Style
@@ -17,11 +19,12 @@ from flask import Flask, request, flash, redirect, render_template, url_for, mak
 from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
+import forms
 from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, SSOForm, is_safe_url
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
-from wtforms import Form, HiddenField
+from wtforms import Form, HiddenField, fields
 from astropy.io import fits
 from plotly.offline import plot
 from plotly.graph_objs import Heatmap
@@ -40,18 +43,21 @@ app.config.from_object(__name__)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
-groups = db.execute_sql("SELECT id, designator FROM groups;")
-group__dict = {}  # make dict with format {group_id: group designator, ...}
-for group in groups:
-    group__dict[group[0]] = group[1]
 
-programs = db.execute_sql("SELECT group_id, id, designator from program;")
-group_programs_dict = {}  # make dict with format {group_id: (group designator, [(program id, program designator), ...]}
-for g_p in programs:
-    if g_p[0] not in group_programs_dict.keys():
-        group_programs_dict[g_p[0]] = [group__dict[g_p[0]], [(g_p[1], g_p[2])]]
+g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
+g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a")
+for alloc in g_p_a:
+    allo=list(alloc)
+    allo[0] = int(allo[0])
+    allo[2] = int(allo[2])
+    allo[4] = int(allo[4])
+    if allo[0] in g_p_a_dict.keys():
+        if allo[2] in g_p_a_dict[allo[0]][1].keys():
+            g_p_a_dict[allo[0]][1][allo[2]][1][allo[4]] = allo[5]
+        else:
+            g_p_a_dict[allo[0]][1][allo[2]] = (allo[3], {allo[4]: allo[5]})
     else:
-        group_programs_dict[g_p[0]][1].append((g_p[1], g_p[2]))
+        g_p_a_dict[allo[0]] = (allo[1], {allo[2]: (allo[3], {allo[4]: allo[5]})})
 
 
 def radec_str2rad(_ra_str, _dec_str):
@@ -145,7 +151,7 @@ def logout():
 @app.route('/user_info')
 @flask_login.login_required
 def user_info():
-    return (render_template('header.html') +#, current_user=flask_login.current_user) +
+    return (render_template('header.html', current_user=flask_login.current_user) +
             render_template('footer.html'))
 
 
@@ -156,86 +162,237 @@ def requests():
     generate forms for request creation
     """
     form1 = RequestForm()
-    form2 = FindObjectForm()
     # if form1.validate_on_submit():
     #    print 'form1'
-    choices = []
-    # TODO: make this restricted to the user's programs
-    for g_p in group_programs_dict.values():
-        for program in g_p[1]:
-            choices.append(program)
-    print choices
-    form1.program.choices = choices
-    form1.user_id.data = 1
+    alloc = db.execute_sql("SELECT id, designator FROM allocation WHERE id IN %s AND active = 't';" % ('(' + str(flask_login.current_user.allocation)[1:-1] + ')',))
+    if alloc and alloc[0] == -1:  # TODO: test and remove
+        flash(alloc[1])
+        return redirect(flask.url_for('/index'))
+    choices = alloc
+    form1.allocation.choices = choices
+    user_id = flask_login.current_user.id
+    print Time.now()
+    if not form1.inidate.data:
+        form1.inidate.data = datetime.today()
+    if not form1.enddate.data:    
+        form1.enddate.data = datetime.today()+timedelta(2)
+    if form1.submit_req.data:
+        pass
     if form1.submit_req.data and form1.validate_on_submit():
         # TODO: modify following to accomodate new forms
         print "request submitted"
-        if request.method == 'POST':
-            filters = '{'
-            for entry in form1.filters.entries:
-                filters += str(entry.data['ifu_val']) + ', '
-                filters += str(entry.data['u_val']) + ', '
-                filters += str(entry.data['g_val']) + ', '
-                filters += str(entry.data['r_val']) + ', '
-                filters += str(entry.data['i_val']) + '}'
-                # TODO: handle 'ordering' in form/parse
-            print filters
-            pardic = {'object_id': form1.object_id.data, 'exptime': '{120, 2400}',
-                                  'priority': form1.priority.data, 'inidate': str(form1.inidate.data),
-                                  'enddate': str(form1.enddate.data), 'user_id': 1, 'program_id': form1.program.data,
-                                  'nexposures': filters}
+        if request.method == 'POST':            
+            # search for target object, create if it doesn't exist
+            if form1.obj_ra.data and form1.obj_dec.data and form1.typedesig.data in ['f', 'v']:
+                try:
+                    ra = float(form1.obj_ra.data)
+                    coord=SkyCoord(ra, form1.obj_dec.data, unit='deg')
+                except:
+                    coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
+                # search database for matching name+ra+dec
+                objects = db.get_objects_near(coord.ra.value, coord.dec.value, .5, ['name','id'])
+                id_list = [obj[1] for obj in objects if obj[0] == form1.obj_name.data]
+                # if it isn't in the database, add it
+                if not id_list:
+                    add_obj = db.add_object({'name': form1.obj_name.data, 'ra': coord.ra.value, 'dec': coord.dec.value, 'typedesig': form1.typedesig.data})
+                    obj_id = add_obj[0]
+                    if obj_id == -1:
+                        message = add_obj[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('request.html', form1=form1, sso_form=None, message=message) +
+                                render_template('footer.html'))
+                else:
+                    obj_id = id_list[0]
+                # if it is periodic, make sure there is an entry
+                if form1.typedesig.data == 'v':
+                    var = db.get_from_periodic(['id'], {'object_id': obj_id})    
+                    if not var:
+                        period_form = forms.PeriodicForm()
+                        if period_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=None, period_form=period_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=None, period_form=period_form) +
+                                            render_template('footer.html'))
+                    elif var[0] == -1:
+                        message = var[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('request.html', form1=form1, sso_form=None, message=message) +
+                                render_template('footer.html'))
+            
+            else:  # form requires obj_name and typedesig to be provided
+                obj = db.get_from_object(['id'], {'name': form1.obj_name.data, 'typedesig': form1.typedesig.data})
+                if not obj:
+                    # create object (and orbit for SSO)
+                    if form1.typedesig.data == 'e':
+                        sso_form = forms.HeliocentricEllipticalForm()
+                        if sso_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_elliptical_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                                    'a': sso_form.a.data, 'n': sso_form.n.data, 'e': sso_form.e.data, 'M': sso_form.M.data, 'mjdepoch': sso_form.E.data, 
+                                                                    'D': sso_form.D.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('footer.html'))
+                        else:
+                            return (render_template('header.html', current_user=flask_login.current_user) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('footer.html'))
+                    elif form1.typedesig.data == 'h':
+                        sso_form = forms.HeliocentricHyperbolicForm()
+                        if sso_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_hyperbolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                                    'q': sso_form.q.data, 'e': sso_form.e.data, 'D': sso_form.D.data,  
+                                                                    'T': sso_form.T.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('footer.html'))
+                        else:
+                            return (render_template('header.html', current_user=flask_login.current_user) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('footer.html'))
+                    elif form1.typedesig.data == 'p':
+                        sso_form = forms.HeliocentricParabolicForm()
+                        if sso_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_parabolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                                   'q': sso_form.q.data, 'D': sso_form.D.data,  
+                                                                   'T': sso_form.T.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('footer.html'))
+                        else:
+                            return (render_template('header.html', current_user=flask_login.current_user) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('footer.html'))
+                    elif form1.typedesig.data == 'E':
+                        sso_form = forms.EarthSatelliteForm()
+                        if sso_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_earth_satellite({'object_id': obj_id, 'inclination': sso_form.i.data, 'ra': sso_form.ra.data, 'pedigree': sso_form.P.data, 
+                                                            'M': sso_form.M.data, 'e': sso_form.e.data, 'n': sso_form.n.data,  
+                                                            'T': sso_form.T.data, 'decay': sso_form.d.data, 'reforbit': sso_form.r.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('footer.html'))
+                        else:
+                            return (render_template('header.html', current_user=flask_login.current_user) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('footer.html'))
+                    elif form1.typedesig.data == 'v':
+                        sso_form = forms.PeriodicForm()
+                        if sso_form.validate():
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            if obj[0] == -1:
+                                message = obj[1]
+                                return (render_template('header.html', current_user=flask_login.current_user) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('footer.html'))
+                            else: 
+                                obj_id = obj[0]
+                                sso= b.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                if sso[0] == -1:
+                                    message = sso[1]
+                                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('footer.html'))
+                        else:
+                            return (render_template('header.html', current_user=flask_login.current_user) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('footer.html'))
+                    elif form1.typedesig.data == 'f':
+                        message = "No fixed object with that name, RA and DEC required"
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('request.html', form1=form1, sso_form=None, message=message) +
+                                render_template('footer.html'))
+                elif obj[0] == -1:
+                    message = obj[1]                    
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('request.html', form1=form1, sso_form=None, message=message) +
+                            render_template('footer.html'))
+                else:
+                    obj_id = obj[0][0]
+                    
+            # generate 'nexposures' from ifu and filter inputs
+            if 'ifu' in form1 and form1.ifu.data:
+                if 'ab' in form1 and form1.ab.data:
+                    exposures = '{2,'
+                else:
+                    exposures = '{1,'
+            else:
+                exposures = '{0,'
+            exposures += form1.filters_op.data
+            # generate the input dictionary for add_request
+            pardic = {'object_id': obj_id, 'exptime': '{120, 2400}',
+                      'priority': form1.priority.data, 'inidate': str(form1.inidate.data),
+                      'enddate': str(form1.enddate.data), 'user_id': user_id, 'allocation_id': form1.allocation.data,
+                      'nexposures': exposures}
+            # add in the optional parameters
             if form1.cadence.data:
                 pardic['cadence'] = form1.cadence.data
             if form1.phasesamples.data:
                 pardic['phasesamples'] = form1.phasesamples.data
+            if form1.min_moon_dist.data:
+                pardic['min_moon_dist'] = form1.min_moon_dist.data
+            if form1.max_moon_illum.data:
+                pardic['max_moon_illum'] = form1.max_moon_illum.data
+            if form1.max_cloud_cover.data:
+                pardic['max_cloud_cover'] = form1.max_cloud_cover.data
             req = db.add_request(pardic)
             # TODO: set up user_id and program_id=
             message = req[1]
             return (render_template('header.html', current_user=flask_login.current_user) +
-                    render_template('request.html', form1=form1, form2=form2, message=message) +
+                    render_template('request.html', form1=form1, sso_form=None, message=message) +
                     render_template('footer.html'))
-
-    if form2.submit_obj.data and form2.validate_on_submit():
-        print 'object search'
-        if request.method == 'POST' and form2.validate():
-            if form2.RA.data and form2.DEC.data:
-                ra = form2.RA.data
-                dec = form2.DEC.data
-                rad = form2.radius.data
-                req = db.get_objects_near(ra, dec, rad)
-                if req:
-                    if req[0] == -1:
-                        message = req[1]
-                        obj_id = None
-                    else:
-                        message = 'object(s) within %s arcsec of coordinates: ' % (rad,)
-                        for target in req:
-                            message += '(name: %s, id: %s)' % (target[1], target[0])
-                        obj_id = req[0][0]
-                else:
-                    message = "No objects in db within 5 arcsec of the coordinates!"
-                    obj_id = None
-            elif form2.object_name.data:
-                obj_name = form2.object_name.data
-                req = db.get_object_id_from_name(obj_name)
-                if req:
-                    message = 'name matches object(s): '
-                    for target in req:
-                        message += '(name: %s, id: %s)' % (target[1], target[0])
-                    obj_id = req[0][0]
-                else:
-                    message = "No objects found with matching name"
-                    obj_id = None
-            else:
-                message = 'To search for an object_id, either RA and Dec, or a partial name is needed'
-                obj_id = None
-
-            form1.object_id.data = obj_id  # set the object_id
-            return (render_template('header.html') +#, current_user=flask_login.current_user) +
-                    render_template('request.html', form1=form1, form2=form2, message=message) +
-                    render_template('footer.html'))
+    flash(form1.errors)
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
-            render_template('request.html', form1=form1, form2=form2, message=False) +
+            render_template('request.html', form1=form1, sso_form=None, message=False) +
             render_template('footer.html'))
 # TODO: set up ability to view and cancel requests
 # TODO: allow searching for objects, return link to page with information/observations of it
@@ -399,9 +556,12 @@ def show_objects(ident):
 
 
 @app.route('/project_stats')
+@flask_login.login_required
 def projects_home():  # TODO: list groups and projects. require login?
     # generate a list of (group designator, project id, project designator)
-    projects = []    
+    groups = flask_login.current_user.groups
+    
+    projects = []
     for group in group_programs_dict.values():
         for project in group[1]:
             projects.append((group[0], project[0], project[1]))
@@ -507,12 +667,11 @@ def project_stats(program):
 def get_user_permissions():
     """returns ([groups], [programs], [allocations]) allowed for the current user"""
     if int(flask_login.current_user.get_id()) == 2:  # user_id == 2 is admin
-        gr = db.execute_sql("SELECT id FROM groups;")
-        groups = [int(group[0]) for group in gr]  # will be a list of the ids
-        pg = db.execute_sql("SELECT id FROM program;")
-        programs = [int(program[0]) for program in pg]
-        al = db.execute_sql("SELECT id FROM allocation;")
-        allocations = [int(alloc[0]) for alloc in al]
+        # use the g_p_a_dict to add all groups, programs and allocations
+        groups = [group for group in g_p_a_dict.keys()]
+        programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
+        allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
+        # set current_user values for groups programs and allocations
         flask_login.current_user.groups = groups
         flask_login.current_user.program = programs
         flask_login.current_user.allocation = allocations
@@ -522,17 +681,15 @@ def get_user_permissions():
                    "AND ug.user_id = '%s';" % (flask_login.current_user.get_id()))
     gr = db.execute_sql(group_query)
     groups = [int(group[0]) for group in gr]  # will be a list of the ids
-    program_query = ("SELECT p.id FROM program p, groups g "
-                     "WHERE p.group_id = g.id AND g.id IN %s;" % ('(' + str(groups)[1:-1] + ')',))
-    pg= db.execute_sql(program_query)
-    programs = [int(program[0]) for program in pg]
-    allocation_query = ("SELECT a.id FROM allocation a, program p "
-                        "WHERE a.program_id = p.id and p.id IN %s;" % ('(' + str(programs)[1:-1] + ')',))
-    al = db.execute_sql(allocation_query)
-    allocations = [int(alloc[0]) for alloc in al]
+    # use the g_p_a_dict to generate programs and allocations
+    programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
+    allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
+    # set current_user values for groups programs and allocations
     flask_login.current_user.groups = groups
     flask_login.current_user.program = programs
     flask_login.current_user.allocation = allocations
+    
+    
     return
 
 

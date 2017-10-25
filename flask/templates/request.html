@@ -14,15 +14,15 @@
                     <h5> {{ message }}</h5>
                 </div>
             {% endif %}
-            <div class="col-md-6">
-                <div class="well">
-                    <h3>Submit an observation request</h3>
-                    <form method="post">
-                        {{ form1.csrf_token }}
+            
+            <div class="row well">
+                <form method="post">
+                    {{ form1.csrf_token }}
+                    <div class="col-md-4">
+                        <h3>Submit an observation request</h3>
                         <p>
-                            {{ render_field(form1.object_id) }}
                             {{ render_field(form1.priority) }}
-                            {{ render_field(form1.program) }}
+                            {{ render_field(form1.allocation) }}
                             {{ render_field(form1.filters_op) }}
                             {{ render_field(form1.seq_repeats) }}
                             {{ render_field(form1.ifu) }}
@@ -32,39 +32,35 @@
                             <h4>Optional</h4>
                             {{ render_field(form1.cadence) }}
                             {{ render_field(form1.phasesamples) }}
-                            {{ render_field(fomr1.min_moon_dist) }}
+                            {{ render_field(form1.min_moon_dist) }}
                             {{ render_field(form1.max_moon_illum) }}
                             {{ render_field(form1.max_cloud_cover) }}
                             {{ render_field(form1.submit_req) }}
                         </p>
-                    </form>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="well">
-                    <h3>Find an object</h3>
-                    <h4>Search by coordinates:</h4>
-                    <div>
-                        <form method="post">
-                            {{ form2.csrf_token }}
-                            <p>
-                                {{ render_field(form2.RA) }}
-                                {{ render_field(form2.DEC) }}
-                                {{ render_field(form2.radius) }}
-                                {{ render_field(form2.submit_obj) }}
-                            </p>
-                        </form>
                     </div>
-                    <h4>Search by name</h4>
-                    <div>
-                        <form method="post">
-                            {{ form2.csrf_token }}
-                            <p>
-                                {{ render_field(form2.object_name) }}
-                                {{ render_field(form2.submit_obj) }}
-                            </p>
-                        </form>
+                    <div class="col-md-8">
+                        <p>&nbsp;</p>
+                        <p>&nbsp;</p>
+                        <h4>Target information</h4>
+                        {{ render_field(form1.obj_name) }}
+                        {{ render_field(form1.typedesig) }}
+                        {% if sso_form %}
+                            <p>&nbsp;</p>
+                            <h4>Please input object data (ephem format)</h4>
+                            {% for field in sso_form.__iter__() %}
+                                {{ render_field(field) }}
+                            {% endfor %}
+                        {% else %}
+                            {{ render_field(form1.obj_ra) }}
+                            {{ render_field(form1.obj_dec) }}
+                        {% endif %}
+                        {% if period_form %}
+                            <h4>Add period data</h4>
+                            {% for field in period_form.__iter__() %}
+                                {{ render_field(field) }}
+                            {% endfor %}
+                        {% endif %}
                     </div>
-                </div>
+                </form>
             </div>
         </div>
