@@ -32,7 +32,11 @@ def ra_to_decimal(ra):
 
 def dec_to_decimal(dec):
     dms = dec.split(':')
-    return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
+    if dms[0][0] == '-':
+        return -(abs(float(dms[0]))+float(dms[1])/60+float(dms[2])/3600)
+    else:
+        return float(dms[0])+float(dms[1])/60+float(dms[2])/3600
+
 
 def fill_par_dic_obs(fitsfile):
     '''
