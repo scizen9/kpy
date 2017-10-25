@@ -1258,6 +1258,88 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
+    def add_periodic(self, pardic):
+        """
+        Creates a new entry in the periodic table with the parameters specified in the dictionary.
+
+        Args:
+            pardic:
+                required:
+                    'object_id' (int/long)
+                    'mjd0' (float) (mjd of period 0)
+                    'phasedays' (float) (period in days)
+
+        Returns:
+            (-1: "ERROR...") if there is an issue
+
+            (id (long), "Periodic information added") if it completes successfully
+        """
+        param_types = {'id': int, 'object_id': int, 'mjd0': float, 'phasedays': float}
+        id = _id_from_time()
+        pardic['id'] = id
+        # TODO: which parameters are required? test
+        keys = list(pardic.keys())
+
+        for key in ['object_id', 'mjd0', 'phasedays']:
+            if key not in keys:
+                return (-1, "ERROR: %s not provided!" % (key,))
+
+        for key in reversed(keys):
+            if key not in ['id', 'object_id', 'mjd0', 'phasedays']:
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_insert_sql(pardic, keys, 'periodic')
+        print sql, type_check
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: add_periodic sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: add_periodic sql command failed with a ProgrammingError!")
+        return (id, "Periodic infomration added")
+
+    def get_from_periodic(self, values, where_dict={}, compare_dict={}):
+        """
+        select values from `periodic`
+
+        Args:
+            values (list): list of str
+                values to be returned
+            where_dict (dict):
+                'param':'value' to be used as WHERE clauses
+            compare_dict (dict): default is {}
+                'param': 'inequality' (i.e. '>', '<', '>=', '<=', '<>', '!='))
+                if no inequality is provided, '=' is assumed
+            values/keys options:
+                'id' (int/long),
+                'object_id' (int/long)
+                'mjd0' (float)
+                'phasedays' (float)
+
+        Returns:
+            list of tuples containing the values for each orbit matching the criteria,
+
+            empty list if no orbits match the ``where_dict`` criteria
+
+            (-1, "ERROR...") if there was an issue
+        """
+        allowed_params = {'object_id': int, 'mjd0': float, 'phasedays': float, 'id': int}
+        sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'periodic')
+        print sql
+        if sql[0] == 'E':  # if the sql generation returned an error
+            return (-1, sql)
+
+        try:
+            results = self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: sql command failed with a ProgrammingError!")
+        return results
+
     def _add_planet_satellite_orbit(self, orbit_params):
         raise NotImplementedError
         # TODO: actually implement? maybe let higher level do this
