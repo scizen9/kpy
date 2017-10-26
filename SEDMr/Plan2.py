@@ -64,8 +64,8 @@ def identify_observations(headers):
         JD = header['JD']
 
         fname = header['filename']
-        obj = header['OBJECT']
-        name = header['NAME']
+        obj = header['OBJECT'].lstrip()
+        name = header['NAME'].lstrip()
         exptime = header['exptime']
         adcspeed = header['ADCSPEED']
         if "test" in obj:
