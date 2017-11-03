@@ -46,7 +46,8 @@ login_manager.init_app(app)
 
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
-g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a")
+g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a "
+                       "WHERE p.group_id = g.id AND a.program_id = p.id;")
 for alloc in g_p_a:
     allo=list(alloc)
     allo[0] = int(allo[0])
@@ -848,9 +849,7 @@ def project_stats(program):
     if not prog_id:
         flash('program %s does not exist' % (program,))
         return redirect(url_for('index'))
-    print prog_id, flask_login.current_user.program
-    print prog_id in flask_login.current_user.program
-    if prog_id not in flask_login.current_user.program:
+    if prog_id not in flask_login.current_user.allocation:
         flash('you do not have permissions to view %s' % (program,))
         return redirect(url_for('index'))
     pg_alloc = db.get_from_allocation(['id'], {'program_id': prog_id})
@@ -864,7 +863,7 @@ def project_stats(program):
                            #" AND r.lastmodified < %s AND r.lastmodified > %s"
                            ";" % (pg_allocations,))
         requests = db.execute_sql(time_used_query)
-    time_allocated = db.get_from_program(['time_allocated'], {'id': prog_id})[0][0]
+    time_allocated = db.get_from_allocation(['time_allocated'], {'id': prog_id})[0][0]
     
     if requests: # check whether there are any requests
         reqs = np.array(requests)
@@ -940,6 +939,10 @@ def get_user_permissions():
         groups = [group for group in g_p_a_dict.keys()]
         programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
         allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
+        # add impossible value to prevent empty IN clauses
+        groups.append(-1)
+        programs.append(-1)
+        allocations.append(-1)
         # set current_user values for groups programs and allocations
         flask_login.current_user.groups = groups
         flask_login.current_user.program = programs
@@ -953,12 +956,14 @@ def get_user_permissions():
     # use the g_p_a_dict to generate programs and allocations
     programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
     allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
+    # add impossible value to prevent empty IN clauses
+    groups.append(-1)
+    programs.append(-1)
+    allocations.append(-1)
     # set current_user values for groups programs and allocations
     flask_login.current_user.groups = groups
     flask_login.current_user.program = programs
     flask_login.current_user.allocation = allocations
-    
-    
     return
 
 
