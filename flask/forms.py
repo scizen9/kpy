@@ -9,80 +9,80 @@ SECRET_KEY = 'secret'
 class HeliocentricEllipticalForm(FlaskForm):
     class Meta:
         csrf=False
-    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
-    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
-    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
-    a = fields.FloatField('mean distance (AU)', validators=[validators.data_required()])
-    n = fields.FloatField('mean daily motion (degrees/day)', validators=[validators.data_required()])
-    e = fields.FloatField('eccentricity', validators=[validators.data_required()])
-    M = fields.FloatField('mean anomaly', validators=[validators.data_required()])
-    E = fields.DateField('epoch date (time of mean anomaly) (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
-    D = fields.FloatField('equinox year', validators=[validators.data_required()])
-    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
-    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
+    i = fields.FloatField('inclination (degrees)', validators=[validators.input_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.input_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.input_required()])
+    a = fields.FloatField('mean distance (AU)', validators=[validators.input_required()])
+    n = fields.FloatField('mean daily motion (degrees/day)', validators=[validators.input_required()])
+    e = fields.FloatField('eccentricity', validators=[validators.input_required()])
+    M = fields.FloatField('mean anomaly', validators=[validators.input_required()])
+    E = fields.DateField('epoch date (time of mean anomaly) (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
+    D = fields.FloatField('equinox year', validators=[validators.input_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.input_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.input_required()])
 
 
 class HeliocentricHyperbolicForm(FlaskForm):
     class Meta:
         csrf=False
-    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
-    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
-    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
-    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
-    e = fields.FloatField('eccentricity', validators=[validators.data_required()])
-    q = fields.FloatField('perihelion distance (AU)', validators=[validators.data_required()])
-    D = fields.FloatField('equinox year', validators=[validators.data_required()])
-    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
-    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
+    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.input_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.input_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.input_required()])
+    e = fields.FloatField('eccentricity', validators=[validators.input_required()])
+    q = fields.FloatField('perihelion distance (AU)', validators=[validators.input_required()])
+    D = fields.FloatField('equinox year', validators=[validators.input_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.input_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.input_required()])
 
 
 class HeliocentricParabolicForm(FlaskForm):
     class Meta:
         csrf=False
-    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
-    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
-    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.data_required()])
-    q = fields.FloatField('perihelion distance (AU)', validators=[validators.data_required()])
-    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.data_required()])
-    D = fields.FloatField('equinox year', validators=[validators.data_required()])
-    M1 = fields.FloatField('magnitude model first component', validators=[validators.data_required()])
-    M2 = fields.FloatField('magnitude model second component', validators=[validators.data_required()])
+    T = fields.DateField('date of ephoch of perihelion (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.input_required()])
+    o = fields.FloatField('argument of perihelion (degrees)', validators=[validators.input_required()])
+    q = fields.FloatField('perihelion distance (AU)', validators=[validators.input_required()])
+    O = fields.FloatField('longitude of ascending node (degrees)', validators=[validators.input_required()])
+    D = fields.FloatField('equinox year', validators=[validators.input_required()])
+    M1 = fields.FloatField('magnitude model first component', validators=[validators.input_required()])
+    M2 = fields.FloatField('magnitude model second component', validators=[validators.input_required()])
 
 
 class EarthSatelliteForm(FlaskForm):
     class Meta:
         csrf=False
-    T = fields.DateField('Epoch of following fields (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
-    i = fields.FloatField('inclination (degrees)', validators=[validators.data_required()])
-    ra = fields.FloatField('RA of ascending node (degrees)', validators=[validators.data_required()])
-    e = fields.FloatField('Eccentricity', validators=[validators.data_required()])
-    P = fields.FloatField('argument of perigee (degrees)', validators=[validators.data_required()])
-    M = fields.FloatField('mean anomaly (degrees)', validators=[validators.data_required()])
-    n = fields.FloatField('mean motion (revs/day)', validators=[validators.data_required()])
-    d = fields.FloatField('orbit decay rate (revs/day^2)', validators=[validators.data_required()])
-    r = fields.FloatField('integral reference orbit no. at Epoch', validators=[validators.data_required()])
+    T = fields.DateField('Epoch of following fields (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
+    i = fields.FloatField('inclination (degrees)', validators=[validators.input_required()])
+    ra = fields.FloatField('RA of ascending node (degrees)', validators=[validators.input_required()])
+    e = fields.FloatField('Eccentricity', validators=[validators.input_required()])
+    P = fields.FloatField('argument of perigee (degrees)', validators=[validators.input_required()])
+    M = fields.FloatField('mean anomaly (degrees)', validators=[validators.input_required()])
+    n = fields.FloatField('mean motion (revs/day)', validators=[validators.input_required()])
+    d = fields.FloatField('orbit decay rate (revs/day^2)', validators=[validators.input_required()])
+    r = fields.FloatField('integral reference orbit no. at Epoch', validators=[validators.input_required()])
     #dr = fields.FloatField('drag coefficient (1/earth radii)', validators=[validators.Optional()])
 
 
 class PeriodicForm(FlaskForm):
     class Meta:
         csrf=False
-    mdj0 = fields.IntegerField('mjd of period start', validators=[validators.data_required()])
-    phasedays = fields.FloatField('period length (days)', validators=[validators.data_required()])
+    mdj0 = fields.IntegerField('mjd of period start', validators=[validators.input_required()])
+    phasedays = fields.FloatField('period length (days)', validators=[validators.input_required()])
 
 
 class RequestForm(FlaskForm):
     # object data
-    obj_name = fields.StringField('Object Name', [validators.data_required()])
+    obj_name = fields.StringField('Object Name', [validators.input_required()])
     obj_ra = fields.StringField('RA', [validators.Optional()])
     obj_dec = fields.StringField('DEC', [validators.Optional()])
-    typedesig = fields.SelectField('object type', [validators.data_required()], coerce=str, 
+    typedesig = fields.SelectField('object type', [validators.input_required()], coerce=str, 
                                    choices=[('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
                                             ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
     # required and optional fields for requests
-    allocation = fields.SelectField('allocation', [validators.data_required()], coerce=int, choices=[])
-    priority = fields.FloatField('priority', [validators.data_required()])
-    filters_op = fields.SelectField('filters', [validators.data_required()], coerce=str, 
+    allocation = fields.SelectField('allocation', [validators.input_required()], coerce=int, choices=[])
+    priority = fields.FloatField('priority', [validators.input_required()])
+    filters_op = fields.SelectField('filters', [validators.input_required()], coerce=str, 
                                     choices=[(' 1, 1, 1, 1}', 'u-g-r-i'), (' 0, 1, 1, 1}', "g-r-i")])
     seq_repeats = fields.IntegerField('# of repeats', default = 1)
     ifu = fields.BooleanField('IFU image', [validators.Optional()])
@@ -95,8 +95,8 @@ class RequestForm(FlaskForm):
     max_cloud_cover = fields.FloatField('maximum cloud cover (fractional)',
                                         validators=(validators.Optional(), validators.number_range(0., 1.)))
     phasesamples = fields.FloatField('samples per period', default=None, validators=(validators.Optional(),))
-    inidate = fields.DateField('start date (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
-    enddate = fields.DateField('end date (Y-m-d)', validators=[validators.data_required()], format='%Y-%m-%d')
+    inidate = fields.DateField('start date (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
+    enddate = fields.DateField('end date (Y-m-d)', validators=[validators.input_required()], format='%Y-%m-%d')
     #elliptical = fields.FormField(HeliocentricEllipticalForm, validators=(validators.Optional(),))
     #hyperbolic = fields.FormField(HeliocentricHyperbolicForm, validators=(validators.Optional(),))
     #parabolic = fields.FormField(HeliocentricParabolicForm, validators=(validators.Optional(),))
@@ -105,29 +105,36 @@ class RequestForm(FlaskForm):
 
 
 class FindObjectForm(FlaskForm):
-    object_name = fields.StringField('object name contains', validators=(validators.Optional(),))
-    RA = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
-    DEC = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
+    obj_name = fields.StringField('object name contains', validators=(validators.Optional(),))
+    typedesig = fields.SelectField('object type', [validators.input_required()], coerce=str, 
+                                   choices=[('',''), ('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
+                                            ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
+    obj_ra = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
+    obj_dec = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
     radius = fields.FloatField('radius (arcsec)', validators=(validators.Optional(),))
     submit_obj = fields.SubmitField('seach for object')
 
 
 class SubmitObjectForm(FlaskForm):
-    object_name = fields.StringField('object Name')
-    RA = fields.FloatField('Right Ascension (deg)')
-    DEC = fields.FloatField('Declination (deg)')
+    obj_name = fields.StringField('object Name')
+    typedesig = fields.SelectField('object type', [validators.input_required()], coerce=str, 
+                                   choices=[('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
+                                            ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
+    obj_ra = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
+    obj_dec = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
     add_obj = fields.SubmitField('Add object')
-
-
-class SSOForm(FlaskForm):
-    typedesig = fields.SelectField('Target type', choices=[('fixed', 'f'), ('heliocentric elliptical', 'e'),
-                                   ('heliocentric hyperbolic', 'h'), ('heliocentric parabolic', 'p'),
-                                   ('geocentric elliptical', 'E')])
 
 
 class LoginForm(FlaskForm):
     username = fields.StringField('username')
     password = fields.PasswordField('password')
+
+
+class PassChangeForm(FlaskForm):
+    username = fields.StringField('username', validators=[validators.input_required()])
+    password = fields.PasswordField('Old Password', validators=[validators.input_required()])
+    pass_new = fields.PasswordField('New Password', validators=[validators.input_required(), validators.EqualTo('pass_conf', message='Passwords must match')] )
+    pass_conf = fields.PasswordField('Confirm New Password', validators=[validators.input_required()])
 
 
 def is_safe_url(target):

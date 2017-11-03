@@ -20,15 +20,16 @@ from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
-from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, SSOForm, is_safe_url
+from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, is_safe_url
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
-from wtforms import Form, HiddenField, fields
+from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
 from plotly.offline import plot
 from plotly.graph_objs import Heatmap
 import matplotlib.pyplot as plt
+import pandas as pd
 
 # config
 SECRET_KEY = 'secret'
@@ -141,6 +142,47 @@ def login():
             render_template('footer.html'))
 
 
+@app.route("/passchange")
+@flask_login.login_required
+def password_change():
+    form = forms.PassChangeForm()
+    form.username = flask_login.current_user.name
+    if form.validate_on_submit():
+        # check for correct password and change if true
+        username = form.username.data
+        password = form.password.data
+        new_password = form.password_new.data
+        new_password_conf = form.password_new_conf.data
+        user_pass = db.get_from_users(['username', 'password', 'id'], {'username': username})
+        if not user_pass:
+            message = "Incorrect username or password!"
+            return (render_template('header.html') +
+                    render_template('passchange.html', form=form, message=message) +
+                    render_template('footer.html'))
+        elif user_pass[0] == -1:
+            message = user_pass[1]
+            return (render_template('header.html') +
+                    render_template('passchange.html', form=form, message=message) +
+                    render_template('footer.html'))
+        elif not userpass[0][2] == flask_login.current_user.id:
+            message = "Login to the correct user before changing password!"
+            return (render_template('header.html', current_user=flask_login.current_user) +
+                    render_template('passchange.html', form=form, message=message) +
+                    render_template('footer.html'))
+        elif check_password_hash(user_pass[0][1], flask.request.form['password']):
+            db.update_user({'id': user_pass[0][2], 'password': new_passord})
+            flash("Password changed")
+            return redirect(flask.url_for('logout'))
+        else:
+            message = "Incorrect username or password!"
+            return (render_template('header.html', current_user=flask_login.current_user) +
+                    render_template('passchange.html', form=form, message=message) +
+                    render_template('footer.html'))
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('passchange.html', form=form, message=None) +
+            render_template('footer.html'))
+
+
 @app.route("/logout")
 @flask_login.login_required
 def logout():
@@ -195,6 +237,7 @@ def requests():
                 # if it isn't in the database, add it
                 if not id_list:
                     add_obj = db.add_object({'name': form1.obj_name.data, 'ra': coord.ra.value, 'dec': coord.dec.value, 'typedesig': form1.typedesig.data})
+                    print add_obj
                     obj_id = add_obj[0]
                     if obj_id == -1:
                         message = add_obj[1]
@@ -209,7 +252,8 @@ def requests():
                     if not var:
                         period_form = forms.PeriodicForm()
                         if period_form.validate():
-                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'v'})
+                            print obj
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
@@ -217,7 +261,8 @@ def requests():
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                sso= db.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
@@ -237,114 +282,120 @@ def requests():
                         sso_form = forms.HeliocentricEllipticalForm()
                         if sso_form.validate():
                             obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            print obj
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
-                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_elliptical_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
-                                                                    'a': sso_form.a.data, 'n': sso_form.n.data, 'e': sso_form.e.data, 'M': sso_form.M.data, 'mjdepoch': sso_form.E.data, 
+                                sso= db.add_elliptical_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                                    'a': sso_form.a.data, 'n': sso_form.n.data, 'e': sso_form.e.data, 'M': sso_form.M.data, 'mjdepoch': Time(str(sso_form.E.data)).mjd, 
                                                                     'D': sso_form.D.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
-                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                             render_template('footer.html'))
                         else:
                             return (render_template('header.html', current_user=flask_login.current_user) +
-                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                     render_template('footer.html'))
                     elif form1.typedesig.data == 'h':
                         sso_form = forms.HeliocentricHyperbolicForm()
                         if sso_form.validate():
-                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'h'})
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
-                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_hyperbolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                sso= db.add_hyperbolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
                                                                     'q': sso_form.q.data, 'e': sso_form.e.data, 'D': sso_form.D.data,  
-                                                                    'T': sso_form.T.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                                                    'T': str(sso_form.T.data), 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
-                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                             render_template('footer.html'))
                         else:
                             return (render_template('header.html', current_user=flask_login.current_user) +
-                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                     render_template('footer.html'))
                     elif form1.typedesig.data == 'p':
                         sso_form = forms.HeliocentricParabolicForm()
                         if sso_form.validate():
-                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'p'})
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
-                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_parabolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'locascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                sso= db.add_parabolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
                                                                    'q': sso_form.q.data, 'D': sso_form.D.data,  
-                                                                   'T': sso_form.T.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                                                   'T': str(sso_form.T.data), 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
-                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                             render_template('footer.html'))
                         else:
                             return (render_template('header.html', current_user=flask_login.current_user) +
-                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                     render_template('footer.html'))
                     elif form1.typedesig.data == 'E':
                         sso_form = forms.EarthSatelliteForm()
                         if sso_form.validate():
-                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'E'})
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
-                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_earth_satellite({'object_id': obj_id, 'inclination': sso_form.i.data, 'ra': sso_form.ra.data, 'pedigree': sso_form.P.data, 
+                                sso= db.add_earth_satellite({'object_id': obj_id, 'inclination': sso_form.i.data, 'ra': sso_form.ra.data, 'pedigree': sso_form.P.data, 
                                                             'M': sso_form.M.data, 'e': sso_form.e.data, 'n': sso_form.n.data,  
-                                                            'T': sso_form.T.data, 'decay': sso_form.d.data, 'reforbit': sso_form.r.data})
+                                                            'T': str(sso_form.T.data), 'decay': sso_form.d.data, 'reforbit': sso_form.r.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
-                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                             render_template('footer.html'))
                         else:
                             return (render_template('header.html', current_user=flask_login.current_user) +
-                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                     render_template('footer.html'))
                     elif form1.typedesig.data == 'v':
                         sso_form = forms.PeriodicForm()
                         if sso_form.validate():
-                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                            obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'v'})
                             if obj[0] == -1:
                                 message = obj[1]
                                 return (render_template('header.html', current_user=flask_login.current_user) +
-                                        render_template('request.html', form1=form1, sso_form=sso_form) +
+                                        render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                         render_template('footer.html'))
                             else: 
                                 obj_id = obj[0]
-                                sso= b.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                sso= db.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                                print sso
                                 if sso[0] == -1:
                                     message = sso[1]
                                     return (render_template('header.html', current_user=flask_login.current_user) +
-                                            render_template('request.html', form1=form1, sso_form=sso_form) +
+                                            render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                             render_template('footer.html'))
                         else:
                             return (render_template('header.html', current_user=flask_login.current_user) +
-                                    render_template('request.html', form1=form1, sso_form=sso_form) +
+                                    render_template('request.html', form1=form1, sso_form=sso_form, message=message) +
                                     render_template('footer.html'))
                     elif form1.typedesig.data == 'f':
                         message = "No fixed object with that name, RA and DEC required"
@@ -390,7 +441,6 @@ def requests():
             return (render_template('header.html', current_user=flask_login.current_user) +
                     render_template('request.html', form1=form1, sso_form=None, message=message) +
                     render_template('footer.html'))
-    flash(form1.errors)
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('request.html', form1=form1, sso_form=None, message=False) +
             render_template('footer.html'))
@@ -412,24 +462,240 @@ def schedule():
 def objects():
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
-    ssoform = SSOForm()
     message = None
     urls = []
+    # add objects
+    if form1.add_obj.data and form1.validate_on_submit():
+        # TODO: modify following to accomodate new forms
+        if request.method == 'POST':            
+            # if the object is non-fixed, show the proper forms
+            if form1.typedesig.data == 'v':
+                period_form = forms.PeriodicForm()
+                if not period_form.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form) +
+                                render_template('footer.html'))
+            elif form1.typedesig.data == 'e':
+                sso_form = forms.HeliocentricEllipticalForm()
+                if not sso_form.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+            elif form1.typedesig.data == 'h':
+                sso_form = forms.HeliocentricHyperbolicForm()
+                if not sso_form.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+            elif form1.typedesig.data == 'p':
+                sso_form = forms.HeliocentricParabolicForm()
+                if not sso_form.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+            elif form1.typedesig.data == 'E':
+                sso_form = forms.EarthSatelliteForm()
+                if not sso_form.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+            elif form1.typedesig.data == 'f':
+                form1.obj_ra.validators = [validators.input_required()]
+                form1.obj_dec.validators = [validators.input_required()]
+                if not form1.validate():
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, ssoform=None, message=message) +
+                            render_template('footer.html'))
+                    
+            # keep track of whether the object has been found/created
+            obj_id = None  
+            # search for target object, create if it doesn't exist
+            if form1.obj_ra.data and form1.obj_dec.data and form1.typedesig.data in ['f', 'v']:
+                # add the base object
+                try:
+                    ra = float(form1.obj_ra.data)
+                    coord=SkyCoord(ra, form1.obj_dec.data, unit='deg')
+                except:
+                    coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
+                
+                add_obj = db.add_object({'name': form1.obj_name.data, 'ra': coord.ra.value, 'dec': coord.dec.value, 'typedesig': form1.typedesig.data})
+                obj_id = add_obj[0]
+                if obj_id == -1:
+                    message = add_obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=None, message=message) +
+                            render_template('footer.html'))
+                else:
+                    obj_id = id_list[0]
+            # if it is periodic, make sure there is an entry
+            if form1.typedesig.data == 'v':
+                # form is already validated above
+                if obj_id:  # if the obj_id is already known
+                    per= db.add_periodic({'object_id': obj_id, 'mjd0': period_form.mjd0.data, 'phasedays': period_form.phasedays.data})
+                    if per[0] == -1:
+                        message = per[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+                    else:
+                        message = "Periodic entry '%s' added with object_id: %s and periodic_id: %s" % (form1.object_name.data, obj_id, per[0])
+                        # reset the forms as an additional indication of completion
+                        form1 = SubmitObjectForm()
+                        period_form = forms.PeriodicForm()
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+                    
+                obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'v'})
+                if obj[0] == -1:
+                    message = obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form, message=message) +
+                            render_template('footer.html'))
+                else: 
+                    obj_id = obj[0]
+                    sso= db.add_periodic({'object_id': obj_id, 'mjd0': sso_form.mjd0.data, 'phasedays': sso_form.phasedays.data})
+                    if sso[0] == -1:
+                        message = sso[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form) +
+                                render_template('footer.html'))
+                    
+                    message = "Periodic entry for '%s' added with object_id: %s and periodic_id: %s" % (form1.object_name.data, obj_id, per[0])
+                    # reset the forms as an additional indication of completion
+                    form1 = SubmitObjectForm()
+                    period_form = forms.PeriodicForm()
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=None, period_form=period_form, message=message) +
+                            render_template('footer.html'))
+            # Handle Solar System Objects
+            elif form1.typedesig.data == 'e':
+                # form validation checked above
+                # create base object
+                obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'e'})
+                if obj[0] == -1:
+                    message = obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+                else:  #create orbit entry
+                    obj_id = obj[0]
+                    sso= db.add_elliptical_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                        'a': sso_form.a.data, 'n': sso_form.n.data, 'e': sso_form.e.data, 'M': sso_form.M.data, 'mjdepoch': Time(str(sso_form.E.data)).mjd, 
+                                                        'D': sso_form.D.data, 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                    if sso[0] == -1:
+                        message = sso[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                                render_template('footer.html'))
+                    else:
+                        message = "SSO entry for '%s' added with object_id: %s and heliocentric_elliptical id: %s" % (form1.object_name.data, obj_id, sso[0])
+                        # reset the forms as an additional indication of completion
+                        form1 = SubmitObjectForm()
+                        sso_form = forms.HeliocentricEllipticalForm()
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+            elif form1.typedesig.data == 'h':
+                # form validation checked above
+                # create base object
+                obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'h'})
+                if obj[0] == -1:
+                    message = obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+                else: #create orbit entry
+                    obj_id = obj[0]
+                    sso= db.add_hyperbolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                        'q': sso_form.q.data, 'e': sso_form.e.data, 'D': sso_form.D.data,  
+                                                        'T': str(sso_form.T.data), 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                    if sso[0] == -1:
+                        message = sso[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                                render_template('footer.html'))
+                    else:
+                        message = "SSO entry for '%s' added with object_id: %s and heliocentric_hyperbolic id: %s" % (form1.object_name.data, obj_id, sso[0])
+                        # reset the forms as an additional indication of completion
+                        form1 = SubmitObjectForm()
+                        sso_form = forms.HeliocentricHyperbolicForm()
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+            elif form1.typedesig.data == 'p':
+                # form validation checked above
+                # create base object
+                obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'p'})
+                if obj[0] == -1:
+                    message = obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+                else: #create orbit entry
+                    obj_id = obj[0]
+                    sso= db.add_parabolic_heliocentric({'object_id': obj_id, 'inclination': sso_form.i.data, 'longascnode_O': sso_form.O.data, 'perihelion_o': sso_form.o.data, 
+                                                       'q': sso_form.q.data, 'D': sso_form.D.data,  
+                                                       'T': str(sso_form.T.data), 'M1': sso_form.M1.data, 'M2': sso_form.M2.data})
+                    if sso[0] == -1:
+                        message = sso[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                                render_template('footer.html'))
+                    else:
+                        message = "SSO entry for '%s' added with object_id: %s and heliocentric_parabolic id: %s" % (form1.object_name.data, obj_id, per[0])
+                        # reset the forms as an additional indication of completion
+                        form1 = SubmitObjectForm()
+                        sso_form = forms.HeliocentricParabolicForm()
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+            elif form1.typedesig.data == 'E':
+                # form validation checked above
+                # create base object
+                obj =  db.add_object({'name': form1.obj_name.data, 'typedesig': 'E'})
+                if obj[0] == -1:
+                    message = obj[1]
+                    return (render_template('header.html', current_user=flask_login.current_user) +
+                            render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                            render_template('footer.html'))
+                else: #create orbit entry
+                    obj_id = obj[0]
+                    sso= db.add_earth_satellite({'object_id': obj_id, 'inclination': sso_form.i.data, 'ra': sso_form.ra.data, 'pedigree': sso_form.P.data, 
+                                                'M': sso_form.M.data, 'e': sso_form.e.data, 'n': sso_form.n.data,  
+                                                'T': str(sso_form.T.data), 'decay': sso_form.d.data, 'reforbit': sso_form.r.data})
+                    if sso[0] == -1:
+                        message = sso[1]
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, message=message) +
+                                render_template('footer.html'))
+                    else:
+                        message = "SSO entry for '%s' added with object_id: %s and earth_satellite id: %s" % (form1.object_name.data, obj_id, per[0])
+                        # reset the forms as an additional indication of completion
+                        form1 = SubmitObjectForm()
+                        sso_form = forms.EarthSatelliteForm()
+                        return (render_template('header.html', current_user=flask_login.current_user) +
+                                render_template('object.html', form1=form1, form2=form2, sso_form=sso_form, period_form=period_form, message=message) +
+                                render_template('footer.html'))
+            else:
+                print 'How did wtforms get broken, I handled all of the typedesig options already'
+
+    # search for objects
     if form2.submit_obj.data and form2.validate_on_submit():
         if request.method == 'POST' and form2.validate():
-            if form2.RA.data and form2.DEC.data:
-                found = db.get_objects_near(form2.RA.data, form2.DEC.data, form2.radius.data)
-            elif form2.object_name.data:
-                found = db.get_object_id_from_name(form2.object_name.data)
+            if form2.obj_ra.data and form2.obj_dec.data:
+                found = db.get_objects_near(form2.obj_ra.data, form2.obj_dec.data, form2.radius.data)
+            elif form2.obj_name.data:
+                found = db.get_object_id_from_name(form2.obj_name.data)
             else:
                 found = None
 
             if found is None:
                 message = "Not enough information provided"
-            elif form2.RA.data and form2.DEC.data and not found:
+            elif form2.obj_ra.data and form2.obj_dec.data and not found:
                 message = "No objects in database within the coordinate range entered"
-            elif form2.object_name.data and not found:
-                message = "No object names in database contain %s" % (form2.object_name.data,)
+            elif form2.obj_name.data and not found:
+                message = "No object names in database contain %s" % (form2.obj_name.data,)
             elif found[0] == -1:
                 message = found[1]
             elif len(found) > 1:
@@ -440,7 +706,7 @@ def objects():
     # TODO: make an objects "homepage" to have as the base render
     form2.radius.data = 4
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
-            render_template('object.html', form1=form1, form2=form2, ssoform=ssoform, object=None,
+            render_template('object.html', form1=form1, form2=form2, ssoform=None, object=None,
                             message=message, urls = urls) +
             render_template('footer.html'))
 
@@ -508,8 +774,8 @@ def show_objects(ident):
     # TODO: check again
     # TODO: check even more
     """
-       day = datetime.datetime.now()
-       start = Time(day - datetime.timedelta(days=day.weekday())).mjd
+       day = datetime.now()
+       start = Time(day - timedelta(days=day.weekday())).mjd
        end = start + 7
        # TODO: make a form to set start/end dates
        areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
@@ -557,33 +823,33 @@ def show_objects(ident):
 
 @app.route('/project_stats')
 @flask_login.login_required
-def projects_home():  # TODO: list groups and projects. require login?
-    # generate a list of (group designator, project id, project designator)
-    groups = flask_login.current_user.groups
-    
-    projects = []
-    for group in group_programs_dict.values():
-        for project in group[1]:
-            projects.append((group[0], project[0], project[1]))
+def projects_home():  # TODO: list groups and projects.
+    # generate a list of (group designator, project id, project designator)    
+    allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
+                                 "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
+        
     return (render_template('header.html') + 
-            render_template('projects_home.html', projects = projects) + 
+            render_template('projects_home.html', allocations = allocations) + 
             render_template('footer.html'))
 
 
 @app.route('/project_stats/<program>')
 @flask_login.login_required
 def project_stats(program):
-    day = datetime.datetime.now()
-    start = Time(day - datetime.timedelta(days=day.weekday())).mjd
+    day = datetime.now()
+    start = Time(day - timedelta(days=day.weekday())).mjd
     end = start + 7
     prog_id = None
-    for lis in group_programs_dict.itervalues():
-        for prog in lis[1]:
-            if prog[1] == program:
-                prog_id = prog[0]
+    for lis in g_p_a_dict.itervalues():
+        for prog in lis[1].itervalues():
+            for i, allo in prog[1].iteritems():
+                if allo == program:
+                    prog_id = i
     if not prog_id:
         flash('program %s does not exist' % (program,))
         return redirect(url_for('index'))
+    print prog_id, flask_login.current_user.program
+    print prog_id in flask_login.current_user.program
     if prog_id not in flask_login.current_user.program:
         flash('you do not have permissions to view %s' % (program,))
         return redirect(url_for('index'))
@@ -662,6 +928,9 @@ def project_stats(program):
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data=req) +
             render_template('footer.html'))
+
+
+
 
 
 def get_user_permissions():
