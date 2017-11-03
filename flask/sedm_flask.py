@@ -36,7 +36,7 @@ SECRET_KEY = 'secret'
 USERNAME = 'admin'
 PASSWORD = 'default'
 
-db = SedmDB()
+db = SedmDB(host='localhost', dbname='sedmdb')
 tools = DbTools(db)
 
 app = Flask(__name__)
