@@ -211,7 +211,10 @@ def requests():
     if alloc and alloc[0] == -1:  # TODO: test and remove
         flash(alloc[1])
         return redirect(flask.url_for('/index'))
-    choices = alloc
+    elif not alloc:
+        choices = [(0, "You have none active!")]
+    else:
+        choices = alloc
     form1.allocation.choices = choices
     user_id = flask_login.current_user.id
     print Time.now()

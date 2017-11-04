@@ -80,7 +80,7 @@ class RequestForm(FlaskForm):
                                    choices=[('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
                                             ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
     # required and optional fields for requests
-    allocation = fields.SelectField('allocation', [validators.input_required()], coerce=int, choices=[])
+    allocation = fields.SelectField('allocation', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.input_required()])
     filters_op = fields.SelectField('filters', [validators.input_required()], coerce=str, 
                                     choices=[(' 1, 1, 1, 1}', 'u-g-r-i'), (' 0, 1, 1, 1}', "g-r-i")])
