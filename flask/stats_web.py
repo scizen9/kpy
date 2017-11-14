@@ -147,6 +147,7 @@ def plot_stats(statsfile):
     
     curdoc().add_root(layout)
     curdoc().title = "Stats"
+    return layout
 
 @lru_cache()
 def plot_not_found_message(day):

@@ -16,7 +16,7 @@ import pygal
 from pygal.style import Style
 import json
 from flask import Flask, request, flash, redirect, render_template, url_for, make_response, get_flashed_messages
-from SEDMDb.SedmDb import SedmDB
+from SEDMDb.SedmDb import SedmDB 
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
@@ -30,6 +30,8 @@ from plotly.offline import plot
 from plotly.graph_objs import Heatmap
 import matplotlib.pyplot as plt
 import pandas as pd
+import stats_web
+from bokeh.embed import components
 
 # config
 SECRET_KEY = 'secret'
@@ -61,6 +63,22 @@ for alloc in g_p_a:
     else:
         g_p_a_dict[allo[0]] = (allo[1], {allo[2]: (allo[3], {allo[4]: allo[5]})})
 
+
+def deg2hour(ra, dec, sep=":"):
+    '''
+    Returns the ra, dec in hours.
+    '''
+    from astropy.coordinates import SkyCoord
+
+    if ( type(ra) is str and type(dec) is str ):
+        return ra, dec
+                        
+    c = SkyCoord(ra, dec, frame='icrs', unit='deg')                
+    ra = c.ra.to_string(unit=u.hourangle, sep=sep, precision=2, pad=True)
+    dec = c.dec.to_string(sep=sep, precision=2, alwayssign=True, pad=True)
+                                    
+    return str(ra), str(dec)
+                                        
 
 def radec_str2rad(_ra_str, _dec_str):
     """
@@ -96,18 +114,40 @@ def load_user(user_id):
 
 
 @app.route('/')
+@flask_login.login_required
 def index():
+    sys.stdout.flush()  # send any stdout to the logfile
+    # retrieve all of the requests submitted by the user
+
+    stats_plot = stats_web.plot_stats("/scr2/sedm/phot/20171106/stats/stats.log")
+    message = "Weather statistics."
+    script, div = components(stats_plot)
+
+    try:
+        if flask_login.current_user.is_authenticated():
+            request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
+                     "FROM request r, object o, allocation a WHERE o.id = r.object_id "
+                     "AND a.id = r.allocation_id AND r.user_id = '%s';"
+                     % (flask_login.current_user.get_id(),))
+            req = db.execute_sql(request_query) 
+    except TypeError:
+        print "Error when checking for current user."
+        redirect("login")
+    
+
+    #render_template('index.html', act_req_data = actreq, comp_req_data = comp_req) + \
     # TODO: make it pretty
     return render_template('header.html', current_user=flask_login.current_user) + \
-           render_template('index.html') + \
-           render_template('footer.html')
+            render_template('index.html') + \
+            render_template('weather_stats.html', script=script, div=div, message=message) + \
+            render_template('footer.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        # Login and validate the user.
+        # Login and validate the user.index
         # user should be an instance of your `User` class
         username = form.username.data
         password = form.password.data
@@ -188,7 +228,7 @@ def password_change():
 @flask_login.login_required
 def logout():
     flask_login.logout_user()
-    return redirect(flask.url_for('login'))
+    return redirect(flask.url_for('/login'))
 
 
 @app.route('/user_info')
@@ -466,6 +506,7 @@ def schedule():
 def objects():
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
+    form2.typedesig.data = 'f'
     message = None
     urls = []
     # add objects
@@ -706,9 +747,11 @@ def objects():
                 urls = [(obj[0], obj[1]) for obj in found]
                 message = "multiple objects matching request:"
             else:
+                print found[0],[0]
+                print url_for('show_objects', ident=found[0][0])
                 return redirect(url_for('show_objects', ident=found[0][0]))
     # TODO: make an objects "homepage" to have as the base render
-    form2.radius.data = 4
+    form2.radius.data = 5
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('object.html', form1=form1, form2=form2, ssoform=None, object=None,
                             message=message, urls = urls) +
@@ -730,9 +773,11 @@ def show_objects(ident):
             flash("Searching for name '%s' caused error '%', please report issue" % (ident, iden[1]))
             return redirect(url_for('objects'))
         else:
-            return redirect(url_for('show_objects', iden[0][0]))
+            return redirect(url_for('show_objects', ident=iden[0][0]))
 
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
+    info = info + deg2hour(info[1], info[2])
+
     # TODO: work in SSO objects
     if info[0] == -1:
         flash("Searching for id '%s' caused error '%s', please report issue")
@@ -843,30 +888,26 @@ def project_stats(program):
     day = datetime.now()
     start = Time(day - timedelta(days=day.weekday())).mjd
     end = start + 7
-    prog_id = None
+    alloc_id = None
     for lis in g_p_a_dict.itervalues():
         for prog in lis[1].itervalues():
             for i, allo in prog[1].iteritems():
                 if allo == program:
-                    prog_id = i
-    if not prog_id:
+                    alloc_id = i
+    if not alloc_id:
         flash('program %s does not exist' % (program,))
         return redirect(url_for('index'))
-    if prog_id not in flask_login.current_user.allocation:
+    if alloc_id not in flask_login.current_user.allocation:
         flash('you do not have permissions to view %s' % (program,))
         return redirect(url_for('index'))
-    pg_alloc = db.get_from_allocation(['id'], {'program_id': prog_id})
-    pg_allocations = '(' +str([int(alloc_id[0]) for alloc_id in pg_alloc])[1:-1] + ')'
-    if pg_allocations == '()':
-        requests = ()
-    else:
-        # TODO: make a form to set start/end dates
-        time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
-                           "WHERE o.request_id = r.id AND r.allocation_id IN %s"
-                           #" AND r.lastmodified < %s AND r.lastmodified > %s"
-                           ";" % (pg_allocations,))
-        requests = db.execute_sql(time_used_query)
-    time_allocated = db.get_from_allocation(['time_allocated'], {'id': prog_id})[0][0]
+    
+    # TODO: make a form to set start/end dates
+    time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
+                       "WHERE o.request_id = r.id AND r.allocation_id = %s"
+                       #" AND r.lastmodified < %s AND r.lastmodified > %s"
+                       ";" % (alloc_id,))
+    requests = db.execute_sql(time_used_query)
+    time_allocated = db.get_from_allocation(['time_allocated'], {'id': alloc_id})[0][0]
     
     if requests: # check whether there are any requests
         reqs = np.array(requests)
@@ -906,14 +947,11 @@ def project_stats(program):
         pi_chart.add('requested', pending_time)
         pi_chart.add('free', (time_allocated-pending_time-observed_time))
         
-    if pg_allocations == '()':
-        req = ()
-    else:
-        # retrieve all of the requests submitted for the project
-        request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
-                         "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
-                         "AND r.allocation_id IN %s;" % (pg_allocations,))
-        req = db.execute_sql(request_query)
+    # retrieve all of the requests submitted for the project
+    request_query = ("SELECT u.name, u.username, o.name, o.id, r.inidate, r.enddate, r.priority, r.status "
+                     "FROM request r, users u, object o WHERE r.user_id = u.id AND r.object_id = o.id "
+                     "AND r.allocation_id = %s;" % (alloc_id,))
+    req = db.execute_sql(request_query)
     for n, x in enumerate(req):
         req[n] = list(x)
         # decide between name/username
@@ -927,7 +965,7 @@ def project_stats(program):
         else:
             del req[n][2]
 
-    return (render_template('header.html') +#, current_user=flask_login.current_user) +
+    return (render_template('header.html', current_user=flask_login.current_user) +
             render_template('project_stats.html', img_data=pi_chart.render_data_uri(), req_data=req) +
             render_template('footer.html'))
 

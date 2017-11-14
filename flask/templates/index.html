@@ -7,3 +7,51 @@
                 </ul>
             {% endif %}
         {% endwith %}
+        <tr>Requests</tr>
+        <table id="active user requests" class="mytable">
+            <thead>
+                <tr class="firstline">
+                    <td>Allocation</td>
+                    <td>Object</td>
+                    <td>Start Date</td>
+                    <td>End Date</td>
+                    <td>Priority</td>
+                    <!-- add time/filters? -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in act_req_data %}
+                <tr>
+                    <td>{{ request[0] }}</td>
+                    <td>{{ request[1] }}</td>
+                    <td>{{ request[2] }}</td>
+                    <td>{{ request[3] }}</td>
+                    <td>{{ request[4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <table id="completed user requests" class="mytable">
+            <thead>
+                <tr class="firstline">
+                    <td>Allocation</td>
+                    <td>Object</td>
+                    <td>Start Date</td>
+                    <td>End Date</td>
+                    <td>Priority</td>
+                    <!-- add time/filters? -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in comp_req_data %}
+                <tr>
+                    <td>{{ request[0] }}</td>
+                    <td>{{ request[1] }}</td>
+                    <td>{{ request[2] }}</td>
+                    <td>{{ request[3] }}</td>
+                    <td>{{ request[4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>

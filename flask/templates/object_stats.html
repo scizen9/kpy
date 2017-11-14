@@ -24,13 +24,13 @@
         -->
         <div class="container container-table">
             <pre> 
-  Name:  {{ info[0] }}
-  RA:    {{ info[1] }}
-  DEC:   {{ info[2] }}
-  Epoch: {{ info[4] }}
+	     	<font size="5">{{ info[0] }}</font>
+	        RA, DEC (J{{info[4]}})   <font size="4">{{ info[6]}} {{info[7]}}</font>
+	                              {{ info[1]}} {{info[2] }}
             </pre>
 
-            <tr>Requests</tr>
+	<tr>Requests</tr>
+	<p>
             <table id="requests" class="mytable">
                 <thead>
                     <tr class="firstline">
