@@ -112,6 +112,12 @@ def load_user(user_id):
     get_user_permissions()
     return user
 
+def search_stats_file():
+    '''
+    Returns the last stats file that is present in the system according to the present date.
+    It also returns a message stating what date that was.
+    '''
+    return "/scr2/sedm/phot/20171106/stats/stats.log"
 
 @app.route('/')
 @flask_login.login_required
@@ -137,6 +143,12 @@ def index():
 
     #render_template('index.html', act_req_data = actreq, comp_req_data = comp_req) + \
     # TODO: make it pretty
+    
+    statsfile = search_stats_file()
+    stats_plot = stats_web.plot_stats(statsfile)
+
+    message = "Showing statistics for the last day SEDM was observing."
+
     return render_template('header.html', current_user=flask_login.current_user) + \
             render_template('index.html') + \
             render_template('weather_stats.html', script=script, div=div, message=message) + \
