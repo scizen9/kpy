@@ -29,6 +29,7 @@ from astropy.io import fits
 from plotly.offline import plot
 from plotly.graph_objs import Heatmap
 import matplotlib.pyplot as plt
+import stats_web
 
 # config
 SECRET_KEY = 'secret'
@@ -92,12 +93,25 @@ def load_user(user_id):
     get_user_permissions()
     return user
 
+def search_stats_file():
+    '''
+    Returns the last stats file that is present in the system according to the present date.
+    It also returns a message stating what date that was.
+    '''
+    return "/scr2/sedm/phot/20171106/stats/stats.log"
 
 @app.route('/')
 def index():
     # TODO: make it pretty
+    
+    statsfile = search_stats_file()
+    stats_plot = stats_web.plot_stats(statsfile)
+
+    message = "Showing statistics for the last day SEDM was observing."
+
     return render_template('header.html', current_user=flask_login.current_user) + \
            render_template('index.html') + \
+           render_template('weather_stats.html', img_data=stats_plot.render_data_uri(), message=message) + \
            render_template('footer.html')
 
 

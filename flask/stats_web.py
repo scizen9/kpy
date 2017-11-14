@@ -148,6 +148,11 @@ def plot_stats(statsfile):
     curdoc().add_root(layout)
     curdoc().title = "Stats"
 
+    #output_file("templates/stats.html", title="Night Statistics")
+    #show(layout)
+
+    return curdoc()
+
 @lru_cache()
 def plot_not_found_message(day):
     not_found = figure(plot_width=900, plot_height=450, x_range=[0, 900], y_range=[0, 450])
