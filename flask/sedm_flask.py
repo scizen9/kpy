@@ -125,9 +125,6 @@ def index():
     sys.stdout.flush()  # send any stdout to the logfile
     # retrieve all of the requests submitted by the user
 
-    stats_plot = stats_web.plot_stats("/scr2/sedm/phot/20171106/stats/stats.log")
-    message = "Weather statistics."
-    script, div = components(stats_plot)
 
     try:
         if flask_login.current_user.is_authenticated():
@@ -138,7 +135,7 @@ def index():
             req = db.execute_sql(request_query) 
     except TypeError:
         print "Error when checking for current user."
-        redirect("login")
+        #redirect("login")
     
 
     #render_template('index.html', act_req_data = actreq, comp_req_data = comp_req) + \
@@ -146,8 +143,8 @@ def index():
     
     statsfile = search_stats_file()
     stats_plot = stats_web.plot_stats(statsfile)
-
-    message = "Showing statistics for the last day SEDM was observing."
+    message = "Weather statistics for last opened day: %s"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
+    script, div = components(stats_plot)
 
     return render_template('header.html', current_user=flask_login.current_user) + \
             render_template('index.html') + \

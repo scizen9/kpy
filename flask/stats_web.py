@@ -87,19 +87,19 @@ def plot_stats(statsfile):
         #update_stats(data, t1, t2)
 
 
-    ns = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    ns = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     ns.line('date', 'ns', source=source_static)
     ns.circle('date', 'ns', size=1, source=source, color=None, selection_color="orange")
     ns.title.text =  "Number of bright sources extracted"
     
-    bkg = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    bkg = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     bkg.x_range = ns.x_range
     bkg.line('date', 'bkg', source=source_static)
     bkg.circle('date', 'bkg', size=1, source=source, color=None, selection_color="orange")
     bkg.title.text =  "Background (counts)"
     
     
-    temp = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    temp = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     temp.x_range = ns.x_range
     temp.line('date', 'in_temp', source=source_static, color='blue', legend="Inside")
     temp.line('date', 'out_temp', source=source_static, color='green', legend="Outside")
@@ -107,30 +107,29 @@ def plot_stats(statsfile):
     temp.title.text =  "Temperature"
     
     
-    fwhm = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    fwhm = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     fwhm.x_range = ns.x_range
     fwhm.circle('date', 'fwhm', source=source_static, color="green", legend="Focus", view=viewFocus)
     fwhm.circle('date', 'fwhm', source=source_static, color="red", legend="Science", view=viewScience)
     fwhm.circle('date', 'fwhm', source=source_static, color="blue", legend="Acquisition", view=viewAcquisition)
     fwhm.circle('date', 'fwhm', source=source_static, color="black", legend="Guider", view=viewGuider)
-    
     fwhm.circle('date', 'fwhm', size=1, source=source, color=None, selection_color="orange")
     fwhm.title.text = "FWHM [arcsec]"
     
-    airmass = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    airmass = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     airmass.x_range = ns.x_range
     airmass.line('date', 'airmass', source=source_static)
     airmass.circle('date', 'airmass', size=1, source=source, color=None, selection_color="orange")
     airmass.title.text = "Airmass"
     
-    ellipticity = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    ellipticity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     ellipticity.x_range = ns.x_range
     ellipticity.line('date', 'ellipticity', source=source_static)
     ellipticity.circle('date', 'ellipticity', size=1, source=source, color=None, selection_color="orange")
     ellipticity.title.text = "Ellipticity"
     
     
-    humidity = figure(plot_width=450, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+    humidity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
     humidity.x_range = ns.x_range
     humidity.line('date', 'in_hum', source=source_static)
     humidity.circle('date', 'in_hum', size=1, source=source, color=None, selection_color="orange")
@@ -138,21 +137,21 @@ def plot_stats(statsfile):
     # set up callbacks
     
     
-    left = column(ns, bkg,temp, humidity)
-    right = column(fwhm, airmass, ellipticity)
-    layout = row(left, right)
+    left = column(fwhm, airmass, ellipticity)
+    center = column(ns, bkg)
+    right = column(temp, humidity)
+    layout = row(left, center, right)
     
     # initialize
     update()
     
     curdoc().add_root(layout)
     curdoc().title = "Stats"
-    return layout
 
     #output_file("templates/stats.html", title="Night Statistics")
     #show(layout)
 
-    return curdoc()
+    return layout
 
 @lru_cache()
 def plot_not_found_message(day):
@@ -167,7 +166,7 @@ def plot_not_found_message(day):
     curdoc().title = "Stats not found"
     
     
-#if __name__ == '__main__':
+'''#if __name__ == '__main__':
 day = ("%s"%(datetime.datetime.utcnow())).split()[0]
     
 #This value is for testing, use the value below in production
@@ -179,4 +178,6 @@ daylog = join(datadir, 'stats.log')
 if (os.path.isfile(daylog)):
     plot_stats(daylog)
 else:
-    plot_not_found_message(day)
+    plot_not_found_message(day)'''
+
+
