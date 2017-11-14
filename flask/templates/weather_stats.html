@@ -13,7 +13,6 @@
             </div>
         {% endif %}
         <div class="container container-table">
-            <div id="chart" style="height: 1200px; width: 900px;"> 
-		<embed type="image/svg+xml" src= {{ img_data|safe }} /> 
-            </div>
+            {{ script | safe }}
+	    {{div | safe}}
         </div>
