@@ -26,8 +26,8 @@ import flask
 import flask_login
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
-from plotly.offline import plot
-from plotly.graph_objs import Heatmap
+#from plotly.offline import plot
+#from plotly.graph_objs import Heatmap
 import matplotlib.pyplot as plt
 import pandas as pd
 import stats_web
@@ -117,7 +117,7 @@ def search_stats_file():
     Returns the last stats file that is present in the system according to the present date.
     It also returns a message stating what date that was.
     '''
-    return "/scr2/sedm/phot/20171106/stats/stats.log"
+    return "/scr2/sedm/phot/20171101/stats/stats.log"
 
 @app.route('/')
 @flask_login.login_required
@@ -756,7 +756,7 @@ def objects():
                 urls = [(obj[0], obj[1]) for obj in found]
                 message = "multiple objects matching request:"
             else:
-                print found[0],[0]
+                print found[0][0]
                 print url_for('show_objects', ident=found[0][0])
                 return redirect(url_for('show_objects', ident=found[0][0]))
     # TODO: make an objects "homepage" to have as the base render
