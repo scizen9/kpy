@@ -26,8 +26,8 @@ import flask
 import flask_login
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
-#from plotly.offline import plot
-#from plotly.graph_objs import Heatmap
+
+from IPython.display import HTML
 import matplotlib.pyplot as plt
 import pandas as pd
 import stats_web
@@ -120,34 +120,46 @@ def search_stats_file():
     return "/scr2/sedm/phot/20171101/stats/stats.log"
 
 @app.route('/')
-@flask_login.login_required
+#@flask_login.login_required
 def index():
     sys.stdout.flush()  # send any stdout to the logfile
-    # retrieve all of the requests submitted by the user
 
-
-    try:
-        if flask_login.current_user.is_authenticated():
-            request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
-                     "FROM request r, object o, allocation a WHERE o.id = r.object_id "
-                     "AND a.id = r.allocation_id AND r.user_id = '%s';"
-                     % (flask_login.current_user.get_id(),))
-            req = db.execute_sql(request_query) 
-    except TypeError:
-        print "Error when checking for current user."
-        #redirect("login")
-    
-
-    #render_template('index.html', act_req_data = actreq, comp_req_data = comp_req) + \
-    # TODO: make it pretty
-    
+    if flask_login.current_user.is_authenticated:
+        # retrieve all of the requests submitted by the user
+        request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
+                 "FROM request r, object o, allocation a WHERE o.id = r.object_id "
+                 "AND a.id = r.allocation_id AND r.user_id = '%s';"
+                 % (flask_login.current_user.id,))
+        req = db.execute_sql(request_query)
+        # organize requests into dataframes by whether they are completed or not
+        complete = pd.DataFrame([request for request in req if request[5] in ['COMPLETED', 'REDUCED']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
+        active = pd.DataFrame([request for request in req if request[5] in ['PENDING', 'ACTIVE']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
+        # retrieve information about the user's allocations
+        allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
+                                         "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
+        # create the dataframe and set the allocation names to be linked
+        data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
+        data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
+        active_alloc = data.loc[data.active == True]  # filter for active allocations
+        ac = active_alloc.drop(['allocation id', 'active'], axis=1)
+        # generate the html and table titles
+        request_tables = [HTML(active.to_html(escape=False, classes='active', index=False)), HTML(complete.to_html(escape=False, classes='complete', index=False))]
+        request_titles = ['', 'active requests', 'complete requests']
+        alloc_table = [HTML(ac.to_html(escape=False, classes='allocations', index=False))]
+        alloc_titles = ['', 'active allocations']
+    else:  # if there is not user, set the lists as empty
+        request_tables=[]
+        request_titles=[]
+        alloc_table = []
+        alloc_titles = []
+    # get the weather stats
     statsfile = search_stats_file()
     stats_plot = stats_web.plot_stats(statsfile)
     message = "Weather statistics for last opened day: %s"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
     script, div = components(stats_plot)
 
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('index.html') + \
+            render_template('index.html', req_tables = request_tables, req_titles=request_titles, all_table = alloc_table, all_titles = alloc_titles) + \
             render_template('weather_stats.html', script=script, div=div, message=message) + \
             render_template('footer.html')
 
@@ -161,25 +173,23 @@ def login():
         username = form.username.data
         password = form.password.data
         user_pass = db.get_from_users(['username', 'password', 'id'], {'username': username})
-        if not user_pass:
+        if not user_pass:  # if there is no user with that username
             message = "Incorrect username or password!"
             return (render_template('header.html') +
                     render_template('login.html', form=form, message=message) +
                     render_template('footer.html'))
-
         elif user_pass[0] == -1:
             message = user_pass[1]
             return (render_template('header.html') +
                     render_template('login.html', form=form, message=message) +
                     render_template('footer.html'))
-        elif check_password_hash(user_pass[0][1], flask.request.form['password']):
+        elif check_password_hash(user_pass[0][1], flask.request.form['password']):  # check password
+            # log user in and set .id = id and .name = username
             user = User()
             user.id = user_pass[0][2]
-            print user.get_id()
-            print user.id
             user.name = username
-            flask_login.login_user(user) # , remember=True)
-            get_user_permissions()
+            flask_login.login_user(user)
+            get_user_permissions()  # generate .groups, .program, and .allocation
             flash("Logged in as %s" % (username,))
             return redirect(flask.url_for('index'))
         else:
@@ -192,38 +202,36 @@ def login():
             render_template('footer.html'))
 
 
-@app.route("/passchange")
+@app.route("/passchange", methods=['GET', 'POST'])
 @flask_login.login_required
 def password_change():
     form = forms.PassChangeForm()
-    form.username = flask_login.current_user.name
+
     if form.validate_on_submit():
         # check for correct password and change if true
-        username = form.username.data
+        user_id = flask_login.current_user.id
         password = form.password.data
-        new_password = form.password_new.data
-        new_password_conf = form.password_new_conf.data
-        user_pass = db.get_from_users(['username', 'password', 'id'], {'username': username})
+        new_password = form.pass_new.data
+        new_password_conf = form.pass_conf.data
+        user_pass = db.get_from_users(['username', 'password', 'id'], {'id': user_id})
         if not user_pass:
+            form = forms.PassChangeForm()
             message = "Incorrect username or password!"
             return (render_template('header.html') +
                     render_template('passchange.html', form=form, message=message) +
                     render_template('footer.html'))
         elif user_pass[0] == -1:
+            form = forms.PassChangeForm()
             message = user_pass[1]
             return (render_template('header.html') +
                     render_template('passchange.html', form=form, message=message) +
                     render_template('footer.html'))
-        elif not userpass[0][2] == flask_login.current_user.id:
-            message = "Login to the correct user before changing password!"
-            return (render_template('header.html', current_user=flask_login.current_user) +
-                    render_template('passchange.html', form=form, message=message) +
-                    render_template('footer.html'))
         elif check_password_hash(user_pass[0][1], flask.request.form['password']):
-            db.update_user({'id': user_pass[0][2], 'password': new_passord})
+            db.update_user({'id': user_pass[0][2], 'password': new_password})
             flash("Password changed")
             return redirect(flask.url_for('logout'))
         else:
+            form = forms.PassChangeForm()
             message = "Incorrect username or password!"
             return (render_template('header.html', current_user=flask_login.current_user) +
                     render_template('passchange.html', form=form, message=message) +
@@ -237,7 +245,7 @@ def password_change():
 @flask_login.login_required
 def logout():
     flask_login.logout_user()
-    return redirect(flask.url_for('/login'))
+    return redirect(flask.url_for('login'))
 
 
 @app.route('/user_info')
@@ -772,7 +780,7 @@ def show_objects(ident):
     # take name or id and show info about it and images with permission
     try:
         iden = int(ident)
-    except ValueError:
+    except ValueError:  # if the name is given instead of id, redirect to the id
         name = str(ident)
         iden = db.get_from_object(['id'], {'name': name})
         if not iden:
@@ -783,7 +791,7 @@ def show_objects(ident):
             return redirect(url_for('objects'))
         else:
             return redirect(url_for('show_objects', ident=iden[0][0]))
-
+    # get basic information
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     info = info + deg2hour(info[1], info[2])
 
@@ -794,27 +802,29 @@ def show_objects(ident):
     elif not info:
         flash("Searching for id '%s' produced no results, please search for object")
         return redirect(url_for('objects'))
+    # don't check for requests if not logged in
+    if not flask_login.current_user.is_authenticated:
+        return (render_template('header.html') +
+                render_template('object_stats.html', info=info, req_data=[]) +
+                render_template('footer.html'))
 
 
     # retrieve all of the requests submitted for the object
-    request_query = ("SELECT u.name, u.username, p.designator, r.inidate, r.enddate, r.priority, r.status "
+    request_query = ("SELECT u.username, a.designator, r.inidate, r.enddate, r.priority, r.status "
                      "FROM request r, users u, program p, allocation a WHERE r.user_id = u.id AND a.program_id = p.id "
                      "AND a.id = r.allocation_id AND r.object_id = '%s' AND r.allocation_id IN %s;"
                      % (ident, '(' + str(flask_login.current_user.allocation)[1:-1] +')'))
     req = db.execute_sql(request_query)
-    for n, x in enumerate(req):
-        req[n] = list(x)
-        # decide between name/username
-        if not req[n][0]:
-            del req[n][0]
-        else:
-            del req[n][1]
+    # generate a dataframe, filter for requests that weren't canceled or expired
+    req_data = pd.DataFrame(req, columns=['Requester', 'Allocation', 'Start Date', 'End Date', 'Priority', 'Status'])
+    req_data = req_data.loc[req_data.Status.isin(['PENDING', 'ACTIVE', 'COMPLETED', 'REDUCED'])]
+    req_table = [HTML(req_data.to_html(escape=False, classes='complete', index=False))]
+    req_titles = ['', 'Requests']
 
     # get the time, duration and file for observations of the object
     a_query = ("SELECT obs.mjd, obs.exptime, obs.filter, obs.fitsfile "
                "FROM observation obs, object obj, request r WHERE obj.id = obs.object_id AND "
-               "r.id = obs.request_id AND obj.id = '%s';" % (ident,))
-               # TODO: add ```AND r.program_id IN %s;" % (, '(' + str(flask_login.current_user.groups)[1:-1] + ')')```
+               "r.id = obs.request_id AND obj.id = '%s' AND r.allocation_id IN %s;" % (ident,'(' + str(flask_login.current_user.allocation)[1:-1] +')'))
     observations = db.execute_sql(a_query)
     obs = []
 
@@ -829,53 +839,9 @@ def show_objects(ident):
         else:
             obs.append(([ob[0], ob[1], ob[2]], None))
     # TODO: make sure the above works
-    # TODO: check again
-    # TODO: check even more
-    """
-       day = datetime.now()
-       start = Time(day - timedelta(days=day.weekday())).mjd
-       end = start + 7
-       # TODO: make a form to set start/end dates
-       areq_query = ("SELECT atomicrequest.exptime, atomicrequest.status FROM atomicrequest "
-                     "JOIN request ON request.id = atomicrequest.request_id "
-                     "WHERE request.program_id = '%s'"
-                     # " AND  atomicrequest.lastmodified < %s AND atomicrequest.lastmodified > %s"
-                     ";" % (group_dict[project],))
-       requests = np.array(db.execute_sql(areq_query))
-       # TODO: test for whether there are any matching requests
-       pending = (requests.T[0] == 'PENDING')
-       pending_time = sum(requests.T[1][pending]) / 3600.
-       observed = ((requests.T[0] == 'OBSERVED') | (requests.T[0] == 'REDUCED'))
-       observed_time = sum(requests.T[1][observed]) / 3600.
-       # TODO: make time_allocated part of group definition?
-       time_allocated = 14.
-       # pygal graphing
-
-       # use different color schemes based on whether there is more time requested than allowed
-       if observed_time + pending_time > time_allocated:
-           c_style = Style(
-               background='transparent',
-               colors=('#52e852', '#1a4fba', '#e22626')
-           )
-           pi_chart = pygal.Pie(style=c_style, height=300, width=300)
-           pi_chart.title = "Time allocation (h)"
-           pi_chart.add('observed', observed_time)
-           pi_chart.add('requested', (time_allocated - observed_time))
-           pi_chart.add('requested beyond allocation', (observed_time + pending_time - time_allocated))
-       else:
-           c_style = Style(
-               background='transparent',
-               colors=('#52e852', '#1a4fba', '#e5f2de')
-           )
-           pi_chart = pygal.Pie(style=c_style, height=300, width=300)
-           pi_chart.title = "Time allocation (h)"
-           pi_chart.add('observed', observed_time)
-           pi_chart.add('requested', pending_time)
-           pi_chart.add('free', (time_allocated - pending_time - observed_time))
-       """
 
     return (render_template('header.html') +  # , current_user=flask_login.current_user) +
-            render_template('object_stats.html', info=info, observations=obs, req_data=req) +
+            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles) +
             render_template('footer.html'))
 
 
@@ -885,9 +851,15 @@ def projects_home():  # TODO: list groups and projects.
     # generate a list of (group designator, project id, project designator)    
     allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
                                  "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
-        
+    data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
+    data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
+    active = data.loc[data.active == True]
+    inactive = data.loc[data.active == False]
+    ac = active.drop(['allocation id', 'active'], axis=1)
+    inac = inactive.drop(['allocation id', 'active'], axis=1)
     return (render_template('header.html') + 
-            render_template('projects_home.html', allocations = allocations) + 
+            render_template('projects_home.html', allocations = allocations, tables=[HTML(ac.to_html(escape=False, classes='active', index=False)), HTML(inac.to_html(escape=False, classes='inactive', index=False))],
+                            titles = ['', 'Active allocations', 'Inactive allocations']) + 
             render_template('footer.html'))
 
 
@@ -1010,7 +982,7 @@ def get_user_permissions():
     groups.append(-1)
     programs.append(-1)
     allocations.append(-1)
-    # set current_user values for groups programs and allocations
+    # set current_user values for groups programs and allocation
     flask_login.current_user.groups = groups
     flask_login.current_user.program = programs
     flask_login.current_user.allocation = allocations

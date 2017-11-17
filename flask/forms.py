@@ -131,7 +131,6 @@ class LoginForm(FlaskForm):
 
 
 class PassChangeForm(FlaskForm):
-    username = fields.StringField('username', validators=[validators.input_required()])
     password = fields.PasswordField('Old Password', validators=[validators.input_required()])
     pass_new = fields.PasswordField('New Password', validators=[validators.input_required(), validators.EqualTo('pass_conf', message='Passwords must match')] )
     pass_conf = fields.PasswordField('Confirm New Password', validators=[validators.input_required()])

@@ -28,32 +28,9 @@
 	        RA, DEC (J{{info[4]}})   <font size="4">{{ info[6]}} {{info[7]}}</font>
 	                              {{ info[1]}} {{info[2] }}
             </pre>
-
-	<tr>Requests</tr>
-	<p>
-            <table id="requests" class="mytable">
-                <thead>
-                    <tr class="firstline">
-                        <td>Requester</td>
-                        <td>Project</td>
-                        <td>Start Date</td>
-                        <td>End Date</td>
-                        <td>Priority</td>
-                        <td>Status</td>
-                        <!-- add time/filters? -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for request in req_data %}
-                    <tr>
-                        <td>{{ request[0] }}</td>
-                        <td>{{ request[1] }}</td>
-                        <td>{{ request[2] }}</td>
-                        <td>{{ request[3] }}</td>
-                        <td>{{ request[4] }}</td>
-                        <td>{{ request[5] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            
+            {% for table in req_table %}
+                <h2>{{req_titles[loop.index]}}</h2>
+                {{ table|safe }}
+            {% endfor %}
         </div>
