@@ -978,18 +978,14 @@ def get_user_permissions():
     permission_query = ("SELECT g.id, p.id, a.id, a.designator \
                         FROM groups g, usergroups ug, program p, allocation a \
                         WHERE p.group_id = g.id AND ug.group_id = g.id AND a.program_id = p.id \
-                        AND ug.user_id = '%d';" % (flask_login.current_user.get_id()))
+                        AND ug.user_id = '%d';" % ( long(flask_login.current_user.get_id())))
                    
     gr_pr_al = db.execute_sql(permission_query)
     
     if (len (gr_pr_al)>0):
-        groups = [long(group[0]) for g in gr_pr_al]  # will be a list of the ids
-        # use the g_p_a_dict to generate programs and allocations
-        #programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
-        #allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
-        
-        programs = [long(g[1]) for g in gr_pr_al]  # will be a list of the ids
-        allocations = [long(g[2]) for g in gr_pr_al]  # will be a list of the ids
+        groups = [int(g[0]) for g in gr_pr_al]  # will be a list of the ids
+        programs = [int(g[1]) for g in gr_pr_al]  # will be a list of the ids
+        allocations = [int(g[2]) for g in gr_pr_al]  # will be a list of the ids
 
     else:
         # add impossible value to prevent empty IN clauses
