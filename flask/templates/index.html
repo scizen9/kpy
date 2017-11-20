@@ -7,3 +7,17 @@
                 </ul>
             {% endif %}
         {% endwith %}
+        <div class="container">
+            {% for table in req_tables %}
+                <div class="col-md-6">
+                    <h2>{{req_titles[loop.index]}}</h2>
+                    {{ table|safe }}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="container">
+            {% for table in all_table %}
+                <h2>{{all_titles[loop.index]}}</h2>
+                {{ table|safe }}
+            {% endfor %}
+        </div>

@@ -876,7 +876,7 @@ class SedmDB:
                     'n' (float) (mean daily motion deg/day),
                     'e' (float) (eccentricity),
                     'M' (float) (mean anomaly),
-                    'mjdepoch' (int/long) (epoch, time of 'M'),
+                    'mjdepoch' (float) (epoch, time of 'M'),
                     'D': (float) (equinox year),
                     'M1' (float),
                     'M2' (float) (first and second components of magnitude model)
@@ -887,7 +887,7 @@ class SedmDB:
 
         """
         param_types = {'id': int, 'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
-                       'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': float, 'M1': float,
+                       'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': float, 'D': float, 'M1': float,
                        'M2': float, 's': float}
         id = _id_from_time()
         orbit_params['id'] = id
@@ -936,7 +936,7 @@ class SedmDB:
                 'n' (float) (mean daily motion deg/day),
                 'e' (float) (eccentricity),
                 'M' (float) (mean anomaly),
-                'mjdepoch' (int) (epoch, time of 'M'),
+                'mjdepoch' (float) (epoch, time of 'M'),
                 'D': (float) (equinox year),
                 'M1' (float),
                 'M2' (float) (first and second components of magnitude model),
@@ -950,7 +950,7 @@ class SedmDB:
             (-1, "ERROR...") if there was an issue
         """
         allowed_params = {'object_id': int, 'inclination': float, 'longascnode_O': float, 'perihelion_o': float,
-                          'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': int, 'D': float, 'M1': float,
+                          'a': float, 'n': float, 'e': float, 'M': float, 'mjdepoch': float, 'D': float, 'M1': float,
                           'M2': float, 's': float, 'id': int}
         sql = _generate_select_sql(values, where_dict, allowed_params, compare_dict, 'elliptical_heliocentric')
         if sql[0] == 'E':  # if the sql generation returned an error

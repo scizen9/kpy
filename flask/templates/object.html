@@ -17,21 +17,35 @@
                     <a href="{{ url_for('show_objects', ident=url) }}">{{ name }} &nbsp;&nbsp; </a>
                 {%- endfor -%}
             </div>
-            <!--
             <div class="col-md-6">
                 <div class="well">
                     <h3>Add Object</h3>
                     <form method="post">
                         {{ form1.csrf_token }}
                         <p>
-                            {{ render_field(form1.object_name) }}
-                            {{ render_field(ssoform.typedesig) }}
+                            {{ render_field(form1.obj_name) }}
+                            {{ render_field(form1.typedesig) }}
+                            {% if sso_form %}
+                                <p>&nbsp;</p>
+                                <h4>Please input object data (ephem format)</h4>
+                                {% for field in sso_form.__iter__() %}
+                                    {{ render_field(field) }}
+                                {% endfor %}
+                            {% else %}
+                                {{ render_field(form1.obj_ra) }}
+                                {{ render_field(form1.obj_dec) }}
+                            {% endif %}
+                            {% if period_form %}
+                                <h4>Add period data</h4>
+                                {% for field in period_form.__iter__() %}
+                                    {{ render_field(field) }}
+                                {% endfor %}
+                            {% endif %}
                             {{ render_field(form1.add_obj) }}
                         </p>
                     </form>
                 </div>
             </div>
-            -->
             <div class="col-md-6">
                 <div class="well">
                     <h3>Search Database</h3>
@@ -39,8 +53,8 @@
                     <form method="post">
                         {{ form2.csrf_token }}
                         <p>
-                            {{ render_field(form2.RA) }}
-                            {{ render_field(form2.DEC) }}
+                            {{ render_field(form2.obj_ra) }}
+                            {{ render_field(form2.obj_dec) }}
                             {{ render_field(form2.radius) }}
                             {{ render_field(form2.submit_obj) }}
                         </p>
@@ -49,7 +63,8 @@
                     <form method="post">
                         {{ form2.csrf_token }}
                         <p>
-                            {{ render_field(form2.object_name) }}
+                            {{ render_field(form2.obj_name) }}
+                            {{ render_field(form2.typedesig) }}
                             {{ render_field(form2.submit_obj) }}
                         </p>
                     </form>
