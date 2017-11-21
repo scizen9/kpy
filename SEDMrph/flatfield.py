@@ -44,7 +44,7 @@ def get_flats_counts(directory):
         bias = rcred.get_overscan_bias_rc(f)
         exptime = fitsutils.get_par(f, "EXPTIME")
         sunsettime = fitsutils.get_par(f, "SUNSET")
-        utc = datetime.datetime.strptime(time_utils.jd2utc(fitsutils.get_par(f, "JD")), "%Y-%m-%d %H:%M:%S.%f")
+        utc = time_utils.jd2utc(fitsutils.get_par(f, "JD"))
         st = datetime.datetime.strptime(sunsettime, "%H:%M")
 
         
