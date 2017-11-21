@@ -1,4 +1,8 @@
-        {% with messages = get_flashed_messages() %}
+	<div class="container">
+		<h3>{{greeting}}</h2>
+		<img src="{{myimage}}">
+	</div>
+	{% with messages = get_flashed_messages() %}
             {% if messages %}
                 <ul class=flashes>
                 {% for message in messages %}
