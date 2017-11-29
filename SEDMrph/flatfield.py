@@ -52,7 +52,7 @@ def get_flats_counts(directory):
         bias = rcred.get_overscan_bias_rc(f)
         exptime = fitsutils.get_par(f, "EXPTIME")
         sunsettime = fitsutils.get_par(f, "SUNSET")
-        utc = datetime.datetime.strptime(time_utils.jd2utc(fitsutils.get_par(f, "JD")), "%Y-%m-%d %H:%M:%S.%f")
+        utc = time_utils.jd2utc(fitsutils.get_par(f, "JD"))
         st = datetime.datetime.strptime(sunsettime, "%H:%M")
         elapsed = 3600*(utc.hour - st.hour) + 60*(utc.minute - st.minute) + (utc.second - st.second)
         
@@ -92,6 +92,7 @@ def get_flats_counts(directory):
     plt.ylabel("log Counts/s")
     plt.legend()
     plt.show()
+<<<<<<< HEAD
     
 
 def get_flat_itime(band, elapsed, counts=20000):
@@ -148,3 +149,6 @@ def test_prediction(f):
             counts[band].append( (np.percentile(sf, 90)-bias)/exptime)
                 
     
+=======
+            
+>>>>>>> da603f77e64492879edd407a273e8c53acd1ca65

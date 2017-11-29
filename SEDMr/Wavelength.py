@@ -912,18 +912,18 @@ def stretch_set(Hg_set, Xe_set, mscales=None):
 
         gridded_set[-1] = (scale, hg.spec, xe.spec)
 
-    fiducial = gridded_set[int(len(gridded_set)/2)]
-    if fiducial is None or len(fiducial[0]) != 265:
-        fiducial = gridded_set[int(len(gridded_set)/2) + 1]
-    if fiducial is None or len(fiducial[0]) != 265:
-        fiducial = gridded_set[int(len(gridded_set)/2) + 2]
-    if fiducial is None or len(fiducial[0]) != 265:
-        fiducial = gridded_set[int(len(gridded_set)/2) + 3]
-    if fiducial is None or len(fiducial[0]) != 265:
-        fiducial = gridded_set[int(len(gridded_set)/2) + 4]
+    fid_index = int(len(gridded_set)/2)
+    fiducial = gridded_set[fid_index]
+    while fid_index < len(gridded_set) and (fiducial is None or
+                                                    len(fiducial[0]) != 265):
+        fid_index += 1
+        fiducial = gridded_set[fid_index]
+
     if fiducial is None:
         print("No good fiducial")
         quit()
+    else:
+        print("Fiducial index: %d" % fid_index)
 
     print("Number of extractions: %d" % len(gridded_set))
 

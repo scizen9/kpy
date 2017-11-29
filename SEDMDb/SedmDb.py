@@ -1591,7 +1591,7 @@ class SedmDB:
         # TODO: move to logic layer? (requires sql "knowledge")
         # TODO: make it more discerning of other statuses
         # tests written
-        sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status != 'COMPLETED';"
+        sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status not in ('COMPLETED', 'CANCELED', 'REDUCED');"
         self.execute_sql(sql)
         return (0, "Requests expired")
 

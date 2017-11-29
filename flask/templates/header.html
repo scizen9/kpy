@@ -9,12 +9,6 @@
     <link rel="stylesheet" href="http://astro.caltech.edu/~rsw/static/css/bootstrap.min.css">
  	<link rel="stylesheet" href="http://astro.caltech.edu/~rsw/static/css/bootstrap.css" type="text/css">
 
-    <!-- jQuery library -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-
-    <!-- Bootstrap JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <link href="http://astro.caltech.edu/~rsw/static/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
 
@@ -125,6 +119,7 @@
                 <li><a href="/request">Request</a></li>
                 <li><a href="/objects">Objects</a></li>
                 <li><a href="/project_stats">Project Statistics</a></li>
+                <li><a href="/weather_stats?">Weather Statistics</a></li>
                 {% if not current_user.is_authenticated %}
                     <li><a href="/login">Login</a></li>
                 {% else %}

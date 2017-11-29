@@ -106,6 +106,7 @@ def get_sextractor_stats(files):
         for i, f in enumerate(files):
 	    if (fitsutils.has_par(f, "IMGTYPE")):
             	imtype = fitsutils.get_par(f, "IMGTYPE")
+		imtype = imtype.upper()
 	    else:
 		imtype = "NONE"
             if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
@@ -126,7 +127,7 @@ def get_sextractor_stats(files):
                 ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
                 out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s,%.2f,%.2f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype,out_temp,in_hum))
             except:
-                pass
+                print "Error when retrieving the stats parameters from the header of file %s"%f
             
 def plot_stats(statfile):
     
@@ -227,5 +228,5 @@ if __name__ == '__main__':
     try:
 	subprocess.call(cmd, shell=True)
     except IOError:
-	pass
+	print "IoError when calling the command %s"%cmd
 

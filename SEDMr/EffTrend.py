@@ -42,27 +42,42 @@ for d in dlist:
         # Check each 100 nm bin
 
         # 400 - 500 nm
-        e1 = np.nanmean(ef[(wl > 400) * (wl < 500)])
+        vec = ef[(wl > 400) * (wl < 500)]
+        if len(vec) < 1:
+            continue
+        e1 = np.nanmean(vec)
         if e1 > 100 or e1 < 0:
             continue
 
         # 500 - 600 nm
-        e2 = np.nanmean(ef[(wl > 500) * (wl < 600)])
+        vec = ef[(wl > 500) * (wl < 600)]
+        if len(vec) < 1:
+            continue
+        e2 = np.nanmean(vec)
         if e2 > 100 or e2 < 0:
             continue
 
         # 600 - 700 nm
-        e3 = np.nanmean(ef[(wl > 600) * (wl < 700)])
+        vec = ef[(wl > 600) * (wl < 700)]
+        if len(vec) < 1:
+            continue
+        e3 = np.nanmean(vec)
         if e3 > 100 or e3 < 0:
             continue
 
         # 700 - 800 nm
-        e4 = np.nanmean(ef[(wl > 700) * (wl < 800)])
+        vec = ef[(wl > 700) * (wl < 800)]
+        if len(vec) < 1:
+            continue
+        e4 = np.nanmean(vec)
         if e4 > 100 or e4 < 0:
             continue
 
         # 800 - 900 nm
-        e5 = np.nanmean(ef[(wl > 800) * (wl < 900)])
+        vec = ef[(wl > 800) * (wl < 900)]
+        if len(vec) < 1:
+            continue
+        e5 = np.nanmean(vec)
         if e5 > 100 or e5 < 0:
             continue
 

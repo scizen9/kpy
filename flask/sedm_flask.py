@@ -2,11 +2,9 @@
 
 """
 import sys
-import os
+import os, re
 sys.path.append(os.path.abspath('../'))
 
-import os
-import sys
 from datetime import datetime, timedelta
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
@@ -112,12 +110,80 @@ def load_user(user_id):
     get_user_permissions()
     return user
 
-def search_stats_file():
+def search_stats_file(mydate = None):
     '''
     Returns the last stats file that is present in the system according to the present date.
     It also returns a message stating what date that was.
     '''
-    return "/scr2/sedm/phot/20171101/stats/stats.log"
+    #If the date is specified, we will try to located the right file.
+    #None will be returned if it does not exist.
+    if ( not mydate is None):
+        s= os.path.join("/scr2/sedm/phot", mydate, "stats/stats.log")
+        if os.path.isfile(s) and os.path.getsize(s) > 0:
+            return s
+        else:
+            return None
+
+    else:         
+        curdate = datetime.utcnow()
+        #Try to find the stat files up to 100 days before today's date.
+        i = 0
+        while i < 100:
+            newdate = curdate - timedelta(i)
+            newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
+            s = os.path.join("/scr2/sedm/phot", newdatedir, "stats/stats.log")
+            if os.path.isfile(s) and os.path.getsize(s) > 0:
+                return s
+            i = i+1
+        return None
+
+    
+
+@app.route('/weather_stats', methods=['GET'])
+def weather_stats():
+    '''
+    Displays the weather statistics page. It accepts the "date" parameter as the day we want to see the stats from.
+    with no parameters, it jsut searches for the last day that the telescope was open and we have a stats log for it.
+
+    :return:
+
+    '''
+
+
+    if not 'date' in flask.request.args:
+        # get the weather stats
+        statsfile = search_stats_file()
+        stats_plot = stats_web.plot_stats(statsfile)
+        if (stats_plot is None):
+            message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
+            script, div = None, None
+        else:
+            message = " Weather statistics for last opened day: %s \r To try a different date, type in the navigation bar: ?date=YYYYDDMM"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
+            script, div = components(stats_plot)
+    else:
+        mydate_in = flask.request.args['date']
+        #Just making sure that we have only allowed digits in the date
+        mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
+        if len(mydate) ==0:
+            message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
+            script, div = "", ""
+        else:
+            mydate = mydate[0]
+            message = ""
+
+            statsfile = search_stats_file(mydate)
+            if (statsfile is None):
+                message=message + "No statistics log found for the date %s."%(mydate)
+                script, div = "", ""
+            else:
+                stats_plot = stats_web.plot_stats(statsfile)
+                message = message + "Weather statistics for selected day: %s"%(mydate)
+                script, div = components(stats_plot)
+
+
+    return render_template('header.html', current_user=flask_login.current_user) + \
+            render_template('weather_stats.html', script=script, div=div, message=message) + \
+            render_template('footer.html')
 
 @app.route('/')
 #@flask_login.login_required
@@ -147,20 +213,19 @@ def index():
         request_titles = ['', 'active requests', 'complete requests']
         alloc_table = [HTML(ac.to_html(escape=False, classes='allocations', index=False))]
         alloc_titles = ['', 'active allocations']
+        greeting = 'Hello %s!'%flask_login.current_user.name
+        myimage = ''
     else:  # if there is not user, set the lists as empty
         request_tables=[]
         request_titles=[]
         alloc_table = []
         alloc_titles = []
-    # get the weather stats
-    statsfile = search_stats_file()
-    stats_plot = stats_web.plot_stats(statsfile)
-    message = "Weather statistics for last opened day: %s"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
-    script, div = components(stats_plot)
+        greeting = 'Hello stranger! Please, log in to see Wonderland.'
+        myimage=flask.url_for('static', filename='img/SEDM_ifu.jpg')
 
+            #render_template('weather_stats.html', script=script, div=div, message=message) + \
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('index.html', req_tables = request_tables, req_titles=request_titles, all_table = alloc_table, all_titles = alloc_titles) + \
-            render_template('weather_stats.html', script=script, div=div, message=message) + \
+            render_template('index.html', req_tables = request_tables, req_titles=request_titles, all_table = alloc_table, all_titles = alloc_titles, greeting=greeting, myimage=myimage) + \
             render_template('footer.html')
 
 
@@ -870,17 +935,20 @@ def project_stats(program):
     start = Time(day - timedelta(days=day.weekday())).mjd
     end = start + 7
     alloc_id = None
-    for lis in g_p_a_dict.itervalues():
-        for prog in lis[1].itervalues():
-            for i, allo in prog[1].iteritems():
-                if allo == program:
-                    alloc_id = i
-    if not alloc_id:
-        flash('program %s does not exist' % (program,))
+
+
+    permission_query = ("SELECT DISTINCT a.id \
+                        FROM groups g, usergroups ug, program p, allocation a \
+                        WHERE p.group_id = g.id AND ug.group_id = g.id AND a.program_id = p.id \
+                        AND ug.user_id = %d AND a.designator='%s';" % ( long(flask_login.current_user.get_id()), program))
+                   
+    alloc_id = db.execute_sql(permission_query)
+    
+    if len(alloc_id)==0:
+        flash('allocation %s does not exist for user %s' % (program,flask_login.current_user.name))
         return redirect(url_for('index'))
-    if alloc_id not in flask_login.current_user.allocation:
-        flash('you do not have permissions to view %s' % (program,))
-        return redirect(url_for('index'))
+    else:
+        alloc_id = int(alloc_id[0][0])
     
     # TODO: make a form to set start/end dates
     time_used_query = ("SELECT o.time_elapsed, r.status FROM request r, observation o "
@@ -956,15 +1024,18 @@ def project_stats(program):
 
 def get_user_permissions():
     """returns ([groups], [programs], [allocations]) allowed for the current user"""
+
+    
+    groups = [-1]
+    programs = [-1]
+    allocations = [-1]
+
     if int(flask_login.current_user.get_id()) == 2:  # user_id == 2 is admin
         # use the g_p_a_dict to add all groups, programs and allocations
-        groups = [group for group in g_p_a_dict.keys()]
-        programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
-        allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
         # add impossible value to prevent empty IN clauses
-        groups.append(-1)
-        programs.append(-1)
-        allocations.append(-1)
+        groups = [-1]
+        programs = [-1]
+        allocations = [-1]
         # set current_user values for groups programs and allocations
         flask_login.current_user.groups = groups
         flask_login.current_user.program = programs
@@ -978,24 +1049,20 @@ def get_user_permissions():
     permission_query = ("SELECT g.id, p.id, a.id, a.designator \
                         FROM groups g, usergroups ug, program p, allocation a \
                         WHERE p.group_id = g.id AND ug.group_id = g.id AND a.program_id = p.id \
-                        AND ug.user_id = '%d';" % (flask_login.current_user.get_id()))
+                        AND ug.user_id = '%d';" % ( long(flask_login.current_user.get_id())))
                    
     gr_pr_al = db.execute_sql(permission_query)
     
     if (len (gr_pr_al)>0):
-        groups = [long(group[0]) for g in gr_pr_al]  # will be a list of the ids
-        # use the g_p_a_dict to generate programs and allocations
-        #programs = [p for group in groups for p in g_p_a_dict[group][1].keys()]
-        #allocations = [a for group in groups for p in g_p_a_dict[group][1].values() for a in p[1].keys()]
-        
-        programs = [long(g[1]) for g in gr_pr_al]  # will be a list of the ids
-        allocations = [long(g[2]) for g in gr_pr_al]  # will be a list of the ids
+        groups = [int(g[0]) for g in gr_pr_al]  # will be a list of the ids
+        programs = [int(g[1]) for g in gr_pr_al]  # will be a list of the ids
+        allocations = [int(g[2]) for g in gr_pr_al]  # will be a list of the ids
 
     else:
         # add impossible value to prevent empty IN clauses
-        groups.append(-1)
-        programs.append(-1)
-        allocations.append(-1)
+        groups = [-1]
+        programs = [-1]
+        allocations = [-1]
     
     # set current_user values for groups programs and allocation
     flask_login.current_user.groups = groups

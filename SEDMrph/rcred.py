@@ -184,7 +184,7 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
     
     if (flatdir == None or flatdir==""): flatdir = "."
         
-    if (biasdir == None or biasdir==""): biasdir = "."
+    if (biasdir == None or biasdir==""): biasdir = flatdir
         
     os.chdir(flatdir)
     
@@ -196,7 +196,6 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         return 
     if (len(glob.glob("Flat_%s*norm.fits"%channel)) > 0):
         logger.info( "Some Master Flat exist!")
-        return 
     else:
         logger.info( "Starting the Master Flat creation!")
 
@@ -1089,7 +1088,21 @@ if __name__ == '__main__':
         myfiles = np.genfromtxt(filelist, dtype=None)
         myfiles = [os.path.abspath(f) for f in myfiles]
         
-    elif (not photdir is None ):
+    else:
+
+    	if (photdir is None):
+        	timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        	timestamp = timestamp.split("T")[0].replace("-","")
+        	photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+
+		print '''WARNING! You did not specify the directory or the list:\n
+        	- A filelist name with the images you want to reduce [-l]
+	        OR
+        	- The name of the directory which you want to reduce [-d].
+	
+		A default name for the directory will be assumed on today's date: %s
+		'''%photdir
+
         mydir = os.path.abspath(photdir)
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
@@ -1098,17 +1111,13 @@ if __name__ == '__main__':
                 	myfiles.append(f)
             except:
             	print "problems opening file %s"%f
-    else:
-	print '''ERROR! You should specify one of the following:\n
-        - A filelist name with the images you want to reduce [-l]
-        OR
-        - The name of the directory which you want to reduce [-d].'''
 
     if (len(myfiles)== 0):
 	sys.exit()
 
-    create_masterbias(photdir)
-    create_masterflat(photdir)  
+    create_masterbias(mydir)
+    print "Create masterflat",mydir
+    create_masterflat(mydir)  
     
     #Reduce them
     reducedfiles = []
@@ -1124,7 +1133,11 @@ if __name__ == '__main__':
                 pass
 
     #If copy is requested, then we copy the whole folder or just the missing files to transient.
-    
+    try:
+    	zeropoint.lsq_zeropoint(os.path.join(mydir, "reduced/allstars_zp.log"), os.path.join(mydir, "reduced/zeropoint"))
+    except ValueError:
+	print "Could not calibrate zeropoint for file %s"%(os.path.join(mydir, "reduced/allstars_zp.log"))
+
     dayname = os.path.basename(os.path.dirname(os.path.abspath(myfiles[0])))
     reducedname = os.path.join(os.path.dirname(os.path.abspath(myfiles[0])), "reduced")
     if (not photdir is None and copy):
