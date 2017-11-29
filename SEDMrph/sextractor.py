@@ -243,6 +243,7 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     s = np.genfromtxt(sexfile, comments="#")
 
     if (s is None or s.ndim==0 or len(s)==0):
+        print "Empty content of the file"
         return 0,0,0,0
 
     #Select sources inside of the cross
@@ -263,8 +264,8 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     ellipticity = np.nanmedian(s[:,8])
     s = s[s[:,8]<0.25]
 
-    #Select FWHM at least 3 pixels and lower than 6 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<6)]
+    #Select FWHM at least 3 pixels and lower than 10 arcsec
+    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<10)]
     
     nsources = len(s) 
     if (nsources == 0):

@@ -26,6 +26,7 @@ import zeropoint
 from astropy.io import fits
 import scipy
 
+
 from ConfigParser import SafeConfigParser
 import codecs
 
@@ -997,6 +998,35 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         
     return slice_names
 
+
+    
+def log_db_phot(myfile):
+    '''
+    Logs the science files.
+    '''
+    import archive_mod_sedmdb  # this file requires being able to submit observations with pre-determined id values, which isn't allowed in the original
+
+
+    sdb = archive_mod_sedmdb.SedmDB(dbname='sedmdbtest', host='localhost')
+
+    cmd = "git version %s"%__file__
+    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    version = p.communicate()[0].replace('\n',"")
+    
+    pardic = {"id"              : sdb._id_from_time(),
+              "phot_calib_id"   : "",
+              "observation_id"  : fitsutils.get_par(myfile, "OBS_ID"),
+              "astrometry"      : bool(fitsutils.get_par(myfile, "IQWCS")),
+              "filter"          : fitsutils.get_par(myfile, "FILTER").strip(),
+              "reducedfile"     : os.path.abspath(myfile),
+              "sexfile"         : sextractor.run_sex([myfile])[0],
+              "maskfile"        : "",
+              "pipeline"        : version,
+              "marshal_phot_id" : ""}
+              
+    sdb.add_phot(pardic)
+              
+             
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
