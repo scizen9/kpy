@@ -110,25 +110,27 @@ def get_sextractor_stats(files):
                     imtype = imtype.upper()
                 else:
                     imtype = "NONE"
-                    if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
-               		continue 
-                    if not os.path.isfile(sexfiles[i]):
-                        sf =  sextractor.run_sex([f])
-                    else:
-                        sf = sexfiles[i]
-                    print f
-                    hd = pf.open(files[i])[0].header
-                    try:
-                        jd = hd["JD"]
-                        obj = hd["OBJECT"]
-                        airmass = hd["AIRMASS"]
-                        in_temp = hd["IN_AIR"]
-                        out_temp = hd["OUT_AIR"]
-                        in_hum = hd["IN_HUM"]
-                        ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
-                        out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s,%.2f,%.2f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype,out_temp,in_hum))
-                    except:
-                        print "Error when retrieving the stats parameters from the header of file %s"%f
+
+                if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
+                    continue 
+
+                if not os.path.isfile(sexfiles[i]):
+                    sf =  sextractor.run_sex([f])
+                else:
+                    sf = sexfiles[i]
+                print f
+                hd = pf.open(files[i])[0].header
+                try:
+                    jd = hd["JD"]
+                    obj = hd["OBJECT"]
+                    airmass = hd["AIRMASS"]
+                    in_temp = hd["IN_AIR"]
+                    out_temp = hd["OUT_AIR"]
+                    in_hum = hd["IN_HUM"]
+                    ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
+                    out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s,%.2f,%.2f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype,out_temp,in_hum))
+                except:
+                    print "Error when retrieving the stats parameters from the header of file %s"%f
             except IOError:
                 print "Error when opening file %s"%f
             
