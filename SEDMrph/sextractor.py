@@ -264,8 +264,8 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     ellipticity = np.nanmedian(s[:,8])
     s = s[s[:,8]<0.25]
 
-    #Select FWHM at least 3 pixels and lower than 10 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<10)]
+    #Select FWHM at least 3 pixels and lower than 15 arcsec
+    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<15)]
     
     nsources = len(s) 
     if (nsources == 0):
