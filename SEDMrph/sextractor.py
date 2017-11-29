@@ -243,7 +243,7 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     s = np.genfromtxt(sexfile, comments="#")
 
     if (s is None or s.ndim==0 or len(s)==0):
-        print "Empty content of the file"
+        print "Empty content of the file for file %s. The length of the file is %d"%(sexfile, len(s))
         return 0,0,0,0
 
     #Select sources inside of the cross
