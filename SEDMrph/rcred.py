@@ -80,6 +80,28 @@ def get_xy_coords(image, ra, dec):
         coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
         
     return coords
+
+def get_rd_coords(image, x, y):
+    '''
+    Uses the wcs-xy2rd routine to compute the ra, dec where the target is for a given pixel.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-xy2rd -w %s -x %.5f -y %.5f"%(image, x, y)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    output = output.split("->")[1]
+    
+    numbers = re.findall("[-+]?\d+[\.]?\d*", output)
+    coords = []
+    for n in numbers:
+        coords.append(float(n))
+        
+    return coords
+
     
 def create_masterbias(biasdir=None, channel='rc'):
     '''
@@ -348,23 +370,33 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
     copy_ref_calib(flatdir, "Flat")	
 
-def create_masterguide(lfiles):
+def create_masterguide(lfiles, out=None):
     '''
     Receives a list of guider images for the same object.
     It will remove the bias from it, combine them using the median, and comput the astrometry for the image.
     
     '''
+    
+    curdir = os.getcwd()
+    
+    if len(lfiles) == 0:
+        return
+    else:
+        os.chdir(os.path.abspath(os.path.dirname(lfiles[0])))
+        
     fffile ="lflat_guider_"
     np.savetxt(fffile, np.array(lfiles), fmt="%s")
     
-    debiased = [os.path.join( os.path.dirname(img), "b_" + os.path.basename(img)) for img in lfiles]
+    debiased = ["b_" + os.path.basename(img) for img in lfiles]
     bffile ="lflat_guider_debiased_"
     np.savetxt(bffile, np.array(debiased), fmt="%s")
 
     bias_fast = "Bias_rc_fast.fits"
 
-    obj = fitsutils.get_par(img, "OBJECT")
-    out = os.path.join( os.path.dirname(img), obj.replace(" ", "").replace(":", "")+".fits")
+    if (out is None):
+        obj = fitsutils.get_par(img, "OBJECT")
+        out = os.path.join( os.path.dirname(img), obj.replace(" ", "").replace(":", "")+".fits")
+
 
     # Running IRAF
     iraf.noao(_doprint=0)
@@ -373,7 +405,7 @@ def create_masterguide(lfiles):
     
     #Remove bias from the guider images    
     if len(lfiles) >0:
-        iraf.imarith("@"+fffile, "-", bias_fast, "b_@"+fffile)    
+        iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
     
         
     #Combine flats
@@ -388,7 +420,7 @@ def create_masterguide(lfiles):
     #Do some cleaning
     logger.info( 'Removing from lfiles')
     for f in debiased:
-        os.remove(f)
+        if os.path.isfile(f): os.remove(f)
 
     if os.path.isfile(fffile):
         os.remove(fffile)
@@ -396,7 +428,50 @@ def create_masterguide(lfiles):
         os.remove(bffile)
         
     solve_astrometry(out)
+    
+    os.chdir(curdir)
 
+    
+def solved_guiders(mydir):
+    '''
+    Looks for all the IFU images in the directory and assembles all the guider images taken with RC for that time interval
+    at around the coordinates of the IFU.
+    '''
+    
+    abspath = os.path.abspath(mydir)
+    
+    #curdir = os.getcwd()
+
+    #os.chdir(os.path.dirname(mydir))
+        
+    ifu = np.array(glob.glob(abspath+"/ifu*fits"))
+    rc = np.array(glob.glob(abspath+"/rc*fits"))
+    
+    ifu_dic = {}
+    
+    for i in ifu:
+        imgtype = fitsutils.get_par(i, "IMGTYPE")
+        if not imgtype is None:
+            imgtype = imgtype.upper()
+        if imgtype == "SCIENCE" or imgtype =="STANDARD":
+            jd_ini = fitsutils.get_par(i, "JD") - fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
+            jd_end = fitsutils.get_par(i, "JD")
+            name = fitsutils.get_par(i, "OBJECT")
+            ifu_dic[i] = (name, jd_ini, jd_end)
+        
+    rcjd = np.array([fitsutils.get_par(r, "JD") for r in rc])
+    imtypes = np.array([fitsutils.get_par(r, "IMGTYPE").upper() for r in rc])
+    print ifu_dic
+       
+    for ifu_i in ifu_dic.keys():
+        #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
+        guiders = rc[(rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
+        print "For image %s found guiders: %s"%(ifu_i, guiders)
+        create_masterguide(guiders, out=os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i)))
+    
+    #os.chdir(curdir)
+    
+    
     
 def mask_stars(image, sexfile, plot=False, overwrite=False):
     ''' 
@@ -609,9 +684,15 @@ def copy_ref_calib(curdir, calib="Flat"):
 def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
     img: fits image where astrometry should be solved.
+    outimage: name for the astrometry solved image. If none is provided, the name will be "a_"img.
     radius: radius of uncertainty on astrometric position in image.
+    with_pix: if we want to include the constraint on the pixel size for the RCCam.
+    overwrite: wether the astrometrically solved image should go on top of the old one.
+    tewak: parameter for astrometry.net
     '''
 
+    from astropy.wcs import InconsistentAxisTypesError
+    
     img = os.path.abspath(img)
     
     ra = fitsutils.get_par(img, 'RA')
@@ -644,8 +725,12 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile("none")):
         os.remove("none")
         
-    is_on_target(img)
-    
+    try:
+        is_on_target(img)
+    except InconsistentAxisTypesError as e:
+        fitsutils.update_par(img, "ONTARGET", 0)
+        print "Error detected with WCS when reading file %s. \n %s"%(img, e)
+        
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
 	return outimage
