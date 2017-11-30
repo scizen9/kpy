@@ -348,6 +348,56 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
     copy_ref_calib(flatdir, "Flat")	
 
+def create_masterguide(lfiles):
+    '''
+    Receives a list of guider images for the same object.
+    It will remove the bias from it, combine them using the median, and comput the astrometry for the image.
+    
+    '''
+    fffile ="lflat_guider_"
+    np.savetxt(fffile, np.array(lfiles), fmt="%s")
+    
+    debiased = [os.path.join( os.path.dirname(img), "b_" + os.path.basename(img)) for img in lfiles]
+    bffile ="lflat_guider_debiased_"
+    np.savetxt(bffile, np.array(debiased), fmt="%s")
+
+    bias_fast = "Bias_rc_fast.fits"
+
+    obj = fitsutils.get_par(img, "OBJECT")
+    out = os.path.join( os.path.dirname(img), obj.replace(" ", "").replace(":", "")+".fits")
+
+    # Running IRAF
+    iraf.noao(_doprint=0)
+    iraf.imred(_doprint=0)
+    iraf.ccdred(_doprint=0)
+    
+    #Remove bias from the guider images    
+    if len(lfiles) >0:
+        iraf.imarith("@"+fffile, "-", bias_fast, "b_@"+fffile)    
+    
+        
+    #Combine flats
+    iraf.imcombine(input = "@"+bffile, \
+                    output = out, \
+                    combine = "median",\
+                    scale = "mode",
+                    reject = "sigclip", lsigma = 2., hsigma = 2, gain=1.7, rdnoise=4.)
+    iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
+    #st = np.genfromtxt("guide_stats", names=True, dtype=None)
+    
+    #Do some cleaning
+    logger.info( 'Removing from lfiles')
+    for f in debiased:
+        os.remove(f)
+
+    if os.path.isfile(fffile):
+        os.remove(fffile)
+    if os.path.isfile(bffile):
+        os.remove(bffile)
+        
+    solve_astrometry(out)
+
+    
 def mask_stars(image, sexfile, plot=False, overwrite=False):
     ''' 
     Finds the stars in the sextrated file and creates a mask file.
