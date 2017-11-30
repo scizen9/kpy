@@ -118,12 +118,20 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     fwhms = np.array(fwhms)
     std_fwhm = np.array(std_fwhm)
 
-    #We discard the two worse datapoints for the fit.
-    for i in range(2):
-	    worst_seeing_id = np.argmax(fwhms)
-	    focpos = focpos[np.arange(len(focpos)) != worst_seeing_id]
-	    fwhms = fwhms[np.arange(len(fwhms)) != worst_seeing_id]
-	    std_fwhm = std_fwhm[np.arange(len(std_fwhm)) != worst_seeing_id]
+    n = len(fwhms)
+    
+    best_seeing_id = np.argmin(fwhms)
+    #We will take 4 datapoints on the left and right of the best value.
+    selected_ids = np.arange(-4, 5, 1)
+    selected_ids = selected_ids + best_seeing_id
+    selected_ids = np.minimum(selected_ids, n-1)
+    selected_ids = np.maximum(selected_ids, 0)
+    selected_ids = np.array(list(set(selected_ids)))
+
+
+    focpos = focpos[selected_ids]
+    fwhms = fwhms[selected_ids]
+    std_fwhm = std_fwhm[selected_ids]
 
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
     

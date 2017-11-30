@@ -9,6 +9,7 @@ import os, glob, shutil, sys
 import numpy as np
 try:
     from pyraf import iraf 
+    from pyraf import IrafError
 except:
     pass
 from astropy.io import fits
@@ -17,15 +18,13 @@ from astropy import wcs
 from matplotlib import pylab as plt
 import subprocess
 import argparse
-import time_utils
 import time
 import datetime
 import logging
 import sextractor
 import zeropoint
 from astropy.io import fits
-import scipy
-
+import coordinates_conversor as cc
 
 from ConfigParser import SafeConfigParser
 import codecs
@@ -405,8 +404,11 @@ def create_masterguide(lfiles, out=None):
     
     #Remove bias from the guider images    
     if len(lfiles) >0:
-        iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
-    
+        try:
+            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
+        except IrafError:
+            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
+
         
     #Combine flats
     iraf.imcombine(input = "@"+bffile, \
@@ -427,7 +429,7 @@ def create_masterguide(lfiles, out=None):
     if os.path.isfile(bffile):
         os.remove(bffile)
         
-    solve_astrometry(out)
+    solve_astrometry(out, overwrite=True)
     
     os.chdir(curdir)
 
@@ -453,20 +455,39 @@ def solved_guiders(mydir):
         imgtype = fitsutils.get_par(i, "IMGTYPE")
         if not imgtype is None:
             imgtype = imgtype.upper()
+
+        #In Richard's pipeline, the JD is the beginning of the exposure,
+        #in Nick's one is the end.
+        pipeline_jd_end = fitsutils.get_par(i, "TELESCOP") == '60'
+        
         if imgtype == "SCIENCE" or imgtype =="STANDARD":
-            jd_ini = fitsutils.get_par(i, "JD") - fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
-            jd_end = fitsutils.get_par(i, "JD")
+            if pipeline_jd_end:
+                jd_ini = fitsutils.get_par(i, "JD") - fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
+                jd_end = fitsutils.get_par(i, "JD")
+            else:
+                jd_ini = fitsutils.get_par(i, "JD") 
+                jd_end = fitsutils.get_par(i, "JD") + fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
             name = fitsutils.get_par(i, "OBJECT")
-            ifu_dic[i] = (name, jd_ini, jd_end)
+            ra = fitsutils.get_par(i, "RA")
+            dec = fitsutils.get_par(i, "DEC")
+            rad, decd = cc.hour2deg(ra, dec)
+            ifu_dic[i] = (name, jd_ini, jd_end, rad, decd)
         
     rcjd = np.array([fitsutils.get_par(r, "JD") for r in rc])
     imtypes = np.array([fitsutils.get_par(r, "IMGTYPE").upper() for r in rc])
-    print ifu_dic
-       
+    objnames = np.array([fitsutils.get_par(r, "OBJECT").upper() for r in rc])
+    ras = np.array([cc.getDegRaString( fitsutils.get_par(r, "RA")) for r in rc])  
+    decs = np.array([ cc.getDegDecString( fitsutils.get_par(r, "DEC")) for r in rc])
+    
     for ifu_i in ifu_dic.keys():
+        name, jd_ini, jd_end, rad, decd = ifu_dic[ifu_i]
         #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
-        guiders = rc[(rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
-        print "For image %s found guiders: %s"%(ifu_i, guiders)
+        mymask = (rcjd >= jd_ini) * (rcjd <= jd_end) *\
+            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<1./60 ) * (np.abs(decs - decd)<1./60 )
+        guiders = rc[mymask]
+        im = imtypes[mymask]
+        names = objnames[mymask]
+        print "For image %s on object %s found guiders:\n %s"%(ifu_i, name, zip(names, im))
         create_masterguide(guiders, out=os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i)))
     
     #os.chdir(curdir)
