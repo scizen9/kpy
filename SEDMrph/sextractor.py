@@ -93,16 +93,19 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#")
-        
+        print f, "Initial number of sources", len(s)
+        	
         s = s[s[:,1]< 2000]
+        s = s[s[:,10] != 4]
 
-	#Only objects with FWHM less than 20 pixels...
-        s = s[s[:,7] < 20]
+	#Only objects with FWHM less than 40 pixels... but larger than 2
+        s = s[s[:,7] < 60]
+        s = s[s[:,7] >2 ]
         
+        #Select bright magnitudes
+        s = s[s[:,4]<np.percentile(s[:,4], 30)]
         #Select round sources (ellipticity is 1-axis_ratio)
         s = s[s[:,8]<np.percentile(s[:,8], 30)]
-        #Select bright magnitudes
-        s = s[s[:,4]<np.percentile(s[:,4], 20)]
         print f, "number of sources", len(s)
  
         focpos.append(pos)
@@ -113,6 +116,15 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
+    std_fwhm = np.array(std_fwhm)
+
+    #We discard the two worse datapoints for the fit.
+    for i in range(2):
+	    worst_seeing_id = np.argmax(fwhms)
+	    focpos = focpos[np.arange(len(focpos)) != worst_seeing_id]
+	    fwhms = fwhms[np.arange(len(fwhms)) != worst_seeing_id]
+	    std_fwhm = std_fwhm[np.arange(len(std_fwhm)) != worst_seeing_id]
+
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
     
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
@@ -264,8 +276,8 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     ellipticity = np.nanmedian(s[:,8])
     s = s[s[:,8]<0.25]
 
-    #Select FWHM at least 3 pixels and lower than 10 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<10)]
+    #Select FWHM at least 3 pixels and lower than 15 arcsec
+    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<15)]
     
     nsources = len(s) 
     if (nsources == 0):
