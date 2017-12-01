@@ -20,7 +20,7 @@ import fitsutils
 from matplotlib import pylab as plt
 
 
-def run_sex(flist, mask=False, cosmics=False, overwrite=True):
+def run_sex(flist, mask=False, cosmics=False, overwrite=False):
     
     d = os.path.dirname(flist[0])
     if d == "":
