@@ -383,14 +383,19 @@ def create_masterguide(lfiles, out=None):
     else:
         os.chdir(os.path.abspath(os.path.dirname(lfiles[0])))
         
-    fffile ="lflat_guider_"
-    np.savetxt(fffile, np.array(lfiles), fmt="%s")
-    
-    debiased = ["b_" + os.path.basename(img) for img in lfiles]
-    bffile ="lflat_guider_debiased_"
-    np.savetxt(bffile, np.array(debiased), fmt="%s")
 
+    fffile ="/tmp/l_guide"
+    np.savetxt(fffile, np.array(lfiles), fmt="%s")
+
+    #If the bias file exists in the directory, we use it, otherwise we pass
     bias_fast = "Bias_rc_fast.fits"
+    debias = os.path.isfile(bias_fast)
+        
+    if debias:
+        debiased = ["b_" + os.path.basename(img) for img in lfiles]
+        bffile ="/tmp/lb_guider"
+        np.savetxt(bffile, np.array(debiased), fmt="%s")
+
 
     if (out is None):
         obj = fitsutils.get_par(img, "OBJECT")
@@ -403,11 +408,13 @@ def create_masterguide(lfiles, out=None):
     iraf.ccdred(_doprint=0)
     
     #Remove bias from the guider images    
-    if len(lfiles) >0:
+    if debias:
         try:
             iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
         except IrafError:
-            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
+            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)
+    else:
+        bffile = fffile
 
         
     #Combine flats
@@ -420,9 +427,10 @@ def create_masterguide(lfiles, out=None):
     #st = np.genfromtxt("guide_stats", names=True, dtype=None)
     
     #Do some cleaning
-    logger.info( 'Removing from lfiles')
-    for f in debiased:
-        if os.path.isfile(f): os.remove(f)
+    if debias:
+        logger.info( 'Removing from lfiles')
+        for f in debiased:
+            if os.path.isfile(f): os.remove(f)
 
     if os.path.isfile(fffile):
         os.remove(fffile)
@@ -441,10 +449,6 @@ def solved_guiders(mydir):
     '''
     
     abspath = os.path.abspath(mydir)
-    
-    #curdir = os.getcwd()
-
-    #os.chdir(os.path.dirname(mydir))
         
     ifu = np.array(glob.glob(abspath+"/ifu*fits"))
     rc = np.array(glob.glob(abspath+"/rc*fits"))
@@ -471,7 +475,8 @@ def solved_guiders(mydir):
             ra = fitsutils.get_par(i, "RA")
             dec = fitsutils.get_par(i, "DEC")
             rad, decd = cc.hour2deg(ra, dec)
-            ifu_dic[i] = (name, jd_ini, jd_end, rad, decd)
+            exptime = fitsutils.get_par(i, "EXPTIME")
+            ifu_dic[i] = (name, jd_ini, jd_end, rad, decd, exptime)
         
     rcjd = np.array([fitsutils.get_par(r, "JD") for r in rc])
     imtypes = np.array([fitsutils.get_par(r, "IMGTYPE").upper() for r in rc])
@@ -480,14 +485,14 @@ def solved_guiders(mydir):
     decs = np.array([ cc.getDegDecString( fitsutils.get_par(r, "DEC")) for r in rc])
     
     for ifu_i in ifu_dic.keys():
-        name, jd_ini, jd_end, rad, decd = ifu_dic[ifu_i]
+        name, jd_ini, jd_end, rad, decd, exptime = ifu_dic[ifu_i]
         #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
         mymask = (rcjd >= jd_ini) * (rcjd <= jd_end) *\
             (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<1./60 ) * (np.abs(decs - decd)<1./60 )
         guiders = rc[mymask]
         im = imtypes[mymask]
         names = objnames[mymask]
-        print "For image %s on object %s found guiders:\n %s"%(ifu_i, name, zip(names, im))
+        logger.info( "For image %s on object %s with exptime %d found guiders:\n %s"%(ifu_i, name, exptime, zip(names, im)))
         create_masterguide(guiders, out=os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i)))
     
     #os.chdir(curdir)
