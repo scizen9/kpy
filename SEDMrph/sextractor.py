@@ -155,6 +155,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
             plt.show()
         else:
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
     return x[np.argmin(p(x))], coefs[0]
     
 def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
@@ -186,29 +187,42 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
     for i, f in enumerate(sexfileslist):
         print f
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
-        print fits
         FF = pf.open(fits)
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
         ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), ("background", np.float), ("flags", np.float)])
         
-        #sb = s[s["mag"]<np.median(s["mag"]) - 4*np.std(s["mag"])]
-        
-        sb = s[s["ellipticity"]> 0.9]
+        #for the focus purpose, we only want traces, meaning that their ellipticity needs to be large.
+        sb = s[s["ellipticity"]> 0.95]
         
         if(debug):
             plt.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]))
+            plt.colorbar()
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
         focpos.append(pos)
         fwhms.append(np.min(sb["mag"]))
-        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 10)))
+        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
+
+    n = len(fwhms)
+    best_seeing_id = np.argmin(fwhms)
+    #We will take 4 datapoints on the left and right of the best value.
+    selected_ids = np.arange(-3, 3, 1)
+    selected_ids = selected_ids + best_seeing_id
+    selected_ids = np.minimum(selected_ids, n-1)
+    selected_ids = np.maximum(selected_ids, 0)
+    selected_ids = np.array(list(set(selected_ids)))
+
+
+    focpos = focpos[selected_ids]
+    fwhms = fwhms[selected_ids]
+    std_fwhm = std_fwhm[selected_ids]
     
     print focpos, fwhms, 1/std_fwhm
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
@@ -231,6 +245,8 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
             plt.show()
         else:
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
+
     return x[np.argmin(p(x))], coefs[0]
     
 def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
@@ -308,12 +324,12 @@ def get_focus(lfiles, plot=True):
     focus, sigma = analyse_sex(sexfiles, plot=plot)
     return focus, sigma
     
-def get_focus_ifu(lfiles, plot=True):
+def get_focus_ifu(lfiles, plot=True, debug=False):
     '''
     Receives a list of focus ifu files and returns the best focus.
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot)
+    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug)
     
     return focus, sigma
     
