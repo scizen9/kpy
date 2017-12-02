@@ -244,7 +244,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Fitted position
         xc = popt[1]
         yc = popt[2]
-        if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
+        if xc < -15. or xc > 15. or yc < -15. or yc > 15.:
             print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
             print("Using initial position: %f, %f" % (xo, yo))
             xc = xo
