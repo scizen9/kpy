@@ -441,42 +441,44 @@ def create_masterguide(lfiles, out=None):
     
     os.chdir(curdir)
 
-    
-def solved_guiders(mydir):
-    '''
-    Looks for all the IFU images in the directory and assembles all the guider images taken with RC for that time interval
-    at around the coordinates of the IFU.
-    '''
-    
-    abspath = os.path.abspath(mydir)
-        
-    ifu = np.array(glob.glob(abspath+"/ifu*fits"))
-    rc = np.array(glob.glob(abspath+"/rc*fits"))
-    
-    ifu_dic = {}
-    
-    for i in ifu:
-        imgtype = fitsutils.get_par(i, "IMGTYPE")
-        if not imgtype is None:
-            imgtype = imgtype.upper()
 
-        #In Richard's pipeline, the JD is the beginning of the exposure,
-        #in Nick's one is the end.
-        pipeline_jd_end = fitsutils.get_par(i, "TELESCOP") == '60'
-        
-        if imgtype == "SCIENCE" or imgtype =="STANDARD":
-            if pipeline_jd_end:
-                jd_ini = fitsutils.get_par(i, "JD") - fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
-                jd_end = fitsutils.get_par(i, "JD")
-            else:
-                jd_ini = fitsutils.get_par(i, "JD") 
-                jd_end = fitsutils.get_par(i, "JD") + fitsutils.get_par(i, "EXPTIME")/ (24*3600.)
-            name = fitsutils.get_par(i, "OBJECT")
-            ra = fitsutils.get_par(i, "RA")
-            dec = fitsutils.get_par(i, "DEC")
-            rad, decd = cc.hour2deg(ra, dec)
-            exptime = fitsutils.get_par(i, "EXPTIME")
-            ifu_dic[i] = (name, jd_ini, jd_end, rad, decd, exptime)
+
+def __fill_ifu_dic(ifu_img, ifu_dic = {}):
+    '''
+    Fills some of the parameters for the IFU image that will be used to gather its guider images later.
+    
+    '''
+    imgtype = fitsutils.get_par(ifu_img, "IMGTYPE")
+    if not imgtype is None:
+        imgtype = imgtype.upper()
+
+    #In Richard's pipeline, the JD is the beginning of the exposure,
+    #in Nick's one is the end.
+    pipeline_jd_end = fitsutils.get_par(ifu_img, "TELESCOP") == '60'
+    
+    if imgtype == "SCIENCE" or imgtype =="STANDARD":
+        if pipeline_jd_end:
+            jd_ini = fitsutils.get_par(ifu_img, "JD") - fitsutils.get_par(ifu_img, "EXPTIME")/ (24*3600.)
+            jd_end = fitsutils.get_par(ifu_img, "JD")
+        else:
+            jd_ini = fitsutils.get_par(ifu_img, "JD") 
+            jd_end = fitsutils.get_par(ifu_img, "JD") + fitsutils.get_par(ifu_img, "EXPTIME")/ (24*3600.)
+            
+        #We only fill the dictionary if the exposure is a valid science or standard image.
+        name = fitsutils.get_par(ifu_img, "OBJECT")
+        ra = fitsutils.get_par(ifu_img, "RA")
+        dec = fitsutils.get_par(ifu_img, "DEC")
+        rad, decd = cc.hour2deg(ra, dec)
+        exptime = fitsutils.get_par(ifu_img, "EXPTIME")
+        ifu_dic[ifu_img] = (name, jd_ini, jd_end, rad, decd, exptime)
+    else:
+        logger.warn("Image %s is not SCIENCE or STANDARD."%ifu_img)
+    
+def __combine_guiders(ifu_dic, abspath):
+    '''
+    Receives an IFU dictionary with the images that need a solved guider.
+    '''        
+    rc = np.array(glob.glob(abspath+"/rc*fits"))
         
     rcjd = np.array([fitsutils.get_par(r, "JD") for r in rc])
     imtypes = np.array([fitsutils.get_par(r, "IMGTYPE").upper() for r in rc])
@@ -493,10 +495,40 @@ def solved_guiders(mydir):
         im = imtypes[mymask]
         names = objnames[mymask]
         logger.info( "For image %s on object %s with exptime %d found guiders:\n %s"%(ifu_i, name, exptime, zip(names, im)))
-        create_masterguide(guiders, out=os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i)))
+        out = os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i))
+        create_masterguide(guiders, out=out)
+        fitsutils.update_par(out, "IFU_IMG", os.path.basename(ifu_i))
+        
+def make_guider(ifu_img):
+    '''
+    Creates the stacked and astrometry solved RC image for the IFU image passed as a parameter.
     
-    #os.chdir(curdir)
+    ifu_img: string which is the path to the IFU image we want to get the guiders for.
+    '''
+    ifu_dic = {}
+    myabspath = os.path.dirname(os.path.abspath(ifu_img))
+    __fill_ifu_dic(ifu_img, ifu_dic)
+    __combine_guiders(ifu_dic, myabspath)
     
+    
+def make_guiders(ifu_dir):
+    '''
+    Looks for all the IFU images in the directory and assembles all the guider images taken with RC for that time interval
+    at around the coordinates of the IFU.
+    
+    ifu_dir: directory where the IFU images are that we want to greated the guiders for.
+    '''
+    
+    abspath = os.path.abspath(ifu_dir)
+        
+    ifu = np.array(glob.glob(abspath+"/ifu*fits"))
+    
+    ifu_dic = {}
+    for i in ifu:
+        __fill_ifu_dic(i, ifu_dic)
+        
+    __combine_guiders(ifu_dic, abspath)
+            
     
     
 def mask_stars(image, sexfile, plot=False, overwrite=False):
@@ -760,6 +792,9 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
 	return outimage
+    elif (outimage is None and overwrite and os.path.isfile(astro)):
+        shutil.move(astro, img)
+	return img
     else:
     	return astro
     
