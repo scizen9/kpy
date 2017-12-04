@@ -100,7 +100,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
 
 	#Only objects with FWHM less than 40 pixels... but larger than 2
         s = s[s[:,7] < 60]
-        s = s[s[:,7] >2 ]
+        s = s[s[:,7] > 1 ]
         
         #Select bright magnitudes
         s = s[s[:,4]<np.percentile(s[:,4], 30)]
@@ -120,19 +120,20 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
 
     n = len(fwhms)
     
-    best_seeing_id = np.argmin(fwhms)
+    best_seeing_id = np.nanargmin(fwhms)
     #We will take 4 datapoints on the left and right of the best value.
     selected_ids = np.arange(-4, 5, 1)
     selected_ids = selected_ids + best_seeing_id
     selected_ids = np.minimum(selected_ids, n-1)
     selected_ids = np.maximum(selected_ids, 0)
+    print "FWHMS: %s, focpos: %s, Best seeing id: %d. Selected ids %s"%(fwhms, focpos, best_seeing_id, selected_ids)
     selected_ids = np.array(list(set(selected_ids)))
 
 
     focpos = focpos[selected_ids]
     fwhms = fwhms[selected_ids]
     std_fwhm = std_fwhm[selected_ids]
-
+    
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
     
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
@@ -213,7 +214,7 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
     n = len(fwhms)
     best_seeing_id = np.argmin(fwhms)
     #We will take 4 datapoints on the left and right of the best value.
-    selected_ids = np.arange(-3, 3, 1)
+    selected_ids = np.arange(-4, 5, 1)
     selected_ids = selected_ids + best_seeing_id
     selected_ids = np.minimum(selected_ids, n-1)
     selected_ids = np.maximum(selected_ids, 0)
@@ -315,21 +316,21 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     
     return nsources, fwhm, ellipticity, bkg
         
-def get_focus(lfiles, plot=True):
+def get_focus(lfiles, plot=True, interactive=False):
     '''
     Receives a list of focus files and returns the best focus value.
     
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex(sexfiles, plot=plot)
+    focus, sigma = analyse_sex(sexfiles, plot=plot, interactive=interactive)
     return focus, sigma
     
-def get_focus_ifu(lfiles, plot=True, debug=False):
+def get_focus_ifu(lfiles, plot=True, debug=False, interactive=False):
     '''
     Receives a list of focus ifu files and returns the best focus.
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug)
+    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug, interactive=interactive)
     
     return focus, sigma
     
