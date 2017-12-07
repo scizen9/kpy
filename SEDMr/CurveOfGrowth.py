@@ -191,8 +191,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Gather spaxels
         all_kix = []
         for the_pos in positions:
-            all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                       -theta)))
+            all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                       the_pos[0], the_pos[1],
+                                                       a, b, -theta)))
 
         all_kix = list(itertools.chain(*all_kix))
         kix = list(set(all_kix))
@@ -239,8 +240,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   a, b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     objs = kt.good_positions[kix]
@@ -408,8 +410,6 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         return
 
     outname = infile.split('.')[0]
-    # Get the object name of record
-    objname = meta['header']['OBJECT'].split()[0]
 
     # Automatic extraction using Gaussian fit for Standard Stars
     sixa, posa, adcpos, ellipse, status = \
@@ -602,6 +602,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         pl.setp(ltext[2], fontsize=16)
         pl.setp(ltext[3], fontsize=16)
         pl.setp(ltext[4], fontsize=16)
+        pl.tight_layout()
     if interact:
         pl.show()
     else:
