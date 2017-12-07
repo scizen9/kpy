@@ -119,6 +119,7 @@ def identify_observations(headers):
         name = name.replace("]", "_")
         name = name.replace("/", "_")
         name = name.replace(":", "_")
+        name = name.replace('"', "")
 
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
@@ -435,6 +436,7 @@ def to_makefile(objs, calibs):
         objname = objname.replace("(", "_")
         objname = objname.replace("[", "_")
         objname = objname.replace("]", "_")
+        objname = objname.replace('"', "")
 
         for obsnum, obsfiles in observations.items():
             flatfiles.append(obsfiles)
