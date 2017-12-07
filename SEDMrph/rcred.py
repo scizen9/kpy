@@ -9,6 +9,7 @@ import os, glob, shutil, sys
 import numpy as np
 try:
     from pyraf import iraf 
+    from pyraf import IrafError
 except:
     pass
 from astropy.io import fits
@@ -17,14 +18,13 @@ from astropy import wcs
 from matplotlib import pylab as plt
 import subprocess
 import argparse
-import time_utils
 import time
 import datetime
 import logging
 import sextractor
 import zeropoint
 from astropy.io import fits
-import scipy
+import coordinates_conversor as cc
 
 from ConfigParser import SafeConfigParser
 import codecs
@@ -79,6 +79,28 @@ def get_xy_coords(image, ra, dec):
         coords.append(float(re.findall("[-+]?\d+[\.]?\d*", s)[0]))
         
     return coords
+
+def get_rd_coords(image, x, y):
+    '''
+    Uses the wcs-xy2rd routine to compute the ra, dec where the target is for a given pixel.
+    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    to be using the SIP extension.
+    
+    '''
+    import re
+    import subprocess
+    cmd = "wcs-xy2rd -w %s -x %.5f -y %.5f"%(image, x, y)
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    output = proc.stdout.read()    
+    output = output.split("->")[1]
+    
+    numbers = re.findall("[-+]?\d+[\.]?\d*", output)
+    coords = []
+    for n in numbers:
+        coords.append(float(n))
+        
+    return coords
+
     
 def create_masterbias(biasdir=None, channel='rc'):
     '''
@@ -115,7 +137,7 @@ def create_masterbias(biasdir=None, channel='rc'):
     #Select all filts that are Bias with same instrument
     for f in glob.glob("rc*fits"):
         try:
-            if ( "BIAS" in str.upper(fitsutils.get_par(f, "IMGTYPE")) ):
+            if ( "BIAS" in str.upper(fitsutils.get_par(f, "IMGTYPE").upper()) ):
                 if (fitsutils.get_par(f, "ADCSPEED")==2):
                     lfastbias.append(f)
                 else:
@@ -347,6 +369,168 @@ def create_masterflat(flatdir=None, biasdir=None, channel='rc', plot=True):
         shutil.copy(out_norm, os.path.join(newdir, os.path.basename(out_norm)) )   
     copy_ref_calib(flatdir, "Flat")	
 
+def create_masterguide(lfiles, out=None):
+    '''
+    Receives a list of guider images for the same object.
+    It will remove the bias from it, combine them using the median, and comput the astrometry for the image.
+    
+    '''
+    
+    curdir = os.getcwd()
+    
+    if len(lfiles) == 0:
+        return
+    else:
+        os.chdir(os.path.abspath(os.path.dirname(lfiles[0])))
+        
+
+    fffile ="/tmp/l_guide"
+    np.savetxt(fffile, np.array(lfiles), fmt="%s")
+
+    #If the bias file exists in the directory, we use it, otherwise we pass
+    bias_fast = "Bias_rc_fast.fits"
+    debias = os.path.isfile(bias_fast)
+        
+    if debias:
+        debiased = ["b_" + os.path.basename(img) for img in lfiles]
+        bffile ="/tmp/lb_guider"
+        np.savetxt(bffile, np.array(debiased), fmt="%s")
+
+
+    if (out is None):
+        obj = fitsutils.get_par(img, "OBJECT")
+        out = os.path.join( os.path.dirname(img), obj.replace(" ", "").replace(":", "")+".fits")
+
+
+    # Running IRAF
+    iraf.noao(_doprint=0)
+    iraf.imred(_doprint=0)
+    iraf.ccdred(_doprint=0)
+    
+    #Remove bias from the guider images    
+    if debias:
+        try:
+            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
+        except IrafError:
+            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)
+    else:
+        bffile = fffile
+
+        
+    #Combine flats
+    iraf.imcombine(input = "@"+bffile, \
+                    output = out, \
+                    combine = "median",\
+                    scale = "mode",
+                    reject = "sigclip", lsigma = 2., hsigma = 2, gain=1.7, rdnoise=4.)
+    iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
+    #st = np.genfromtxt("guide_stats", names=True, dtype=None)
+    
+    #Do some cleaning
+    if debias:
+        logger.info( 'Removing from lfiles')
+        for f in debiased:
+            if os.path.isfile(f): os.remove(f)
+
+    if os.path.isfile(fffile):
+        os.remove(fffile)
+    if os.path.isfile(bffile):
+        os.remove(bffile)
+        
+    solve_astrometry(out, overwrite=True)
+    
+    os.chdir(curdir)
+
+
+
+def __fill_ifu_dic(ifu_img, ifu_dic = {}):
+    '''
+    Fills some of the parameters for the IFU image that will be used to gather its guider images later.
+    
+    '''
+    imgtype = fitsutils.get_par(ifu_img, "IMGTYPE")
+    if not imgtype is None:
+        imgtype = imgtype.upper()
+
+    #In Richard's pipeline, the JD is the beginning of the exposure,
+    #in Nick's one is the end.
+    pipeline_jd_end = fitsutils.get_par(ifu_img, "TELESCOP") == '60'
+    
+    if imgtype == "SCIENCE" or imgtype =="STANDARD":
+        if pipeline_jd_end:
+            jd_ini = fitsutils.get_par(ifu_img, "JD") - fitsutils.get_par(ifu_img, "EXPTIME")/ (24*3600.)
+            jd_end = fitsutils.get_par(ifu_img, "JD")
+        else:
+            jd_ini = fitsutils.get_par(ifu_img, "JD") 
+            jd_end = fitsutils.get_par(ifu_img, "JD") + fitsutils.get_par(ifu_img, "EXPTIME")/ (24*3600.)
+            
+        #We only fill the dictionary if the exposure is a valid science or standard image.
+        name = fitsutils.get_par(ifu_img, "OBJECT")
+        ra = fitsutils.get_par(ifu_img, "RA")
+        dec = fitsutils.get_par(ifu_img, "DEC")
+        rad, decd = cc.hour2deg(ra, dec)
+        exptime = fitsutils.get_par(ifu_img, "EXPTIME")
+        ifu_dic[ifu_img] = (name, jd_ini, jd_end, rad, decd, exptime)
+    else:
+        logger.warn("Image %s is not SCIENCE or STANDARD."%ifu_img)
+    
+def __combine_guiders(ifu_dic, abspath):
+    '''
+    Receives an IFU dictionary with the images that need a solved guider.
+    '''        
+    rc = np.array(glob.glob(abspath+"/rc*fits"))
+        
+    rcjd = np.array([fitsutils.get_par(r, "JD") for r in rc])
+    imtypes = np.array([fitsutils.get_par(r, "IMGTYPE").upper() for r in rc])
+    objnames = np.array([fitsutils.get_par(r, "OBJECT").upper() for r in rc])
+    ras = np.array([cc.getDegRaString( fitsutils.get_par(r, "RA")) for r in rc])  
+    decs = np.array([ cc.getDegDecString( fitsutils.get_par(r, "DEC")) for r in rc])
+    
+    for ifu_i in ifu_dic.keys():
+        name, jd_ini, jd_end, rad, decd, exptime = ifu_dic[ifu_i]
+        #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
+        mymask = (rcjd >= jd_ini) * (rcjd <= jd_end) *\
+            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<1./60 ) * (np.abs(decs - decd)<1./60 )
+        guiders = rc[mymask]
+        im = imtypes[mymask]
+        names = objnames[mymask]
+        logger.info( "For image %s on object %s with exptime %d found guiders:\n %s"%(ifu_i, name, exptime, zip(names, im)))
+        out = os.path.join(os.path.dirname(ifu_i), "guider_" + os.path.basename(ifu_i))
+        create_masterguide(guiders, out=out)
+        fitsutils.update_par(out, "IFU_IMG", os.path.basename(ifu_i))
+        
+def make_guider(ifu_img):
+    '''
+    Creates the stacked and astrometry solved RC image for the IFU image passed as a parameter.
+    
+    ifu_img: string which is the path to the IFU image we want to get the guiders for.
+    '''
+    ifu_dic = {}
+    myabspath = os.path.dirname(os.path.abspath(ifu_img))
+    __fill_ifu_dic(ifu_img, ifu_dic)
+    __combine_guiders(ifu_dic, myabspath)
+    
+    
+def make_guiders(ifu_dir):
+    '''
+    Looks for all the IFU images in the directory and assembles all the guider images taken with RC for that time interval
+    at around the coordinates of the IFU.
+    
+    ifu_dir: directory where the IFU images are that we want to greated the guiders for.
+    '''
+    
+    abspath = os.path.abspath(ifu_dir)
+        
+    ifu = np.array(glob.glob(abspath+"/ifu*fits"))
+    
+    ifu_dic = {}
+    for i in ifu:
+        __fill_ifu_dic(i, ifu_dic)
+        
+    __combine_guiders(ifu_dic, abspath)
+            
+    
+    
 def mask_stars(image, sexfile, plot=False, overwrite=False):
     ''' 
     Finds the stars in the sextrated file and creates a mask file.
@@ -558,9 +742,15 @@ def copy_ref_calib(curdir, calib="Flat"):
 def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
     img: fits image where astrometry should be solved.
+    outimage: name for the astrometry solved image. If none is provided, the name will be "a_"img.
     radius: radius of uncertainty on astrometric position in image.
+    with_pix: if we want to include the constraint on the pixel size for the RCCam.
+    overwrite: wether the astrometrically solved image should go on top of the old one.
+    tewak: parameter for astrometry.net
     '''
 
+    from astropy.wcs import InconsistentAxisTypesError
+    
     img = os.path.abspath(img)
     
     ra = fitsutils.get_par(img, 'RA')
@@ -593,11 +783,18 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile("none")):
         os.remove("none")
         
-    is_on_target(img)
-    
+    try:
+        is_on_target(img)
+    except InconsistentAxisTypesError as e:
+        fitsutils.update_par(img, "ONTARGET", 0)
+        print "Error detected with WCS when reading file %s. \n %s"%(img, e)
+        
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
 	return outimage
+    elif (outimage is None and overwrite and os.path.isfile(astro)):
+        shutil.move(astro, img)
+	return img
     else:
     	return astro
     
@@ -996,6 +1193,35 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         
     return slice_names
 
+
+    
+def log_db_phot(myfile):
+    '''
+    Logs the science files.
+    '''
+    import archive_mod_sedmdb  # this file requires being able to submit observations with pre-determined id values, which isn't allowed in the original
+
+
+    sdb = archive_mod_sedmdb.SedmDB(dbname='sedmdbtest', host='localhost')
+
+    cmd = "git version %s"%__file__
+    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+    version = p.communicate()[0].replace('\n',"")
+    
+    pardic = {"id"              : sdb._id_from_time(),
+              "phot_calib_id"   : "",
+              "observation_id"  : fitsutils.get_par(myfile, "OBS_ID"),
+              "astrometry"      : bool(fitsutils.get_par(myfile, "IQWCS")),
+              "filter"          : fitsutils.get_par(myfile, "FILTER").strip(),
+              "reducedfile"     : os.path.abspath(myfile),
+              "sexfile"         : sextractor.run_sex([myfile])[0],
+              "maskfile"        : "",
+              "pipeline"        : version,
+              "marshal_phot_id" : ""}
+              
+    sdb.add_phot(pardic)
+              
+             
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=\
@@ -1077,13 +1303,16 @@ if __name__ == '__main__':
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
             try:
-            	if (fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE")=="SCIENCE") or (fitsutils.get_par(f, "IMGTYPE")=="ACQUISITION") ):
+            	if (fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE").upper()=="SCIENCE") or (fitsutils.get_par(f, "IMGTYPE").upper()=="ACQUISITION") ):
                 	myfiles.append(f)
             except:
             	print "problems opening file %s"%f
 
     if (len(myfiles)== 0):
+        print "Found no files to process"
 	sys.exit()
+    else:
+        print "Found %d files to process"%len(myfiles)
 
     create_masterbias(mydir)
     print "Create masterflat",mydir
@@ -1094,7 +1323,11 @@ if __name__ == '__main__':
     for f in myfiles:
         print f
         make_mask_cross(f)
-        if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION"):
+        if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION"):
+                    ra = float(form1.obj_ra.data.strip())
+                    ra = float(form1.obj_ra.data.strip())
+                    ra = float(form1.obj_ra.data.strip())
+                    ra = float(form1.obj_ra.data.strip())
             try:
                 reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
                 reducedfiles.extend(reduced)

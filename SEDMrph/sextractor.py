@@ -20,7 +20,7 @@ import fitsutils
 from matplotlib import pylab as plt
 
 
-def run_sex(flist, mask=False, cosmics=False, overwrite=True):
+def run_sex(flist, mask=False, cosmics=False, overwrite=False):
     
     d = os.path.dirname(flist[0])
     if d == "":
@@ -93,16 +93,19 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#")
-        
+        print f, "Initial number of sources", len(s)
+        	
         s = s[s[:,1]< 2000]
+        s = s[s[:,10] != 4]
 
-	#Only objects with FWHM less than 20 pixels...
-        s = s[s[:,7] < 20]
+	#Only objects with FWHM less than 40 pixels... but larger than 2
+        s = s[s[:,7] < 60]
+        s = s[s[:,7] >2 ]
         
+        #Select bright magnitudes
+        s = s[s[:,4]<np.percentile(s[:,4], 30)]
         #Select round sources (ellipticity is 1-axis_ratio)
         s = s[s[:,8]<np.percentile(s[:,8], 30)]
-        #Select bright magnitudes
-        s = s[s[:,4]<np.percentile(s[:,4], 20)]
         print f, "number of sources", len(s)
  
         focpos.append(pos)
@@ -113,6 +116,23 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
+    std_fwhm = np.array(std_fwhm)
+
+    n = len(fwhms)
+    
+    best_seeing_id = np.argmin(fwhms)
+    #We will take 4 datapoints on the left and right of the best value.
+    selected_ids = np.arange(-4, 5, 1)
+    selected_ids = selected_ids + best_seeing_id
+    selected_ids = np.minimum(selected_ids, n-1)
+    selected_ids = np.maximum(selected_ids, 0)
+    selected_ids = np.array(list(set(selected_ids)))
+
+
+    focpos = focpos[selected_ids]
+    fwhms = fwhms[selected_ids]
+    std_fwhm = std_fwhm[selected_ids]
+
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
     
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
@@ -135,6 +155,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
             plt.show()
         else:
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
     return x[np.argmin(p(x))], coefs[0]
     
 def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
@@ -166,29 +187,42 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
     for i, f in enumerate(sexfileslist):
         print f
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
-        print fits
         FF = pf.open(fits)
         pos= float(FF[0].header['focpos'])
 
         s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
         ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), ("background", np.float), ("flags", np.float)])
         
-        #sb = s[s["mag"]<np.median(s["mag"]) - 4*np.std(s["mag"])]
-        
-        sb = s[s["ellipticity"]> 0.9]
+        #for the focus purpose, we only want traces, meaning that their ellipticity needs to be large.
+        sb = s[s["ellipticity"]> 0.95]
         
         if(debug):
             plt.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]))
+            plt.colorbar()
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
         focpos.append(pos)
         fwhms.append(np.min(sb["mag"]))
-        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 10)))
+        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
+
+    n = len(fwhms)
+    best_seeing_id = np.argmin(fwhms)
+    #We will take 4 datapoints on the left and right of the best value.
+    selected_ids = np.arange(-3, 3, 1)
+    selected_ids = selected_ids + best_seeing_id
+    selected_ids = np.minimum(selected_ids, n-1)
+    selected_ids = np.maximum(selected_ids, 0)
+    selected_ids = np.array(list(set(selected_ids)))
+
+
+    focpos = focpos[selected_ids]
+    fwhms = fwhms[selected_ids]
+    std_fwhm = std_fwhm[selected_ids]
     
     print focpos, fwhms, 1/std_fwhm
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
@@ -211,6 +245,8 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
             plt.show()
         else:
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
+
     return x[np.argmin(p(x))], coefs[0]
     
 def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
@@ -243,6 +279,7 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     s = np.genfromtxt(sexfile, comments="#")
 
     if (s is None or s.ndim==0 or len(s)==0):
+        print "Empty content of the file for file %s. The length of the file is %d"%(sexfile, len(s))
         return 0,0,0,0
 
     #Select sources inside of the cross
@@ -263,8 +300,8 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     ellipticity = np.nanmedian(s[:,8])
     s = s[s[:,8]<0.25]
 
-    #Select FWHM at least 3 pixels and lower than 6 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<6)]
+    #Select FWHM at least 3 pixels and lower than 15 arcsec
+    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<15)]
     
     nsources = len(s) 
     if (nsources == 0):
@@ -287,12 +324,12 @@ def get_focus(lfiles, plot=True):
     focus, sigma = analyse_sex(sexfiles, plot=plot)
     return focus, sigma
     
-def get_focus_ifu(lfiles, plot=True):
+def get_focus_ifu(lfiles, plot=True, debug=False):
     '''
     Receives a list of focus ifu files and returns the best focus.
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot)
+    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug)
     
     return focus, sigma
     
