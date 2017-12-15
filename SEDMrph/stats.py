@@ -32,11 +32,12 @@ def compile_stats_pointing():
     for f in myfiles:
         #try:
         imtype = fitsutils.get_par(f, "IMGTYPE")
+	imtype = imtype.upper()
         newra = fitsutils.get_par(f, "OBJRA")
         newdec = fitsutils.get_par(f, "OBJDEC")
         newra, newdec = cc.hour2deg(newra, newdec)        
         myfilter =  fitsutils.get_par(f, "FILTER")
-        if (imtype == "ACQUISITION" or imtype == "SCIENCE"):#: and np.round(ra, 2) != np.round(newra, 2) and np.round(dec, 2) != np.round(newdec, 2):
+        if ("ACQU" in imtype or imtype == "SCIENCE"):#: and np.round(ra, 2) != np.round(newra, 2) and np.round(dec, 2) != np.round(newdec, 2):
             obj  = fitsutils.get_par(f, "OBJECT")
             jd = fitsutils.get_par(f, "JD")
             status, dra, ddec = recenter_ifu.get_offset_center(f, plot=False, interactive=False)
@@ -111,7 +112,7 @@ def get_sextractor_stats(files):
                 else:
                     imtype = "NONE"
 
-                if not (imtype == "ACQUISITION" or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
+                if not ("ACQ" in imtype or imtype == "SCIENCE" or imtype=="FOCUS" or imtype=="GUIDER"):
                     continue 
 
                 if not os.path.isfile(sexfiles[i]):

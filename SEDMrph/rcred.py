@@ -1303,37 +1303,34 @@ if __name__ == '__main__':
         #Gather all RC fits files in the folder with the keyword IMGTYPE=SCIENCE
         for f in glob.glob(os.path.join(mydir, "rc*fits")):
             try:
-            	if (fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE").upper()=="SCIENCE") or (fitsutils.get_par(f, "IMGTYPE").upper()=="ACQUISITION") ):
+            	if (fitsutils.has_par(f, "IMGTYPE") and ( (fitsutils.get_par(f, "IMGTYPE").upper()=="SCIENCE") or ( "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper())) ):
                 	myfiles.append(f)
             except:
             	print "problems opening file %s"%f
 
+    create_masterbias(mydir)
+    print "Create masterflat",mydir
+    create_masterflat(mydir) 
+ 
     if (len(myfiles)== 0):
         print "Found no files to process"
 	sys.exit()
     else:
         print "Found %d files to process"%len(myfiles)
 
-    create_masterbias(mydir)
-    print "Create masterflat",mydir
-    create_masterflat(mydir)  
     
     #Reduce them
     reducedfiles = []
     for f in myfiles:
         print f
         make_mask_cross(f)
-        if(fitsutils.has_par(f, "IMGTYPE") and fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION"):
-                    ra = float(form1.obj_ra.data.strip())
-                    ra = float(form1.obj_ra.data.strip())
-                    ra = float(form1.obj_ra.data.strip())
-                    ra = float(form1.obj_ra.data.strip())
-            try:
-                reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
-                reducedfiles.extend(reduced)
-            except:
-                print "Error when reducing image %s"%f
-                pass
+        if ( fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or ("ACQUI" in fitsutils.get_par(f, "IMGTYPE").upper() )) ):
+		try:
+            		reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)
+            		reducedfiles.extend(reduced)
+		except:
+            		print "Error when reducing image %s"%f
+            		pass
 
     #If copy is requested, then we copy the whole folder or just the missing files to transient.
     try:
