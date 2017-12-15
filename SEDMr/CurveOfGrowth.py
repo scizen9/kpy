@@ -191,8 +191,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Gather spaxels
         all_kix = []
         for the_pos in positions:
-            all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                       -theta)))
+            all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                       the_pos[0], the_pos[1],
+                                                       a, b, -theta)))
 
         all_kix = list(itertools.chain(*all_kix))
         kix = list(set(all_kix))
@@ -239,8 +240,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   a, b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     objs = kt.good_positions[kix]
@@ -408,8 +410,6 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         return
 
     outname = infile.split('.')[0]
-    # Get the object name of record
-    objname = meta['header']['OBJECT'].split()[0]
 
     # Automatic extraction using Gaussian fit for Standard Stars
     sixa, posa, adcpos, ellipse, status = \
@@ -570,21 +570,39 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         if hmx < hmr:
             hmr = hmx
 
-    pl.plot(px, c1, label='400-500 nm')
-    pl.plot(px, c2, label='500-600 nm')
-    pl.plot(px, c3, label='600-700 nm')
-    pl.plot(px, c4, label='700-800 nm')
-    pl.plot(px, c5, label='800-900 nm')
+    if not no_stamp:
+        pl.plot(px, c1, label='400-500 nm')
+        pl.plot(px, c2, label='500-600 nm')
+        pl.plot(px, c3, label='600-700 nm')
+        pl.plot(px, c4, label='700-800 nm')
+        pl.plot(px, c5, label='800-900 nm')
+    else:
+        pl.plot(px, c1, label='400-500 nm', linestyle=':')
+        pl.plot(px, c2, label='500-600 nm', linestyle='-.')
+        pl.plot(px, c3, label='600-700 nm', linestyle='--')
+        pl.plot(px, c4, label='700-800 nm', linestyle='-')
+        pl.plot(px, c5, label='800-900 nm', linestyle=':')
     if hmr < 1.e9:
-        pl.plot([hmr, hmr], [-0.05, 1.05], ls='--', c='black', label='HalfMax')
+        pl.plot([hmr, hmr], [-0.05, 1.05], ls='--', c='black',
+                label='HalfLight')
         # pl.plot([0.05, hmr], [0.5, 0.5], ls='--', c='gray')
     pl.xlim(0.05, np.max(px)+0.05)
     pl.ylim(-0.05, 1.05)
-    pl.xlabel('Semi-major axis (arcsec)')
-    pl.ylabel('Relative Irr')
+    pl.xlabel('Semi-major axis (arcsec)', {'fontsize': 14})
+    pl.ylabel('Relative Irradiance', {'fontsize': 14})
     pl.legend()
     if not no_stamp:
         plot_drp_ver()
+    else:
+        ax = pl.gca()
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        ltext = ax.get_legend().get_texts()
+        pl.setp(ltext[0], fontsize=16)
+        pl.setp(ltext[1], fontsize=16)
+        pl.setp(ltext[2], fontsize=16)
+        pl.setp(ltext[3], fontsize=16)
+        pl.setp(ltext[4], fontsize=16)
+        pl.tight_layout()
     if interact:
         pl.show()
     else:

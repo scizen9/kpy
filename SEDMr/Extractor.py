@@ -1192,6 +1192,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
 
     # Get the object name of record
     objname = meta['header']['OBJECT'].split()[0]
+    objname = objname.replace('"', "")
 
     # Automatic extraction using Gaussian fit for Standard Stars
     sixa, posa, adcpos, ellipse, status = \
@@ -1553,6 +1554,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
     if specExtract:
         # Get the object name of record
         objname = meta['header']['OBJECT'].split()[0]
+        objname = objname.replace('"', "")
 
         if autoExtract:
             # Automatic extraction using Gaussian fit for Standard Stars
@@ -1935,6 +1937,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
     if specExtract:
         objname = header['OBJECT'].split()[0]
+        objname = objname.replace('"', "")
 
         message = "\nMark positive (red) target first"
 
