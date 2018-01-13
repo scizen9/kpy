@@ -166,7 +166,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
            float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
-    blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
+    blobs = feature.blob_log(grid_vs-grid_med, min_sigma=10, max_sigma=20,
                              threshold=100.0)
     print("Found %d blobs" % len(blobs))
 
@@ -183,12 +183,13 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
         # Extract blob properties
         bx, by, br = blob
+        br *= 28./200.
 
         bx = int(bx)
         by = int(by)
 
         if plotobj:
-            c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
+            c = pl.Circle((xi[bx], yi[by]), br, color='black',
                           linewidth=1, fill=False)
             ax.add_patch(c)
         # How bright is this blob?
@@ -198,9 +199,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
                   (goodblob, float(gv), bx, by, xi[bx], yi[by]))
-            objs.append((gv, xi[bx], yi[by], goodblob))
+            objs.append((gv, xi[bx], yi[by], br, goodblob))
             if plotobj:
-                c = pl.Circle((xi[bx], yi[by]), 2.0, color='white',
+                c = pl.Circle((xi[bx], yi[by]), br, color='white',
                               linewidth=2, fill=False)
                 ax.add_patch(c)
                 pl.annotate("%d" % goodblob, xy=(xi[bx], yi[by]),
@@ -208,13 +209,11 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     print("Found %d good objects" % len(objs))
     if len(objs) <= 0:
-        objs = [(1000., 0., 0., goodblob)]
+        objs = [(1000., 0., 0., 2., goodblob)]
     # Make sure the brightest object is last
     objs.sort()
 
     # Perform 2-D Gaussian fit of good (real) objects
-    sigma_x = 2.0
-    sigma_y = 2.0
     for obj in objs:
         # Reset status
         status = 0
@@ -223,15 +222,16 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         amplitude = obj[0]
         xo = obj[1]
         yo = obj[2]
-        objno = obj[3]
+        ro = obj[3]
+        objno = obj[4]
 
         print("\nFitting object %d" % objno)
         print("initial guess : z,a,b,x,y,theta:"
               " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f" %
-              (amplitude, sigma_x, sigma_y, xo, yo, 0.))
+              (amplitude, ro, ro, xo, yo, 0.))
 
         # create initial data
-        initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, grid_med)
+        initial_guess = (amplitude, xo, yo, ro, ro, 0, grid_med)
 
         try:
             popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
@@ -241,25 +241,30 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             print("Using initial guess")
             status = 3
             popt = initial_guess
-        # Fitted position
+        # Extract values to test
         xc = popt[1]
         yc = popt[2]
+        a = popt[3] * sigfac
+        b = popt[4] * sigfac
+        # Fitted position
         if xc < -15. or xc > 15. or yc < -15. or yc > 15.:
             print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
-            print("Using initial position: %f, %f" % (xo, yo))
-            xc = xo
-            yc = yo
+            print("Using initial guess")
+            popt = initial_guess
             status = 1
-        pos = (xc, yc)
+
         # Fitted 3-sigma extent
-        a = popt[3]*sigfac
-        b = popt[4]*sigfac
         if a > 14. or b > 14. or a <= 0. or b <= 0.:
             print("ERROR: A,B out of bounds: %f, %f" % (a, b))
-            print("Using initial values: %f, %f" % (sigma_x, sigma_y))
-            a = sigma_x
-            b = sigma_y
+            print("Using initial guess")
+            popt = initial_guess
             status = 2
+        # Extract values to use
+        xc = popt[1]
+        yc = popt[2]
+        a = popt[3] * sigfac
+        b = popt[4] * sigfac
+        pos = (xc, yc)
         theta = popt[5]
         z = popt[0]
 
