@@ -267,8 +267,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             a = popt[3] * sigfac
             b = popt[4] * sigfac
         else:
-            a = popt[3]
-            b = popt[4]
+            a = popt[3] * 2.0
+            b = popt[4] * 2.0
         pos = (xc, yc)
         theta = popt[5]
         z = popt[0]
