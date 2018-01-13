@@ -156,6 +156,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     points = zip(xs, ys)
     values = vs
+    gscl = (np.nanmax(xs) - np.nanmin(xs)) / 200.
 
     # Create image, print(stats)
     grid_vs = griddata(points, values, (x, y), method='linear')
@@ -183,7 +184,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
         # Extract blob properties
         bx, by, br = blob
-        br *= 28./200.
+        br *= gscl
 
         bx = int(bx)
         by = int(by)
@@ -244,8 +245,8 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Extract values to test
         xc = popt[1]
         yc = popt[2]
-        a = popt[3] * sigfac
-        b = popt[4] * sigfac
+        a = popt[3]
+        b = popt[4]
         # Fitted position
         if xc < -15. or xc > 15. or yc < -15. or yc > 15.:
             print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
@@ -262,8 +263,12 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Extract values to use
         xc = popt[1]
         yc = popt[2]
-        a = popt[3] * sigfac
-        b = popt[4] * sigfac
+        if status == 0:
+            a = popt[3] * sigfac
+            b = popt[4] * sigfac
+        else:
+            a = popt[3]
+            b = popt[4]
         pos = (xc, yc)
         theta = popt[5]
         z = popt[0]
