@@ -220,18 +220,16 @@ def proc_bias_crrs(ncp=1, oldcals=False):
             retcode2 = os.system("~/spy plan ifu*.fits")
         if retcode2 == 0:
             # Make bias + bias subtraction
-            if ncp < 4:
+            retcode3 = os.system("make -j 16 bias")
+            if retcode3 != 0:
+                print("bias failed, try again")
                 retcode3 = os.system("make bias")
-            else:
-                cmd = "make -j%d bias" % min([ncp, 8])
-                retcode3 = os.system(cmd)
             if retcode3 == 0:
                 # Make CR rejection
-                if ncp < 2:
+                retcode4 = os.system("make -j 8 crrs")
+                if retcode4 !=0:
+                    print("crrs failed, try again")
                     retcode4 = os.system("make crrs")
-                else:
-                    cmd = "make -j%d crrs" % min([ncp, 8])
-                    retcode4 = os.system(cmd)
                 # Success on all fronts!
                 if retcode4 == 0:
                     print("bias, crrs processed for %d new images" % ncp)
