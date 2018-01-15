@@ -428,7 +428,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
                                    sigfac=sigfac)
 
     # Use all sky spaxels in image
-    kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
     for ix in sixa:
         ex[ix].is_obj = True
