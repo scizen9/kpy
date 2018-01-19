@@ -1054,7 +1054,7 @@ def handle_flat(flfile, fine, outname=None):
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                flat_corrections=None, lmin=650., lmax=700.,
-               refl=0.82, area=18000., no_stamp=False):
+               refl=0.82, area=18000., no_stamp=False, interact=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
@@ -1204,19 +1204,32 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     objname = meta['header']['OBJECT'].split()[0]
     objname = objname.replace('"', "")
 
-    # Automatic extraction using Gaussian fit for Standard Stars
-    sixa, posa, adcpos, ellipse, status = \
-        identify_spectra_gauss_fit(ex,
-                                   prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                   lmin=lmin, lmax=lmax, sigfac=5.0,
-                                   airmass=meta['airmass'])
+    if not interact:
+        # Automatic extraction using Gaussian fit for Standard Stars
+        sixa, posa, adcpos, ellipse, status = \
+            identify_spectra_gauss_fit(ex,
+                                       prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                       lmin=lmin, lmax=lmax, sigfac=5.0,
+                                       airmass=meta['airmass'])
 
-    if status > 0:
-        quality = 4  # something went wrong
+        if status > 0:
+            quality = 4  # something went wrong
+        else:
+            quality = 0  # good fit
+
+        radius_used = ellipse[0] * 0.5
     else:
-        quality = 0  # good fit
+        message = "\nMark positive (red) target"
 
-    radius_used = ellipse[0] * 0.5
+        # A single-frame Science Object
+        sixa, posa, adcpos, ellipse, stats = \
+            identify_spectra_gui(ex, radius=2.0,
+                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                 scaled=False, bgd_sub=False,
+                                 lmin=lmin, lmax=lmax,
+                                 objname=objname, airmass=meta['airmass'],
+                                 message=message)
+        radius_used = ellipse[0] * 0.5
 
     # Mark object spaxels
     for ix in sixa:
@@ -2308,6 +2321,7 @@ Handles a single A image and A+B pair as well as flat extraction.
             star = Stds.Standards[args.std]
             handle_std(args.A, args.fine, outname=args.outname,
                        standard=star, offset=args.Aoffset,
+                       interact=args.interact,
                        flat_corrections=flat, no_stamp=args.no_stamp)
 
     else:
