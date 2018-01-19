@@ -1231,6 +1231,26 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                                  message=message)
         radius_used = ellipse[0] * 0.5
 
+        # Get quality of observation
+        print("Enter quality of observation:")
+        print("1 - good       (no problems)")
+        print("2 - acceptable (minor problem)")
+        print("3 - poor       (major problem)")
+        print("4 - no object visible")
+        q = 'x'
+        quality = -1
+        prom = ": "
+        while quality < 1 or quality > 4:
+            q = input(prom)
+            if type(q) == str:
+                if q.isdigit():
+                    quality = int(q)
+            else:
+                quality = q
+            if quality < 1 or quality > 4:
+                prom = "Try again: "
+        print("Quality = %d, now making outputs..." % quality)
+
     # Mark object spaxels
     for ix in sixa:
         ex[ix].is_obj = True
