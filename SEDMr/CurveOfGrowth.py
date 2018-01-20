@@ -443,10 +443,10 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
     # Define our standard wavelength grid
     ll = None
     # Resample sky onto standard wavelength grid
-    if len(skya) > 0:
+    try:
         sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
                          bounds_error=False)
-    else:
+    except:
         sky_a = None
 
     # Set up curve of growth
