@@ -55,6 +55,9 @@ class Spectra(object):
             except:
                 continue
 
+            if el.Y_as > 7.0:
+                continue
+
             good_positions.append(ix)
 
             x = el.X_as
