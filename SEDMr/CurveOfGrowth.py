@@ -443,8 +443,11 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
     # Define our standard wavelength grid
     ll = None
     # Resample sky onto standard wavelength grid
-    sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
-                     bounds_error=False)
+    if len(skya) > 0:
+        sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
+                         bounds_error=False)
+    else:
+        sky_a = None
 
     # Set up curve of growth
     kt = SedSpec.Spectra(ex)
@@ -503,7 +506,10 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
 
             # Calculate output corrected spectrum
             # Account for sky and aperture
-            res['ph_10m_nm'] = (fl(ll)-sky_a(ll)) * len(sixa)
+            if sky_a is not None:
+                res['ph_10m_nm'] = (fl(ll)-sky_a(ll)) * len(sixa)
+            else:
+                res['ph_10m_nm'] = fl(ll) * len(sixa)
             cog = res['ph_10m_nm']
             # 400 - 500 nm
             f1 = np.nanmean(cog[(ll > 400) * (ll < 500)])
