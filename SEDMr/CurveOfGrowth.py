@@ -262,7 +262,8 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     if len(skys) > 0:
         print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
-        print("ERROR: no sky spaxels in this image")
+        print("ERROR: no sky spaxels in this image: using all spaxels")
+        skys = kt.good_positions.tolist()
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
