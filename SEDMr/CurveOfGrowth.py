@@ -234,6 +234,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
+    status = 0
     kt = SedSpec.Spectra(spectra)
 
     # outer = inner + 3.
@@ -265,6 +266,8 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
         print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
         print("ERROR: no sky spaxels in this image: using all spaxels")
+        skys = kt.good_positions.tolist()
+        status = 1
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
@@ -303,7 +306,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     print("Removed %d high sky spaxels and %d low sky spaxels leaving %d "
           "remaining spaxels" % (n_hi_rem, n_lo_rem, n_tot))
 
-    return skys
+    return skys, status
 
 
 def c_to_nm(coefficients, pix, offset=0.):
@@ -430,7 +433,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
                                    sigfac=sigfac)
 
     # Use all sky spaxels in image
-    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
+    kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
     for ix in sixa:
         ex[ix].is_obj = True
@@ -438,7 +441,10 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         ex[ix].is_sky = True
 
     # Get sky spectrum
-    skya = interp_spectra(ex, kixa, sky=True)
+    if skystat == 0:
+        skya = interp_spectra(ex, kixa, sky=True)
+    else:
+        skya = interp_spectra(ex, kixa)
 
     # Define our standard wavelength grid
     ll = None
