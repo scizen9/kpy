@@ -421,6 +421,8 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
 
 def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
+    status = 0
+
     kt = SedSpec.Spectra(spectra)
 
     # outer = inner + 3.
@@ -449,7 +451,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     if len(skys) > 0:
         print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
-        print("ERROR: no sky spaxels in this image")
+        print("ERROR: no sky spaxels in this image: using full image")
+        skys = kt.good_positions.tolist()
+        status = 1
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
@@ -488,7 +492,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     print("Removed %d high sky spaxels and %d low sky spaxels leaving %d "
           "remaining spaxels" % (n_hi_rem, n_lo_rem, n_tot))
 
-    return skys
+    return skys, status
 
 
 def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
@@ -1255,7 +1259,7 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
-    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
+    kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
     # Mark sky spaxels
     for ix in kixa:
         ex[ix].is_sky = True
@@ -1275,11 +1279,19 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # , outname=outname+"_var.pdf")
 
     # Mean sky
-    skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+    # are we using found sky spaxels
+    if skystat == 0:
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
                                   sky=True)
-    # Mean sky variance
-    vkya, nspxak = interp_spectra(e_var, kixa)
-    # , outname=outname+"_skvar.pdf")
+        # Mean sky variance
+        vkya, nspxak = interp_spectra(e_var, kixa, sky=True)
+        # , outname=outname+"_skvar.pdf")
+    # or the whole image?
+    else:
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+        # Mean sky variance
+        vkya, nspxak = interp_spectra(e_var, kixa)
+        # , outname=outname+"_skvar.pdf")
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1620,7 +1632,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                      "cmin": None, "cmax": None}
 
             # Use all sky spaxels in image
-            kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
+            kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
         else:
             message = "\nMark positive (red) target"
@@ -1685,11 +1697,18 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # , outname=outname+"_var.pdf")
 
         # Mean sky
-        skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
-                                     sky=True)
-        # Mean sky variance
-        vkya, nsxav = interp_spectra(e_var, kixa)
-        # , outname=outname+"_skvar.pdf")
+        # are we using found sky spaxels?
+        if skystat == 0:
+            skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                         sky=True)
+            # Mean sky variance
+            vkya, nsxav = interp_spectra(e_var, kixa, sky=True)
+            # , outname=outname+"_skvar.pdf")
+        else:
+            skya, nsxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+            # Mean sky variance
+            vkya, nsxav = interp_spectra(e_var, kixa)
+            # , outname=outname+"_skvar.pdf")
 
         # Plot out the X/Y positions of the selected spaxels
         xsa = []
