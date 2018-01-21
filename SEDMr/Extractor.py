@@ -1292,6 +1292,8 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         # Mean sky variance
         vkya, nspxak = interp_spectra(e_var, kixa)
         # , outname=outname+"_skvar.pdf")
+        # make sure this is marked as bad
+        quality = 4
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
