@@ -1677,6 +1677,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
             # Use an annulus for sky spaxels for Science Objects
             kixa = identify_bgd_spectra(ex, adcpos, ellipse=ellipse, expfac=1.5)
+            skystat = 0
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
