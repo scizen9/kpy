@@ -13,7 +13,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print("-- Ingesting headers --")
+    print("-- Plan.py: Ingesting headers --")
     update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1
@@ -111,6 +111,7 @@ def identify_observations(headers):
         name = name.replace("]", "_")
         name = name.replace("/", "_")
         name = name.replace(":", "_")
+        name = name.replace('"', "")
 
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
@@ -462,6 +463,7 @@ def to_makefile(objs, calibs):
         objname = objname.replace("(", "_")
         objname = objname.replace("[", "_")
         objname = objname.replace("]", "_")
+        objname = objname.replace('"', "")
 
         for obsnum, obsfiles in observations.items():
             flatfiles.append(obsfiles)

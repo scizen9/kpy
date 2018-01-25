@@ -176,6 +176,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         hdr = meta['header']
         if 'OBJECT' in hdr:
             obj = hdr['OBJECT'].split()[0]
+            obj = obj.replace('"', "")
         else:
             obj = ''
         if 'RA' in hdr:

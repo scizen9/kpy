@@ -21,7 +21,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print("-- Ingesting headers --")
+    print("-- Plan2.py: Ingesting headers --")
     update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1
@@ -119,6 +119,7 @@ def identify_observations(headers):
         name = name.replace("]", "_")
         name = name.replace("/", "_")
         name = name.replace(":", "_")
+        name = name.replace('"', "")
 
         # The 'A' position defines the start of an object set
         if '[A]' in obj or name not in objcnt:
@@ -198,13 +199,13 @@ bs_crr_b_%.npy : bs_crr_b_%.fits.gz flex_bs_crr_b_%.npy
 
 .PHONY: cleanstds newstds report ptfreport finalreport
 
-bias: bias0.1.fits bias2.0.fits $(BIAS)
+bias: $(BIAS)
 crrs: $(CRRS) 
 back: $(BACK)
 extr: $(EXTR)
 figs: $(FIGS)
 
-$(BIAS): bias0.1.fits bias2.0.fits
+$(BIAS):
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 
@@ -435,6 +436,7 @@ def to_makefile(objs, calibs):
         objname = objname.replace("(", "_")
         objname = objname.replace("[", "_")
         objname = objname.replace("]", "_")
+        objname = objname.replace('"', "")
 
         for obsnum, obsfiles in observations.items():
             flatfiles.append(obsfiles)

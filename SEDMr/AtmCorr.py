@@ -146,7 +146,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
             continue
 
         # Check quality of extraction
-        if data["quality"] > 0:
+        if data["quality"] > 2:
             print("Bad std extraction in %s" % ifile)
             continue
 

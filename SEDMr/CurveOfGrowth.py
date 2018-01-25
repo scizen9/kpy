@@ -92,6 +92,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     points = zip(xs, ys)
     values = vs
+    gscl = (np.nanmax(xs) - np.nanmin(xs)) / 200.
 
     # Create image, print(stats)
     grid_vs = griddata(points, values, (x, y), method='linear')
@@ -102,7 +103,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
            float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
-    blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
+    blobs = feature.blob_log(grid_vs-grid_med, min_sigma=10, max_sigma=20,
                              threshold=100.0)
     print("Found %d blobs" % len(blobs))
 
@@ -113,6 +114,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
     for blob in blobs:
         # Extract blob properties
         bx, by, br = blob
+        br *= gscl
 
         bx = int(bx)
         by = int(by)
@@ -124,31 +126,30 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
                   (goodblob, float(gv), bx, by, xi[bx], yi[by]))
-            objs.append((gv, xi[bx], yi[by], goodblob))
+            objs.append((gv, xi[bx], yi[by], br, goodblob))
 
     print("Found %d good objects" % len(objs))
     if len(objs) <= 0:
-        objs = [(1000., 0., 0., goodblob)]
+        objs = [(1000., 0., 0., 2., goodblob)]
     # Make sure the brightest object is last
     objs.sort()
 
     # Perform 2-D Gaussian fit of good (real) objects
-    sigma_x = 2.0
-    sigma_y = 2.0
     for obj in objs:
         # Fill initial fit params
         amplitude = obj[0]
         xo = obj[1]
         yo = obj[2]
-        objno = obj[3]
+        ro = obj[3]
+        objno = obj[4]
 
         print("\nFitting object %d" % objno)
         print("initial guess : z,a,b,x,y,theta:"
               " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f" %
-              (amplitude, sigma_x, sigma_y, xo, yo, 0.))
+              (amplitude, ro, ro, xo, yo, 0.))
 
         # create initial data
-        initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, grid_med)
+        initial_guess = (amplitude, xo, yo, ro, ro, 0, grid_med)
 
         try:
             popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
@@ -161,22 +162,29 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Fitted position
         xc = popt[1]
         yc = popt[2]
+        a = popt[3]
+        b = popt[4]
         if xc < -30. or xc > 30. or yc < -30. or yc > 30.:
             print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
-            print("Using initial position: %f, %f" % (xo, yo))
-            xc = xo
-            yc = yo
+            print("Using initial guess")
+            popt = initial_guess
             status = 1
-        pos = (xc, yc)
         # Fitted 3-sigma extent
-        a = popt[3]*sigfac
-        b = popt[4]*sigfac
         if a > 14. or b > 14. or a <= 0. or b <= 0.:
             print("ERROR: A,B out of bounds: %f, %f" % (a, b))
-            print("Using initial values: %f, %f" % (sigma_x, sigma_y))
-            a = sigma_x
-            b = sigma_y
+            print("Using initial guess")
+            popt = initial_guess
             status = 2
+        # Extract values to use
+        xc = popt[1]
+        yc = popt[2]
+        if status == 0:
+            a = popt[3] * sigfac
+            b = popt[4] * sigfac
+        else:
+            a = popt[3] * 2.0
+            b = popt[4] * 2.0
+        pos = (xc, yc)
         theta = popt[5]
         z = popt[0]
 
@@ -191,8 +199,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         # Gather spaxels
         all_kix = []
         for the_pos in positions:
-            all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                       -theta)))
+            all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                       the_pos[0], the_pos[1],
+                                                       a, b, -theta)))
 
         all_kix = list(itertools.chain(*all_kix))
         kix = list(set(all_kix))
@@ -225,6 +234,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 
 def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
+    status = 0
     kt = SedSpec.Spectra(spectra)
 
     # outer = inner + 3.
@@ -232,6 +242,8 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     skys = kt.good_positions.tolist()
 
     a = ellipse[0]*1.25
+    if a > 10:
+        a = 10.
     b = a * (ellipse[1] / ellipse[0])
     xc = ellipse[2]
     yc = ellipse[3]
@@ -239,8 +251,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
     all_kix = []
     for the_pos in pos:
-        all_kix.append(list(find_positions_ellipse(kt.KT.data, xc, yc, a, b,
-                                                   -theta)))
+        all_kix.append(list(find_positions_ellipse(kt.KT.data,
+                                                   the_pos[0], the_pos[1],
+                                                   a, b, -theta)))
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
     objs = kt.good_positions[kix]
@@ -252,7 +265,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     if len(skys) > 0:
         print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
-        print("ERROR: no sky spaxels in this image")
+        print("ERROR: no sky spaxels in this image: using all spaxels")
+        skys = kt.good_positions.tolist()
+        status = 1
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
@@ -291,7 +306,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     print("Removed %d high sky spaxels and %d low sky spaxels leaving %d "
           "remaining spaxels" % (n_hi_rem, n_lo_rem, n_tot))
 
-    return skys
+    return skys, status
 
 
 def c_to_nm(coefficients, pix, offset=0.):
@@ -408,8 +423,6 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         return
 
     outname = infile.split('.')[0]
-    # Get the object name of record
-    objname = meta['header']['OBJECT'].split()[0]
 
     # Automatic extraction using Gaussian fit for Standard Stars
     sixa, posa, adcpos, ellipse, status = \
@@ -420,7 +433,7 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
                                    sigfac=sigfac)
 
     # Use all sky spaxels in image
-    kixa = identify_sky_spectra(ex, posa, ellipse=ellipse)
+    kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
     for ix in sixa:
         ex[ix].is_obj = True
@@ -428,13 +441,19 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         ex[ix].is_sky = True
 
     # Get sky spectrum
-    skya = interp_spectra(ex, kixa, sky=True)
+    if skystat == 0:
+        skya = interp_spectra(ex, kixa, sky=True)
+    else:
+        skya = interp_spectra(ex, kixa)
 
     # Define our standard wavelength grid
     ll = None
     # Resample sky onto standard wavelength grid
-    sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
-                     bounds_error=False)
+    try:
+        sky_a = interp1d(skya[0]['nm'], skya[0]['ph_10m_nm'],
+                         bounds_error=False)
+    except:
+        sky_a = None
 
     # Set up curve of growth
     kt = SedSpec.Spectra(ex)
@@ -493,7 +512,10 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
 
             # Calculate output corrected spectrum
             # Account for sky and aperture
-            res['ph_10m_nm'] = (fl(ll)-sky_a(ll)) * len(sixa)
+            if sky_a is not None:
+                res['ph_10m_nm'] = (fl(ll)-sky_a(ll)) * len(sixa)
+            else:
+                res['ph_10m_nm'] = fl(ll) * len(sixa)
             cog = res['ph_10m_nm']
             # 400 - 500 nm
             f1 = np.nanmean(cog[(ll > 400) * (ll < 500)])
@@ -570,21 +592,39 @@ def make_cog(infile, lmin=650., lmax=700., sigfac=7., interact=False,
         if hmx < hmr:
             hmr = hmx
 
-    pl.plot(px, c1, label='400-500 nm')
-    pl.plot(px, c2, label='500-600 nm')
-    pl.plot(px, c3, label='600-700 nm')
-    pl.plot(px, c4, label='700-800 nm')
-    pl.plot(px, c5, label='800-900 nm')
+    if not no_stamp:
+        pl.plot(px, c1, label='400-500 nm')
+        pl.plot(px, c2, label='500-600 nm')
+        pl.plot(px, c3, label='600-700 nm')
+        pl.plot(px, c4, label='700-800 nm')
+        pl.plot(px, c5, label='800-900 nm')
+    else:
+        pl.plot(px, c1, label='400-500 nm', linestyle=':')
+        pl.plot(px, c2, label='500-600 nm', linestyle='-.')
+        pl.plot(px, c3, label='600-700 nm', linestyle='--')
+        pl.plot(px, c4, label='700-800 nm', linestyle='-')
+        pl.plot(px, c5, label='800-900 nm', linestyle=':')
     if hmr < 1.e9:
-        pl.plot([hmr, hmr], [-0.05, 1.05], ls='--', c='black', label='HalfMax')
+        pl.plot([hmr, hmr], [-0.05, 1.05], ls='--', c='black',
+                label='HalfLight')
         # pl.plot([0.05, hmr], [0.5, 0.5], ls='--', c='gray')
     pl.xlim(0.05, np.max(px)+0.05)
     pl.ylim(-0.05, 1.05)
-    pl.xlabel('Semi-major axis (arcsec)')
-    pl.ylabel('Relative Irr')
+    pl.xlabel('Semi-major axis (arcsec)', {'fontsize': 14})
+    pl.ylabel('Relative Irradiance', {'fontsize': 14})
     pl.legend()
     if not no_stamp:
         plot_drp_ver()
+    else:
+        ax = pl.gca()
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        ltext = ax.get_legend().get_texts()
+        pl.setp(ltext[0], fontsize=16)
+        pl.setp(ltext[1], fontsize=16)
+        pl.setp(ltext[2], fontsize=16)
+        pl.setp(ltext[3], fontsize=16)
+        pl.setp(ltext[4], fontsize=16)
+        pl.tight_layout()
     if interact:
         pl.show()
     else:
