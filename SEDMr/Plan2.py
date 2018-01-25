@@ -21,7 +21,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print("-- Ingesting headers --")
+    print("-- Plan2.py: Ingesting headers --")
     update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1
@@ -199,13 +199,13 @@ bs_crr_b_%.npy : bs_crr_b_%.fits.gz flex_bs_crr_b_%.npy
 
 .PHONY: cleanstds newstds report ptfreport finalreport
 
-bias: bias0.1.fits bias2.0.fits $(BIAS)
+bias: $(BIAS)
 crrs: $(CRRS) 
 back: $(BACK)
 extr: $(EXTR)
 figs: $(FIGS)
 
-$(BIAS): bias0.1.fits bias2.0.fits
+$(BIAS):
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 

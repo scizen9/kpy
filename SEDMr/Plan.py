@@ -13,7 +13,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print("-- Ingesting headers --")
+    print("-- Plan.py: Ingesting headers --")
     update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1

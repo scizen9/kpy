@@ -55,8 +55,9 @@ class Spectra(object):
             except:
                 continue
 
-            if el.Y_as > 7.0:
-                continue
+            # trim seems needed if ADCSPEED is 2.0
+            # if el.Y_as > 7.0:
+            #     continue
 
             good_positions.append(ix)
 
