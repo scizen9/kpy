@@ -16,9 +16,16 @@ except:
     print "RCRED not imported"
 import datetime
 import fitsutils
+import scipy.stats
 
 from matplotlib import pylab as plt
 
+
+rootdir = "/scr1/sedm/focus"
+
+if not (os.path.isdir(rootdir)):
+    rootdir = "/tmp"
+        
 
 def run_sex(flist, mask=False, cosmics=False, overwrite=False):
     
@@ -63,7 +70,7 @@ def run_sex(flist, mask=False, cosmics=False, overwrite=False):
         
 def analyse_sex(sexfileslist, plot=True, interactive=False):
     '''
-    Analyses the sextractor filelist to determine the best focus.
+    Analyses the sextractor filelist to determine the best focus for the RC camera.
    
 	#   1 X_IMAGE                Object position along x                                    [pixel]
 	#   2 Y_IMAGE                Object position along y                                    [pixel]
@@ -75,8 +82,12 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
 	#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
 	#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE                                       
 	#  10 BACKGROUND             Background at centroid position                            [count]
-	#  11 FLAGS                  Extraction flags   
- 
+	#  11 FLAGS                  Extraction flags 
+	#  12 A_IMAGE                Isophotal image mejor axis
+	#  13 B_IMAGE                Isophotal image minor axis
+   	#  14 THETA_IMAGE            Isophotal image position angle
+   	#  15 PETRO_RADIUS           Petrosian radius
+   
     returns: A tuple containing:
         1. - The best focus values as interpolated from the images.
         2. - The sigma whithin which we should look for a finer focus.
@@ -144,7 +155,7 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
     
     if (plot==True):
         plt.title("Best focus:%.2f"% x[np.argmin(p(x))])
-        with open("/tmp/focus", "w") as f:
+        with open(os.path.join(rootdir, "focus"), "w") as f:
             f.write(str(focpos))
             f.write(str(fwhms))
         plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
@@ -157,10 +168,10 @@ def analyse_sex(sexfileslist, plot=True, interactive=False):
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
             plt.clf()
     return x[np.argmin(p(x))], coefs[0]
-    
-def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
+
+def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, debug=False):
     '''
-    Analyses the sextractor filelist to determine the best focus.
+    Analyses the sextractor filelist to determine the best focus for the IFU spectrograph instrument.
    
 	#   1 X_IMAGE                Object position along x                                    [pixel]
 	#   2 Y_IMAGE                Object position along y                                    [pixel]
@@ -173,7 +184,169 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
 	#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE                                       
 	#  10 BACKGROUND             Background at centroid position                            [count]
 	#  11 FLAGS                  Extraction flags   
+	#  12 A_IMAGE                Isophotal image mejor axis
+	#  13 B_IMAGE                Isophotal image minor axis
+   	#  14 THETA_IMAGE            Isophotal image position angle
+   	#  15 PETRO_RADIUS           Petrosian radius
+   
+    returns: A tuple containing:
+        1. - The best focus values as interpolated from the images.
+        2. - The sigma whithin which we should look for a finer focus.
+    '''
+    sexfileslist = list(sexfileslist)    
+    sexfileslist.sort()
  
+    focpos = []
+    fwhms = []
+    std_fwhm = []
+    mags = []
+    mags_std = []
+    trace_width = []
+    trace_width_std = []
+    
+    for i, f in enumerate(sexfileslist):
+        print f
+        fits = f.replace("sextractor/", "").replace(".sex", ".fits")
+        FF = pf.open(fits)
+
+
+        pos= float(FF[0].header['ifufocus'])
+        
+        
+
+        s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
+        ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), \
+        ("background", np.float), ("flags", np.float), ("a_image", np.float), ("b_image", np.float),("theta_image", np.float), \
+        ("petro_radius", np.float)])
+        
+
+        sb = s[ (s["x"]> 200) * (s["x"]<1848) * (s["y"]>200) * (s["y"]<1848)]
+        
+        sb = sb[ np.abs(sb["theta_image"])<10]
+        sb = sb[ np.abs(sb["a_image"])>10]
+
+        if(debug):
+            ax = plt.subplot2grid((2,3), (0,0))
+            ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=5)
+            #plt.colorbar()
+            
+            ax = plt.subplot2grid((2,3), (0,1))
+            ax.hist(sb["a_image"], bins=20, range=(10,60))
+
+            ax = plt.subplot2grid((2,3), (0,2))
+            ax.hist(sb["ellipticity"], bins=20, range=(0.9,1))
+
+            ax = plt.subplot2grid((2,3), (1,0))
+            ax.hist(sb["b_image"], bins=20, range=(0.5,3))
+            
+            ax = plt.subplot2grid((2,3), (1,1))
+            ax.hist(sb["theta_image"], bins=20, range=(-10,10))
+            
+            ax = plt.subplot2grid((2,3), (1,2))
+            ax.hist(sb["mag"], bins=20)
+            
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
+            plt.clf()
+        
+        focpos.append(pos)
+        fwhms.append(np.median(sb["a_image"]))
+        mags.append(np.average(sb["mag"]))
+        mags_std.append(np.std(sb["mag"]))
+        trace_width.append(np.median(sb["b_image"]))
+        trace_width_std.append(np.minimum(0.5, np.std(sb["b_image"])))
+
+        #std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
+        std_fwhm.append(np.std(sb["a_image"]))# < np.percentile(sb["b_image"], 15)))
+
+    
+    focpos = np.array(focpos)
+    fwhms = np.array(fwhms)
+    trace_width = np.array(trace_width)
+    trace_width_std = np.array(trace_width_std)
+    mags_std = np.array(mags_std)
+
+    std_fwhm = np.minimum(7.5, np.array(std_fwhm))
+
+    print focpos, fwhms, std_fwhm
+    
+    #focpos = focpos[fwhms>35.5]
+    #std_fwhm = std_fwhm[fwhms>35.5]
+    #fwhms = fwhms[fwhms>35.5]
+
+    '''n = len(fwhms)
+    best_seeing_id = np.argmin(fwhms)
+    #We will take 4 datapoints on the left and right of the best value.
+    selected_ids = np.arange(-4, 4, 1)
+    selected_ids = selected_ids + best_seeing_id
+    selected_ids = np.minimum(selected_ids, n-1)
+    selected_ids = np.maximum(selected_ids, 0)
+    selected_ids = np.array(list(set(selected_ids)))
+
+
+    focpos = focpos[selected_ids]
+    fwhms = fwhms[selected_ids]
+    std_fwhm = std_fwhm[selected_ids]'''
+    
+    coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
+    coefs_mag = np.polyfit(focpos, mags, w=1/mags_std, deg=2)
+    
+    x = np.linspace(np.min(focpos), np.max(focpos), 100)
+    p = np.poly1d(coefs)
+    pmag = np.poly1d(coefs_mag)
+    
+    print "Best focus:%.2f"% x[np.argmax(p(x))], coefs,std_fwhm
+    
+
+
+    if (plot==True):
+        plt.title("Best focus:%.2f"% x[np.argmax(p(x))])
+        with open(os.path.join(rootdir, "focus"), "w") as f:
+            f.write(str(focpos))
+            f.write(str(fwhms))
+        plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
+        plt.plot(x, p(x), "-")
+        plt.xlabel("Focus (mm)")
+        plt.ylabel("Brightest spaxel")
+        if (interactive):
+            plt.show()
+        else:
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_trace_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
+
+    if (plot==True):
+        plt.title("Best focus:%.2f"% x[np.argmin(pmag(x))])
+        plt.errorbar(focpos, mags, yerr=mags_std, fmt="o")
+        plt.plot(x, pmag(x), "-")
+        plt.xlabel("Focus (mm)")
+        plt.ylabel("Mag")
+        if (interactive):
+            plt.show()
+        else:
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_mag_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()
+            
+    return x[np.argmax(p(x))], x[np.argmin(pmag(x))]
+    
+def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu=False):
+    '''
+    Analyses the sextractor filelist to determine the best focus for the IFU camera stage controller.
+   
+	#   1 X_IMAGE                Object position along x                                    [pixel]
+	#   2 Y_IMAGE                Object position along y                                    [pixel]
+	#   3 ALPHA_J2000            Right ascension of barycenter (J2000)                      [deg]
+	#   4 DELTA_J2000            Declination of barycenter (J2000)                          [deg]
+	#   5 MAG_BEST               Best of MAG_AUTO and MAG_ISOCOR                            [mag]
+	#   6 MAGERR_BEST            RMS error for MAG_BEST                                     [mag]
+	#   7 FWHM_WORLD             FWHM assuming a gaussian core                              [deg]
+	#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
+	#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE                                       
+	#  10 BACKGROUND             Background at centroid position                            [count]
+	#  11 FLAGS                  Extraction flags   
+	#  12 A_IMAGE                Isophotal image mejor axis
+	#  13 B_IMAGE                Isophotal image minor axis
+   	#  14 THETA_IMAGE            Isophotal image position angle
+   	#  15 PETRO_RADIUS           Petrosian radius
+   
     returns: A tuple containing:
         1. - The best focus values as interpolated from the images.
         2. - The sigma whithin which we should look for a finer focus.
@@ -188,32 +361,63 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
         print f
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
         FF = pf.open(fits)
-        pos= float(FF[0].header['focpos'])
+
+        if not ifu:
+            pos= float(FF[0].header['focpos'])
+        else:
+            pos= float(FF[0].header['ifufocus'])
+        
+        
 
         s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
-        ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), ("background", np.float), ("flags", np.float)])
+        ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), \
+        ("background", np.float), ("flags", np.float), ("a_image", np.float), ("b_image", np.float),("theta_image", np.float), \
+        ("petro_radius", np.float)])
         
         #for the focus purpose, we only want traces, meaning that their ellipticity needs to be large.
-        sb = s[s["ellipticity"]> 0.95]
+        sb = s[s["ellipticity"]> 0.9]
+        sb = s[ (s["x"]> 200) * (s["x"]<1848) * (s["y"]>200) * (s["y"]<1848)]
         
+        sb = sb[ np.abs(sb["theta_image"])<10]
+        sb = sb[ np.abs(sb["a_image"])>10]
+
         if(debug):
-            plt.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]))
-            plt.colorbar()
+            ax = plt.subplot2grid((2,2), (0,0))
+            ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=5)
+            #plt.colorbar()
+            
+            ax = plt.subplot2grid((2,2), (0,1))
+            ax.hist(sb["a_image"], bins=20, range=(10,60))
+
+            ax = plt.subplot2grid((2,2), (1,0))
+            ax.hist(sb["b_image"], bins=20, range=(0,5))
+            
+            ax = plt.subplot2grid((2,2), (1,1))
+            ax.hist(sb["theta_image"], bins=20, range=(-10,10))
+            
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
         focpos.append(pos)
-        fwhms.append(np.min(sb["mag"]))
-        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
+        #fwhms.append(np.min(sb["mag"]))
+        #fwhms.append(np.min(sb["fwhm_image"]))
+        #fwhms.append(np.min(sb["b_image"]))
+        #fwhms.append(np.percentile(sb["mag"], 15))
+        fwhms.append(np.median(sb["a_image"]))
+
+
+        #std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
+        std_fwhm.append(np.std(sb["a_image"]))# < np.percentile(sb["b_image"], 15)))
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
     std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
 
+
     n = len(fwhms)
     best_seeing_id = np.argmin(fwhms)
     #We will take 4 datapoints on the left and right of the best value.
-    selected_ids = np.arange(-3, 3, 1)
+    selected_ids = np.arange(-4, 4, 1)
     selected_ids = selected_ids + best_seeing_id
     selected_ids = np.minimum(selected_ids, n-1)
     selected_ids = np.maximum(selected_ids, 0)
@@ -224,17 +428,16 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
     fwhms = fwhms[selected_ids]
     std_fwhm = std_fwhm[selected_ids]
     
-    print focpos, fwhms, 1/std_fwhm
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
     
     x = np.linspace(np.min(focpos), np.max(focpos), 100)
     p = np.poly1d(coefs)
-    print "Best focus:%.2f"% x[np.argmin(p(x))], coefs,std_fwhm
+    print "Best focus:%.2f"% x[np.argmax(p(x))], coefs,std_fwhm
     
     
     if (plot==True):
-        plt.title("Best focus:%.2f"% x[np.argmin(p(x))])
-        with open("/tmp/focus", "w") as f:
+        plt.title("Best focus:%.2f"% x[np.argmax(p(x))])
+        with open(os.path.join(rootdir, "focus"), "w") as f:
             f.write(str(focpos))
             f.write(str(fwhms))
         plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
@@ -247,7 +450,7 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False):
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
             plt.clf()
 
-    return x[np.argmin(p(x))], coefs[0]
+    return x[np.argmax(p(x))], coefs[0]
     
 def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     '''
@@ -270,48 +473,53 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
 	#   8 FWHM_IMAGE             FWHM assuming a gaussian core                              [pixel]
 	#   9 ELLIPTICITY            1 - B_IMAGE/A_IMAGE                                       
 	#  10 BACKGROUND             Background at centroid position                            [count]
-	#  11 FLAGS                  Extraction flags   
+	#  11 FLAGS                  Extraction flags   	
+	#  12 A_IMAGE                Isophotal image mejor axis
+	#  13 B_IMAGE                Isophotal image minor axis
+   	#  14 THETA_IMAGE            Isophotal image position angle
+   	#  15 PETRO_RADIUS           Petrosian radius
  
     '''
     
-
-
-    s = np.genfromtxt(sexfile, comments="#")
+    s = np.genfromtxt(sexfile, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
+        ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), \
+        ("background", np.float), ("flags", np.float), ("a_image", np.float), ("b_image", np.float),("theta_image", np.float), \
+        ("petro_radius", np.float)])
 
     if (s is None or s.ndim==0 or len(s)==0):
         print "Empty content of the file for file %s. The length of the file is %d"%(sexfile, len(s))
         return 0,0,0,0
-
+        
     #Select sources inside of the cross
-    x = s[:,0]
-    y = s[:,1]
+    x = s["x"]
+    y = s["y"]
     
     if is_rccam:
         s = s[((y<850)|(y>1125))*((x<885)|(x>1540))]
 
     # Select with good flags only.
-    s = s[s[:,10]==0]
+    s = s[s["flags"]==0]
 
     nsources = len(s) 
     if (nsources == 0):
         return 0,0,0,0
     #Select round sources (ellipticity is 1-axis_ratio)
     s = s[s[:,8]<0.5]
-    ellipticity = np.nanmedian(s[:,8])
-    s = s[s[:,8]<0.25]
+    ellipticity = np.nanmedian(s["ellipticity"])
+    s = s[s["ellipticity"]<0.25]
 
     #Select FWHM at least 3 pixels and lower than 15 arcsec
-    s = s[ (s[:,7]>3)*(s[:,7]*arcsecpix<15)]
+    s = s[ (s["fwhm_image"]>3)*(s["fwhm_image"]*arcsecpix<15)]
     
     nsources = len(s) 
     if (nsources == 0):
         return 0,0,0,0
         
     #Select bright magnitudes
-    s = s[s[:,4]<np.percentile(s[:,4], 20)]
+    s = s[s["mag"]<np.percentile(s["mag"], 20)]
        
-    fwhm = np.nanmedian(s[:,7]*arcsecpix)
-    bkg = np.nanmedian(s[:,9])
+    fwhm = np.nanmedian(s["fwhm_image"]*arcsecpix)
+    bkg = np.nanmedian(s["background"])
     
     return nsources, fwhm, ellipticity, bkg
         
@@ -330,6 +538,15 @@ def get_focus_ifu(lfiles, plot=True, debug=False):
     '''
     sexfiles = run_sex(lfiles)
     focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug)
+    
+    return focus, sigma
+    
+def get_focus_ifu_spectrograph(lfiles, plot=True, debug=False):
+    '''
+    Receives a list of focus ifu files and returns the best focus.
+    '''
+    sexfiles = run_sex(lfiles)
+    focus, sigma = analyse_sex_ifu_spectrograph(sexfiles, plot=plot, debug=debug)
     
     return focus, sigma
     
