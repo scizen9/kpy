@@ -176,7 +176,8 @@ def docp(src, dest, onsky=True, verbose=False):
         # Skip test and Focus images
         if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
             # Copy with preserving metadata (date, etc.)
-            shutil.copy2(src, dest)
+            # shutil.copy2(src, dest)
+            os.symlink(src, dest)
             if 'STD-' in obj:
                 nstd = 1
                 print("Standard %s copied to %s" % (obj, dest))
