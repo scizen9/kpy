@@ -307,7 +307,7 @@ def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, deb
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_mag_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
             plt.clf()
             
-    return x[np.argmax(p(x))], x[np.argmin(pmag(x))]
+    return x[np.argmin(pmag(x))], np.abs(coefs_mag[0])
     
 def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu=False):
     '''
@@ -337,19 +337,15 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
     sexfileslist.sort()
  
     focpos = []
-    fwhms = []
-    std_fwhm = []
+    mags = []
+    std_mags = []
     for i, f in enumerate(sexfileslist):
         print f
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
         FF = pf.open(fits)
 
-        if not ifu:
-            pos= float(FF[0].header['focpos'])
-        else:
-            pos= float(FF[0].header['ifufocus'])
-        
-        
+        pos= float(FF[0].header['focpos'])
+         
 
         s = np.genfromtxt(f, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
         ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), \
@@ -357,7 +353,7 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
         ("petro_radius", np.float)])
         
         #for the focus purpose, we only want traces, meaning that their ellipticity needs to be large.
-        sb = s[s["ellipticity"]> 0.9]
+        sb = s[s["a_image"]> 30]
         sb = s[ (s["x"]> 200) * (s["x"]<1848) * (s["y"]>200) * (s["y"]<1848)]
         
 
@@ -379,41 +375,27 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
             plt.clf()
         
         focpos.append(pos)
-        fwhms.append(np.min(sb["mag"]))
-        std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
+        mags.append(np.percentile(sb["mag"], 25))
+        std_mags.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
     
     focpos = np.array(focpos)
-    fwhms = np.array(fwhms)
-    std_fwhm = np.maximum(1e-5, np.array(std_fwhm))
+    mags = np.array(mags)
+    std_mags = np.maximum(1e-5, np.array(std_mags))
 
-
-    n = len(fwhms)
-    best_seeing_id = np.argmin(fwhms)
-    #We will take 4 datapoints on the left and right of the best value.
-    selected_ids = np.arange(-4, 5, 1)
-    selected_ids = selected_ids + best_seeing_id
-    selected_ids = np.minimum(selected_ids, n-1)
-    selected_ids = np.maximum(selected_ids, 0)
-    selected_ids = np.array(list(set(selected_ids)))
-
-
-    focpos = focpos[selected_ids]
-    fwhms = fwhms[selected_ids]
-    std_fwhm = std_fwhm[selected_ids]
     
-    coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
+    coefs = np.polyfit(focpos, mags, w=1/std_mags, deg=2)
     
     x = np.linspace(np.min(focpos), np.max(focpos), 100)
     p = np.poly1d(coefs)
-    print "Best focus:%.2f"% x[np.argmax(p(x))], coefs,std_fwhm
+    print "Best focus:%.2f"% x[np.argmax(p(x))], coefs,std_mags
     
     
     if (plot==True):
         plt.title("Best focus:%.2f"% x[np.argmax(p(x))])
         with open(os.path.join(rootdir, "focus"), "w") as f:
             f.write(str(focpos))
-            f.write(str(fwhms))
-        plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
+            f.write(str(mags))
+        plt.errorbar(focpos, mags, yerr=std_mags, fmt="o")
         plt.plot(x, p(x), "-")
         plt.xlabel("Focus (mm)")
         plt.ylabel("Brightest spaxel")
