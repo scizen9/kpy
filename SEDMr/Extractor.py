@@ -581,7 +581,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         vs -= np.nanmedian(vs)
 
     # Clean outliers
-    vcln = reject_outliers(np.array(vs, dtype=np.float), m=3.)
+    vcln = reject_outliers(np.array(vs, dtype=np.float32), m=3.)
     vstd = np.nanstd(vcln)
     vmid = np.nanmedian(vcln)
     if cmin is None or cmax is None:

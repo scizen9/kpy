@@ -33,7 +33,7 @@ def imcombine(flist, fout, listfile=None, combtype="mean",
     for fl in flist:
         inhdu = pf.open(fl)
         img = inhdu[0].data
-        img = img.astype(np.float)
+        img = img.astype(np.float32)
         imstack.append(img)
 
     hdr = inhdu[0].header

@@ -81,8 +81,8 @@ def qr_to_img(exts, size=4, outname="cube.fits"):
 
     """
     
-    xs = np.array([ex.X_as for ex in exts], dtype=np.float)
-    ys = np.array([ex.Y_as for ex in exts], dtype=np.float)
+    xs = np.array([ex.X_as for ex in exts], dtype=np.float32)
+    ys = np.array([ex.Y_as for ex in exts], dtype=np.float32)
 
     minx = size * np.nanmin(xs)
     miny = size * np.nanmin(ys)
@@ -263,20 +263,20 @@ def extraction_to_cube(exts, outname="G.npy"):
 
     # Record wavelength mean and report stats
     xreflams = reject_outliers(
-            np.array([ex.xreflam for ex in exts], dtype=np.float))
+            np.array([ex.xreflam for ex in exts], dtype=np.float32))
     meta_data = {"fiducial_wavelength": np.mean(xreflams)}
     print("Avg lam, Std lam: %f, %f" % (float(np.mean(xreflams)),
                                         float(np.std(xreflams))))
 
     # make arrays
-    xs = np.array(xs, dtype=np.float)
-    ys = np.array(ys, dtype=np.float)
+    xs = np.array(xs, dtype=np.float32)
+    ys = np.array(ys, dtype=np.float32)
     # replace None's with -999
     xs[xs != xs] = -999
     ys[ys != ys] = -999
 
     # Make a KD-Tree
-    tree_dat = np.array([xs, ys], dtype=np.float).T
+    tree_dat = np.array([xs, ys], dtype=np.float32).T
     tree = KDTree(tree_dat)
 
     # Get the index of the spaxel closest to the center of the CCD
@@ -372,8 +372,8 @@ def extraction_to_cube(exts, outname="G.npy"):
     # Now convert Q/R to even-Q X/Y
 
     # Get arrays of hex positions
-    qs = np.array([ex.Q_ix for ex in exts], dtype=np.float)
-    rs = np.array([ex.R_ix for ex in exts], dtype=np.float)
+    qs = np.array([ex.Q_ix for ex in exts], dtype=np.float32)
+    rs = np.array([ex.R_ix for ex in exts], dtype=np.float32)
 
     # convert to pixel X,Y
     # xs = np.sqrt(3) * (qs + rs/2.0)

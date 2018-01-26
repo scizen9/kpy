@@ -19,7 +19,7 @@ def estimate_background(fine, infile, gausswidth=100, outname=None,
         print("Need an output name")
         return
 
-    infile[0].data = infile[0].data.astype(np.float64)
+    infile[0].data = infile[0].data.astype(np.float32)
     data = infile[0].data.copy()
 
     # loop over each trace

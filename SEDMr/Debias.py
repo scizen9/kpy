@@ -52,10 +52,10 @@ def full_frame(dat):
     """
 
     bias = np.nanmedian(dat[:, 2045:], axis=1)
-    bias = bias.astype(np.float)
+    bias = bias.astype(np.float32)
     smooth = FI.median_filter(bias, size=50)
 
-    return np.tile(smooth, (2048,1))
+    return np.tile(smooth, (2048, 1))
 
 
 def remove(fits_obj):
@@ -75,7 +75,7 @@ def remove(fits_obj):
     try:
         GAIN = fits_obj[0].header['GAIN']
     except:
-        GAIN = 1.8 # Guess the gain
+        GAIN = 1.8  # Guess the gain
 
     # get overscan if correctly sized
     if dat.shape == (2048, 2048):

@@ -138,7 +138,7 @@ def convert_spectra_to_recarray(spectra):
         if key == 'specw':
             l = 265
 
-        types.append((key, np.float, l))
+        types.append((key, np.float32, l))
 
     to_handle = []
     for spectrum in spectra:
