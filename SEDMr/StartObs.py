@@ -353,7 +353,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
-    copied = []
+    bproc = []
     # Get list of source files
     srcfiles = sorted(glob.glob(os.path.join(srcdir, 'ifu*.fits')))
     # Loop over source files
@@ -374,8 +374,17 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
+            # Read FITS header
+            fh = pf.open(f)
+            try:
+                obj = fh[0].header['OBJECT']
+            except KeyError:
+                obj = ''
+            fh.close()
+            # Get OBJECT keyword
             if nc >= 1:
-                copied.append(fn)
+                if 'Calib' not in obj:
+                    bproc.append(fn)
                 # Record copies
                 ncp += nc
                 nstd += ns
@@ -385,7 +394,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
     if ncp > 0:
         if not proc_bias_crrs(ncp, oldcals=oldcals):
             print("Error processing bias/crrs")
-        if not proc_bkg_flex(copied):
+        if not proc_bkg_flex(bproc):
             print("Error processing bkg/flex")
         # Process any standard stars
         if nstd > 0:
@@ -574,7 +583,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
             # Get OBJECT keyword
             try:
                 obj = hdr['OBJECT']
-            except:
+            except KeyError:
                 obj = ''
             # Filter Calibs and avoid test images and be sure it is part of
             # a series.
