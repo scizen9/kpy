@@ -175,8 +175,7 @@ def docp(src, dest, onsky=True, verbose=False):
     else:
         # Skip test and Focus images
         if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
-            # Copy with preserving metadata (date, etc.)
-            # shutil.copy2(src, dest)
+            # Symlink to save disk space
             os.symlink(src, dest)
             if 'STD-' in obj:
                 nstd = 1
@@ -375,15 +374,16 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
             fn = f.split('/')[-1]
             # Call copy
             nc, ns = docp(f, destdir + '/' + fn)
-            # Read FITS header
+            # Get OBJECT keyword
             fh = pf.open(f)
             try:
                 obj = fh[0].header['OBJECT']
             except KeyError:
                 obj = ''
             fh.close()
-            # Get OBJECT keyword
+            # Update counts
             if nc >= 1:
+                # Don't include cals in background processing
                 if 'Calib' not in obj:
                     bproc.append(fn)
                 # Record copies
@@ -391,12 +391,15 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
                 nstd += ns
     # We copied files
     print("Copied %d files" % ncp)
-    # Do bias subtraction, CR rejection
+    # Did we copy any files?
     if ncp > 0:
+        # Subtract bias, remove CRs
         if not proc_bias_crrs(ncp, oldcals=oldcals):
             print("Error processing bias/crrs")
-        if not proc_bkg_flex(bproc):
-            print("Error processing bkg/flex")
+        # Subtract bkg and calculate flexure
+        if len(bproc) > 0:
+            if not proc_bkg_flex(bproc):
+                print("Error processing bkg/flex")
         # Process any standard stars
         if nstd > 0:
             if not proc_stds(nstd):
