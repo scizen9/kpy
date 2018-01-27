@@ -20,6 +20,20 @@ import argparse
 import subprocess
 from matplotlib import pylab as plt
  
+ from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
 def finder(myfile,searchrad=0.2/60.):
     
     ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
@@ -99,7 +113,7 @@ if __name__=="__main__":
     if (photdir is None):
     	timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
     	timestamp = timestamp.split("T")[0].replace("-","")
-        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+        photdir = os.path.join(_photpath, timestamp)
     else:
 	timestamp = os.path.basename(os.path.abspath(photdir))
 

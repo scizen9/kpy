@@ -1327,7 +1327,7 @@ if __name__ == '__main__':
     if (photdir is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
-        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+        photdir = os.path.join(_photpath, timestamp)
 
     main(os.path.join(os.path.abspath(photdir), "reduced"))
 
