@@ -20,6 +20,19 @@ import matplotlib.dates as md
 import argparse
 import subprocess
 
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
 
 def compile_stats_pointing():
     ra = 0
@@ -27,7 +40,7 @@ def compile_stats_pointing():
     
     out = open("/tmp/pointing", "w")
     out.write("#f, imtype, obj, jd, filter, radeg, decdeg, dra, ddec\n")
-    myfiles = glob.glob("/scr2/sedm/phot/20160616/a_*[0-9].fits")
+    myfiles = glob.glob(_photpath + "/20160616/a_*[0-9].fits")
     myfiles.sort()
     for f in myfiles:
         #try:
@@ -222,14 +235,14 @@ if __name__ == '__main__':
     if (photdir is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
-        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+        photdir = os.path.join(_photpath, timestamp)
 	print "New directory %s"%photdir
     else:
         timestamp=os.path.basename(os.path.abspath(photdir))
     print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 
-    cmd = "rcp -r /scr2/sedm/phot/%s/stats/ sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/"%(timestamp, timestamp)
+    cmd = "rcp -r %s/%s/stats/ sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/"%(_photpath, timestamp, timestamp)
     print cmd
     try:
 	subprocess.call(cmd, shell=True)
