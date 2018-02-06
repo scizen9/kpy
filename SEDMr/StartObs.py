@@ -133,6 +133,9 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
     print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
           (nbias2, nbias, ndome, nxe, nhg, ncd))
     sys.stdout.flush()
+    # Should we process biases?
+    if nbias2 >= 10 and nbias >= 10:
+        proc_bias_crrs(ncp=20)
 
     return ret
     # END: cal_proc_ready
