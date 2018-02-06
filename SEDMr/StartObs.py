@@ -100,7 +100,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
                 # Get OBJECT keyword
                 try:
                     obj = hdr['OBJECT']
-                except:
+                except KeyError:
                     obj = ''
                 # Get ADCSPEED keyword
                 speed = hdr['ADCSPEED']
@@ -135,7 +135,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
     sys.stdout.flush()
     # Should we process biases?
     if nbias2 >= 10 and nbias >= 10:
-        proc_bias_crrs(ncp=20)
+        proc_bias_crrs()
 
     return ret
     # END: cal_proc_ready
