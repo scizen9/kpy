@@ -136,7 +136,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
     sys.stdout.flush()
     # Should we process biases?
     if nbias2 >= 10 and nbias >= 10 and ncp > 0:
-        proc_bias_crrs()
+        proc_bias_crrs(ncp=ncp)
 
     return ret
     # END: cal_proc_ready
