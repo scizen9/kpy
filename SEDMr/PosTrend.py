@@ -30,6 +30,8 @@ for d in dlist:
         ss = np.load(s)[0]
         if 'position' not in ss:
             continue
+        if ss['quality'] != 0:
+            continue
 
         xas.append(ss['position'][0])
         yas.append(ss['position'][1])
