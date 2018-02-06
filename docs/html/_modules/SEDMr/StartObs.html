@@ -43,7 +43,7 @@
 
 <span class="sd">Functions</span>
 <span class="sd">    * :func:`go`           outer loop waits for new data directory</span>
-<span class="sd">    * :func:`ObsLoop`      one night observing loop</span>
+<span class="sd">    * :func:`obs_loop`      one night observing loop</span>
 <span class="sd">    * :func:`cpcal`        copies calibration images into redux directory</span>
 <span class="sd">    * :func:`cpprecal`     copies calibration images from previous day directory</span>
 <span class="sd">    * :func:`find_recent`  finds the most recent processed calibration file</span>
@@ -679,7 +679,7 @@
     <span class="c1"># END: cpcal</span>
 
 
-<div class="viewcode-block" id="ObsLoop"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.ObsLoop">[docs]</a><span class="k">def</span> <span class="nf">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="obs_loop"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.obs_loop">[docs]</a><span class="k">def</span> <span class="nf">obs_loop</span><span class="p">(</span><span class="n">rawlist</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;One night observing loop: processes calibrations and science data</span>
 
 <span class="sd">    Copy raw cal files until we are ready to process the night&#39;s</span>
@@ -876,14 +876,14 @@
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;Exiting&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">ret</span></div>
-    <span class="c1"># END: ObsLoop</span>
+    <span class="c1"># END: obs_loop</span>
 
 
 <div class="viewcode-block" id="go"><a class="viewcode-back" href="../../SEDMr.html#SEDMr.StartObs.go">[docs]</a><span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="n">rawd</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/raw&#39;</span><span class="p">,</span> <span class="n">redd</span><span class="o">=</span><span class="s1">&#39;/scr2/sedm/redux&#39;</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Outermost infinite loop that watches for a new raw directory.</span>
 
 <span class="sd">    Keep a list of raw directories in `redd` and fire off</span>
-<span class="sd">    the ObsLoop procedure when a new directory appears.  Check for</span>
+<span class="sd">    the obs_loop procedure when a new directory appears.  Check for</span>
 <span class="sd">    a new raw directory every 10 minutes.</span>
 
 <span class="sd">    Args:</span>
@@ -912,7 +912,7 @@
           <span class="p">(</span><span class="n">nraw</span><span class="p">,</span> <span class="n">rawd</span><span class="p">,</span> <span class="n">redd</span><span class="p">))</span>
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">wait</span><span class="p">:</span>
-        <span class="n">stat</span> <span class="o">=</span> <span class="n">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
+        <span class="n">stat</span> <span class="o">=</span> <span class="n">obs_loop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
         <span class="n">its</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Finished SEDM observing iteration </span><span class="si">%d</span><span class="s2"> in raw dir </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
               <span class="p">(</span><span class="n">its</span><span class="p">,</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
@@ -942,7 +942,7 @@
                               <span class="s2">&quot;so keep waiting&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="o">.</span><span class="n">tm_hour</span><span class="p">,</span> <span class="n">gm</span><span class="o">.</span><span class="n">tm_min</span><span class="p">))</span>
                         <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Latest raw directory is </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">stat</span> <span class="o">=</span> <span class="n">ObsLoop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
+            <span class="n">stat</span> <span class="o">=</span> <span class="n">obs_loop</span><span class="p">(</span><span class="n">rawlist</span><span class="p">,</span> <span class="n">redd</span><span class="p">)</span>
             <span class="n">its</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Finished SEDM observing iteration </span><span class="si">%d</span><span class="s2"> in raw dir </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
                   <span class="p">(</span><span class="n">its</span><span class="p">,</span> <span class="n">rawlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
