@@ -64,13 +64,14 @@ def cal_ready(caldir='./'):
     return ret
 
 
-def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
+def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
     """Check counts for all required raw cal file types in caldir directory.
 
     Args:
         caldir (str): directory where raw cal files reside
         fsize (int): size of completely copied file in bytes
         mintest (bool): test for minimum required number of files
+        ncp (int): number of cal images copied
 
     Returns:
         bool: True if required raw cal files are present, False otherwise
@@ -134,7 +135,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False):
           (nbias2, nbias, ndome, nxe, nhg, ncd))
     sys.stdout.flush()
     # Should we process biases?
-    if nbias2 >= 10 and nbias >= 10:
+    if nbias2 >= 10 and nbias >= 10 and ncp > 0:
         proc_bias_crrs()
 
     return ret
@@ -683,7 +684,7 @@ def ObsLoop(rawlist=None, redd=None):
         ncp = cpcal(srcdir, outdir)
         print("Copied %d raw cal files from %s" % (ncp, srcdir))
         # Now loop until we have the raw cal files we need or sun is down
-        while not cal_proc_ready(outdir):
+        while not cal_proc_ready(outdir, ncp=ncp):
             # Wait a minute
             print("waiting 60s...")
             sys.stdout.flush()
