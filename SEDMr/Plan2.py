@@ -47,7 +47,7 @@ def identify_observations(headers):
     e.g. will return:
 
     {'STD-BD+25d4655': {1: ['...']}, {2: ['...']}, 
-           'PTF14dvo': {1: ['...', '...']}}
+           'ZTF14dvo': {1: ['...', '...']}}
     
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
@@ -162,7 +162,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
-PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+ZTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -238,7 +238,7 @@ upload:
 	$(SPCCPY) --specdir $(dir $(mkfile_path))
 
 ptfreport: upload
-	$(PTFREPORT)
+	$(ZTFREPORT)
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))
@@ -290,7 +290,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     else:
         tp['STD'] = "--std %s" % standard
 
-    if 'PTF' in objname:
+    if 'ZTF' in objname:
         tp['interact'] = '--interact'
     else:
         tp['interact'] = ''
@@ -483,7 +483,7 @@ def to_makefile(objs, calibs):
                 plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
-                    if objname.startswith("PTF"):
+                    if objname.startswith("ZTF"):
                         sci += "sp_" + a + " "
                     else:
                         oth += "sp_" + a + " "
@@ -501,7 +501,7 @@ def to_makefile(objs, calibs):
                     plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
-                        if objname.startswith("PTF"):
+                        if objname.startswith("ZTF"):
                             sci += "sp_" + a + " "
                         else:
                             oth += "sp_" + a + " "

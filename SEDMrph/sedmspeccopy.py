@@ -11,6 +11,20 @@ import argparse
 import subprocess
 import re
 
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+_reduxpath = parser.get('paths', 'reduxpath')
 
 def find_line_match(lines, match_dict):
     """
@@ -196,7 +210,7 @@ if __name__ == '__main__':
         copies spectra for objects with "PTF" prefix.
 
         Specify input directory with -d, or --specdir parameters.
-        If none specified, use current date directory in /scr2/sedmdrp/redux/
+        If none specified, use current date directory in _reduxpath
 
         """, formatter_class=argparse.RawTextHelpFormatter)
 
@@ -212,7 +226,7 @@ if __name__ == '__main__':
     if specdir is None:
         timestamp = datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-", "")
-        specdir = os.path.join("/scr2/sedmdrp/redux/", timestamp)
+        specdir = os.path.join(_reduxpath, timestamp)
     else:
         specdir = os.path.abspath(specdir)
         timestamp = os.path.basename(specdir)

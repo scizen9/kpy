@@ -17,15 +17,27 @@ except:
 import datetime
 import fitsutils
 import scipy.stats
-
 from matplotlib import pylab as plt
 
+from ConfigParser import SafeConfigParser
+import codecs
 
-rootdir = "/scr1/sedm/focus"
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_focuspath = parser.get('paths', 'focuspath')
+
+rootdir = _focuspath
 
 if not (os.path.isdir(rootdir)):
     rootdir = "/tmp"
         
+
 
 def run_sex(flist, mask=False, cosmics=False, overwrite=False):
     

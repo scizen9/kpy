@@ -1,5 +1,20 @@
 import socket
 import time
+import os
+
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_rawpath = parser.get('paths', 'rawpath')
+
 
 class Reduce:
     """Class script to handle different commands run remotely from pharos"""
@@ -21,7 +36,7 @@ class Reduce:
             abpair="AB"
         else:
             abpair="A"
-        file_name = file_name.replace('s:/','/scr2/sedm/raw/')
+        file_name = file_name.replace('s:/',_rawpath)
         cmd = "OFFSET,%s,%s\n" % (abpair,file_name)
 
         s = self.sock_connect()
@@ -40,7 +55,7 @@ class Reduce:
 
         new_files = []
         for i in files:
-            new_files.append(i.replace('s:/','/scr2/sedm/raw/'))
+            new_files.append(i.replace('s:/',_rawpath))
 
         cmd = "FOCUS,%s" % ",".join(new_files)
 
@@ -70,7 +85,7 @@ class Reduce:
         return data.split(',')
 
     def get_stats(self,file_name):
-        file_name = file_name.replace('s:/','/scr2/sedm/raw/')
+        file_name = file_name.replace('s:/',_rawpath)
         cmd = "STATS , %s\n" % file_name
         s = self.sock_connect()
         s.send(cmd)
