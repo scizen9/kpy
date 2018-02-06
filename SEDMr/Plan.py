@@ -252,6 +252,8 @@ $(FLEX): cube.npy
 
 stds: flat-dome-700to900.npy std-correction.npy
 
+calimgs: dome.fits Hg.fits Cd.fits Xe.fits
+
 cleanstds:
 	rm -f STD-*_SEDM.pdf
 	rm -f std-correction.npy Standard_Correction.pdf
