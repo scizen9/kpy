@@ -27,7 +27,6 @@ Note:
 
 """
 import time
-import shutil
 import glob
 import sys
 import os
@@ -718,7 +717,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                     if exptime > 25.:
                         # Copy arc images
                         nc, ns, nob = docp(src, destfil, onsky=False,
-                                          verbose=True)
+                                           verbose=True)
                         ncp += nc
                 # Check for biases
                 elif 'bias' in obj:
