@@ -441,8 +441,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             if retcode > 0:
                 # Use auto aperture for standard stars
                 print("Extracting spectra for " + ",".join(stds))
-                cmd = "extract_star.py %s --auto %s --std --radius 2.0 --runit fwhm" \
-                      % (datestr, ",".join(stds))
+                cmd = "extract_star.py %s --auto %s --std" % (datestr,
+                                                              ",".join(stds))
                 print(cmd)
                 retcode = os.system(cmd)
                 if retcode > 0:
@@ -771,7 +771,7 @@ def obs_loop(rawlist=None, redd=None):
     # Output directory is based on source dir
     outdir = os.path.join(redd, srcdir.split('/')[-1])
     # Current date string
-    cur_date_str = outdir.split('/')[-1]
+    cur_date_str = str(outdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
     if not os.path.exists(outdir):
         # Make it
@@ -844,9 +844,34 @@ def obs_loop(rawlist=None, redd=None):
                 os.system("make calimgs")
                 # Process calibration
                 start_time = time.time()
-                os.system("ccd_to_cube.py %s --tracematch --hexagrid --wavesol"
+                os.system("ccd_to_cube.py %s --tracematch --hexagrid"
                           % cur_date_str)
-                procc_time = int(time.time() - start_time)
+                procg_time = int(time.time() - start_time)
+                if os.path.exists(
+                   os.path.join(outdir, cur_date_str + '_HexaGrid.pkl')):
+                    # Process wavelengths
+                    start_time = time.time()
+                    # Spawn nsub sub-processes to solve wavelengths faster
+                    nsub = 20
+                    os.system("derive_wavesolution.py %s --nsub %d"
+                              % (cur_date_str, nsub))
+                    time.sleep(60)
+                    # Get a list of solved spaxels
+                    wslist = glob.glob(os.path.join(outdir, cur_date_str +
+                                                    '_WaveSolution_range*.pkl'))
+                    # Wait until they are all finished
+                    while len(wslist) < nsub:
+                        time.sleep(60)
+                        wslist = glob.glob(
+                            os.path.join(outdir, cur_date_str +
+                                         '_WaveSolution_range*.pkl'))
+                        print("Finished %d out of %d parts"
+                              % (len(wslist), nsub))
+                    print("Finished all parts, merging...")
+                    # Merge the solutions
+                    os.system("derive_wavesolution.py %s --merge"
+                              % cur_date_str)
+                procw_time = int(time.time() - start_time)
                 if os.path.exists(
                    os.path.join(outdir, cur_date_str + '_WaveSolution.pkl')):
                     # Process flat
@@ -860,8 +885,9 @@ def obs_loop(rawlist=None, redd=None):
                 procf_time = int(time.time() - start_time)
                 # Report times
                 print("Calibration processing took "
-                      "%d s (bias,crrs), %d s (calib), and %d s (flat)" %
-                      (procb_time, procc_time, procf_time))
+                      "%d s (bias,crrs), %d s (grid),"
+                      " %d s (waves), and %d s (flat)" %
+                      (procb_time, procg_time, procw_time, procf_time))
 
         # Check status
         if not cube_ready(outdir, cur_date_str):
