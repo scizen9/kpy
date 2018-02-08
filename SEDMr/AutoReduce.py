@@ -409,7 +409,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
         if os.stat(f).st_size >= fsize:
             # has it been previously copied?
             prev = [s for s in dflist if fn in s]
-            # No? then copy
+            # No? then copy the file
             if len(prev) == 0:
                 # Call copy
                 nc, ns, nob = docp(f, destdir + '/' + fn)
@@ -434,7 +434,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             return 0, None
         # Build cube for each observation copied
         print("Building cube for " + ",".join(stds))
-        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(stds))
+        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(copied))
         print(cmd)
         retcode = os.system(cmd)
         # Check results
