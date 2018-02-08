@@ -432,13 +432,18 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
         if datestr is None:
             print("Illegal datestr parameter")
             return 0, None
-        # generate cube for standard stars
-        if nstd > 0:
-            print("Building cube for " + ",".join(stds))
-            cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(stds))
-            print(cmd)
-            retcode = os.system(cmd)
-            if retcode > 0:
+        # Build cube for each observation copied
+        print("Building cube for " + ",".join(stds))
+        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(stds))
+        print(cmd)
+        retcode = os.system(cmd)
+        # Check results
+        if retcode > 0:
+            print("Error generating cube for " + ",".join(copied))
+        else:
+            # Cube succeeded, now extract spectra
+            # Standard stars
+            if nstd > 0:
                 # Use auto aperture for standard stars
                 print("Extracting spectra for " + ",".join(stds))
                 cmd = "extract_star.py %s --auto %s --std" % (datestr,
@@ -447,17 +452,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
                 retcode = os.system(cmd)
                 if retcode > 0:
                     print("Error extracting spectrum for " + ",".join(stds))
-        # generate cube for all copied images
-        print("Building cube for " + ",".join(copied))
-        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(copied))
-        print(cmd)
-        retcode = os.system(cmd)
-        if retcode > 0:
-            # report cube failure
-            print("Error generating cube for " + ",".join(copied))
-        else:
-            # cube succeeded, now extract spectra
-            # science targets
+            # Science targets
             if nobj > 0:
                 # Use forced psf for faint targets (eventually)
                 print("Extracting spectra for " + ",".join(sciobj))
