@@ -107,7 +107,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
         caldir (str): directory where raw cal files reside
         fsize (int): size of completely copied file in bytes
         mintest (bool): test for minimum required number of files
-        ncp (int): number of cal images copied
+        ncp (int): number of cal images most recently copied
 
     Returns:
         bool: True if required raw cal files are present, False otherwise
@@ -182,7 +182,7 @@ def docp(src, dest, onsky=True, verbose=False):
     """Low level copy from raw directory to redux directory.
 
     Checks for raw ifu files, while avoiding any test and focus images.
-    Uses shutil.copy2 to do the copying.
+    Uses os.symlink to do the copying (linked to conserve disk space).
 
     Args:
         src (str): source file
@@ -191,8 +191,8 @@ def docp(src, dest, onsky=True, verbose=False):
         verbose (bool): print messages?
 
     Returns:
-        (int, int): number of images copied, number of standard
-                    star images copied
+        (int, int): number of images linked, number of standard
+                    star images linked, number of sci objects linked
 
     """
 
@@ -223,19 +223,19 @@ def docp(src, dest, onsky=True, verbose=False):
             os.symlink(src, dest)
             if 'STD-' in obj:
                 nstd = 1
-                print("Standard %s copied to %s" % (obj, dest))
+                print("Standard %s linked to %s" % (obj, dest))
             else:
                 nobj = 1
-                print('Target %s copied to %s' % (obj, dest))
+                print('Target %s linked to %s' % (obj, dest))
                 if 'ZTF' in obj:
                     nztf = 1
             ncp = 1
         # Report skipping and type
         else:
             if verbose and 'test' in hdr['OBJECT']:
-                print('test file %s not copied' % src)
+                print('test file %s not linked' % src)
             if verbose and 'Focus:' in hdr['OBJECT']:
-                print('Focus file %s not copied' % src)
+                print('Focus file %s not linked' % src)
 
     return ncp, nstd, nobj
     # END: docp
@@ -347,7 +347,7 @@ def proc_bkg_flex(copied):
     """Process bkg subtractions and flexure calculations.
 
         Args:
-            copied (list): list of ifu*.fits files copied
+            copied (list): list of ifu*.fits files copied (linked)
 
         Returns:
             bool: True if processing was successful, otherwise False
@@ -424,7 +424,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
                 nstd += ns
                 nobj += nob
     # We copied files
-    print("Copied %d files" % ncp)
+    print("Linked %d files" % ncp)
     # Do bias subtraction, CR rejection
     if ncp > 0:
         if not proc_bias_crrs(ncp, oldcals=oldcals):
@@ -471,7 +471,7 @@ def find_recent(redd, fname, destdir, dstr):
     """Find the most recent version of fname and copy it to destdir.
 
     Look through sorted list of redux directories to find most recent
-    version of the input file.  Copy it to the destination directory.
+    version of the input file.  Copy (link) it into the destination directory.
 
     Args:
         redd (str): reduced directory (something like /scr2/sedm/redux)
@@ -781,10 +781,10 @@ def obs_loop(rawlist=None, redd=None):
         sunset = p60.next_setting(sun)
         # Copy raw cal files from previous date directory
         npre = cpprecal(rawlist, outdir)
-        print("Copied %d raw cal files from %s" % (npre, rawlist[-2]))
+        print("Linked %d raw cal files from %s" % (npre, rawlist[-2]))
         # Now check the current source dir for raw cal files
         ncp = cpcal(srcdir, outdir)
-        print("Copied %d raw cal files from %s" % (ncp, srcdir))
+        print("Linked %d raw cal files from %s" % (ncp, srcdir))
         # Now loop until we have the raw cal files we need or sun is down
         while not cal_proc_ready(outdir, ncp=ncp):
             # Wait a minute
@@ -795,11 +795,11 @@ def obs_loop(rawlist=None, redd=None):
             if now.tuple()[3] >= 20:
                 print("checking %s for new raw cal files..." % rawlist[-2])
                 ncp = cpprecal(rawlist, outdir)
-                print("Copied %d raw cal files from %s" % (ncp, rawlist[-2]))
+                print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
             else:
                 print("checking %s for new raw cal files..." % srcdir)
                 ncp = cpcal(srcdir, outdir)
-                print("Copied %d raw cal files from %s" % (ncp, srcdir))
+            print("Linked %d raw cal files from %s" % (ncp, srcdir))
             sys.stdout.flush()
             if ncp <= 0:
                 # Check to see if we are still before an hour after sunset
