@@ -381,6 +381,11 @@ sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 
 %(specplot)s
 
+redo_%(name)s:
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --interact
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
+
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
 
