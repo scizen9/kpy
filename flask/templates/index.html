@@ -1,6 +1,11 @@
+
 	<div class="container">
-		<h3>{{greeting}}</h2>
-		<img src="{{myimage}}">
+			{% if not current_user.is_authenticated %}
+				<h2>{{greeting}}</h2>
+				<img src="{{myimage}}">
+			{%else%}
+				<h2>{{greeting}}  <img src="{{myimage}}" style="width:20px;height:20px;"></h2>
+			{%endif%}
 	</div>
 	{% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -13,15 +18,16 @@
         {% endwith %}
         <div class="container">
             {% for table in req_tables %}
-                <div class="col-md-6">
-                    <h2>{{req_titles[loop.index]}}</h2>
-                    {{ table|safe }}
+                <div class="container">
+                    <h4>{{req_titles[loop.index]}}</h4>
+                    <font size="1">{{ table|safe }}</font>
                 </div>
             {% endfor %}
         </div>
+        <p>
         <div class="container">
             {% for table in all_table %}
-                <h2>{{all_titles[loop.index]}}</h2>
-                {{ table|safe }}
+                <h4>{{all_titles[loop.index]}}</h4>
+                <font size="1">{{ table|safe }}</font>
             {% endfor %}
         </div>

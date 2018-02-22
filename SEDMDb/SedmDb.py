@@ -41,7 +41,7 @@ class SedmDB:
 
     instance = None
 
-    def __init__(self, dbname='sedmdbtest', host='localhost'):
+    def __init__(self, dbname='sedmdb', host='localhost'):
         """
         Makes sure only one instance is created.
         """

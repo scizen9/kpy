@@ -1,0 +1,26 @@
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+        {% endif %}
+        <div class="container container-table">
+            {% for table in tables %}
+                <div class="col-md-6">
+                    <h2>{{titles[loop.index]}}</h2>
+                    {{ table|safe }}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="containter">
+            
+        </div> 
