@@ -252,6 +252,8 @@ $(FLEX): cube.npy
 
 stds: flat-dome-700to900.npy std-correction.npy
 
+calimgs: dome.fits Hg.fits Cd.fits Xe.fits
+
 cleanstds:
 	rm -f STD-*_SEDM.pdf
 	rm -f std-correction.npy Standard_Correction.pdf
@@ -378,6 +380,11 @@ sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 %(specplot)s
+
+redo_%(name)s:
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --interact
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
