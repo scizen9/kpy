@@ -188,6 +188,12 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             dec = hdr['DEC'].split()[0]
         else:
             dec = ''
+        if 'REQ_ID' in hdr:
+            req_id = hdr['REQ_ID']
+            if len(req_id) == 0:
+                req_id = 0
+        else:
+            req_id = 0
     else:
         obj = ''
         ra = ''
@@ -434,6 +440,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
             '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
+        header += "\nREQ_ID: %d" % req_id
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
         header += "\nRA: %s\nDEC: %s" % (ra, dec)
         header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)

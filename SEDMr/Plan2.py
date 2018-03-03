@@ -290,7 +290,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     else:
         tp['STD'] = "--std %s" % standard
 
-    if 'ZTF' in objname:
+    if 'ZTF' in objname or 'ztf' in objname:
         tp['interact'] = '--interact'
     else:
         tp['interact'] = ''
@@ -488,7 +488,7 @@ def to_makefile(objs, calibs):
                 plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
-                    if objname.startswith("ZTF"):
+                    if objname.startswith("ZTF") or objname.startswith("ztf"):
                         sci += "sp_" + a + " "
                     else:
                         oth += "sp_" + a + " "
@@ -506,7 +506,7 @@ def to_makefile(objs, calibs):
                     plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
-                        if objname.startswith("ZTF"):
+                        if objname.startswith("ZTF") or objname.startswith("ztf"):
                             sci += "sp_" + a + " "
                         else:
                             oth += "sp_" + a + " "
