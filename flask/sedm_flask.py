@@ -19,7 +19,7 @@ from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
-from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, is_safe_url
+from forms import *
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
@@ -51,7 +51,8 @@ login_manager.init_app(app)
 
 config = {
     'path':{
-    'path_archive':'/scr2/sedmdrp/redux/'}
+    'path_archive':'/scr2/sedmdrp/redux/',
+    'path_phot':'/scr2/sedm/phot/'}
 }
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
@@ -129,7 +130,12 @@ def data_static(filename):
     :return:
     '''
     _p, _f = os.path.split(filename)
-    return flask.send_from_directory(os.path.join(config['path']['path_archive'], _p), _f)
+
+    if _f.startswith("rc2018"):
+        return flask.send_from_directory(os.path.join(config['path']['path_phot'], _p), _f)
+    else:
+        return flask.send_from_directory(os.path.join(config['path']['path_archive'], _p), _f)
+
 
 def file_exists(filename):
     '''
@@ -140,11 +146,11 @@ def file_exists(filename):
     return os.path.isfile( os.path.join(config['path']['path_archive'], _p, _f))
 
 @flask_login.login_required
-def create_gallery(imagelist, mydate):
+def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
     '''
     Creates the right formatting for the image gallery.
     '''
-    ncols = 3
+
     nrows = int(math.ceil(len(imagelist)*1. / ncols)) 
 
 
@@ -154,22 +160,27 @@ def create_gallery(imagelist, mydate):
         for j in range(ncols):
             pos =i*ncols + j
             if ( pos < len(imagelist)):
-                path = mydate + '/' + imagelist[pos]
-                impath = flask.url_for('data_static', filename=path)
 
-                if file_exists(path.replace(".png", ".pdf")):
+                if spec:
+                    path = os.path.join(mydate, imagelist[pos])
+                else:
+                    path = os.path.join(mydate, 'reduced/png', imagelist[pos])
+ 
+                impath = flask.url_for('data_static', filename=path, spec=spec)
+
+                if spec and file_exists(path.replace(".png", ".pdf")):
                     impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
                 else:
                     impathlink = impath
 
                 s = s + '''
-                  <div class="col-md-4">
+                  <div class="col-md-{0}">
                     <div class="thumbnail">
-                      <a href="{0}">
-                        <img src="{1}" style="width:80%">
+                      <a href="{1}">
+                        <img src="{2}" style="width:{3}% height:"{4}%">
                       </a>
                     </div>
-                  </div>\n'''.format(impathlink, impath)
+                  </div>\n'''.format(12/ncols, impathlink, impath, width, width)
             else:
                 s = s + '</div> \n'
                 break
@@ -189,6 +200,9 @@ def data_access():
 
     '''
 
+    files_table = [("", "")]
+    gallery = ""
+    gallery_phot = ""
 
     if not 'date' in flask.request.args:
         # get the weather stats
@@ -213,19 +227,25 @@ def data_access():
             if (reduxfiles is None):
                 message=message + "No data found for the date %s."%(mydate)
             else:
-                message = message + "Found %d files for selected day: %s"%(len(reduxfiles), mydate)
+                message = message + "Reduced files found for %s"%( mydate)
 
     if not reduxfiles is None:
         spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
         files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
         images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
-        gallery = create_gallery(images, mydate)
-    else:
-        files_table = [("", "")]
-        gallery = ""
+        gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+
+        photfiles, mydate = model.search_phot_files(mydate = mydate)
+        if len(photfiles)>0:
+            photfiles.sort()
+            gallery_phot = create_gallery(photfiles, mydate, ncols=4, width=150, spec=False)
+        else:
+            galler_phot= ""
+
+
 
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('data4date.html', data=files_table, gallery=gallery, message=message) + \
+            render_template('data4date.html', data=files_table, gallery=gallery, gallery_phot=gallery_phot, message=message) + \
             render_template('footer.html')
     
 
@@ -354,6 +374,100 @@ def login():
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('login.html', form=form, message=None) +
             render_template('footer.html'))
+
+
+@app.route('/manage_user', methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_user():
+
+    message = ""
+    form1 = SearchUserForm()
+    form2 = UsersForm()
+
+    old_groups = []
+    new_groups = []
+    allocations =[]
+
+    print flask.request.form
+
+    #Case with no user at all
+    if len(flask.request.args) ==0:
+        message = "Introduce the search criteria for your user. For exact search try \"."
+        form2 = None
+
+        return (render_template('header.html') +
+                render_template('manage_users.html', form1=form1, from2=form2, message=message) +
+                render_template('footer.html'))
+
+    #Case with when we want to search for a specific user
+    if 'search_user' in flask.request.form:
+        username = form1.search_string.data
+    elif('user' in flask.request.args):    
+        username = flask.request.args['user']
+    elif (form2.username.data):
+        username = form2.username.data
+    else:
+        username = ""
+
+
+    if 'modify_user' in flask.request.form and form2.validate_on_submit():
+
+        username = flask.request.form['username']
+        name = form2.name.data
+        email = form2.email.data
+        new_password = form2.pass_new.data
+        new_password_conf = form2.pass_conf.data
+
+        u = model.get_info_user(username)
+        message = u["message"]
+
+        #If any of the field is different from the one in the DB, we update.
+        if "username" in u.keys():   
+            status, mes = db.update_user({'id': u["id"], 'name':name, 'email':email})  
+            flash("User updated with name %s, username %s. %s."%(name, username, mes))   
+        if form2.pass_new.data:
+            db.update_user({'id': u["id"], 'password': new_password})
+            flash("Password changed ")
+
+    elif (('add_group' in flask.request.form) or ('remove_group' in flask.request.form)):
+        u = model.get_info_user(form2.username.data)
+
+        print "MODIFY %s"%(form2.username.data) 
+        if 'add_group' in flask.request.form:
+            g = flask.request.form['new_groups']
+            model.add_group(u["id"], g)
+            message = "Retrieved data for user %s"%form2.username.data
+        elif 'remove_group' in flask.request.form:
+            g = flask.request.form['old_groups']
+            model.remove_group(u["id"], g)
+            message = "Retrieved data for user %s"%form2.username.data
+
+    else:
+        print "NOTHING TO BE DONE"
+        pass
+
+
+    u = model.get_info_user(username)
+    message = u["message"]
+
+    print "MESSAGE", message, "FORM1", form1, "FORM2", form2, "ALLOC", allocations
+
+    if "username" in u.keys():
+        #form2 = UsersForm()
+        form2.username.data = u["username"]
+        form2.name.data = u["name"]
+        form2.email.data = u["email"]
+
+        form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+        form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+        allocations = u["allocations"]
+    else:
+        form2 = None
+        allocations = []
+
+    return (render_template('header.html') +
+                    render_template('manage_users.html', form1=form1, form2=form2, allocations=allocations, message=message) +
+                    render_template('footer.html'))
 
 
 @app.route("/passchange", methods=['GET', 'POST'])

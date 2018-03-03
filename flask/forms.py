@@ -137,6 +137,26 @@ class PassChangeForm(FlaskForm):
     pass_conf = fields.PasswordField('Confirm New Password', validators=[validators.input_required()])
 
 
+class SearchUserForm(FlaskForm):
+
+    search_string = fields.StringField('Introduce a string to search for your user.')
+    search_user = fields.SubmitField('Search User', description=None)
+
+class UsersForm(FlaskForm):
+
+    username = fields.StringField('name', validators=[validators.input_required()])
+    name = fields.StringField('name', validators=[validators.input_required()])
+    email = fields.StringField('email', validators=[validators.input_required()])
+    password = fields.PasswordField('password')
+    pass_new = fields.PasswordField('New Password', validators=[validators.EqualTo('pass_conf', message='Passwords must match')] )
+    pass_conf = fields.PasswordField('Confirm New Password')
+    modify_user = fields.SubmitField('Modify User', description=None)
+
+    old_groups = fields.SelectField('Select group to remove')
+    new_groups = fields.SelectField('Select group to add')
+    add_group = fields.SubmitField('Add', description=None)
+    remove_group = fields.SubmitField('Remove', description=None)
+
 def is_safe_url(target):
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
