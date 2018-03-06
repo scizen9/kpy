@@ -12,7 +12,8 @@ Functions
     * :func:`proc_bkg_flex`   processes bkg sub and flex calculation
     * :func:`docp`            low level copy routine
     * :func:`cal_proc_ready`  check if all required raw cal images are present
-    * :func:`cal_ready`       check if all required cal files are present
+    * :func:`cube_ready`      check if all required cal files are present
+    * :func:`bias_ready`    check if master bias files are present
 
 Note:
     This is used as a python script as follows::
@@ -26,7 +27,6 @@ Note:
 
 """
 import time
-import shutil
 import glob
 import sys
 import os
@@ -37,11 +37,12 @@ import ephem
 from astropy.time import Time
 
 
-def cal_ready(caldir='./'):
+def cube_ready(caldir='./', cur_date_str=None):
     """Check for all required calibration files in calibration directory.
 
     Args:
         caldir (str): directory to check
+        cur_date_str (str): current date in YYYYMMDD format
 
     Returns:
         bool: True if calibration files are present, False if any are missing.
@@ -50,15 +51,50 @@ def cal_ready(caldir='./'):
 
     ret = False
 
+    # Files to look for
+    if cur_date_str is None:
+        tmf = 'TraceMatch_WithMasks.pkl'
+        hgf = 'HexaGrid.pkl'
+        wsf = 'WaveSolution.pkl'
+        fff = 'Flat.fits'
+    else:
+        tmf = cur_date_str + '_TraceMatch_WithMasks.pkl'
+        hgf = cur_date_str + '_HexaGrid.pkl'
+        wsf = cur_date_str + '_WaveSolution.pkl'
+        fff = cur_date_str + '_Flat.fits'
+
     # Do we have all the calibration files?
+    ft = os.path.exists(os.path.join(caldir, tmf))
+    fg = os.path.exists(os.path.join(caldir, hgf))
+    fw = os.path.exists(os.path.join(caldir, wsf))
+    ff = os.path.exists(os.path.join(caldir, fff))
+    print("Cals ready?: trace: %d, grid: %d, wave: %d, flat: %d" %
+          (ft, fg, fw, ff))
+    if ft and fg and fw and ff:
+        ret = True
+
+    return ret
+
+
+def bias_ready(caldir='./'):
+    """Check for all required bias calibration files in calibration directory.
+
+    Args:
+        caldir (str): directory to check
+
+    Returns:
+        bool: True if bias files are present, False if they are not
+
+    """
+
+    ret = False
+
+    # Do we have all the calibration files?
+    # Check biases first
     fb = os.path.exists(os.path.join(caldir, 'bias0.1.fits'))
     f2 = os.path.exists(os.path.join(caldir, 'bias2.0.fits'))
-    fc = os.path.exists(os.path.join(caldir, 'cube.npy'))
-    ff = os.path.exists(os.path.join(caldir, 'fine.npy'))
-    fd = os.path.exists(os.path.join(caldir, 'flat-dome-700to900.npy'))
-    print("Cals ready?: bias0.1: %d, bias2.0: %d, cube: %d, "
-          "fine: %d, flat: %d" % (fb, f2, fc, ff, fd))
-    if fb and f2 and fc and ff and fd:
+    print("Biases ready?: bias0.1: %d, bias2.0: %d" % (fb, f2))
+    if fb and f2:
         ret = True
 
     return ret
@@ -71,7 +107,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
         caldir (str): directory where raw cal files reside
         fsize (int): size of completely copied file in bytes
         mintest (bool): test for minimum required number of files
-        ncp (int): number of cal images copied
+        ncp (int): number of cal images most recently copied
 
     Returns:
         bool: True if required raw cal files are present, False otherwise
@@ -146,7 +182,7 @@ def docp(src, dest, onsky=True, verbose=False):
     """Low level copy from raw directory to redux directory.
 
     Checks for raw ifu files, while avoiding any test and focus images.
-    Uses shutil.copy2 to do the copying.
+    Uses os.symlink to do the copying (linked to conserve disk space).
 
     Args:
         src (str): source file
@@ -155,8 +191,8 @@ def docp(src, dest, onsky=True, verbose=False):
         verbose (bool): print messages?
 
     Returns:
-        (int, int): number of images copied, number of standard
-                    star images copied
+        (int, int): number of images linked, number of standard
+                    star images linked, number of sci objects linked
 
     """
 
@@ -171,6 +207,10 @@ def docp(src, dest, onsky=True, verbose=False):
     ncp = 0
     # Was a standard star observation copied?
     nstd = 0
+    # Was a science object copied
+    nobj = 0
+    # Was a ZTF object copied
+    nztf = 0
     # Check if dome conditions are not right
     if onsky and 'CLOSED' in dome:
         if verbose:
@@ -183,18 +223,21 @@ def docp(src, dest, onsky=True, verbose=False):
             os.symlink(src, dest)
             if 'STD-' in obj:
                 nstd = 1
-                print("Standard %s copied to %s" % (obj, dest))
+                print("Standard %s linked to %s" % (obj, dest))
             else:
-                print('Target %s copied to %s' % (obj, dest))
+                nobj = 1
+                print('Target %s linked to %s' % (obj, dest))
+                if 'ZTF' in obj:
+                    nztf = 1
             ncp = 1
         # Report skipping and type
         else:
             if verbose and 'test' in hdr['OBJECT']:
-                print('test file %s not copied' % src)
+                print('test file %s not linked' % src)
             if verbose and 'Focus:' in hdr['OBJECT']:
-                print('Focus file %s not copied' % src)
+                print('Focus file %s not linked' % src)
 
-    return ncp, nstd
+    return ncp, nstd, nobj
     # END: docp
 
 
@@ -304,7 +347,7 @@ def proc_bkg_flex(copied):
     """Process bkg subtractions and flexure calculations.
 
         Args:
-            copied (list): list of ifu*.fits files copied
+            copied (list): list of ifu*.fits files copied (linked)
 
         Returns:
             bool: True if processing was successful, otherwise False
@@ -327,7 +370,7 @@ def proc_bkg_flex(copied):
     return ret
 
 
-def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
+def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
     """Copies new science ifu image files from srcdir to destdir.
 
     Searches for most recent ifu image in destdir and looks for and
@@ -340,6 +383,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
         destdir (str): destination directory (typically in /scr2/sedm/redux)
         fsize (int): size of completely copied file in bytes
         oldcals (bool): are we using older calibrations?
+        datestr (str): YYYYMMDD date string
 
     Returns:
         int: Number of ifu images actually copied
@@ -348,72 +392,127 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False):
 
     # Get files in destination directory
     dflist = sorted(glob.glob(os.path.join(destdir, 'ifu*.fits')))
-    # Are there any files yet?
-    if len(dflist) > 0:
-        # Get most recent local ifu image
-        lf = dflist[-1]
-    else:
-        lf = None
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
-    bproc = []
+    nobj = 0
+    copied = []
+    stds = []
+    sciobj = []
     # Get list of source files
     srcfiles = sorted(glob.glob(os.path.join(srcdir, 'ifu*.fits')))
     # Loop over source files
     for f in srcfiles:
-        # Do we copy?
-        do_copy = False
+        # get base filename
+        fn = f.split('/')[-1]
         # Is our source file complete?
         if os.stat(f).st_size >= fsize:
-            if lf is not None:
-                # Do we have a newer file in the source dir?
-                if os.stat(f).st_mtime > os.stat(lf).st_mtime:
-                    do_copy = True
-            # No files yet in dest, so all in source are needed
-            else:
-                do_copy = True
-        if do_copy:
-            # Get ifu image name
-            fn = f.split('/')[-1]
-            # Call copy
-            nc, ns = docp(f, destdir + '/' + fn)
-            # Get OBJECT keyword
-            fh = pf.open(f)
-            try:
-                obj = fh[0].header['OBJECT']
-            except KeyError:
-                obj = ''
-            fh.close()
-            # Update counts
-            if nc >= 1:
-                # Don't include cals in background processing
-                if 'Calib' not in obj:
-                    bproc.append(fn)
+            # has it been previously copied?
+            prev = [s for s in dflist if fn in s]
+            # No? then copy the file
+            if len(prev) == 0:
+                # Call copy
+                nc, ns, nob = docp(f, destdir + '/' + fn)
+                if nc >= 1:
+                    copied.append(fn)
+                if ns >= 1:
+                    stds.append(fn)
+                if nob >= 1:
+                    sciobj.append(fn)
                 # Record copies
                 ncp += nc
                 nstd += ns
+                nobj += nob
     # We copied files
-    print("Copied %d files" % ncp)
-    # Did we copy any files?
+    print("Linked %d files" % ncp)
+    # Do bias subtraction, CR rejection
     if ncp > 0:
-        # Subtract bias, remove CRs
         if not proc_bias_crrs(ncp, oldcals=oldcals):
             print("Error processing bias/crrs")
-        # Subtract bkg and calculate flexure
-        if len(bproc) > 0:
-            if not proc_bkg_flex(bproc):
-                print("Error processing bkg/flex")
-        # Process any standard stars
-        if nstd > 0:
-            if not proc_stds(nstd):
-                print("Error processing standard stars")
+        if datestr is None:
+            print("Illegal datestr parameter")
+            return 0, None
+        # Build cube for each observation copied
+        print("Building cube for " + ",".join(stds))
+        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(copied))
+        print(cmd)
+        retcode = os.system(cmd)
+        # Check results
+        if retcode > 0:
+            print("Error generating cube for " + ",".join(copied))
+        else:
+            # Cube succeeded, now extract spectra
+            # Standard stars
+            if nstd > 0:
+                # Use auto aperture for standard stars
+                print("Extracting spectra for " + ",".join(stds))
+                cmd = "extract_star.py %s --auto %s --std" % (datestr,
+                                                              ",".join(stds))
+                print(cmd)
+                retcode = os.system(cmd)
+                if retcode > 0:
+                    print("Error extracting spectrum for " + ",".join(stds))
+            # Science targets
+            if nobj > 0:
+                # Use forced psf for faint targets (eventually)
+                print("Extracting spectra for " + ",".join(sciobj))
+                cmd = "extract_star.py %s --auto %s" % (datestr,
+                                                        ",".join(sciobj))
+                print(cmd)
+                retcode = os.system(cmd)
+                if retcode > 0:
+                    print("Error extracting spectrum for " + ",".join(sciobj))
 
-    return ncp
+    return ncp, copied
     # END: cpsci
 
 
-def find_recent(redd, fname, destdir):
+def find_recent(redd, fname, destdir, dstr):
+    """Find the most recent version of fname and copy it to destdir.
+
+    Look through sorted list of redux directories to find most recent
+    version of the input file.  Copy (link) it into the destination directory.
+
+    Args:
+        redd (str): reduced directory (something like /scr2/sedm/redux)
+        fname (str): what file to look for
+        destdir (str): where the file should go
+        dstr (str): YYYYMMDD date string of current directory
+
+    Returns:
+        bool: True if file found and copied, False otherwise.
+
+    """
+
+    # Default return value
+    ret = False
+    # Make sure the file doesn't already exist in destdir
+    local_file = glob.glob(os.path.join(destdir, dstr + fname))
+    if len(local_file) == 1:
+        print("%s already exists in %s" % (fname, destdir))
+        ret = True
+    # Search in redd for file
+    else:
+        # Get all but the most recent reduced data directories
+        fspec = os.path.join(redd, '20??????')
+        redlist = sorted([d for d in glob.glob(fspec)
+                          if os.path.isdir(d)])[0:-1]
+        # Go back in reduced dir list until we find our file
+        for d in reversed(redlist):
+            src = glob.glob(os.path.join(d, '20??????' + fname))
+            if len(src) == 1:
+                os.symlink(src[0], os.path.join(destdir, dstr + fname))
+                ret = True
+                print("Found %s in directory %s, linking to %s" %
+                      (fname, d, destdir))
+                break
+    if not ret:
+        print(dstr + fname + " not found")
+
+    return ret
+
+
+def find_recent_bias(redd, fname, destdir):
     """Find the most recent version of fname and copy it to destdir.
 
     Look through sorted list of redux directories to find most recent
@@ -446,12 +545,13 @@ def find_recent(redd, fname, destdir):
         for d in reversed(redlist):
             src = glob.glob(os.path.join(d, fname))
             if len(src) == 1:
-                shutil.copy(src[0], destdir)
+                os.symlink(src[0], os.path.join(destdir, fname))
                 ret = True
-                print("Found %s in directory %s, copying to %s" %
-                      (fname, d, destdir))
+                print("Found %s in directory %s, linking to %s" %
+                      (fname, d, os.path.join(destdir, fname)))
                 break
-
+    if not ret:
+        print("%s not found" % fname)
     return ret
 
 
@@ -518,24 +618,24 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                                                'Cd' not in obj):
                             # Copy dome images
                             if not os.path.exists(destfil):
-                                nc, ns = docp(src, destfil, onsky=False,
-                                              verbose=True)
+                                nc, ns, nob = docp(src, destfil, onsky=False,
+                                                   verbose=True)
                                 ncp += nc
                     # Check for arcs
                     elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
                         if exptime > 25.:
                             # Copy arc images
                             if not os.path.exists(destfil):
-                                nc, ns = docp(src, destfil, onsky=False,
-                                              verbose=True)
+                                nc, ns, nob = docp(src, destfil, onsky=False,
+                                                   verbose=True)
                                 ncp += nc
                     # Check for biases
                     elif 'bias' in obj:
                         if exptime <= 0.:
                             # Copy bias images
                             if not os.path.exists(destfil):
-                                nc, ns = docp(src, destfil, onsky=False,
-                                              verbose=True)
+                                nc, ns, nob = docp(src, destfil, onsky=False,
+                                                   verbose=True)
                                 ncp += nc
             else:
                 print("Truncated file: %s" % src)
@@ -604,22 +704,22 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                                            'Hg' not in obj and 
                                            'Cd' not in obj):
                         # Copy dome images
-                        nc, ns = docp(src, destfil, onsky=False,
-                                      verbose=True)
+                        nc, ns, nob = docp(src, destfil, onsky=False,
+                                           verbose=True)
                         ncp += nc
                 # Check for arcs
                 elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
                     if exptime > 25.:
                         # Copy arc images
-                        nc, ns = docp(src, destfil, onsky=False,
-                                      verbose=True)
+                        nc, ns, nob = docp(src, destfil, onsky=False,
+                                           verbose=True)
                         ncp += nc
                 # Check for biases
                 elif 'bias' in obj:
                     if exptime <= 0.:
                         # Copy bias images
-                        nc, ns = docp(src, destfil, onsky=False,
-                                      verbose=True)
+                        nc, ns, nob = docp(src, destfil, onsky=False,
+                                           verbose=True)
                         ncp += nc
 
     return ncp
@@ -665,6 +765,8 @@ def obs_loop(rawlist=None, redd=None):
     oldcals = False
     # Output directory is based on source dir
     outdir = os.path.join(redd, srcdir.split('/')[-1])
+    # Current date string
+    cur_date_str = str(outdir.split('/')[-1])
     # Do we have a new directory?  This tells us we are observing tonight
     if not os.path.exists(outdir):
         # Make it
@@ -674,15 +776,15 @@ def obs_loop(rawlist=None, redd=None):
     # report
     print("Raw files from  : %s\nReduced files to: %s" % (srcdir, outdir))
     # Check if processed cal files are ready
-    if not cal_ready(outdir):
+    if not cube_ready(outdir, cur_date_str):
         # Wait for cal files until sunset
         sunset = p60.next_setting(sun)
         # Copy raw cal files from previous date directory
         npre = cpprecal(rawlist, outdir)
-        print("Copied %d raw cal files from %s" % (npre, rawlist[-2]))
+        print("Linked %d raw cal files from %s" % (npre, rawlist[-2]))
         # Now check the current source dir for raw cal files
         ncp = cpcal(srcdir, outdir)
-        print("Copied %d raw cal files from %s" % (ncp, srcdir))
+        print("Linked %d raw cal files from %s" % (ncp, srcdir))
         # Now loop until we have the raw cal files we need or sun is down
         while not cal_proc_ready(outdir, ncp=ncp):
             # Wait a minute
@@ -693,11 +795,11 @@ def obs_loop(rawlist=None, redd=None):
             if now.tuple()[3] >= 20:
                 print("checking %s for new raw cal files..." % rawlist[-2])
                 ncp = cpprecal(rawlist, outdir)
-                print("Copied %d raw cal files from %s" % (ncp, rawlist[-2]))
+                print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
             else:
                 print("checking %s for new raw cal files..." % srcdir)
                 ncp = cpcal(srcdir, outdir)
-                print("Copied %d raw cal files from %s" % (ncp, srcdir))
+            print("Linked %d raw cal files from %s" % (ncp, srcdir))
             sys.stdout.flush()
             if ncp <= 0:
                 # Check to see if we are still before an hour after sunset
@@ -733,39 +835,75 @@ def obs_loop(rawlist=None, redd=None):
             start_time = time.time()
             if proc_bias_crrs(20):
                 procb_time = int(time.time() - start_time)
-                # Process cube
+                # Make cal images
+                os.system("make calimgs")
+                # Process calibration
                 start_time = time.time()
-                retcode = os.system("make cube.npy")
-                procc_time = int(time.time() - start_time)
-                if os.path.exists(os.path.join(outdir, 'cube.npy')):
+                os.system("ccd_to_cube.py %s --tracematch --hexagrid"
+                          % cur_date_str)
+                procg_time = int(time.time() - start_time)
+                if os.path.exists(
+                   os.path.join(outdir, cur_date_str + '_HexaGrid.pkl')):
+                    # Process wavelengths
+                    start_time = time.time()
+                    # Spawn nsub sub-processes to solve wavelengths faster
+                    nsub = 20
+                    os.system("derive_wavesolution.py %s --nsub %d"
+                              % (cur_date_str, nsub))
+                    time.sleep(60)
+                    # Get a list of solved spaxels
+                    wslist = glob.glob(os.path.join(outdir, cur_date_str +
+                                                    '_WaveSolution_range*.pkl'))
+                    # Wait until they are all finished
+                    while len(wslist) < nsub:
+                        time.sleep(60)
+                        wslist = glob.glob(
+                            os.path.join(outdir, cur_date_str +
+                                         '_WaveSolution_range*.pkl'))
+                        print("Finished %d out of %d parts"
+                              % (len(wslist), nsub))
+                    print("Finished all parts, merging...")
+                    # Merge the solutions
+                    os.system("derive_wavesolution.py %s --merge"
+                              % cur_date_str)
+                procw_time = int(time.time() - start_time)
+                if os.path.exists(
+                   os.path.join(outdir, cur_date_str + '_WaveSolution.pkl')):
                     # Process flat
                     start_time = time.time()
-                    retcode = os.system("make flat-dome-700to900.npy")
+                    os.system("ccd_to_cube.py %s --flat" % cur_date_str)
                     if not (os.path.exists(
-                            os.path.join(outdir, 'flat-dome-700to900.npy'))):
-                        print("Making of flat-dome-700to900.npy failed!")
+                            os.path.join(outdir, cur_date_str + '_Flat.fits'))):
+                        print("Making of %s_Flat.fits failed!" % cur_date_str)
                 else:
-                    print("Making of fine.npy and cube.npy failed!")
+                    print("Making of %s cube failed!" % cur_date_str)
                 procf_time = int(time.time() - start_time)
                 # Report times
                 print("Calibration processing took "
-                      "%d s (bias,crrs), %d s (cube), and %d s (flat)" %
-                      (procb_time, procc_time, procf_time))
+                      "%d s (bias,crrs), %d s (grid),"
+                      " %d s (waves), and %d s (flat)" %
+                      (procb_time, procg_time, procw_time, procf_time))
 
         # Check status
-        if not cal_ready(outdir):
+        if not cube_ready(outdir, cur_date_str):
             print("These calibrations failed!")
             print("Let's get our calibrations from a previous night")
-            ncf = find_recent(redd, 'fine.npy', outdir)
-            ncc = find_recent(redd, 'cube.npy', outdir)
-            ncd = find_recent(redd, 'flat-dome-700to900.npy', outdir)
-            ncb = find_recent(redd, 'bias0.1.fits', outdir)
-            nc2 = find_recent(redd, 'bias2.0.fits', outdir)
+            nct = find_recent(redd, '_TraceMatch_WithMasks.pkl', outdir,
+                              cur_date_str)
+            ncg = find_recent(redd, '_HexaGrid.pkl', outdir, cur_date_str)
+            ncw = find_recent(redd, '_WaveSolution.pkl', outdir, cur_date_str)
+            ncf = find_recent(redd, '_Flat.fits', outdir, cur_date_str)
+            if not bias_ready(outdir):
+                ncb = find_recent_bias(redd, 'bias0.1.fits', outdir)
+                nc2 = find_recent_bias(redd, 'bias2.0.fits', outdir)
+            else:
+                ncb = True
+                nc2 = True
             # Check for failure
-            if not ncf or not ncc or not ncd or not ncb or not nc2:
-                msg = "Calibration stage failed: fine = %s, cube = %s, " \
-                      "flat = %s, bias0.1 = %s, bias2.0 = %s, " \
-                      "stopping" % (ncf, ncc, ncd, ncb, nc2)
+            if not nct or not ncg or not ncw or not ncf or not ncb or not nc2:
+                msg = "Calibration stage failed: trace = %s, grid = %s, " \
+                      "wave = %s, flat = %s, bias0.1 = %s, bias2.0 = %s, " \
+                      "stopping" % (nct, ncg, ncw, ncf, ncb, nc2)
                 sys.exit(msg)
             # If we get here, we are done
             oldcals = True
@@ -791,7 +929,8 @@ def obs_loop(rawlist=None, redd=None):
             sys.stdout.flush()
             # Record starting time for new file processing
             start_time = time.time()
-            ncp = cpsci(srcdir, outdir, oldcals=oldcals)
+            ncp, copied = cpsci(srcdir, outdir, oldcals=oldcals,
+                                datestr=cur_date_str)
             # We copied some new ones so report processing time
             if ncp > 0:
                 proc_time = int(time.time() - start_time)

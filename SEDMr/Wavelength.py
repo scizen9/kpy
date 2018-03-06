@@ -676,7 +676,7 @@ def median_fine_grid(fine, doPlot=False):
             if num_in > 30:
                 break
 
-        lls = np.array(lls, dtype=np.float)
+        lls = np.array(lls, dtype=np.float32)
         if len(lls) == 0:
             spec.mdn_coeff = spec.lamcoeff
             continue

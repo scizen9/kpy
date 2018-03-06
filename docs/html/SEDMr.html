@@ -2112,7 +2112,7 @@ arcsec and has an accuracy limit of 0.1 arcsec</p>
 <dt>Functions</dt>
 <dd><ul class="first last simple">
 <li><a class="reference internal" href="#SEDMr.StartObs.go" title="SEDMr.StartObs.go"><code class="xref py py-func docutils literal"><span class="pre">go()</span></code></a>           outer loop waits for new data directory</li>
-<li><a class="reference internal" href="#SEDMr.StartObs.ObsLoop" title="SEDMr.StartObs.ObsLoop"><code class="xref py py-func docutils literal"><span class="pre">ObsLoop()</span></code></a>      one night observing loop</li>
+<li><a class="reference internal" href="#SEDMr.StartObs.obs_loop" title="SEDMr.StartObs.obs_loop"><code class="xref py py-func docutils literal"><span class="pre">obs_loop()</span></code></a>      one night observing loop</li>
 <li><a class="reference internal" href="#SEDMr.StartObs.cpcal" title="SEDMr.StartObs.cpcal"><code class="xref py py-func docutils literal"><span class="pre">cpcal()</span></code></a>        copies calibration images into redux directory</li>
 <li><a class="reference internal" href="#SEDMr.StartObs.cpprecal" title="SEDMr.StartObs.cpprecal"><code class="xref py py-func docutils literal"><span class="pre">cpprecal()</span></code></a>     copies calibration images from previous day directory</li>
 <li><a class="reference internal" href="#SEDMr.StartObs.find_recent" title="SEDMr.StartObs.find_recent"><code class="xref py py-func docutils literal"><span class="pre">find_recent()</span></code></a>  finds the most recent processed calibration file</li>
@@ -2139,8 +2139,8 @@ arcsec and has an accuracy limit of 0.1 arcsec</p>
 </div>
 </div>
 <dl class="function">
-<dt id="SEDMr.StartObs.ObsLoop">
-<code class="descclassname">SEDMr.StartObs.</code><code class="descname">ObsLoop</code><span class="sig-paren">(</span><em>rawlist=None</em>, <em>redd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/StartObs.html#ObsLoop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.StartObs.ObsLoop" title="Permalink to this definition">¶</a></dt>
+<dt id="SEDMr.StartObs.obs_loop">
+<code class="descclassname">SEDMr.StartObs.</code><code class="descname">obs_loop</code><span class="sig-paren">(</span><em>rawlist=None</em>, <em>redd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/StartObs.html#obs_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.StartObs.obs_loop" title="Permalink to this definition">¶</a></dt>
 <dd><p>One night observing loop: processes calibrations and science data</p>
 <p>Copy raw cal files until we are ready to process the night&#8217;s
 calibrations.  When ready, process them.  If we get to UT = 3:00,
@@ -2369,7 +2369,7 @@ version of the input file.  Copy it to the destination directory.</p>
 <code class="descclassname">SEDMr.StartObs.</code><code class="descname">go</code><span class="sig-paren">(</span><em>rawd='/scr2/sedm/raw'</em>, <em>redd='/scr2/sedm/redux'</em>, <em>wait=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/SEDMr/StartObs.html#go"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#SEDMr.StartObs.go" title="Permalink to this definition">¶</a></dt>
 <dd><p>Outermost infinite loop that watches for a new raw directory.</p>
 <p>Keep a list of raw directories in <cite>redd</cite> and fire off
-the ObsLoop procedure when a new directory appears.  Check for
+the obs_loop procedure when a new directory appears.  Check for
 a new raw directory every 10 minutes.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

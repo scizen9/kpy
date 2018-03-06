@@ -1332,7 +1332,7 @@ if __name__ == '__main__':
     	if (photdir is None):
         	timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         	timestamp = timestamp.split("T")[0].replace("-","")
-        	photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+        	photdir = os.path.join(_photpath, timestamp)
 
 		print '''WARNING! You did not specify the directory or the list:\n
         	- A filelist name with the images you want to reduce [-l]

@@ -1,0 +1,40 @@
+{% from "_formhelpers.html" import render_field %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if fail %}
+            <div class="alert alert-danger fade in" id="login-failed"
+                 role="alert" style="margin-bottom:0; display:none">
+                <a href="#" class="close" onclick="$('#login-failed').slideUp('fast');">&times;</a>
+                <strong>Error!</strong> Incorrect username or old password.
+            </div>
+        {% endif %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+        {% endif %}
+        <div class="container container-table">
+            <div class="row vertical-center-row">
+                <div class="text-center col-md-4 col-md-offset-4">
+                    <div class="form-group">
+                        <form class="form-signin" method="POST">
+                            {{ form.csrf_token }}
+                            <p>
+                                {{ render_field(form.password) }}
+                                {{ render_field(form.pass_new) }}
+                                {{ render_field(form.pass_conf) }}
+                            </p>
+                            <input class="btn btn-lg btn-success btn-block" type="submit" value="Change Password">
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>

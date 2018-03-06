@@ -83,7 +83,8 @@ class RequestForm(FlaskForm):
     allocation = fields.SelectField('allocation', [validators.data_required()], coerce=int, choices=[])
     priority = fields.FloatField('priority', [validators.input_required()])
     filters_op = fields.SelectField('filters', [validators.input_required()], coerce=str, 
-                                    choices=[(' 1, 1, 1, 1}', 'u-g-r-i'), (' 0, 1, 1, 1}', "g-r-i")])
+                                    choices=[(' 1, 1, 1, 1}', 'u-g-r-i'), (' 0, 1, 1, 1}', 'g-r-i'), \
+                                            (' 0, 1, 0, 0}', 'g'), (' 0, 0, 1, 0}', 'r'), ('0, 0, 0, 1}', 'i'), ('0, 0, 0, 0}', '-') ])
     seq_repeats = fields.IntegerField('# of repeats', default = 1)
     ifu = fields.BooleanField('IFU image', [validators.Optional()])
     ab = fields.BooleanField('A B pair', [validators.Optional()])
@@ -109,8 +110,8 @@ class FindObjectForm(FlaskForm):
     typedesig = fields.SelectField('object type', [validators.input_required()], coerce=str, 
                                    choices=[('',''), ('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
                                             ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
-    obj_ra = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
-    obj_dec = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
+    obj_ra = fields.StringField('Right Ascension (deg or HH:MM:SS)', validators=(validators.Optional(),))
+    obj_dec = fields.StringField('Declination (deg or DD:MM:SS)', validators=(validators.Optional(),))
     radius = fields.FloatField('radius (arcsec)', validators=(validators.Optional(),))
     submit_obj = fields.SubmitField('seach for object')
 
@@ -120,8 +121,8 @@ class SubmitObjectForm(FlaskForm):
     typedesig = fields.SelectField('object type', [validators.input_required()], coerce=str, 
                                    choices=[('f', 'fixed'), ('v', 'periodic fixed'), ('e', 'heliocentric elliptical'),
                                             ('h', 'heliocentric hyperbolic'), ('p', 'heliocentric parabolic'), ('E', 'geocentric elliptical')])
-    obj_ra = fields.FloatField('Right Ascension (deg)', validators=(validators.Optional(),))
-    obj_dec = fields.FloatField('Declination (deg)', validators=(validators.Optional(),))
+    obj_ra = fields.StringField('Right Ascension (deg or HH:MM:SS)', validators=(validators.Optional(),))
+    obj_dec = fields.StringField('Declination (deg or DD:MM:SS)', validators=(validators.Optional(),))
     add_obj = fields.SubmitField('Add object')
 
 
@@ -135,6 +136,26 @@ class PassChangeForm(FlaskForm):
     pass_new = fields.PasswordField('New Password', validators=[validators.input_required(), validators.EqualTo('pass_conf', message='Passwords must match')] )
     pass_conf = fields.PasswordField('Confirm New Password', validators=[validators.input_required()])
 
+
+class SearchUserForm(FlaskForm):
+
+    search_string = fields.StringField('Introduce a string to search for your user.')
+    search_user = fields.SubmitField('Search User', description=None)
+
+class UsersForm(FlaskForm):
+
+    username = fields.StringField('name', validators=[validators.input_required()])
+    name = fields.StringField('name', validators=[validators.input_required()])
+    email = fields.StringField('email', validators=[validators.input_required()])
+    password = fields.PasswordField('password')
+    pass_new = fields.PasswordField('New Password', validators=[validators.EqualTo('pass_conf', message='Passwords must match')] )
+    pass_conf = fields.PasswordField('Confirm New Password')
+    modify_user = fields.SubmitField('Modify User', description=None)
+
+    old_groups = fields.SelectField('Select group to remove')
+    new_groups = fields.SelectField('Select group to add')
+    add_group = fields.SubmitField('Add', description=None)
+    remove_group = fields.SubmitField('Remove', description=None)
 
 def is_safe_url(target):
     ref_url = urlparse(request.host_url)

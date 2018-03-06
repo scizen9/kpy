@@ -62,6 +62,6 @@ if __name__ == '__main__':
 
     toflat[0].data /= flat
     toflat[0].header["FLATBY"] = (args.toflattenfits, "Flat field applied")
-    toflat[0].data = toflat[0].data.astype(np.float64)
+    toflat[0].data = toflat[0].data.astype(np.float32)
     IO.writefits( toflat, args.outfile, clobber=True, no_lossy_compress=True)
 

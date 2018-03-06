@@ -25,7 +25,7 @@ def report():
         # check the ascii spectrum file for a type
         sfile = objname[3:] + "_SEDM.txt"
         ctype = ""
-        zmed = ""
+        zmch = ""
         rlap = ""
         if os.path.exists(sfile):
             with open(sfile, "r") as sfl:
@@ -37,11 +37,11 @@ def report():
                     for cl in clas:
                         ctype += (" %s" % cl.split()[-1])
                 # get redshift
-                zmed = [li for li in lines if "ZMED" in li and "ERR" not in li]
-                if len(zmed) > 0:
-                    zmed = ("%.4f" % float(zmed[0].split()[-1]))
+                zmch = [li for li in lines if "REDSHIFT" in li]
+                if len(zmch) > 0:
+                    zmch = ("%.4f" % float(zmch[0].split()[-1]))
                 else:
-                    zmed = ""
+                    zmch = ""
                 # get rlap
                 rlap = [li for li in lines if "RLAP" in li]
                 if len(rlap) > 0:
@@ -109,7 +109,7 @@ def report():
 
         print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %-9s  %6s  %6s" %
               (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
-               air, reducer, ctype, zmed, rlap))
+               air, reducer, ctype, zmch, rlap))
     print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
     if lostexp > 0:
         print("Total exposure time lost to bad targets = %.1f s\n" % lostexp)

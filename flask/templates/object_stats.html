@@ -23,14 +23,21 @@
         {% endfor %}
         -->
         <div class="container container-table">
-            <pre> 
-	     	<font size="5">{{ info[0] }}</font>
-	        RA, DEC (J{{info[4]}})   <font size="4">{{ info[6]}} {{info[7]}}</font>
-	                              {{ info[1]}} {{info[2] }}
-            </pre>
-            
-            {% for table in req_table %}
-                <h2>{{req_titles[loop.index]}}</h2>
-                {{ table|safe }}
-            {% endfor %}
+            <div style="float: left; width: 60%">
+                <pre> 
+	         	<font size="4">{{ info[0] }}</font>
+	            RA, DEC (J{{info[4]}})   <font size="4">{{ info[6]}} {{info[7]}}</font>
+	                                  {{ info[1]}} {{info[2] }}
+                </pre>
+                
+                {% for table in req_table %}
+                    <h2>{{req_titles[loop.index]}}</h2>
+                    {{ table|safe }}
+                {% endfor %}
+            </div>
+            <div style="float: left; width: 30%">
+                <a href="http://{{image_url|safe}}">                
+                {{image_tag | safe}}
+                </a>
+            </div>
         </div>

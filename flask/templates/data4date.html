@@ -1,0 +1,54 @@
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+	{% endif %}
+  </div>
+  <div class="container">
+    <div class="table">
+      <table border="1" class="dataframe">
+        <thead>
+            <tr style="text-align: right;">
+            <th></th>
+            <th>Spectra files</th>
+            </tr>
+        </thead>
+        <tbody>
+            {%for d in data%}
+                <tr>
+                    <td>
+                    <a href={{d[0]}}>{{d[1]}}</a>
+                </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+       </table>
+
+    
+    <div>
+    <h4>IFU<h4>
+    <hr>
+      {{ gallery | safe }}
+    </div>
+
+    <div>
+    <h4>RC<h4>
+    <hr>
+      {{ gallery_phot | safe }}
+    </div>
+
+  </div>
+
+
+
+

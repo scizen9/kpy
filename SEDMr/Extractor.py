@@ -156,6 +156,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     points = zip(xs, ys)
     values = vs
+    gscl = (np.nanmax(xs) - np.nanmin(xs)) / 200.
 
     # Create image, print(stats)
     grid_vs = griddata(points, values, (x, y), method='linear')
@@ -166,7 +167,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
            float(np.nanmean(grid_vs)), float(grid_med)))
 
     # Find features in image
-    blobs = feature.blob_dog(grid_vs-grid_med, min_sigma=10, max_sigma=20,
+    blobs = feature.blob_log(grid_vs-grid_med, min_sigma=10, max_sigma=20,
                              threshold=100.0)
     print("Found %d blobs" % len(blobs))
 
@@ -183,12 +184,13 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
         # Extract blob properties
         bx, by, br = blob
+        br *= gscl
 
         bx = int(bx)
         by = int(by)
 
         if plotobj:
-            c = pl.Circle((xi[bx], yi[by]), 2.0, color='black',
+            c = pl.Circle((xi[bx], yi[by]), br, color='black',
                           linewidth=1, fill=False)
             ax.add_patch(c)
         # How bright is this blob?
@@ -198,9 +200,9 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             goodblob += 1
             print("%3d, z, x, y, dra, ddec: %8.1f, %5d, %5d, %6.2f, %6.2f" %
                   (goodblob, float(gv), bx, by, xi[bx], yi[by]))
-            objs.append((gv, xi[bx], yi[by], goodblob))
+            objs.append((gv, xi[bx], yi[by], br, goodblob))
             if plotobj:
-                c = pl.Circle((xi[bx], yi[by]), 2.0, color='white',
+                c = pl.Circle((xi[bx], yi[by]), br, color='white',
                               linewidth=2, fill=False)
                 ax.add_patch(c)
                 pl.annotate("%d" % goodblob, xy=(xi[bx], yi[by]),
@@ -208,13 +210,11 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
 
     print("Found %d good objects" % len(objs))
     if len(objs) <= 0:
-        objs = [(1000., 0., 0., goodblob)]
+        objs = [(1000., 0., 0., 2., goodblob)]
     # Make sure the brightest object is last
     objs.sort()
 
     # Perform 2-D Gaussian fit of good (real) objects
-    sigma_x = 2.0
-    sigma_y = 2.0
     for obj in objs:
         # Reset status
         status = 0
@@ -223,15 +223,16 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
         amplitude = obj[0]
         xo = obj[1]
         yo = obj[2]
-        objno = obj[3]
+        ro = obj[3]
+        objno = obj[4]
 
         print("\nFitting object %d" % objno)
         print("initial guess : z,a,b,x,y,theta:"
               " %9.1f, %6.2f, %6.2f, %6.2f, %6.2f, %7.2f" %
-              (amplitude, sigma_x, sigma_y, xo, yo, 0.))
+              (amplitude, ro, ro, xo, yo, 0.))
 
         # create initial data
-        initial_guess = (amplitude, xo, yo, sigma_x, sigma_y, 0, grid_med)
+        initial_guess = (amplitude, xo, yo, ro, ro, 0, grid_med)
 
         try:
             popt, pcov = opt.curve_fit(gaussian_2d, (x, y),
@@ -241,25 +242,34 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             print("Using initial guess")
             status = 3
             popt = initial_guess
-        # Fitted position
+        # Extract values to test
         xc = popt[1]
         yc = popt[2]
+        a = popt[3]
+        b = popt[4]
+        # Fitted position
         if xc < -15. or xc > 15. or yc < -15. or yc > 15.:
             print("ERROR: X,Y out of bounds: %f, %f" % (xc, yc))
-            print("Using initial position: %f, %f" % (xo, yo))
-            xc = xo
-            yc = yo
+            print("Using initial guess")
+            popt = initial_guess
             status = 1
-        pos = (xc, yc)
+
         # Fitted 3-sigma extent
-        a = popt[3]*sigfac
-        b = popt[4]*sigfac
         if a > 14. or b > 14. or a <= 0. or b <= 0.:
             print("ERROR: A,B out of bounds: %f, %f" % (a, b))
-            print("Using initial values: %f, %f" % (sigma_x, sigma_y))
-            a = sigma_x
-            b = sigma_y
+            print("Using initial guess")
+            popt = initial_guess
             status = 2
+        # Extract values to use
+        xc = popt[1]
+        yc = popt[2]
+        if status == 0:
+            a = popt[3] * sigfac
+            b = popt[4] * sigfac
+        else:
+            a = popt[3] * 2.0
+            b = popt[4] * 2.0
+        pos = (xc, yc)
         theta = popt[5]
         z = popt[0]
 
@@ -411,6 +421,8 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
 
 def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
 
+    status = 0
+
     kt = SedSpec.Spectra(spectra)
 
     # outer = inner + 3.
@@ -439,7 +451,9 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     if len(skys) > 0:
         print("Number of starting pure sky spaxels is %d" % len(skys))
     else:
-        print("ERROR: no sky spaxels in this image")
+        print("ERROR: no sky spaxels in this image: using full image")
+        skys = kt.good_positions.tolist()
+        status = 1
 
     newspec = [spectra[i] for i in skys]
     kt = SedSpec.Spectra(newspec)
@@ -478,7 +492,7 @@ def identify_sky_spectra(spectra, pos, ellipse=None, lmin=650., lmax=700.):
     print("Removed %d high sky spaxels and %d low sky spaxels leaving %d "
           "remaining spaxels" % (n_hi_rem, n_lo_rem, n_tot))
 
-    return skys
+    return skys, status
 
 
 def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
@@ -567,7 +581,7 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
         vs -= np.nanmedian(vs)
 
     # Clean outliers
-    vcln = reject_outliers(np.array(vs, dtype=np.float), m=3.)
+    vcln = reject_outliers(np.array(vs, dtype=np.float32), m=3.)
     vstd = np.nanstd(vcln)
     vmid = np.nanmedian(vcln)
     if cmin is None or cmax is None:
@@ -627,8 +641,9 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if not no_stamp:
         plot_drp_ver()
     pl.savefig("image_%s.pdf" % outname)
+    pl.savefig("image_%s.png" % outname)
     pl.close()
-    print("Wrote image_%s.pdf" % outname)
+    print("Wrote image_%s.[pdf,png]" % outname)
 
 
 def c_to_nm(coefficients, pix, offset=0.):
@@ -1044,7 +1059,7 @@ def handle_flat(flfile, fine, outname=None):
 
 def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
                flat_corrections=None, lmin=650., lmax=700.,
-               refl=0.82, area=18000., no_stamp=False):
+               refl=0.82, area=18000., no_stamp=False, interact=False):
     """Loads IFU frame "stdfile" and extracts standard star spectra using "fine".
 
     Args:
@@ -1194,25 +1209,58 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     objname = meta['header']['OBJECT'].split()[0]
     objname = objname.replace('"', "")
 
-    # Automatic extraction using Gaussian fit for Standard Stars
-    sixa, posa, adcpos, ellipse, status = \
-        identify_spectra_gauss_fit(ex,
-                                   prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                   lmin=lmin, lmax=lmax, sigfac=5.0,
-                                   airmass=meta['airmass'])
+    if not interact:
+        # Automatic extraction using Gaussian fit for Standard Stars
+        sixa, posa, adcpos, ellipse, status = \
+            identify_spectra_gauss_fit(ex,
+                                       prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                       lmin=lmin, lmax=lmax, sigfac=5.0,
+                                       airmass=meta['airmass'])
 
-    if status > 0:
-        quality = 4  # something went wrong
+        if status > 0:
+            quality = 4  # something went wrong
+        else:
+            quality = 0  # good fit
+
+        radius_used = ellipse[0] * 0.5
     else:
-        quality = 0  # good fit
+        message = "\nMark positive (red) target"
 
-    radius_used = ellipse[0] * 0.5
+        # A single-frame Science Object
+        sixa, posa, adcpos, ellipse, stats = \
+            identify_spectra_gui(ex, radius=2.0,
+                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                 scaled=False, bgd_sub=False,
+                                 lmin=lmin, lmax=lmax,
+                                 objname=objname, airmass=meta['airmass'],
+                                 message=message)
+        radius_used = ellipse[0] * 0.5
+
+        # Get quality of observation
+        print("Enter quality of observation:")
+        print("1 - good       (no problems)")
+        print("2 - acceptable (minor problem)")
+        print("3 - poor       (major problem)")
+        print("4 - no object visible")
+        q = 'x'
+        quality = -1
+        prom = ": "
+        while quality < 1 or quality > 4:
+            q = input(prom)
+            if type(q) == str:
+                if q.isdigit():
+                    quality = int(q)
+            else:
+                quality = q
+            if quality < 1 or quality > 4:
+                prom = "Try again: "
+        print("Quality = %d, now making outputs..." % quality)
 
     # Mark object spaxels
     for ix in sixa:
         ex[ix].is_obj = True
     # Use all sky spaxels in image for Standard Stars
-    kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
+    kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
     # Mark sky spaxels
     for ix in kixa:
         ex[ix].is_sky = True
@@ -1232,11 +1280,21 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # , outname=outname+"_var.pdf")
 
     # Mean sky
-    skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+    # are we using found sky spaxels
+    if skystat == 0:
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
                                   sky=True)
-    # Mean sky variance
-    vkya, nspxak = interp_spectra(e_var, kixa)
-    # , outname=outname+"_skvar.pdf")
+        # Mean sky variance
+        vkya, nspxak = interp_spectra(e_var, kixa, sky=True)
+        # , outname=outname+"_skvar.pdf")
+    # or the whole image?
+    else:
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+        # Mean sky variance
+        vkya, nspxak = interp_spectra(e_var, kixa)
+        # , outname=outname+"_skvar.pdf")
+        # make sure this is marked as bad
+        quality = 4
 
     # Plot out the X/Y positions of the selected spaxels
     xsa = []
@@ -1577,7 +1635,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                      "cmin": None, "cmax": None}
 
             # Use all sky spaxels in image
-            kixa = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
+            kixa, skystat = identify_sky_spectra(ex, adcpos, ellipse=ellipse)
 
         else:
             message = "\nMark positive (red) target"
@@ -1620,6 +1678,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
 
             # Use an annulus for sky spaxels for Science Objects
             kixa = identify_bgd_spectra(ex, adcpos, ellipse=ellipse, expfac=1.5)
+            skystat = 0
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, adcpos=adcpos,
@@ -1642,11 +1701,18 @@ def handle_single(imfile, fine, outname=None, offset=None,
         # , outname=outname+"_var.pdf")
 
         # Mean sky
-        skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
-                                     sky=True)
-        # Mean sky variance
-        vkya, nsxav = interp_spectra(e_var, kixa)
-        # , outname=outname+"_skvar.pdf")
+        # are we using found sky spaxels?
+        if skystat == 0:
+            skya, nsxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
+                                         sky=True)
+            # Mean sky variance
+            vkya, nsxav = interp_spectra(e_var, kixa, sky=True)
+            # , outname=outname+"_skvar.pdf")
+        else:
+            skya, nsxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+            # Mean sky variance
+            vkya, nsxav = interp_spectra(e_var, kixa)
+            # , outname=outname+"_skvar.pdf")
 
         # Plot out the X/Y positions of the selected spaxels
         xsa = []
@@ -2298,6 +2364,7 @@ Handles a single A image and A+B pair as well as flat extraction.
             star = Stds.Standards[args.std]
             handle_std(args.A, args.fine, outname=args.outname,
                        standard=star, offset=args.Aoffset,
+                       interact=args.interact,
                        flat_corrections=flat, no_stamp=args.no_stamp)
 
     else:

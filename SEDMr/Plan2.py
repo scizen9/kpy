@@ -21,7 +21,7 @@ def extract_info(infiles):
 
     headers = []
 
-    print("-- Ingesting headers --")
+    print("-- Plan2.py: Ingesting headers --")
     update_rate = int(len(infiles) / (Bar.setup() - 1))
     if update_rate <= 0:
         update_rate = 1
@@ -47,7 +47,7 @@ def identify_observations(headers):
     e.g. will return:
 
     {'STD-BD+25d4655': {1: ['...']}, {2: ['...']}, 
-           'PTF14dvo': {1: ['...', '...']}}
+           'ZTF14dvo': {1: ['...', '...']}}
     
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
@@ -162,7 +162,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
-PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+ZTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -199,13 +199,13 @@ bs_crr_b_%.npy : bs_crr_b_%.fits.gz flex_bs_crr_b_%.npy
 
 .PHONY: cleanstds newstds report ptfreport finalreport
 
-bias: bias0.1.fits bias2.0.fits $(BIAS)
+bias: $(BIAS)
 crrs: $(CRRS) 
 back: $(BACK)
 extr: $(EXTR)
 figs: $(FIGS)
 
-$(BIAS): bias0.1.fits bias2.0.fits
+$(BIAS):
 	$(BSUB) $(subst b_,,$@)
 
 $(CRRS): 
@@ -238,7 +238,7 @@ upload:
 	$(SPCCPY) --specdir $(dir $(mkfile_path))
 
 ptfreport: upload
-	$(PTFREPORT)
+	$(ZTFREPORT)
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))
@@ -290,7 +290,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     else:
         tp['STD'] = "--std %s" % standard
 
-    if 'PTF' in objname:
+    if 'ZTF' in objname or 'ztf' in objname:
         tp['interact'] = '--interact'
     else:
         tp['interact'] = ''
@@ -351,6 +351,11 @@ sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 %(specplot)s
+
+redo_%(name)s:
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --interact
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -483,7 +488,7 @@ def to_makefile(objs, calibs):
                 plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
-                    if objname.startswith("PTF"):
+                    if objname.startswith("ZTF") or objname.startswith("ztf"):
                         sci += "sp_" + a + " "
                     else:
                         oth += "sp_" + a + " "
@@ -501,7 +506,7 @@ def to_makefile(objs, calibs):
                     plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
-                        if objname.startswith("PTF"):
+                        if objname.startswith("ZTF") or objname.startswith("ztf"):
                             sci += "sp_" + a + " "
                         else:
                             oth += "sp_" + a + " "

@@ -41,7 +41,7 @@ class SedmDB:
 
     instance = None
 
-    def __init__(self, dbname='sedmdbtest', host='localhost'):
+    def __init__(self, dbname='sedmdb', host='localhost'):
         """
         Makes sure only one instance is created.
         """
@@ -1591,7 +1591,7 @@ class SedmDB:
         # TODO: move to logic layer? (requires sql "knowledge")
         # TODO: make it more discerning of other statuses
         # tests written
-        sql = "UPDATE request SET status='EXPIRED' WHERE enddate < 'NOW()' AND status not in ('COMPLETED', 'CANCELED', 'REDUCED');"
+        sql = "UPDATE request SET status='EXPIRED', lastmodified=NOW() WHERE enddate < NOW() AND status ='PENDING';"
         self.execute_sql(sql)
         return (0, "Requests expired")
 

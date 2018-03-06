@@ -16,10 +16,23 @@ import datetime
 import zeropoint
 import logging
 
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
 #Log into a file
 FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-#root_dir = "/tmp/logs/"
-root_dir = "/scr2/sedm/logs/"
+root_dir = _logpath
 now = datetime.datetime.utcnow()
 timestamp=datetime.datetime.isoformat(now)
 timestamp=timestamp.split("T")[0]
@@ -118,7 +131,7 @@ if __name__ == '__main__':
     if (photdir is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
-        photdir = os.path.join("/scr2/sedm/phot/", timestamp)
+        photdir = os.path.join(_photpath, timestamp)
     if (fullred):
         reduce_all_dir(os.path.abspath(photdir), overwrite=overwrite)
     reduce_on_the_fly(os.path.abspath(photdir))

@@ -10,6 +10,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
+import math
 import pygal
 from pygal.style import Style
 import json
@@ -18,18 +19,22 @@ from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
-from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, is_safe_url
+from forms import *
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
+import requests as url_requests
 
 from IPython.display import HTML
 import matplotlib.pyplot as plt
 import pandas as pd
-import stats_web
 from bokeh.embed import components
+
+import stats_web
+import model
+
 
 # config
 SECRET_KEY = 'secret'
@@ -44,6 +49,11 @@ app.config.from_object(__name__)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
+config = {
+    'path':{
+    'path_archive':'/scr2/sedmdrp/redux/',
+    'path_phot':'/scr2/sedm/phot/'}
+}
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
 g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a "
@@ -110,33 +120,133 @@ def load_user(user_id):
     get_user_permissions()
     return user
 
-def search_stats_file(mydate = None):
+
+@app.route('/data/<path:filename>')
+@flask_login.login_required
+def data_static(filename):
     '''
-    Returns the last stats file that is present in the system according to the present date.
-    It also returns a message stating what date that was.
+     Get files from the archive
+    :param filename:
+    :return:
     '''
-    #If the date is specified, we will try to located the right file.
-    #None will be returned if it does not exist.
-    if ( not mydate is None):
-        s= os.path.join("/scr2/sedm/phot", mydate, "stats/stats.log")
-        if os.path.isfile(s) and os.path.getsize(s) > 0:
-            return s
+    _p, _f = os.path.split(filename)
+
+    if _f.startswith("rc2018"):
+        return flask.send_from_directory(os.path.join(config['path']['path_phot'], _p), _f)
+    else:
+        return flask.send_from_directory(os.path.join(config['path']['path_archive'], _p), _f)
+
+
+def file_exists(filename):
+    '''
+    Checks in the local directory to see if the file within the main reduction directory exists.
+    '''
+
+    _p, _f = os.path.split(filename)
+    return os.path.isfile( os.path.join(config['path']['path_archive'], _p, _f))
+
+@flask_login.login_required
+def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
+    '''
+    Creates the right formatting for the image gallery.
+    '''
+
+    nrows = int(math.ceil(len(imagelist)*1. / ncols)) 
+
+
+    s = ""  
+    for i in range(nrows):
+        s = s + '<div class="row"> \n'
+        for j in range(ncols):
+            pos =i*ncols + j
+            if ( pos < len(imagelist)):
+
+                if spec:
+                    path = os.path.join(mydate, imagelist[pos])
+                else:
+                    path = os.path.join(mydate, 'reduced/png', imagelist[pos])
+ 
+                impath = flask.url_for('data_static', filename=path, spec=spec)
+
+                if spec and file_exists(path.replace(".png", ".pdf")):
+                    impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
+                else:
+                    impathlink = impath
+
+                s = s + '''
+                  <div class="col-md-{0}">
+                    <div class="thumbnail">
+                      <a href="{1}">
+                        <img src="{2}" style="width:{3}% height:"{4}%">
+                      </a>
+                    </div>
+                  </div>\n'''.format(12/ncols, impathlink, impath, width, width)
+            else:
+                s = s + '</div> \n'
+                break
+        s = s + '</div> \n'
+
+    return s
+
+@app.route('/data_access', methods=['GET'])
+@flask_login.login_required
+def data_access():
+    '''
+    Displays the data access page. 
+    It accepts the "date" parameter as the day we want to see the data from.
+    With no parameters, it just searches for the last day that the telescope was open.
+
+    :return:
+
+    '''
+
+    files_table = [("", "")]
+    gallery = ""
+    gallery_phot = ""
+
+    if not 'date' in flask.request.args:
+        # get the weather stats
+        reduxfiles, mydate = model.search_redux_files()
+
+        if (reduxfiles is None):
+            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
         else:
-            return None
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
 
-    else:         
-        curdate = datetime.utcnow()
-        #Try to find the stat files up to 100 days before today's date.
-        i = 0
-        while i < 100:
-            newdate = curdate - timedelta(i)
-            newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
-            s = os.path.join("/scr2/sedm/phot", newdatedir, "stats/stats.log")
-            if os.path.isfile(s) and os.path.getsize(s) > 0:
-                return s
-            i = i+1
-        return None
+    else:
+        mydate_in = flask.request.args['date']
+        #Just making sure that we have only allowed digits in the date
+        mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
+        if len(mydate) ==0:
+            message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
+            script, div = "", ""
+        else:
+            mydate = mydate[0]
+            message = ""
+            reduxfiles, mydate = model.search_redux_files(mydate)
+            if (reduxfiles is None):
+                message=message + "No data found for the date %s."%(mydate)
+            else:
+                message = message + "Reduced files found for %s"%( mydate)
 
+    if not reduxfiles is None:
+        spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
+        files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+        images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
+        gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+
+        photfiles, mydate = model.search_phot_files(mydate = mydate)
+        if len(photfiles)>0:
+            photfiles.sort()
+            gallery_phot = create_gallery(photfiles, mydate, ncols=4, width=150, spec=False)
+        else:
+            galler_phot= ""
+
+
+
+    return render_template('header.html', current_user=flask_login.current_user) + \
+            render_template('data4date.html', data=files_table, gallery=gallery, gallery_phot=gallery_phot, message=message) + \
+            render_template('footer.html')
     
 
 @app.route('/weather_stats', methods=['GET'])
@@ -152,7 +262,7 @@ def weather_stats():
 
     if not 'date' in flask.request.args:
         # get the weather stats
-        statsfile = search_stats_file()
+        statsfile = model.search_stats_file()
         stats_plot = stats_web.plot_stats(statsfile)
         if (stats_plot is None):
             message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
@@ -171,7 +281,7 @@ def weather_stats():
             mydate = mydate[0]
             message = ""
 
-            statsfile = search_stats_file(mydate)
+            statsfile = model.search_stats_file(mydate)
             if (statsfile is None):
                 message=message + "No statistics log found for the date %s."%(mydate)
                 script, div = "", ""
@@ -186,15 +296,14 @@ def weather_stats():
             render_template('footer.html')
 
 @app.route('/')
-#@flask_login.login_required
 def index():
     sys.stdout.flush()  # send any stdout to the logfile
-
+    
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
         request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
                  "FROM request r, object o, allocation a WHERE o.id = r.object_id "
-                 "AND a.id = r.allocation_id AND r.user_id = '%s';"
+                 "AND a.id = r.allocation_id AND r.user_id = '%s' AND r.enddate > NOW();"
                  % (flask_login.current_user.id,))
         req = db.execute_sql(request_query)
         # organize requests into dataframes by whether they are completed or not
@@ -209,12 +318,12 @@ def index():
         active_alloc = data.loc[data.active == True]  # filter for active allocations
         ac = active_alloc.drop(['allocation id', 'active'], axis=1)
         # generate the html and table titles
-        request_tables = [HTML(active.to_html(escape=False, classes='active', index=False)), HTML(complete.to_html(escape=False, classes='complete', index=False))]
+        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False))]
         request_titles = ['', 'active requests', 'complete requests']
-        alloc_table = [HTML(ac.to_html(escape=False, classes='allocations', index=False))]
+        alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=100))]
         alloc_titles = ['', 'active allocations']
         greeting = 'Hello %s!'%flask_login.current_user.name
-        myimage = ''
+        myimage = flask.url_for('static', filename='img/smile.jpg')
     else:  # if there is not user, set the lists as empty
         request_tables=[]
         request_titles=[]
@@ -265,6 +374,100 @@ def login():
     return (render_template('header.html') +#, current_user=flask_login.current_user) +
             render_template('login.html', form=form, message=None) +
             render_template('footer.html'))
+
+
+@app.route('/manage_user', methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_user():
+
+    message = ""
+    form1 = SearchUserForm()
+    form2 = UsersForm()
+
+    old_groups = []
+    new_groups = []
+    allocations =[]
+
+    print flask.request.form
+
+    #Case with no user at all
+    if len(flask.request.args) ==0:
+        message = "Introduce the search criteria for your user. For exact search try \"."
+        form2 = None
+
+        return (render_template('header.html') +
+                render_template('manage_users.html', form1=form1, from2=form2, message=message) +
+                render_template('footer.html'))
+
+    #Case with when we want to search for a specific user
+    if 'search_user' in flask.request.form:
+        username = form1.search_string.data
+    elif('user' in flask.request.args):    
+        username = flask.request.args['user']
+    elif (form2.username.data):
+        username = form2.username.data
+    else:
+        username = ""
+
+
+    if 'modify_user' in flask.request.form and form2.validate_on_submit():
+
+        username = flask.request.form['username']
+        name = form2.name.data
+        email = form2.email.data
+        new_password = form2.pass_new.data
+        new_password_conf = form2.pass_conf.data
+
+        u = model.get_info_user(username)
+        message = u["message"]
+
+        #If any of the field is different from the one in the DB, we update.
+        if "username" in u.keys():   
+            status, mes = db.update_user({'id': u["id"], 'name':name, 'email':email})  
+            flash("User updated with name %s, username %s. %s."%(name, username, mes))   
+        if form2.pass_new.data:
+            db.update_user({'id': u["id"], 'password': new_password})
+            flash("Password changed ")
+
+    elif (('add_group' in flask.request.form) or ('remove_group' in flask.request.form)):
+        u = model.get_info_user(form2.username.data)
+
+        print "MODIFY %s"%(form2.username.data) 
+        if 'add_group' in flask.request.form:
+            g = flask.request.form['new_groups']
+            model.add_group(u["id"], g)
+            message = "Retrieved data for user %s"%form2.username.data
+        elif 'remove_group' in flask.request.form:
+            g = flask.request.form['old_groups']
+            model.remove_group(u["id"], g)
+            message = "Retrieved data for user %s"%form2.username.data
+
+    else:
+        print "NOTHING TO BE DONE"
+        pass
+
+
+    u = model.get_info_user(username)
+    message = u["message"]
+
+    print "MESSAGE", message, "FORM1", form1, "FORM2", form2, "ALLOC", allocations
+
+    if "username" in u.keys():
+        #form2 = UsersForm()
+        form2.username.data = u["username"]
+        form2.name.data = u["name"]
+        form2.email.data = u["email"]
+
+        form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+        form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+        allocations = u["allocations"]
+    else:
+        form2 = None
+        allocations = []
+
+    return (render_template('header.html') +
+                    render_template('manage_users.html', form1=form1, form2=form2, allocations=allocations, message=message) +
+                    render_template('footer.html'))
 
 
 @app.route("/passchange", methods=['GET', 'POST'])
@@ -359,7 +562,7 @@ def requests():
                     coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
                 # search database for matching name+ra+dec
                 objects = db.get_objects_near(coord.ra.value, coord.dec.value, .5, ['name','id'])
-                id_list = [obj[1] for obj in objects if obj[0] == form1.obj_name.data]
+                id_list = [obj[1] for obj in objects if obj[0] == form1.obj_name.data.lower()]
                 # if it isn't in the database, add it
                 if not id_list:
                     add_obj = db.add_object({'name': form1.obj_name.data, 'ra': coord.ra.value, 'dec': coord.dec.value, 'typedesig': form1.typedesig.data})
@@ -583,8 +786,35 @@ def schedule():
             render_template('schedule.html') +
             render_template('footer.html'))
 
+@app.route('/add_target', methods=['GET','POST'])
+def add_json_target():
+    import model
+
+
+    try:
+        textfields = ['jsonfile']
+        fields = textfields[:]
+        
+        jsonfile = request.get_json(silent=True)
+        if jsonfile:
+            jsonfile = form['jsonfile']
+            try:
+                entryUpdate = json.loads(jsonfile.file.read())
+                message = model.updateFollowupConfig(entryUpdate)
+            except Exception, e:
+                err = open('/home/sedm/kpy/flask/static/error_output%s.txt' % datetime.datetime.utcnow().strftime("%H_%M_%S"),'w')
+                err.write(str(e))
+                err.close()
+        else:
+            message = "30 No json file submitted."
+        return message
+    except Exception, e:
+        err = open('/home/sedm/kpy/flask/static/error.log','a')
+        err.write('%s: %s\n' % (datetime.datetime.utcnow().strftime("%H_%M_%S"),str(e)))
+        err.close()
 
 @app.route('/objects', methods=['GET', 'POST'])
+@flask_login.login_required
 def objects():
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
@@ -640,8 +870,9 @@ def objects():
             if form1.obj_ra.data and form1.obj_dec.data and form1.typedesig.data in ['f', 'v']:
                 # add the base object
                 try:
-                    ra = float(form1.obj_ra.data)
-                    coord=SkyCoord(ra, form1.obj_dec.data, unit='deg')
+                    ra = float(form1.obj_ra.data.strip())
+                    dec = float(form1.obj_dec.data.strip())
+                    coord=SkyCoord(ra, dec, unit='deg')
                 except:
                     coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
                 
@@ -652,8 +883,8 @@ def objects():
                     return (render_template('header.html', current_user=flask_login.current_user) +
                             render_template('object.html', form1=form1, form2=form2, sso_form=None, message=message) +
                             render_template('footer.html'))
-                else:
-                    obj_id = id_list[0]
+                #else:
+                #    obj_id = id_list[0]
             # if it is periodic, make sure there is an entry
             if form1.typedesig.data == 'v':
                 # form is already validated above
@@ -840,6 +1071,53 @@ def objects():
             render_template('footer.html'))
 
 
+def get_panstars_cutout_tag(ra, dec, optionDictionary = {'width' : '150', 'border' : '0'}):
+
+    '''
+    ra: degrees
+    dec: degrees
+    the color cotout of 100 arcsec wide is stored as /tmp/tmp_name.jpg
+    '''
+
+    image_index_url_red = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=i'.format(ra, dec)
+    image_index_url_green = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=r'.format(ra, dec)
+    image_index_url_blue = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=g'.format(ra, dec)
+
+    ix_red_request = url_requests.get(image_index_url_red)
+    ix_green_request = url_requests.get(image_index_url_green)
+    ix_blue_request = url_requests.get(image_index_url_blue)
+
+    ix_red_data = ix_red_request.text.split('\n')
+    ix_red_data[0] = ix_red_data[0].split(' ')
+    ix_red_data[1] = ix_red_data[1].split(' ')
+    ix_red_filename = ix_red_data[1][ix_red_data[0].index('filename')]
+
+    ix_green_data = ix_green_request.text.split('\n')
+    ix_green_data[0] = ix_green_data[0].split(' ')
+    ix_green_data[1] = ix_green_data[1].split(' ')
+    ix_green_filename = ix_green_data[1][ix_green_data[0].index('filename')]
+
+    ix_blue_data = ix_blue_request.text.split('\n')
+    ix_blue_data[0] = ix_blue_data[0].split(' ')
+    ix_blue_data[1] = ix_blue_data[1].split(' ')
+    ix_blue_filename = ix_blue_data[1][ix_blue_data[0].index('filename')]
+
+    image_url = "http://ps1images.stsci.edu/cgi-bin/fitscut.cgi?red=%s&green=%s&blue=%s&filetypes=stack&auxiliary=data&size=400&ra=%.6f&dec=%.6f" % (ix_red_filename, ix_green_filename, ix_blue_filename, ra, dec)
+    image_request = url_requests.get(image_url)
+
+    image_uri = image_request.content.encode('base64').replace('\n', '')
+
+    image_style = ' '
+    for option in optionDictionary:
+        image_style += '%s="%s" ' % (option, optionDictionary[option])
+
+    image_tag = '<img src="data:image/jpg;base64,%s"' % image_uri
+    image_tag += ' %s>\n' % image_style
+
+    link_url = 'ps1images.stsci.edu/cgi-bin/ps1cutouts?pos=%s+%s&filter=color&filter=g&filter=r&filter=i&filter=z&filter=y&filetypes=stack&auxiliary=data&size=240&output_size=0&verbose=0&autoscale=99.500000&catlist=' % (ra, dec)
+    return image_tag, link_url
+
+
 @app.route('/objects/<path:ident>')
 def show_objects(ident):
     # take name or id and show info about it and images with permission
@@ -859,6 +1137,7 @@ def show_objects(ident):
     # get basic information
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     info = info + deg2hour(info[1], info[2])
+    image_tag, link_url = get_panstars_cutout_tag(info[1], info[2])
 
     # TODO: work in SSO objects
     if info[0] == -1:
@@ -906,7 +1185,7 @@ def show_objects(ident):
     # TODO: make sure the above works
 
     return (render_template('header.html') +  # , current_user=flask_login.current_user) +
-            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles) +
+            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url) +
             render_template('footer.html'))
 
 

@@ -25,13 +25,22 @@ import coordinates_conversor as cc
 import pywcs
 import matplotlib.lines as mlines
 import subprocess
-
-ref_stars_file = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_ps1.csv"
-ref_stars_file_sdss = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_sdss.csv"
-ref_stars_file_2mass = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_2mass.csv"
-ref_stars_file_johnson = "/Users/nadiablago/Documents/Projects/M101/cats/ref_stars_johnson.csv"
-
 import warnings
+
+from ConfigParser import SafeConfigParser
+import codecs
+
+parser = SafeConfigParser()
+
+configfile = os.environ["SEDMCONFIG"]
+
+# Open the file with the correct encoding
+with codecs.open(configfile, 'r') as f:
+    parser.readfp(f)
+
+_logpath = parser.get('paths', 'logpath')
+_photpath = parser.get('paths', 'photpath')
+
 
 def fxn():
     warnings.warn("deprecated", DeprecationWarning)
@@ -444,7 +453,7 @@ if __name__ == '__main__':
     if (reduced is None):
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
         timestamp = timestamp.split("T")[0].replace("-","")
-        reduced = os.path.join("/scr2/sedm/phot/", timestamp, "reduced")
+        reduced = os.path.join(_photpath, timestamp, "reduced")
 
 
     os.chdir(reduced)

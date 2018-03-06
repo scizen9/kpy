@@ -49,7 +49,7 @@ logger = logging.getLogger('listener')
 
 
 
-def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
+def solve_astrometry(img, radius=3.0, with_pix=True, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     radius: radius of uncertainty on astrometric position in image.
@@ -71,7 +71,7 @@ def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
     
     print "Solving astrometry on field with (ra,dec)=", ra, dec, "Image",img, "New image", astro
     
-    cmd = " solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
+    cmd = " solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s --cpulimit 45 -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.425"
     print cmd
@@ -95,12 +95,9 @@ def solve_astrometry(img, radius=3.0, with_pix=True, first_call=True, tweak=3):
         pass
         
         
-    if(not os.path.isfile(astro) and first_call):
-        print "Astrometry failed on file %s! Trying with a larger radius..."%astro
-        solve_astrometry(img, radius=8, with_pix=True, first_call=False)
-        if(not os.path.isfile(astro)):
-            print "Astrometry FAILED!"
-            logger.error("Astrometry FAILED!")
+    if(not os.path.isfile(astro)):
+        print "Astrometry FAILED!"
+        logger.error("Astrometry FAILED!")
         
     return astro
     

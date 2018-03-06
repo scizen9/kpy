@@ -1,0 +1,94 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            <div class="media-body">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <ul class=flashes>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+                {% if message %}
+                        <h5> {{ message }}</h5>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <div class="well">
+                    <h3>Search User Data</h3>
+                    <form method="post" action="{{ url_for('manage_user', search_user=True) }}">
+                        {{ form1.csrf_token }}
+                        <p>
+                            {{ render_field(form1.search_string) }}
+                            {{ form1.search_user }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+            {% if form2 %}
+                <div class="well">
+                    <h3>User Data</h3>
+                    <form method="post" action="{{ url_for('manage_user', modify_user=True) }}">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.username) }}
+                            {{ render_field(form2.name) }}
+                            {{ render_field(form2.email) }}
+                            {{ render_field(form2.pass_new) }}
+                            {{ render_field(form2.pass_conf) }}
+                            <p>
+                            {{ form2.modify_user }}
+                            </p>
+                        </p>
+
+                    <h3>Manage Groups</h3>
+                      <div class="form-group">
+                        <div class="input-group">
+                            {{ form2.csrf_token }}
+                            <p>
+                                {{ render_field(form2.old_groups) }}
+                                {{ form2.remove_group }}
+                                {{ render_field(form2.new_groups) }}
+                                {{ form2.add_group }}
+                            </p>
+                        </div>
+                      </div>
+                    </form>
+                </div>
+            {% endif %}
+            </div>
+
+            <div class="col-md-12">
+            {% if allocations %}
+                <div class="well">
+                    <h3>User active allocations</h3>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Group</th>
+                                    <th>Programme</th>
+                                    <th>Allocation</th>
+                                    <th>Initial Date</th>
+                                    <th>End Date</th>
+                                <tr>
+                            </thead>
+                            <tbody>
+                                {% for allocation in allocations %}
+                                <tr>
+                                    <td>{{ allocation.group }}</td>
+                                    <td>{{ allocation.program }}</td>
+                                    <td>{{ allocation.allocation }}</td>
+                                    <td>{{ allocation.inidate }}</td>
+                                    <td>{{ allocation.enddate }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                </div>
+            {% endif %}
+            </div>
+
+

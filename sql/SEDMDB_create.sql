@@ -106,7 +106,7 @@ CREATE TABLE elliptical_heliocentric (
     -- Mean anomaly
     M decimal(12,8),
     --epoch date. Time of M
-    mjdepoch int,
+    mjdepoch decimal(14,8),
     -- equinox year
     D decimal(7,2),
     -- first abd second components of magnitude model

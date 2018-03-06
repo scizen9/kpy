@@ -182,6 +182,7 @@ optgroup {
 table {
   border-spacing: 0;
   border-collapse: collapse;
+  max-width: 75ch;
 }
 td,
 th {
@@ -6531,6 +6532,10 @@ button.close {
 .invisible {
   visibility: hidden;
 }
+
+.button1 {background-color: #4CAF50;} /* Green */
+
+
 .text-hide {
   font: 0/0 a;
   color: transparent;
@@ -6567,6 +6572,8 @@ button.close {
 .visible-lg-inline-block {
   display: none !important;
 }
+
+
 @media (max-width: 767px) {
   .visible-xs {
     display: block !important;
