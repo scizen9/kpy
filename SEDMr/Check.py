@@ -190,7 +190,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             dec = ''
         if 'REQ_ID' in hdr:
             req_id = hdr['REQ_ID']
-            if len(req_id) == 0:
+            if str in type(req_id):
                 req_id = 0
         else:
             req_id = 0
