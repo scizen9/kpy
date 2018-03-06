@@ -1,0 +1,35 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            <div class="media-body">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <ul class=flashes>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+                {% if message %}
+                        <h5> {{ message }}</h5>
+                {% endif %}
+            </div>
+
+
+            <div class="col-md-12 form-group container-fluid">
+                {{ form_a.csrf_token }}
+                <p>
+                <form method="post">
+                    {{ render_field(form_a.designator)}}
+                    <p>
+                    {{ form_a.add(class_="btn btn-success") }}
+                    </p>
+                </form>
+                </p>
+
+                <h3>Groups</h3>
+                <font size="1">
+                    {{table}}
+                </font>
+            </div>
+
