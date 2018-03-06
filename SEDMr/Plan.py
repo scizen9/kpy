@@ -60,7 +60,7 @@ def identify_observations(headers):
         name = header['NAME'].lstrip()
         exptime = header['exptime']
         adcspeed = header['ADCSPEED']
-        if "test" in obj:
+        if "test" in obj or "Test" in obj or "TEST" in obj:
             continue
         if "Calib" in obj or "bias" in obj:
 
@@ -131,7 +131,7 @@ def identify_observations(headers):
     print("\n-- Standard Star Sets --")
     for k, v in objs.items():
         if "STD-" in k:
-            print("%20s : %2.0i" % (k, len(v)))
+            print("%20s : %2.0i" % (k, len(v[1])))
 
     print("\n-- Science Object Sets --")
     for k, v in objs.items():
