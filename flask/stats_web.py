@@ -42,8 +42,18 @@ from bokeh.models import ColumnDataSource, CDSView, GroupFilter, Label
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 from astropy.time import Time
+import model
 
 
+@lru_cache()
+def load_p48seeing(obsdate):
+
+    time, seeing = model.get_p18obsdata(obsdate)
+    day_frac_diff = datetime.timedelta(np.ceil((datetime.datetime.now() - datetime.datetime.utcnow() ).total_seconds())/3600/24)
+    local_date = np.array(time) + day_frac_diff
+    d = pd.DataFrame({'date':local_date, 'seeing':seeing})
+
+    return d
 
 
 @lru_cache()
@@ -59,6 +69,8 @@ def load_stats(statsfile='stats.log'):
      
     data2 = data.assign(localdate=local_date)
     data2.set_index('localdate')
+
+
     return pd.DataFrame({'date':data2['localdate'], 'ns':data2['ns'], 'fwhm':data2['fwhm'], 'ellipticity':data2['ellipticity'], \
     'bkg':data2['bkg'], 'airmass':data2['airmass'], 'in_temp':data2['in_temp'], 'imtype':data2['imtype'],\
     'out_temp':data2['out_temp'], 'in_hum':data2['in_hum']})
@@ -66,81 +78,97 @@ def load_stats(statsfile='stats.log'):
     
 
 @lru_cache()
-def plot_stats(statsfile):
+def plot_stats(statsfile, mydate):
 
 
     source = ColumnDataSource(data=dict(date=[], ns=[], fwhm=[], ellipticity=[], bkg=[], airmass=[], in_temp=[], imtype=[], out_temp=[], in_hum=[]))
     source_static = ColumnDataSource(data=dict(date=[], ns=[], fwhm=[], ellipticity=[], bkg=[], airmass=[], in_temp=[], imtype=[], out_temp=[], in_hum=[]))
+
     viewScience = CDSView(source=source, filters=[GroupFilter(column_name='imtype', group='SCIENCE')])
     viewAcquisition = CDSView(source=source, filters=[GroupFilter(column_name='imtype', group='ACQUISITION')])
     viewGuider = CDSView(source=source, filters=[GroupFilter(column_name='imtype', group='GUIDER')])
     viewFocus = CDSView(source=source, filters=[GroupFilter(column_name='imtype', group='FOCUS')])
-    
-    tools = 'pan,wheel_zoom,xbox_select,reset'
-    
+    source_p48 = ColumnDataSource(data=dict(date=[], seeing=[]))
+
     def update(selected=None):
     
-        data = load_stats(statsfile)
-        source.data = source.from_df(data[['date', 'ns', 'fwhm', 'ellipticity', 'bkg', 'airmass', 'in_temp', 'imtype', 'out_temp', 'in_hum']])
-        source_static.data = source.data
+        if statsfile:
+            data = load_stats(statsfile)
+            source.data = source.from_df(data[['date', 'ns', 'fwhm', 'ellipticity', 'bkg', 'airmass', 'in_temp', 'imtype', 'out_temp', 'in_hum']])
+            source_static.data = source.data
     
-        #update_stats(data, t1, t2)
+        p48 = load_p48seeing(mydate)
+        source_p48.data = source_p48.from_df(p48[['date', 'seeing']])
+        source_static_p48.data = source_p48.data
 
+    source_static_p48 = ColumnDataSource(data=dict(date=[], seeing=[]))        
+    tools = 'pan,box_zoom,reset'
+    
+    
+    p48seeing = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+    p48seeing.circle('date', 'seeing', source=source_static_p48, color="black")
+    p48seeing.title.text = "P48 seeing [arcsec]"
 
-    ns = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    ns.line('date', 'ns', source=source_static)
-    ns.circle('date', 'ns', size=1, source=source, color=None, selection_color="orange")
-    ns.title.text =  "Number of bright sources extracted"
+    if statsfile:
+        ns = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        ns.line('date', 'ns', source=source_static)
+        ns.circle('date', 'ns', size=1, source=source, color=None, selection_color="orange")
+        ns.title.text =  "Number of bright sources extracted"
+        
+
+        bkg = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        bkg.x_range = ns.x_range
+        bkg.line('date', 'bkg', source=source_static)
+        bkg.circle('date', 'bkg', size=1, source=source, color=None, selection_color="orange")
+        bkg.title.text =  "Background (counts)"
+        
+        
+        temp = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        temp.x_range = ns.x_range
+        temp.line('date', 'in_temp', source=source_static, color='blue', legend="Inside")
+        temp.line('date', 'out_temp', source=source_static, color='green', legend="Outside")
+        temp.circle('date', 'in_temp', size=1, source=source, color=None, selection_color="orange")
+        temp.title.text =  "Temperature"
+        
+        
+        fwhm = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        fwhm.x_range = ns.x_range
+        fwhm.circle('date', 'fwhm', source=source_static, color="green", legend="Focus", view=viewFocus)
+        fwhm.circle('date', 'fwhm', source=source_static, color="red", legend="Science", view=viewScience)
+        fwhm.circle('date', 'fwhm', source=source_static, color="blue", legend="Acquisition", view=viewAcquisition)
+        fwhm.circle('date', 'fwhm', source=source_static, color="black", legend="Guider", view=viewGuider)
+        fwhm.circle('date', 'fwhm', size=1, source=source, color=None, selection_color="orange")
+        fwhm.title.text = "P60 FWHM [arcsec]"
+        
+        airmass = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        airmass.x_range = ns.x_range
+        airmass.line('date', 'airmass', source=source_static)
+        airmass.circle('date', 'airmass', size=1, source=source, color=None, selection_color="orange")
+        airmass.title.text = "Airmass"
+        
+        ellipticity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        ellipticity.x_range = ns.x_range
+        ellipticity.line('date', 'ellipticity', source=source_static)
+        ellipticity.circle('date', 'ellipticity', size=1, source=source, color=None, selection_color="orange")
+        ellipticity.title.text = "Ellipticity"
+        
+        
+        humidity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
+        humidity.x_range = ns.x_range
+        humidity.line('date', 'in_hum', source=source_static)
+        humidity.circle('date', 'in_hum', size=1, source=source, color=None, selection_color="orange")
+        humidity.title.text = "Inside Humidity"
     
-    bkg = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    bkg.x_range = ns.x_range
-    bkg.line('date', 'bkg', source=source_static)
-    bkg.circle('date', 'bkg', size=1, source=source, color=None, selection_color="orange")
-    bkg.title.text =  "Background (counts)"
-    
-    
-    temp = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    temp.x_range = ns.x_range
-    temp.line('date', 'in_temp', source=source_static, color='blue', legend="Inside")
-    temp.line('date', 'out_temp', source=source_static, color='green', legend="Outside")
-    temp.circle('date', 'in_temp', size=1, source=source, color=None, selection_color="orange")
-    temp.title.text =  "Temperature"
-    
-    
-    fwhm = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    fwhm.x_range = ns.x_range
-    fwhm.circle('date', 'fwhm', source=source_static, color="green", legend="Focus", view=viewFocus)
-    fwhm.circle('date', 'fwhm', source=source_static, color="red", legend="Science", view=viewScience)
-    fwhm.circle('date', 'fwhm', source=source_static, color="blue", legend="Acquisition", view=viewAcquisition)
-    fwhm.circle('date', 'fwhm', source=source_static, color="black", legend="Guider", view=viewGuider)
-    fwhm.circle('date', 'fwhm', size=1, source=source, color=None, selection_color="orange")
-    fwhm.title.text = "FWHM [arcsec]"
-    
-    airmass = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    airmass.x_range = ns.x_range
-    airmass.line('date', 'airmass', source=source_static)
-    airmass.circle('date', 'airmass', size=1, source=source, color=None, selection_color="orange")
-    airmass.title.text = "Airmass"
-    
-    ellipticity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    ellipticity.x_range = ns.x_range
-    ellipticity.line('date', 'ellipticity', source=source_static)
-    ellipticity.circle('date', 'ellipticity', size=1, source=source, color=None, selection_color="orange")
-    ellipticity.title.text = "Ellipticity"
-    
-    
-    humidity = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-    humidity.x_range = ns.x_range
-    humidity.line('date', 'in_hum', source=source_static)
-    humidity.circle('date', 'in_hum', size=1, source=source, color=None, selection_color="orange")
-    humidity.title.text = "Inside Humidity"
-    # set up callbacks
-    
-    
-    left = column(fwhm, airmass, ellipticity)
-    center = column(ns, bkg)
-    right = column(temp, humidity)
-    layout = row(left, center, right)
+        p48seeing.x_range = ns.x_range
+
+        left = column(fwhm, p48seeing, airmass)
+        center = column(ellipticity, ns, bkg, )
+        right = column(temp, humidity)
+        layout = row(left, center, right)
+
+    else:
+
+        layout = row(column(p48seeing))
     
     # initialize
     update()
@@ -148,8 +176,6 @@ def plot_stats(statsfile):
     curdoc().add_root(layout)
     curdoc().title = "Stats"
 
-    #output_file("templates/stats.html", title="Night Statistics")
-    #show(layout)
 
     return layout
 
