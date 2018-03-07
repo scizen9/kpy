@@ -510,7 +510,6 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
                     exptime = hdr['EXPTIME']
-                    lampstat = hdr['LAMPSTAT']
                     lampcur = hdr['LAMPCUR']
                     # Check for dome exposures
                     if 'dome' in obj:
@@ -518,14 +517,14 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                                                'Xe' not in obj and
                                                'Hg' not in obj and 
                                                'Cd' not in obj):
-                            if 'on' in lampstat and lampcur > 0.0:
+                            if lampcur > 0.0:
                                 # Copy dome images
                                 if not os.path.exists(destfil):
                                     nc, ns = docp(src, destfil, onsky=False,
                                                   verbose=True)
                                     ncp += nc
-                                else:
-                                    print("Bad dome - lamp not on: %s" % src)
+                            else:
+                                print("Bad dome - lamp not on: %s" % src)
                     # Check for arcs
                     elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
                         if exptime > 25.:
@@ -602,16 +601,20 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
             # a series.
             if 'Calib' in obj and 'of' in obj and 'test' not in obj:
                 exptime = hdr['EXPTIME']
+                lampcur = hdr['LAMPCUR']
                 # Check for dome exposures
                 if 'dome' in obj:
                     if exptime > 100. and ('dome' in obj and
                                            'Xe' not in obj and
                                            'Hg' not in obj and 
                                            'Cd' not in obj):
-                        # Copy dome images
-                        nc, ns = docp(src, destfil, onsky=False,
-                                      verbose=True)
-                        ncp += nc
+                        if lampcur > 0.0:
+                            # Copy dome images
+                            nc, ns = docp(src, destfil, onsky=False,
+                                          verbose=True)
+                            ncp += nc
+                        else:
+                            print("Bad dome - lamp not on: %s" % src)
                 # Check for arcs
                 elif 'Xe' in obj or 'Cd' in obj or 'Hg' in obj:
                     if exptime > 25.:
