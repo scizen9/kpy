@@ -1,10 +1,11 @@
 import numpy as np
 import json
-from datetime import datetime, timedelta
+import datetime 
 import os, glob
 from SEDMDb.SedmDb import SedmDB 
 from pandas import DataFrame
 from sqlalchemy.exc import IntegrityError
+import requests
 
 db = SedmDB(host='localhost', dbname='sedmdb')
 
@@ -63,22 +64,22 @@ def search_stats_file(mydate = None):
     if ( not mydate is None):
         s= os.path.join("/scr2/sedm/phot", mydate, "stats/stats.log")
         if os.path.isfile(s) and os.path.getsize(s) > 0:
-            return s
+            return s, mydate
         else:
-            return None
+            return None, None
 
     else:         
-        curdate = datetime.utcnow()
+        curdate = datetime.datetime.utcnow()
         #Try to find the stat files up to 100 days before today's date.
         i = 0
         while i < 100:
-            newdate = curdate - timedelta(i)
+            newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
             s = os.path.join("/scr2/sedm/phot", newdatedir, "stats/stats.log")
             if os.path.isfile(s) and os.path.getsize(s) > 0:
-                return s
+                return s, newdatedir
             i = i+1
-        return None
+        return None, None
 
 
 def search_redux_files(mydate = None, user=None):
@@ -103,12 +104,12 @@ def search_redux_files(mydate = None, user=None):
             files = None
 
     else:         
-        curdate = datetime.utcnow()
+        curdate = datetime.datetime.utcnow()
         #Try to find the stat files up to 100 days before today's date.
         i = 0
         files = None
         while i < 100:
-            newdate = curdate - timedelta(i)
+            newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
             s = os.path.join("/scr2/sedmdrp/redux", newdatedir, "*SEDM.txt")
             s2= os.path.join("/scr2/sedmdrp/redux/", newdatedir, "image*png")
@@ -148,12 +149,12 @@ def search_phot_files(mydate = None, user=None):
             files = []
 
     else:         
-        curdate = datetime.utcnow()
+        curdate = datetime.datetime.utcnow()
         #Try to find the stat files up to 100 days before today's date.
         i = 0
         files = []
         while i < 100:
-            newdate = curdate - timedelta(i)
+            newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
             files = glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "reduced/png/*.png"))
 
@@ -238,5 +239,126 @@ def remove_group(user_id, g_descriptor):
     '''
     group_id= db.execute_sql("SELECT id FROM groups WHERE designator='{0}';".format(g_descriptor))[0][0]
     db.execute_sql("DELETE FROM usergroups ug WHERE ug.user_id=%d AND ug.group_id=%d;"%(user_id, group_id))
+
+
+def get_p18obsdata(obsdate):
+    """
+    :param obsdate: Must be in "Year-Month-Day" or "YYYYMMDD" format
+    :return: List of dates and average seeing
+    """
+    #1. Create the URL to get the seeing for the requested night
+    p18date = []
+    p18seeing = []
+
+
+    if "-" in obsdate:
+        f = datetime.datetime.strptime(obsdate, "%Y-%m-%d") - datetime.timedelta(days=1)
+    else:
+        f = datetime.datetime.strptime(obsdate, "%Y%m%d") - datetime.timedelta(days=1)
+
+    y, m, d = [f.strftime("%Y"), int(f.strftime("%m")), int(f.strftime("%d"))]
+    p18obsdate = "%s-%s-%s" % (y, m, d)
+
+    #2. Get the data from the link
+    page = requests.get('http://nera.palomar.caltech.edu/P18_seeing/seeing_log_%s.log' % p18obsdate)
+    data = page.content
+
+    #3. Split the page by newlines    
+    data = data.split('\n')
+
+
+    #4. Loop through the data and only use points that have 4 or more seeing values to average
+    for i in data:
+        i = i.split()
+
+        if len(i) > 5 and int(i[5]) > 4:
+            d ='%s %s' %(i[1], i[0])
+            p18date.append(datetime.datetime.strptime(d, "%m/%d/%Y %H:%M:%S")
+                           + datetime.timedelta(hours=8))
+            p18seeing.append(float(i[4]))
+
+    return p18date, p18seeing
+
+
+def get_allocations():
+
+    allocations = db.execute_sql("""SELECT a.id, a.designator, p.designator, p.name, a.inidate, a.enddate, a.time_allocated, a.time_spent, a.active
+                                               FROM allocation a, program p
+                                               WHERE a.program_id=p.id 
+                                               ORDER BY a.id DESC; """)
+    allocations = jsonify(allocations, names=["id", "name", "program", "description", "inidate", "enddate", "time_allocated", "time_spent", "active"])
+
+
+    return allocations
+
+
+def get_programs():
+
+    programs = db.execute_sql("""SELECT p.id, p.designator, p.name, g.designator, p.pi, p.priority
+                                               FROM program p, groups g
+                                               WHERE p.group_id = g.id 
+                                               ORDER BY p.id DESC; """)
+    programs = jsonify(programs, names=["id", "designator", "name", "group", "pi", "priority"])
+
+
+    return programs
+
+def get_all_programs():
+
+    programs = db.get_from_program(["id", "designator"])
+    programs = jsonify(programs, names=["id", "name"])
+
+
+    return programs
+
+def get_all_groups():
+
+    groups = db.execute_sql("SELECT id, designator FROM groups;")
+    groups = jsonify(groups, names=["id", "designator"])
+
+
+    return groups
+
+def delete_allocation(id):
+
+    alloc = db.execute_sql("SELECT * FROM allocation where id=%d;"%id)
+    if len(alloc) > 0:
+        db.execute_sql("DELETE FROM allocation where id=%d"%id)
+        status = 0
+        message = "Delected allocation with ID %d"%id
+    else:
+        status = -1
+        message = "No allocation found to delete with ID %d"%id
+
+    return (status, message)
+
+
+def delete_program(id):
+
+    prog = db.execute_sql("SELECT * FROM program where id=%d;"%id)
+    if len(prog) > 0:
+        db.execute_sql("DELETE FROM program where id=%d"%id)
+        status = 0
+        message = "Delected program with ID %d"%id
+    else:
+        status = -1
+        message = "No program found to delete with ID %d"%id
+
+    return (status, message)
+
+
+def delete_group(id):
+
+    group = db.execute_sql("SELECT * FROM groups where id=%d;"%id)
+    if len(group) > 0:
+        db.execute_sql("DELETE FROM groups where id=%d"%id)
+        status = 0
+        message = "Delected group with ID %d"%id
+    else:
+        status = -1
+        message = "No group found to delete with ID %d"%id
+
+    return (status, message)
+
 
 

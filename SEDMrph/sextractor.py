@@ -448,10 +448,11 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
  
     '''
     
+
+
     s = np.genfromtxt(sexfile, comments="#", dtype=[("x", np.float), ("y", np.float), ("ra", np.float), ("dec", np.float), \
         ("mag", np.float), ("magerr",np.float), ("fwhm_world", np.float), ("fwhm_image", np.float), ("ellipticity",np.float), \
-        ("background", np.float), ("flags", np.float), ("a_image", np.float), ("b_image", np.float),("theta_image", np.float), \
-        ("petro_radius", np.float)])
+        ("background", np.float), ("flags", np.float), ("a_image", np.float), ("b_image", np.float),("theta_image", np.float), ("petro_radius", np.float)])
 
     if (s is None or s.ndim==0 or len(s)==0):
         print "Empty content of the file for file %s. The length of the file is %d"%(sexfile, len(s))
@@ -471,9 +472,8 @@ def analyse_image(sexfile, arcsecpix=0.394, is_rccam=True):
     if (nsources == 0):
         return 0,0,0,0
     #Select round sources (ellipticity is 1-axis_ratio)
-    s = s[s[:,8]<0.5]
+    s = s[s["ellipticity"]<0.3]
     ellipticity = np.nanmedian(s["ellipticity"])
-    s = s[s["ellipticity"]<0.25]
 
     #Select FWHM at least 3 pixels and lower than 15 arcsec
     s = s[ (s["fwhm_image"]>3)*(s["fwhm_image"]*arcsecpix<15)]

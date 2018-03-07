@@ -26,6 +26,7 @@ import flask_login
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
 import requests as url_requests
+from flask_table import Table, Col, BoolCol, DatetimeCol, ButtonCol
 
 from IPython.display import HTML
 import matplotlib.pyplot as plt
@@ -262,8 +263,8 @@ def weather_stats():
 
     if not 'date' in flask.request.args:
         # get the weather stats
-        statsfile = model.search_stats_file()
-        stats_plot = stats_web.plot_stats(statsfile)
+        statsfile, mydate = model.search_stats_file()
+        stats_plot = stats_web.plot_stats(statsfile, mydate)
         if (stats_plot is None):
             message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
             script, div = None, None
@@ -281,12 +282,14 @@ def weather_stats():
             mydate = mydate[0]
             message = ""
 
-            statsfile = model.search_stats_file(mydate)
-            if (statsfile is None):
-                message=message + "No statistics log found for the date %s."%(mydate)
-                script, div = "", ""
+            statsfile, mydate_out = model.search_stats_file(mydate)
+            stats_plot = stats_web.plot_stats(statsfile, mydate)
+            if (not statsfile):
+                message=message + "No statistics log found for the date %s. Showing P48 data."%(mydate)
+                script, div = components(stats_plot)
+
             else:
-                stats_plot = stats_web.plot_stats(statsfile)
+                stats_plot = stats_web.plot_stats(statsfile, mydate)
                 message = message + "Weather statistics for selected day: %s"%(mydate)
                 script, div = components(stats_plot)
 
@@ -301,10 +304,13 @@ def index():
     
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
-                 "FROM request r, object o, allocation a WHERE o.id = r.object_id "
-                 "AND a.id = r.allocation_id AND r.user_id = '%s' AND r.enddate > NOW();"
-                 % (flask_login.current_user.id,))
+        request_query = ("""SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status 
+                            FROM request r, object o, allocation a 
+                            WHERE o.id = r.object_id AND a.id = r.allocation_id  AND r.enddate > (NOW() - INTERVAL '5 day') AND r.allocation_id IN
+                               (SELECT a.id
+                                FROM allocation a, groups g, usergroups ug, users u, program p
+                                WHERE ug.user_id = u.id AND ug.group_id = g.id AND u.id = %d AND p.group_id = g.id AND a.program_id = p.id
+                                );"""% (flask_login.current_user.id))
         req = db.execute_sql(request_query)
         # organize requests into dataframes by whether they are completed or not
         complete = pd.DataFrame([request for request in req if request[5] in ['COMPLETED', 'REDUCED']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
@@ -314,7 +320,7 @@ def index():
                                          "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
         # create the dataframe and set the allocation names to be linked
         data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
-        data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
+        #data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
         active_alloc = data.loc[data.active == True]  # filter for active allocations
         ac = active_alloc.drop(['allocation id', 'active'], axis=1)
         # generate the html and table titles
@@ -380,6 +386,9 @@ def login():
 @flask_login.login_required
 def manage_user():
 
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
     message = ""
     form1 = SearchUserForm()
     form2 = UsersForm()
@@ -387,8 +396,6 @@ def manage_user():
     old_groups = []
     new_groups = []
     allocations =[]
-
-    print flask.request.form
 
     #Case with no user at all
     if len(flask.request.args) ==0:
@@ -450,7 +457,6 @@ def manage_user():
     u = model.get_info_user(username)
     message = u["message"]
 
-    print "MESSAGE", message, "FORM1", form1, "FORM2", form2, "ALLOC", allocations
 
     if "username" in u.keys():
         #form2 = UsersForm()
@@ -469,6 +475,214 @@ def manage_user():
                     render_template('manage_users.html', form1=form1, form2=form2, allocations=allocations, message=message) +
                     render_template('footer.html'))
 
+
+@app.route("/delete_allocation", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_allocation():
+    '''
+    This handles when a user needs to cancel a reservation. 
+    '''
+    id = int(request.args.get('id'))
+    status, message = model.delete_allocation(id)
+
+    return redirect(url_for('manage_allocation'))
+
+@app.route("/manage_allocation", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_allocation():
+    '''
+    This page allows to add and delete program allocations.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class AllocationTable(Table):
+        id = 0
+        classes = ['table']
+        name = Col('Name')
+        program = Col('Program')
+        description = Col('Description')
+        inidate = DatetimeCol('Initial Date')
+        enddate = DatetimeCol('End Date')
+        time_allocated = Col('Time allocated')
+        time_spent = Col('Time spent')
+        active = BoolCol('Active')
+        delete = ButtonCol('Delete', 'delete_allocation', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, name, program, description, inidate, enddate, time_allocated, time_spent, active):
+            self.id = id
+            self.name = name
+            self.program = program
+            self.description = description
+            self.inidate = inidate
+            self.enddate = enddate
+            self.time_allocated = time_allocated
+            self.time_spent = time_spent
+            self.active = active
+
+    form = AllocationForm()
+
+    if request.method == 'GET':
+        form.program_id.choices = [(row["id"], row["name"]) for row in model.get_all_programs()] 
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  'program_id': int(postform['program_id']),
+                   'designator': postform['designator'],
+                   'inidate' :  datetime.datetime.strptime(postform['inidate'], "%Y-%m-%d %H:%M:%S"),
+                    'enddate' : datetime.datetime.strptime(postform['enddate'], "%Y-%m-%d %H:%M:%S"),
+                    'time_allocated': float(postform['time_allocated'])*3600*24,
+                    'time_spent': float(postform['time_spent'])*3600*24}
+        status, message = db.add_allocation(pardic)
+
+    # Or, more likely, load items from your database with something like
+    # Populate the table
+    items = model.get_allocations()
+    table = AllocationTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('allocation.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
+    
+
+
+@app.route("/delete_program", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_program():
+    '''
+    This handles when a user needs to cancel a reservation. 
+    '''
+    id = int(request.args.get('id'))
+    status, message = model.delete_program(id)
+
+    return redirect(url_for('manage_program'))
+
+@app.route("/manage_program", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_program():
+    '''
+    This page allows to add and delete programs.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class ProgramTable(Table):
+        id = 0
+        classes = ['table']
+        designator = Col('Designator')
+        name = Col('Name')
+        group = Col('Group')
+        pi = Col('PI')
+        priority = Col('Priority')
+        delete = ButtonCol('Delete', 'delete_program', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, designator, name, group, pi, priority):
+            self.id = id
+            self.designator = designator
+            self.name = name
+            self.group = group
+            self.pi = pi
+            self.priority = priority
+
+    form = ProgramForm()
+
+
+    form.group.choices = [(row["id"], row["designator"]) for row in model.get_all_groups()] 
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  'group_id': int(postform['group']),
+                   'designator': postform['designator'],
+                   'name': postform['name'],
+                   'PI': postform['pi'],
+                   'priority': float(postform['priority']),
+                    }
+        print pardic
+        status, message = db.add_program(pardic)
+
+    # Populate the table
+    items = model.get_programs()
+    table = ProgramTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('program.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
+    
+
+@app.route("/delete_group", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_group():
+    '''
+    This handles when a user needs to delete a group. 
+    '''
+    id = int(request.args.get('id'))
+    status, message = model.delete_group(id)
+
+    return redirect(url_for('manage_group'))
+
+@app.route("/manage_group", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_group():
+    '''
+    This page allows to add and delete groups.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class GroupTable(Table):
+        id = 0
+        classes = ['table']
+        designator = Col('Designator')
+        delete = ButtonCol('Delete', 'delete_group', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, designator):
+            self.id = id
+            self.designator = designator
+
+    form = GroupForm()
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  
+                   'designator': postform['designator']
+                    }
+
+        status, message = db.add_group(pardic)
+
+    # Populate the table
+    items = model.get_all_groups()
+    table = GroupTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('group.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
 
 @app.route("/passchange", methods=['GET', 'POST'])
 @flask_login.login_required
@@ -544,9 +758,9 @@ def requests():
     user_id = flask_login.current_user.id
     print Time.now()
     if not form1.inidate.data:
-        form1.inidate.data = datetime.today()
+        form1.inidate.data = datetime.datetime.today()
     if not form1.enddate.data:    
-        form1.enddate.data = datetime.today()+timedelta(2)
+        form1.enddate.data = datetime.datetime.today() + datetime.timedelta(2)
     if form1.submit_req.data:
         pass
     if form1.submit_req.data and form1.validate_on_submit():

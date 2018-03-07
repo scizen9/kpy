@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import fields, validators, widgets, Field, FormField
 from flask import request, redirect, url_for
 from urlparse import urlparse, urljoin
+import datetime
 
 SECRET_KEY = 'secret'
 
@@ -136,6 +137,32 @@ class PassChangeForm(FlaskForm):
     pass_new = fields.PasswordField('New Password', validators=[validators.input_required(), validators.EqualTo('pass_conf', message='Passwords must match')] )
     pass_conf = fields.PasswordField('Confirm New Password', validators=[validators.input_required()])
 
+
+class GroupForm(FlaskForm):
+
+    designator = fields.StringField('Group Designator', validators=[validators.input_required()], description='Group name here')
+    add = fields.SubmitField('Add', description=None)
+
+class ProgramForm(FlaskForm):
+
+    designator = fields.StringField('Program Designator', validators=[validators.input_required()], description='Program name here')
+    name = fields.StringField('Program Name', description='Program name here')
+    group = fields.SelectField('Group for program', choices=[]) 
+    pi= fields.StringField('PI of the program', validators=[validators.input_required()], description='Program name here')
+    priority = fields.DecimalField('Priority [0-low, 5-high]', default=0)
+    add = fields.SubmitField('Add', description=None)
+
+
+class AllocationForm(FlaskForm):
+
+    designator= fields.StringField('Allocation Name', validators=[validators.input_required()], description='Allocation name here')
+    program_id = fields.SelectField('Program for allocation', choices=[]) 
+    inidate = fields.DateTimeField('Initial Date', default=datetime.datetime.utcnow())
+    enddate = fields.DateTimeField('End Date', default=datetime.datetime.utcnow())
+    time_allocated = fields.DecimalField('Allocated Time (days)', default=0)
+    time_spent=fields.DecimalField('Time spent (days)', default=0)
+    active= fields.BooleanField('Active', default=True)
+    add = fields.SubmitField('Add', description=None)
 
 class SearchUserForm(FlaskForm):
 
