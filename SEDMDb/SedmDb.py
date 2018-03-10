@@ -480,6 +480,56 @@ class SedmDB:
             return (-1, "ERROR: update_program sql command failed with a ProgrammingError!")
         return (pardic['id'], "Program updated, columns " + str(keys)[1:-1])
 
+    def update_object(self, pardic):
+        """
+        updates a pragram
+
+        Args:
+            pardic (dict):
+                required:
+                    'id' (int/long)
+                optional:
+                    'marshal_id' (int/long)
+                    'name' (str)
+                    'iauname' (str)
+                    'ra' (float)
+                    'dec' (float)
+                    'epoch' (str)
+                    'magnitude' (float)
+                    'creationdate' ('year-month-day hour:minute:second')
+
+        Returns:
+            (-1, "ERROR...") if it failed to update
+
+            (id (long), "Object updated, columns 'column_names'") if the program is updated successfully
+        """
+        param_types = {'id': int, 'marshal_id':int, 'name':str, 'iauname':str, 'ra' :float,'dec':float, 'epoch':str, 'magnitude':float, 'creationdate':'datetime'}
+        keys = list(pardic.keys())
+        if 'id' not in keys:
+            return (-1, "ERROR: id not provided!")
+
+        elif pardic['id'] not in [x[0] for x in self.execute_sql('SELECT id FROM object;')]:
+            return (-1, "ERROR: no object with the id!")
+        keys.remove('id')
+        for key in reversed(keys):  # remove any keys that are invalid or not allowed to be updated
+            if key not in param_types.keys():
+                return (-1, "ERROR: %s is an invalid key!" % (key,))
+        if len(keys) == 0:
+            return (-1, "ERROR: no parameters given to update!")
+        type_check = _data_type_check(keys, pardic, param_types)
+        if type_check:
+            return (-1, type_check)
+
+        sql = _generate_update_sql(pardic, keys, 'object')
+        try:
+            self.execute_sql(sql)
+        except exc.IntegrityError:
+            return (-1, "ERROR: update_program sql command failed with an IntegrityError!")
+        except exc.ProgrammingError:
+            return (-1, "ERROR: update_program sql command failed with a ProgrammingError!")
+        return (pardic['id'], "Program updated, columns " + str(keys)[1:-1])
+
+
     def get_from_program(self, values, where_dict={}, compare_dict={}):
         """
         select values from `program`
@@ -857,7 +907,7 @@ class SedmDB:
             [] if no matching object name is found
         """
         object_name = object_name.lower()
-        sql = "SELECT id, name FROM object WHERE name LIKE '%s%s%s'" % ('%', object_name, '%')
+        sql = "SELECT id, name FROM object WHERE LOWER(name) LIKE '%s%s%s'" % ('%', object_name, '%')
         obj = self.execute_sql(sql)
         return obj
 
@@ -2891,6 +2941,37 @@ class SedmDB:
             return (-1, "ERROR: sql command failed with a ProgrammingError!")
         return results
 
+    def update_allocation_time(self, allocation_id):
+        """
+        Searches for all the completed requests under that allocation and updates the time take to execute it.
+        Updates the field" time_spent
+
+        Args:
+            allocation_id (int): int
+                Id of the allocation to update.
+        """
+
+        exptime  = self.execute_sql("""SELECT exptime 
+                                    FROM request 
+                                    WHERE status ='COMPLETED' and allocation_id = %d;"""%allocation_id)
+
+        if len(exptime) == 0:
+            return
+
+        reqsum = [ np.sum(e) for e in exptime]
+        time_spent = np.sum(reqsum)
+                
+        exptime  = self.update_allocation({"id":allocation_id, "time_spent":time_spent})
+
+    def update_all_allocations(self):
+        """
+        Updates all the active allocation's time.
+        """
+        alloc = self.get_from_allocation(["id"], {"active":True})
+        al = list(set(alloc))
+        for a in al: 
+            self.update_allocation_time(int(a[0]))
+
 
 def _data_type_check(keys, pardic, value_types):
     """
@@ -3034,7 +3115,7 @@ def _generate_update_sql(pardic, param_list, table, lastmodified=False):
     Returns:
         sql string
     """
-    sql = "UPDATE %s SET" % (table,)
+    sql = "UPDATE %s SET " % (table,)
     for param in param_list:
         if pardic[param]:  # it may be a key with nothing in it
             sql += " %s = '%s'," % (param, pardic[param])

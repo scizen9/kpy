@@ -189,9 +189,9 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
 
     return s
 
-@app.route('/data_access', methods=['GET'])
+@app.route('/data_access/<path:instrument>', methods=['GET'])
 @flask_login.login_required
-def data_access():
+def data_access(instrument):
     '''
     Displays the data access page. 
     It accepts the "date" parameter as the day we want to see the data from.
@@ -304,30 +304,22 @@ def index():
     
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        request_query = ("""SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status 
-                            FROM request r, object o, allocation a 
-                            WHERE o.id = r.object_id AND a.id = r.allocation_id  AND r.enddate > (NOW() - INTERVAL '5 day') AND r.allocation_id IN
-                               (SELECT a.id
-                                FROM allocation a, groups g, usergroups ug, users u, program p
-                                WHERE ug.user_id = u.id AND ug.group_id = g.id AND u.id = %d AND p.group_id = g.id AND a.program_id = p.id
-                                );"""% (flask_login.current_user.id))
-        req = db.execute_sql(request_query)
+        dfreq = model.get_requests_for_user(flask_login.current_user.id)
+
+
         # organize requests into dataframes by whether they are completed or not
-        complete = pd.DataFrame([request for request in req if request[5] in ['COMPLETED', 'REDUCED']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
-        active = pd.DataFrame([request for request in req if request[5] in ['PENDING', 'ACTIVE']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
+        complete = dfreq[(dfreq['status']=='COMPLETED') | (dfreq['status']=='REDUCED')]
+        active = dfreq[(dfreq['status']=='PENDING') | (dfreq['status']=='ACTIVE')]
+
         # retrieve information about the user's allocations
-        allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
-                                         "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
-        # create the dataframe and set the allocation names to be linked
-        data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
-        #data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
-        active_alloc = data.loc[data.active == True]  # filter for active allocations
-        ac = active_alloc.drop(['allocation id', 'active'], axis=1)
+        ac = model.get_allocations_user(flask_login.current_user.id)
+
+
         # generate the html and table titles
         request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False))]
-        request_titles = ['', 'active requests', 'complete requests']
-        alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=100))]
-        alloc_titles = ['', 'active allocations']
+        request_titles = ['', 'Active Requests for the last 5 days', 'Completed Requests in the last 5 days']
+        alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=10))]
+        alloc_titles = ['', 'Your Active Allocations']
         greeting = 'Hello %s!'%flask_login.current_user.name
         myimage = flask.url_for('static', filename='img/smile.jpg')
     else:  # if there is not user, set the lists as empty
@@ -416,60 +408,94 @@ def manage_user():
     else:
         username = ""
 
+    u = model.get_info_user(username)
+    message = u["message"]
 
-    if 'modify_user' in flask.request.form and form2.validate_on_submit():
+    if username =="" or not "username" in u.keys():
 
-        username = flask.request.form['username']
+        form2.old_groups.choices = []
+        form2.new_groups.choices = []
+
+        if 'add_user' in flask.request.form:
+
+            name = form2.name.data
+            email = form2.email.data
+            new_password = form2.pass_new.data
+            new_password_conf = form2.pass_conf.data
+
+
+            if form2.pass_new.data and new_password ==new_password_conf:
+                status, mes = db.add_user({"username":username, "name":name, "email":email, "password":new_password})
+                if status ==0:
+                    flash("User created")
+                else:
+                    message = mes
+            else:
+                message = "New user requires a password!"
+
+            return (render_template('header.html') +
+                        render_template('manage_users.html', form1=form1, form2=form2, allocations=[], message=message) +
+                        render_template('footer.html'))
+
+        else:
+            return (render_template('header.html') +
+                        render_template('manage_users.html', form1=form1, form2=None, allocations=[], message=message) +
+                        render_template('footer.html'))
+    else:
+        form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+        form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+        allocations = u["allocations"]
+
+
+    if 'search_user' in flask.request.form and form1.validate_on_submit():
+        form2.username.data = u["username"]
+        form2.name.data = u["name"]
+        form2.email.data = u["email"]
+
+    elif 'add_group' in flask.request.form :
+        g = flask.request.form['new_groups']
+        model.add_group(u["id"], g)
+        message = "Added group for user %s"%(form2.username.data)
+
+    elif 'remove_group' in flask.request.form:
+        g = flask.request.form['old_groups']
+        model.remove_group(u["id"], g)
+        message = "Deleted group for user %s"%form2.username.data
+
+    elif 'modify_user' in flask.request.form and form2.validate_on_submit():
+
         name = form2.name.data
         email = form2.email.data
         new_password = form2.pass_new.data
         new_password_conf = form2.pass_conf.data
 
-        u = model.get_info_user(username)
-        message = u["message"]
+        status, mes = db.update_user({'id': u["id"], 'name':name, 'email':email})  
+        flash("User with username %s updated with name %s, email %s. %s"%(username, name, email, mes))   
 
-        #If any of the field is different from the one in the DB, we update.
-        if "username" in u.keys():   
-            status, mes = db.update_user({'id': u["id"], 'name':name, 'email':email})  
-            flash("User updated with name %s, username %s. %s."%(name, username, mes))   
+        #If there is any infoirmation in the password field, we update
         if form2.pass_new.data:
             db.update_user({'id': u["id"], 'password': new_password})
             flash("Password changed ")
+    elif 'delete_user' in flask.request.form and form2.name.data:
 
-    elif (('add_group' in flask.request.form) or ('remove_group' in flask.request.form)):
-        u = model.get_info_user(form2.username.data)
+        username = form2.username.data
+        u = model.get_info_user(username)
 
-        print "MODIFY %s"%(form2.username.data) 
-        if 'add_group' in flask.request.form:
-            g = flask.request.form['new_groups']
-            model.add_group(u["id"], g)
-            message = "Retrieved data for user %s"%form2.username.data
-        elif 'remove_group' in flask.request.form:
-            g = flask.request.form['old_groups']
-            model.remove_group(u["id"], g)
-            message = "Retrieved data for user %s"%form2.username.data
+        if 'username' in u.keys():
+            status, mes = db.remove_user({'id': u["id"]})  
+            flash("Deleted user with username %s. %s"%(username, mes))   
+            return (render_template('header.html') +
+                    render_template('manage_users.html', form1=form1, form2=None, allocations=[], message=message) +
+                    render_template('footer.html'))
 
     else:
         print "NOTHING TO BE DONE"
         pass
 
-
     u = model.get_info_user(username)
-    message = u["message"]
-
-
-    if "username" in u.keys():
-        #form2 = UsersForm()
-        form2.username.data = u["username"]
-        form2.name.data = u["name"]
-        form2.email.data = u["email"]
-
-        form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
-        form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
-        allocations = u["allocations"]
-    else:
-        form2 = None
-        allocations = []
+    form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+    form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+    allocations = u["allocations"]
 
     return (render_template('header.html') +
                     render_template('manage_users.html', form1=form1, form2=form2, allocations=allocations, message=message) +
@@ -483,6 +509,10 @@ def delete_allocation():
     '''
     This handles when a user needs to cancel a reservation. 
     '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
     id = int(request.args.get('id'))
     status, message = model.delete_allocation(id)
 
@@ -562,6 +592,10 @@ def delete_program():
     '''
     This handles when a user needs to cancel a reservation. 
     '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
     id = int(request.args.get('id'))
     status, message = model.delete_program(id)
 
@@ -634,6 +668,10 @@ def delete_group():
     '''
     This handles when a user needs to delete a group. 
     '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
     id = int(request.args.get('id'))
     status, message = model.delete_group(id)
 
@@ -1406,8 +1444,23 @@ def show_objects(ident):
 @app.route('/project_stats')
 @flask_login.login_required
 def projects_home():  # TODO: list groups and projects.
-    # generate a list of (group designator, project id, project designator)    
-    allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
+    # generate a list of (group designator, project id, project designator) 
+
+    if flask_login.current_user.name == 'SEDM_admin':
+        user_id = None
+    else:
+        user_id = flask_login.current_user.id
+
+    alloc_stats = model.get_allocation_stats(user_id)
+    stats_plot = stats_web.plot_stats_allocation(alloc_stats)
+    script, div = components(stats_plot)
+
+    return (render_template('header.html') + 
+            render_template('projects_home.html', script=script, div=div) +  
+            render_template('footer.html'))
+
+    
+    '''allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
                                  "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
     data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
     data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
@@ -1415,17 +1468,19 @@ def projects_home():  # TODO: list groups and projects.
     inactive = data.loc[data.active == False]
     ac = active.drop(['allocation id', 'active'], axis=1)
     inac = inactive.drop(['allocation id', 'active'], axis=1)
+
+
     return (render_template('header.html') + 
             render_template('projects_home.html', allocations = allocations, tables=[HTML(ac.to_html(escape=False, classes='active', index=False)), HTML(inac.to_html(escape=False, classes='inactive', index=False))],
                             titles = ['', 'Active allocations', 'Inactive allocations']) + 
-            render_template('footer.html'))
+            render_template('footer.html'))'''
 
 
 @app.route('/project_stats/<program>')
 @flask_login.login_required
 def project_stats(program):
-    day = datetime.now()
-    start = Time(day - timedelta(days=day.weekday())).mjd
+    day = datetime.datetime.now()
+    start = Time(day - datetime.timedelta(days=day.weekday())).mjd
     end = start + 7
     alloc_id = None
 

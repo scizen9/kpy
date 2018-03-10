@@ -19,6 +19,30 @@
             </div>
             <div class="col-md-6">
                 <div class="well">
+                    <h3>Search Database</h3>
+                    <h4>By coordinates:</h4>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.obj_ra) }}
+                            {{ render_field(form2.obj_dec) }}
+                            {{ render_field(form2.radius) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                    <h4>By name:</h4>
+                    <form method="post">
+                        {{ form2.csrf_token }}
+                        <p>
+                            {{ render_field(form2.obj_name) }}
+                            {{ render_field(form2.typedesig) }}
+                            {{ render_field(form2.submit_obj) }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="well">
                     <h3>Add Object</h3>
                     <form method="post">
                         {{ form1.csrf_token }}
@@ -46,28 +70,5 @@
                     </form>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="well">
-                    <h3>Search Database</h3>
-                    <h4>By coordinates:</h4>
-                    <form method="post">
-                        {{ form2.csrf_token }}
-                        <p>
-                            {{ render_field(form2.obj_ra) }}
-                            {{ render_field(form2.obj_dec) }}
-                            {{ render_field(form2.radius) }}
-                            {{ render_field(form2.submit_obj) }}
-                        </p>
-                    </form>
-                    <h4>By name:</h4>
-                    <form method="post">
-                        {{ form2.csrf_token }}
-                        <p>
-                            {{ render_field(form2.obj_name) }}
-                            {{ render_field(form2.typedesig) }}
-                            {{ render_field(form2.submit_obj) }}
-                        </p>
-                    </form>
-                </div>
-            </div>
+
         </div>

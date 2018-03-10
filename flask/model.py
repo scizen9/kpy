@@ -7,6 +7,7 @@ from pandas import DataFrame
 from sqlalchemy.exc import IntegrityError
 import requests
 
+
 db = SedmDB(host='localhost', dbname='sedmdb')
 
 def jsonify(dbout, names):
@@ -168,6 +169,23 @@ def search_phot_files(mydate = None, user=None):
 
     return files, mydate
 
+def get_requests_for_user(user_id):
+    '''
+    Obtains the DataFrame for the requests that were made:
+        - By any member of the group where the user with user_id belongs to.
+        - In the last 5 days
+    '''
+    request_query = ("""SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status, r.lastmodified 
+                        FROM request r, object o, allocation a 
+                        WHERE o.id = r.object_id AND a.id = r.allocation_id  AND r.enddate > (NOW() - INTERVAL '5 day') AND r.allocation_id IN
+                           (SELECT a.id
+                            FROM allocation a, groups g, usergroups ug, users u, program p
+                            WHERE ug.user_id = u.id AND ug.group_id = g.id AND u.id = %d AND p.group_id = g.id AND a.program_id = p.id
+                            ) ORDER BY r.lastmodified DESC;"""% (user_id))
+    req = db.execute_sql(request_query)
+    req = DataFrame(req, columns=['allocation', 'object', 'start date', 'end date', 'priority','status', 'lastmodified'])
+
+    return req
 
 def get_info_user(username):
     '''
@@ -279,6 +297,18 @@ def get_p18obsdata(obsdate):
 
     return p18date, p18seeing
 
+def get_allocations_user(user_id):
+
+    res = db.execute_sql(""" SELECT a.designator, p.designator, g.designator, a.time_allocated, a.time_spent
+                            FROM allocation a, program p, groups g, usergroups ug
+                            WHERE a.program_id = p.id AND p.group_id = g.id 
+                            AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d"""%(user_id))
+
+    # create the dataframe and set the allocation names to be linked
+    data = DataFrame(res, columns=['allocation', 'program', 'group', 'time allocated', 'time spent'])
+
+    return data
+
 
 def get_allocations():
 
@@ -361,4 +391,39 @@ def delete_group(id):
     return (status, message)
 
 
+def get_allocation_stats(user_id):
+    """
+    Obtains a list of allocations that belong to the user and 
+    query the total allocated name and time spent for that allocation.
+
+    If no user_id is provided, all active allocations are returned.
+    """
+    if (user_id is None):
+        res = db.get_from_allocation(["designator", "time_allocated", "time_spent"], {"active":True})
+    else:
+        res = db.execute_sql(""" SELECT a.designator, a.time_allocated, a.time_spent
+                                FROM allocation a, program p, groups g, usergroups ug
+                                WHERE a.program_id = p.id AND p.group_id = g.id 
+                                AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d"""%(user_id))
+
+    df = DataFrame(res, columns=["designator", "time_allocated", "time_spent"])
+
+    alloc_hours = np.array([ta.total_seconds() / 3600. for ta in df["time_allocated"]])
+    spent_hours = np.array([ts.total_seconds() / 3600. for ts in df["time_spent"]])
+    free_hours = alloc_hours - spent_hours
+
+    df = df.assign(alloc_hours=alloc_hours, spent_hours=spent_hours, free_hours=free_hours)
+
+    df = df.sort_values(by=["alloc_hours"], ascending=False)
+
+    alloc_names = df["designator"].values
+    category = ["alloc_hours", "spent_hours", "free_hours"]
+
+
+    data = {'allocations' : alloc_names}
+
+    for cat in category:
+        data[cat] = df[cat]
+
+    return data
 

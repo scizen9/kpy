@@ -88,15 +88,13 @@
             /*align-items: center;*/
         /*}*/
 </style>
-<link
-    href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.10.min.css"
+    <link href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.14.min.css"
         rel="stylesheet" type="text/css">
-	<link
-	    href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.10.min.css"
+	<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.14.min.css"
 	        rel="stylesheet" type="text/css">
 
-		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.10.min.js"></script>
-		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.10.min.js"></script>
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.14.min.js"></script>
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.14.min.js"></script>
 
 </head>
 <nav class="navbar navbar-default navbar-fixed-top">
@@ -124,9 +122,18 @@
                 {% endif %}
                 {% if current_user.is_authenticated %}
                     <li><a href="/objects">Objects</a></li>
-                    <li><a href="/request">Request</a></li>
+                    {% if current_user.name=='SEDM_admin' %}
+                        <li><a href="/request">Request</a></li>
+                    {% endif %}
                     <li><a href="/project_stats">Project Statistics</a></li>
-                    <li><a href="/data_access?">Data Access</a></li>
+
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Data Access <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                    <li><a href="/data_access/ifu">IFU</a></li>
+                    <li><a href="/data_access/rc">RC</a></li>
+                    </ul>
+                </li>
                 {% endif %}
                 <li><a href="/weather_stats?">Night Statistics</a></li>
 
