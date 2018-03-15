@@ -44,6 +44,7 @@ from bokeh.plotting import figure
 from bokeh.core.properties import value
 
 
+
 from astropy.time import Time
 import model
 
@@ -111,7 +112,7 @@ def plot_stats(statsfile, mydate):
     
     p48seeing = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
     p48seeing.circle('date', 'seeing', source=source_static_p48, color="black")
-    p48seeing.title.text = "P48 seeing [arcsec]"
+    p48seeing.title.text = "P18 seeing [arcsec]"
 
     if statsfile:
         ns = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
@@ -211,7 +212,7 @@ def plot_stats_allocation(data):
     N = len(alloc_names)
 
     source = ColumnDataSource(data=data)
-    p = figure(x_range=alloc_names, plot_height=400, plot_width=80*N, title="Time spent/available for SEDM allocations this term",
+    p = figure(x_range=alloc_names, plot_height=400, plot_width=80*8, title="Time spent/available for SEDM allocations this term",
                toolbar_location=None, tools="")
 
     p.vbar_stack(categories, x='allocations', width=0.9, color=colors, source=source, legend=["Spent", "Available"])
@@ -226,8 +227,6 @@ def plot_stats_allocation(data):
     p.xaxis.major_label_orientation = 0.3
 
     #Create the second plot with the % spent
-
-
     alloc_names = data['allocations']
     percentage = (data["spent_hours"] / data["alloc_hours"]) * 100
 
@@ -239,7 +238,7 @@ def plot_stats_allocation(data):
 
     source = ColumnDataSource(data=dict(alloc_names=alloc_names, percentage=percentage, color=colors))
 
-    p2 = figure(x_range=alloc_names, y_range=(0,100), plot_height=400, plot_width=80*N, title="Percentage of time spent",
+    p2 = figure(x_range=alloc_names, y_range=(0,100), plot_height=400, plot_width=80*8, title="Percentage of time spent",
                toolbar_location=None, tools="")
 
     p2.vbar(x='alloc_names', top='percentage', width=0.9, color='color', source=source)
@@ -250,7 +249,60 @@ def plot_stats_allocation(data):
     p2.yaxis.axis_label = '% time spent'
     p2.xaxis.major_label_orientation = 0.3
 
-    layout =  row(p, p2)
+    
+    #Create the pie charts
+    pieColors = 10*["red", "green", "blue", "orange", "yellow", 'lime', 'brown', 'cyan', \
+        'magenta', 'olive', 'black', 'teal', 'gold', 'crimson', 'moccasin', 'greenyellow', 'navy', 'ivory', 'lightpink']
+
+    #First one with the time spent
+
+    # define starts/ends for wedges from percentages of a circle
+    percents_only = np.round( np.array(list(data["spent_hours"] / np.sum(data["spent_hours"])))*100, 1)
+    percents = np.cumsum( [0] + list(data["spent_hours"] / np.sum(data["spent_hours"])))
+    starts = [per*2*np.pi for per in percents[:-1]]
+    ends = [per*2*np.pi for per in percents[1:]]
+
+    p3 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=400, plot_width=600, title="% spent")
+
+    #Add individual wedges:
+    for i in range(N):
+        p3.wedge(x=0, y=0, radius=.9, start_angle=starts[i], end_angle=ends[i], color=pieColors[i], legend="[{0}%] {1}".format(percents_only[i], alloc_names[i]) )
+
+    p3.xgrid.grid_line_color = None
+    p3.ygrid.grid_line_color = None
+    p3.legend.orientation = "vertical"
+    p3.legend.location = "top_right"
+    p3.legend.border_line_alpha = 0
+    p3.legend.background_fill_color = None
+    p3.xaxis.visible = False
+    p3.yaxis.visible = False
+
+    #Second one with the time allocated
+
+    # define starts/ends for wedges from percentages of a circle
+    percents_only = np.round( np.array(list(data["alloc_hours"] / np.sum(data["alloc_hours"])))*100, 1)
+    percents = np.cumsum( [0] + list(data["alloc_hours"] / np.sum(data["alloc_hours"])))
+    starts = [per*2*np.pi for per in percents[:-1]]
+    ends = [per*2*np.pi for per in percents[1:]]
+
+    p4 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=400, plot_width=600, title="% time allocated to each program")
+    #Add individual wedges:
+    for i in range(N):
+        p4.wedge(x=0, y=0, radius=.9, start_angle=starts[i], end_angle=ends[i], color=pieColors[i], legend="[{0}%] {1}".format(percents_only[i], alloc_names[i]) ) 
+
+    p4.xgrid.grid_line_color = None
+    p4.ygrid.grid_line_color = None
+    p4.legend.orientation = "vertical"
+    p4.legend.location = "top_right"
+    p4.legend.border_line_alpha = 0
+    p4.legend.background_fill_color = None
+    p4.xaxis.visible = False
+    p4.yaxis.visible = False
+
+
+
+    layout =  row(column(p, p2), column(p4, p3))
+    
 
     curdoc().add_root(layout)
     curdoc().title = "Allocation stats"

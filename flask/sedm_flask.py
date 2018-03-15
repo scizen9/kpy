@@ -285,7 +285,7 @@ def weather_stats():
             statsfile, mydate_out = model.search_stats_file(mydate)
             stats_plot = stats_web.plot_stats(statsfile, mydate)
             if (not statsfile):
-                message=message + "No statistics log found for the date %s. Showing P48 data."%(mydate)
+                message=message + "No statistics log found for the date %s. Showing P18 data."%(mydate)
                 script, div = components(stats_plot)
 
             else:
@@ -392,7 +392,7 @@ def manage_user():
     #Case with no user at all
     if len(flask.request.args) ==0:
         message = "Introduce the search criteria for your user. For exact search try \"."
-        form2 = None
+
 
         return (render_template('header.html') +
                 render_template('manage_users.html', form1=form1, from2=form2, message=message) +
@@ -405,11 +405,14 @@ def manage_user():
         username = flask.request.args['user']
     elif (form2.username.data):
         username = form2.username.data
+        username = '"{0}"'.format(username)
     else:
-        username = ""
+        username = ''
 
     u = model.get_info_user(username)
     message = u["message"]
+
+    print message
 
     if username =="" or not "username" in u.keys():
 
@@ -439,7 +442,7 @@ def manage_user():
 
         else:
             return (render_template('header.html') +
-                        render_template('manage_users.html', form1=form1, form2=None, allocations=[], message=message) +
+                        render_template('manage_users.html', form1=form1, form2=form2, allocations=[], message=message) +
                         render_template('footer.html'))
     else:
         form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
@@ -453,16 +456,25 @@ def manage_user():
         form2.email.data = u["email"]
 
     elif 'add_group' in flask.request.form :
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
+
         g = flask.request.form['new_groups']
         model.add_group(u["id"], g)
         message = "Added group for user %s"%(form2.username.data)
 
     elif 'remove_group' in flask.request.form:
+
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
         g = flask.request.form['old_groups']
         model.remove_group(u["id"], g)
         message = "Deleted group for user %s"%form2.username.data
 
     elif 'modify_user' in flask.request.form and form2.validate_on_submit():
+
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
 
         name = form2.name.data
         email = form2.email.data

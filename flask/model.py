@@ -205,8 +205,12 @@ def get_info_user(username):
     elif ('"' in username):
         username = username.split('"')[1]
         user_info = db.execute_sql("SELECT username, name, email, id FROM users WHERE username ='{0}'".format(username))
+    elif ("'" in username):
+        username = username.split("'")[1]
+        user_info = db.execute_sql("SELECT username, name, email, id FROM users WHERE username ='{0}'".format(username))
     else:
-        user_info = db.execute_sql("SELECT username, name, email, id FROM users WHERE username LIKE '%{0}%' OR name LIKE '%{1}%' OR email LIKE '%{2}%@%'".format(username, username, username))
+        userlower = username.lower()
+        user_info = db.execute_sql("SELECT username, name, email, id FROM users WHERE LOWER(username) LIKE '%{0}%' OR LOWER(name) LIKE '%{1}%' OR LOWER(email) LIKE '%{2}%@%'".format(userlower, userlower, userlower))
 
     if (not user_info is None and len(user_info)==1):
         user_info = user_info[0]

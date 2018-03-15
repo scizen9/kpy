@@ -14,14 +14,10 @@
             </div>
 	{% endif %}
   </div>
-  <div class="container">
+  <div class="container col-md-2 col-md-offset-1">
     <div class="table">
       <table border="1" class="dataframe">
-        <thead>
-            <tr style="text-align: right;">
-            <th></th>
-            <th>Spectra files</th>
-            </tr>
+        <thead style="text-align: left;">
         </thead>
         <tbody>
             {%for d in data%}
@@ -33,21 +29,22 @@
             {% endfor %}
         </tbody>
        </table>
+     </div>
+     </div>
 
-    
-    <div>
+    <div class="container col-md-8">
     <h4>IFU<h4>
     <hr>
       {{ gallery | safe }}
     </div>
 
-    <div>
+    <div class="container col-md-8 col-md-offset-3">
     <h4>RC<h4>
     <hr>
       {{ gallery_phot | safe }}
     </div>
 
-  </div>
+
 
 
 
