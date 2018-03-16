@@ -6,7 +6,7 @@ from SEDMDb.SedmDb import SedmDB
 from pandas import DataFrame
 from sqlalchemy.exc import IntegrityError
 import requests
-
+import SEDMrph.fitsutils as fitsutils
 
 db = SedmDB(host='localhost', dbname='sedmdb')
 
@@ -145,9 +145,12 @@ def search_phot_files(mydate = None, user=None):
     #None will be returned if it does not exist.
     if ( not mydate is None):
         files = glob.glob(os.path.join("/scr2/sedm/phot/", mydate, "reduced/png/*.png"))
-        
+        filesraw = glob.glob(os.path.join("/scr2/sedm/phot/", mydate, "pngraw/*all.png"))
+
+        files = files + filesraw
+
         if len(files) == 0:
-            files = []
+            files = None
 
     else:         
         curdate = datetime.datetime.utcnow()
@@ -158,6 +161,8 @@ def search_phot_files(mydate = None, user=None):
             newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
             files = glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "reduced/png/*.png"))
+            filesraw = glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "pngraw/*all.png"))
+            files = files + filesraw
 
             if len(files) > 0:
                 mydate = newdatedir
@@ -165,11 +170,41 @@ def search_phot_files(mydate = None, user=None):
 
             i = i+1
 
-    files = [os.path.basename(f) for f in files]
+    if not files is None:
+        files.sort(reverse=True)
+        d = {'filename':files}
+        df = DataFrame.from_records(d)
+    else:
+        df = None
 
-    return files, mydate
+    return df, mydate
 
-def get_requests_for_user(user_id):
+def search_phot_files_by_imtype(mydate = None, user=None):
+    '''
+    Returns the files that are present in the disk at a given date.
+    It also returns a message stating what date that was.
+
+    TODO: This routine that looks in the disk, should look at the database and retrieve only the files which
+    correspond to the privileges of the user.
+    '''
+    #If the date is specified, we will try to located the right file.
+    #None will be returned if it does not exist.
+
+    filedic = {}
+
+    files = glob.glob(os.path.join("/scr2/sedm/phot", mydate, "rc*.fits"))
+
+    for f in files:
+        imtype = fitsutils.get_par(f, "IMGTYPE").title()
+        prev = filedic.get(imtype, [])
+        path, fits = os.path.split(f)
+        prev.extend([os.path.join(path, "pngraw", fits.replace(".fits", "_all.png") )])
+        filedic[imtype] = prev
+
+    return filedic
+
+
+def get_requests_for_user(user_id, inidate, enddate):
     '''
     Obtains the DataFrame for the requests that were made:
         - By any member of the group where the user with user_id belongs to.
@@ -177,11 +212,13 @@ def get_requests_for_user(user_id):
     '''
     request_query = ("""SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status, r.lastmodified 
                         FROM request r, object o, allocation a 
-                        WHERE o.id = r.object_id AND a.id = r.allocation_id  AND r.enddate > (NOW() - INTERVAL '5 day') AND r.allocation_id IN
+                        WHERE o.id = r.object_id AND a.id = r.allocation_id  
+                            AND ( r.lastmodified > DATE('%s') AND r.lastmodified < DATE('%s') )
+                            AND r.allocation_id IN
                            (SELECT a.id
                             FROM allocation a, groups g, usergroups ug, users u, program p
                             WHERE ug.user_id = u.id AND ug.group_id = g.id AND u.id = %d AND p.group_id = g.id AND a.program_id = p.id
-                            ) ORDER BY r.lastmodified DESC;"""% (user_id))
+                            ) ORDER BY r.lastmodified DESC;"""% (inidate, enddate, user_id))
     req = db.execute_sql(request_query)
     req = DataFrame(req, columns=['allocation', 'object', 'start date', 'end date', 'priority','status', 'lastmodified'])
 

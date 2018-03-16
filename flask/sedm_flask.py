@@ -165,7 +165,8 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
                 if spec:
                     path = os.path.join(mydate, imagelist[pos])
                 else:
-                    path = os.path.join(mydate, 'reduced/png', imagelist[pos])
+                    path = imagelist[pos].replace(config["path"]["path_phot"], "")
+                    #path = os.path.join(mydate, 'reduced/png', imagelist[pos])
  
                 impath = flask.url_for('data_static', filename=path, spec=spec)
 
@@ -200,53 +201,83 @@ def data_access(instrument):
     :return:
 
     '''
-
+    gallerydic = {}
     files_table = [("", "")]
     gallery = ""
     gallery_phot = ""
+    message = ""
 
-    if not 'date' in flask.request.args:
-        # get the weather stats
-        reduxfiles, mydate = model.search_redux_files()
-
-        if (reduxfiles is None):
-            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
-        else:
-            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
-
+    #Parse the date
+    if 'date' not in flask.request.args:
+        curdate = datetime.datetime.utcnow()
+        mydate = "%d%02d%02d"%(curdate.year, curdate.month, curdate.day)
     else:
         mydate_in = flask.request.args['date']
+
         #Just making sure that we have only allowed digits in the date
         mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
         if len(mydate) ==0:
             message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
             script, div = "", ""
+            mydate = None
         else:
             mydate = mydate[0]
             message = ""
-            reduxfiles, mydate = model.search_redux_files(mydate)
-            if (reduxfiles is None):
-                message=message + "No data found for the date %s."%(mydate)
-            else:
-                message = message + "Reduced files found for %s"%( mydate)
 
-    if not reduxfiles is None:
-        spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
-        files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
-        images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
-        gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+    print "MYDATE", mydate
 
-        photfiles, mydate = model.search_phot_files(mydate = mydate)
-        if len(photfiles)>0:
-            photfiles.sort()
-            gallery_phot = create_gallery(photfiles, mydate, ncols=4, width=150, spec=False)
+    if instrument.lower() =='ifu':
+
+        # get the weather stats
+        reduxfiles, mydate = model.search_redux_files(mydate)
+
+        if ( not 'date' in flask.request.args and reduxfiles is None):
+            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
+        elif ( not 'date' in flask.request.args and not reduxfiles is None):
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+        
+        elif ( 'date' in flask.request.args and reduxfiles is None):
+            message=message + "No data found for the date %s."%(mydate)
         else:
-            galler_phot= ""
+            message = message + "Reduced files found for %s"%( mydate)
+
+        if not reduxfiles is None:
+
+            spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
+            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+            images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
+            gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+
+
+    if instrument.lower() =='rc':
+
+        photfiles = model.search_phot_files_by_imtype(mydate = mydate)
+
+        if ( not 'date' in flask.request.args and photfiles is None):
+            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
+        elif ( not 'date' in flask.request.args and not photfiles is None):
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+        
+        elif ( 'date' in flask.request.args and photfiles is None):
+            message=message + "No data found for the date %s."%(mydate)
+        else:
+            message = message + "Reduced files found for %s"%( mydate)
+
+        if not photfiles is None:
+            #images = [i[0] for i in photfiles.values if i[0].endswith(".png")]
+            #gallery = create_gallery(images, mydate, ncols=6, width=150, spec=False)
+
+
+            for k in photfiles.keys():
+                if k.lower() != 'guider':
+                    gallerydic[k] = create_gallery(photfiles[k], mydate, ncols=6, width=150, spec=False)    
+        else:
+            gallery= ""
 
 
 
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('data4date.html', data=files_table, gallery=gallery, gallery_phot=gallery_phot, message=message) + \
+            render_template('data4date.html', data=files_table, gallery=gallery, gallerydic=gallerydic, instrument=instrument.upper(), message=message) + \
             render_template('footer.html')
     
 
@@ -304,7 +335,10 @@ def index():
     
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        dfreq = model.get_requests_for_user(flask_login.current_user.id)
+        enddate = datetime.datetime.now() - datetime.timedelta(hours=8)
+        inidate = enddate - datetime.timedelta(7)
+
+        dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
 
 
         # organize requests into dataframes by whether they are completed or not
@@ -317,7 +351,7 @@ def index():
 
         # generate the html and table titles
         request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False))]
-        request_titles = ['', 'Active Requests for the last 5 days', 'Completed Requests in the last 5 days']
+        request_titles = ['', 'Active Requests for the last 7 days', 'Completed Requests in the last 7 days']
         alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=10))]
         alloc_titles = ['', 'Your Active Allocations']
         greeting = 'Hello %s!'%flask_login.current_user.name

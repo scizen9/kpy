@@ -14,6 +14,8 @@
             </div>
 	{% endif %}
   </div>
+
+    {% if instrument =='IFU'%}
   <div class="container col-md-2 col-md-offset-1">
     <div class="table">
       <table border="1" class="dataframe">
@@ -32,19 +34,57 @@
      </div>
      </div>
 
-    <div class="container col-md-8">
-    <h4>IFU<h4>
-    <hr>
-      {{ gallery | safe }}
+    <div class="well container col-md-8">
+    <h4>{{ instrument}} Files</h4>
+    {{ gallery | safe }}
     </div>
 
-    <div class="container col-md-8 col-md-offset-3">
-    <h4>RC<h4>
-    <hr>
-      {{ gallery_phot | safe }}
+    {%else%}
+    <!--div class="well container col-md-12"-->
+
+
+    <div class="w3-container col-md-12">
+      <div class="w3-bar w3-black">
+            {% for imtype in gallerydic.keys() %}
+                {% if imtype == 'Acquisition' %}
+                    <button class="w3-bar-item w3-button tablink w3-red" onclick="openImtype(event,'{{imtype}}')">{{imtype}}</button>
+                {% else %}
+                    <button class="w3-bar-item w3-button tablink" onclick="openImtype(event,'{{imtype}}')">{{imtype}}</button>
+                {% endif %}
+
+            {% endfor %}
+
+      </div>
+      
+        {% for key, value in gallerydic.items() %}
+          <div id="{{key}}" class="w3-container w3-border city">
+            <h2>{{key}}</h2>
+                {{ value | safe }}
+          </div>
+        {% endfor %}
+
     </div>
 
+    </div>
+    <!--/div-->
 
+    {%endif%}
+
+    <script type="text/javascript">
+    function openImtype(evt, imType) {
+        var i, x, tablinks;
+        x = document.getElementsByClassName("city");
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablink");
+        for (i = 0; i < x.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" w3-red", "");
+        }
+        document.getElementById(imType).style.display = "block";
+        evt.currentTarget.className += " w3-red";
+    }
+    </script>
 
 
 
