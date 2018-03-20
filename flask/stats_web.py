@@ -212,7 +212,7 @@ def plot_stats_allocation(data):
     N = len(alloc_names)
 
     source = ColumnDataSource(data=data)
-    p = figure(x_range=alloc_names, plot_height=400, plot_width=80*8, title="Time spent/available for SEDM allocations this term",
+    p = figure(x_range=alloc_names, plot_height=420, plot_width=80*8, title="Time spent/available for SEDM allocations this term",
                toolbar_location=None, tools="")
 
     p.vbar_stack(categories, x='allocations', width=0.9, color=colors, source=source, legend=["Spent", "Available"])
@@ -238,7 +238,7 @@ def plot_stats_allocation(data):
 
     source = ColumnDataSource(data=dict(alloc_names=alloc_names, percentage=percentage, color=colors))
 
-    p2 = figure(x_range=alloc_names, y_range=(0,100), plot_height=400, plot_width=80*8, title="Percentage of time spent",
+    p2 = figure(x_range=alloc_names, y_range=(0,100), plot_height=420, plot_width=80*8, title="Percentage of time spent",
                toolbar_location=None, tools="")
 
     p2.vbar(x='alloc_names', top='percentage', width=0.9, color='color', source=source)
@@ -262,7 +262,7 @@ def plot_stats_allocation(data):
     starts = [per*2*np.pi for per in percents[:-1]]
     ends = [per*2*np.pi for per in percents[1:]]
 
-    p3 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=400, plot_width=600, title="% spent")
+    p3 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=420, plot_width=600, title="% spent")
 
     #Add individual wedges:
     for i in range(N):
@@ -285,7 +285,7 @@ def plot_stats_allocation(data):
     starts = [per*2*np.pi for per in percents[:-1]]
     ends = [per*2*np.pi for per in percents[1:]]
 
-    p4 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=400, plot_width=600, title="% time allocated to each program")
+    p4 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=420, plot_width=600, title="% time allocated to each program")
     #Add individual wedges:
     for i in range(N):
         p4.wedge(x=0, y=0, radius=.9, start_angle=starts[i], end_angle=ends[i], color=pieColors[i], legend="[{0}%] {1}".format(percents_only[i], alloc_names[i]) ) 

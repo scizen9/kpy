@@ -45,7 +45,8 @@
 
     <div class="w3-container col-md-12">
       <div class="w3-bar w3-black">
-            {% for imtype in gallerydic.keys() %}
+
+            {% for imtype, value in gallerydic.iteritems() %}
                 {% if imtype == 'Acquisition' %}
                     <button class="w3-bar-item w3-button tablink w3-red" onclick="openImtype(event,'{{imtype}}')">{{imtype}}</button>
                 {% else %}
@@ -57,7 +58,12 @@
       </div>
       
         {% for key, value in gallerydic.items() %}
-          <div id="{{key}}" class="w3-container w3-border city">
+            {% if key == 'Acquisition' %}
+             <div id="{{key}}" class="w3-container w3-border city">
+            {% else %}
+            <div id="{{key}}" class="w3-container w3-border city" style="display:none">
+            {% endif %}
+
             <h2>{{key}}</h2>
                 {{ value | safe }}
           </div>

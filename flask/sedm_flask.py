@@ -23,10 +23,16 @@ from forms import *
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
+from flask import Flask, make_response
+
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
 import requests as url_requests
 from flask_table import Table, Col, BoolCol, DatetimeCol, ButtonCol
+import StringIO
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from IPython.display import HTML
 import matplotlib.pyplot as plt
@@ -53,7 +59,8 @@ login_manager.init_app(app)
 config = {
     'path':{
     'path_archive':'/scr2/sedmdrp/redux/',
-    'path_phot':'/scr2/sedm/phot/'}
+    'path_phot':'/scr2/sedm/phot/',
+    'path_raw' : '/scr2/sedm/raw/'}
 }
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
@@ -219,17 +226,20 @@ def data_access(instrument):
         if len(mydate) ==0:
             message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
             script, div = "", ""
-            mydate = None
+            mydate = ""
         else:
             mydate = mydate[0]
             message = ""
 
-    print "MYDATE", mydate
+
 
     if instrument.lower() =='ifu':
 
         # get the weather stats
-        reduxfiles, mydate = model.search_redux_files(mydate)
+        if ( not 'date' in flask.request.args):
+            reduxfiles, mydate = model.search_redux_files(None)
+        else:
+            reduxfiles, mydate = model.search_redux_files(mydate)
 
         if ( not 'date' in flask.request.args and reduxfiles is None):
             message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
@@ -335,8 +345,8 @@ def index():
     
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        enddate = datetime.datetime.now() - datetime.timedelta(hours=8)
-        inidate = enddate - datetime.timedelta(7)
+        enddate = datetime.datetime.utcnow() 
+        inidate = enddate - datetime.timedelta(days=7)
 
         dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
 
@@ -831,13 +841,11 @@ def requests():
     # if form1.validate_on_submit():
     #    print 'form1'
     alloc = db.execute_sql("SELECT id, designator FROM allocation WHERE id IN %s AND active = 't';" % ('(' + str(flask_login.current_user.allocation)[1:-1] + ')',))
-    if alloc and alloc[0] == -1:  # TODO: test and remove
-        flash(alloc[1])
-        return redirect(flask.url_for('/index'))
-    elif not alloc:
+    alloc = model.get_allocations_user(flask_login.current_user.id)
+    if alloc is None or len(alloc)==0:
         choices = [(0, "You have none active!")]
     else:
-        choices = alloc
+        choices = [z for z in zip(alloc['id'], alloc['allocation'])]
     form1.allocation.choices = choices
     user_id = flask_login.current_user.id
     print Time.now()
@@ -860,7 +868,7 @@ def requests():
                     coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
                 # search database for matching name+ra+dec
                 objects = db.get_objects_near(coord.ra.value, coord.dec.value, .5, ['name','id'])
-                id_list = [obj[1] for obj in objects if obj[0] == form1.obj_name.data.lower()]
+                id_list = [obj[1] for obj in objects if obj[0] == form1.obj_name.data]
                 # if it isn't in the database, add it
                 if not id_list:
                     add_obj = db.add_object({'name': form1.obj_name.data, 'ra': coord.ra.value, 'dec': coord.dec.value, 'typedesig': form1.typedesig.data})
@@ -1110,6 +1118,9 @@ def add_json_target():
         err = open('/home/sedm/kpy/flask/static/error.log','a')
         err.write('%s: %s\n' % (datetime.datetime.utcnow().strftime("%H_%M_%S"),str(e)))
         err.close()
+
+
+
 
 @app.route('/objects', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -1416,6 +1427,90 @@ def get_panstars_cutout_tag(ra, dec, optionDictionary = {'width' : '150', 'borde
     return image_tag, link_url
 
 
+def plot_visibility(ra, dec, name):
+    import base64
+    import astropy.units as u
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+
+    # Get the coordinates of the object:
+    obj = SkyCoord(float(ra), float(dec), unit="deg")
+
+    ##############################################################################
+    # Use `astropy.coordinates.EarthLocation` to provide the location of Palomar
+
+
+    palomar_mountain = EarthLocation(lon=243.1361*u.deg, lat=33.3558*u.deg, height=1712*u.m)
+    utcoffset = -8*u.hour  # Pacific Daylight Time
+    time = Time.now() - utcoffset
+
+    ##############################################################################
+    # This is helpful since it turns out M33 is barely above the horizon at this
+    # time. It's more informative to find M33's airmass over the course of
+    # the night.
+    #
+    # Find the alt,az coordinates of M33 at 100 times evenly spaced between 10pm
+    # and 7am EDT:
+
+    midnight = Time(datetime.datetime(time.datetime.year, time.datetime.month, time.datetime.day)) - utcoffset
+
+    fig = Figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    from astropy.coordinates import get_sun
+    delta_midnight = np.linspace(-8, 8, 1000)*u.hour
+    times_tonight = midnight + delta_midnight
+    frame_tonight = AltAz(obstime=times_tonight, location=palomar_mountain)
+    sunaltazs_tonight = get_sun(times_tonight).transform_to(frame_tonight)
+
+    from astropy.coordinates import get_moon
+    moon_tonight = get_moon(times_tonight)
+    moonaltazs_tonight = moon_tonight.transform_to(frame_tonight)
+
+    ##############################################################################
+    # Find the alt,az coordinates of M33 at those same times:
+
+    objaltazs_tonight = obj.transform_to(frame_tonight)
+    objairmasss_tonight = objaltazs_tonight.secz
+    objairmasss_tonight[objairmasss_tonight < 1] = 1
+    objairmasss_tonight[objairmasss_tonight > 6] = 6
+
+    ##############################################################################
+    # Make a beautiful figure illustrating nighttime and the altitudes of M33 and
+    # the Sun over that time:
+
+    ax.plot(delta_midnight, sunaltazs_tonight.alt, color='r', label='Sun')
+    ax.plot(delta_midnight, moonaltazs_tonight.alt, color=[0.75]*3, ls='--', label='Moon')
+    scat= ax.scatter(delta_midnight, objaltazs_tonight.alt,
+                c=objairmasss_tonight, label=name, lw=0, s=8,
+                cmap='gist_stern_r')
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -0*u.deg, color='0.5', zorder=0)
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -18*u.deg, color='k', zorder=0)
+
+    ax.legend(loc='upper left')
+    ax.set_xlim(-8, 8)
+    #ax.set_xticks(np.arange(9)*2 -12)
+    ax.set_ylim(0, 90)
+    ax.set_xlabel('Hours from PST Midnight')
+    ax.set_ylabel('Altitude [deg]')
+
+    fig.colorbar(scat, label="airmass")
+    fig.suptitle("Visibility for %s UTC"%midnight)
+    canvas = FigureCanvas(fig)
+    output = StringIO.StringIO()
+    #canvas.print_png(output)
+    #response = make_response(output.getvalue())
+    #response.mimetype = 'image/png'
+    
+    Figure.savefig(fig, output, format='png')
+    image_url =  base64.encodestring(output.getvalue())
+
+    image_tag = '<img src="data:image/jpg;base64,%s">' % image_url 
+
+    return image_tag
+
 @app.route('/objects/<path:ident>')
 def show_objects(ident):
     # take name or id and show info about it and images with permission
@@ -1436,6 +1531,7 @@ def show_objects(ident):
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     info = info + deg2hour(info[1], info[2])
     image_tag, link_url = get_panstars_cutout_tag(info[1], info[2])
+    visibility = plot_visibility(info[1], info[2], info[0])
 
     # TODO: work in SSO objects
     if info[0] == -1:
@@ -1476,14 +1572,16 @@ def show_objects(ident):
         return mydiv
 
     for ob in observations:
-        if ob[3]:
+        obs.append(([ob[0], ob[1], ob[2]], None))
+        '''if ob[3]:
+            day = ob[3][3:11]
+            imagepath = os.path.join(config['path']['path_raw'], day, ob[3])
             obs.append(([ob[0], ob[1], ob[2]], make_image(ob[3])))
-        else:
-            obs.append(([ob[0], ob[1], ob[2]], None))
-    # TODO: make sure the above works
+        else:'''
+
 
     return (render_template('header.html') +  # , current_user=flask_login.current_user) +
-            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url) +
+            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url, visibility=visibility) +
             render_template('footer.html'))
 
 
