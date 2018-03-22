@@ -17,7 +17,7 @@ import subprocess
 import shutil
 import argparse
 
-def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
+def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=True, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     outimage: name for the astrometry solved image. If none is provided, the name will be "a_"img.
@@ -46,9 +46,12 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
-    #logger.info( cmd)
+    
+    print (cmd)
 
     subprocess.call(cmd, shell=True)
+    
+    print ("Finished astrometry")
     
     #Cleaning after astrometry.net
     if (os.path.isfile(img.replace(".fits", ".axy"))):
