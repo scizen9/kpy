@@ -29,6 +29,11 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=True
 
     from astropy.wcs import InconsistentAxisTypesError
     
+    curdir = os.getcwd()
+    imgdir = os.path.dirname(img)
+    
+    os.chdir(imgdir)
+    
     img = os.path.abspath(img)
     
     ra = fitsutils.get_par(img, 'RA')
@@ -64,15 +69,16 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=True
         except:
             print ("Could not remove file none.")
         
-        
+    os.chdir(curdir)
+
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
-	return outimage
+        return outimage
     elif (outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, img)
-	return img
+        return img
     else:
-    	return astro
+        return astro
     
 def create_masterguide(lfiles, out=None):
     '''
