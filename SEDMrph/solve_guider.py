@@ -13,7 +13,6 @@ import fitsutils
 import numpy as np
 import coordinates_conversor as cc
 from pyraf import iraf 
-from pyraf import IrafError
 import subprocess
 import shutil
 import argparse
@@ -60,7 +59,10 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile(img.replace(".fits", "-indx.xyls"))):
         os.remove(img.replace(".fits", "-indx.xyls"))
     if (os.path.isfile("none")):
-        os.remove("none")
+        try:
+            os.remove("none")
+        except:
+            print ("Could not remove file none.")
         
         
     if (not outimage is None and overwrite and os.path.isfile(astro)):
@@ -114,8 +116,8 @@ def create_masterguide(lfiles, out=None):
     if debias:
         try:
             iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
-        except IrafError:
-            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)
+        except:
+            print ("Error when debiasing file.")
     else:
         bffile = fffile
 
@@ -126,7 +128,7 @@ def create_masterguide(lfiles, out=None):
                     combine = "median",\
                     scale = "mode",
                     reject = "sigclip", lsigma = 2., hsigma = 2, gain=1.7, rdnoise=4.)
-    iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
+    #iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
     #st = np.genfromtxt("guide_stats", names=True, dtype=None)
     
     #Do some cleaning
@@ -192,7 +194,7 @@ def __combine_guiders(ifu_dic, abspath, outdir):
         name, jd_ini, jd_end, rad, decd, exptime = ifu_dic[ifu_i]
         #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
         mymask = (rcjd >= jd_ini) * (rcjd <= jd_end) *\
-            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<1./60 ) * (np.abs(decs - decd)<1./60 )
+            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<0.5/60 ) * (np.abs(decs - decd)<0.5/60 )
         guiders = rc[mymask]
         im = imtypes[mymask]
         names = objnames[mymask]
