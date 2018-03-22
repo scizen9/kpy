@@ -8,7 +8,6 @@ Created on Tue Mar 10 13:18:46 2015
 import StringIO
 import urllib, base64
 from matplotlib import image
-from PIL import Image
 from matplotlib import pylab as plt
 import glob
 from astropy.io import fits as pf
@@ -16,7 +15,7 @@ import os, sys
 from optparse import OptionParser
 import matplotlib
 import numpy as np
-import pywcs
+import astropy.wcs as pywcs
 import zscale
 import time_utils
 
@@ -515,18 +514,4 @@ def align_combine(fitsdir, myfilter, examine=True):
                    combine= "median")
     
     
-'''
-#How to use the wcs with manual set-up: http://stsdas.stsci.edu/astrolib/pywcs/examples.html#loading-wcs-information-from-a-fits-file
 
-                # Create a new WCS object.  The number of axes must be set
-                # from the start
-                wcs = pywcs.WCS(naxis=2)
-                
-                # Set up an "Airy's zenithal" projection
-                # Vector properties may be set with Python lists, or Numpy arrays
-                wcs.wcs.crpix = [ prihdr["CRPIX1"],  prihdr["CRPIX2"]]
-                wcs.wcs.cdelt = np.array([prihdr["CD1_1"], prihdr["CD1_2"], prihdr["CD2_1"], prihdr["CD2_2"]])
-                wcs.wcs.crval = [prihdr["CRVAL1"], prihdr["CRVAL2"]]
-                wcs.wcs.ctype = [prihdr["CTYPE1"], prihdr["CTYPE2"]]
-                wcs.wcs.set_pv([(prihdr["PV2_1"], prihdr["PV2_2"], prihdr["PV2_3"])]) 
-'''

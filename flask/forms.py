@@ -171,16 +171,18 @@ class SearchUserForm(FlaskForm):
 
 class UsersForm(FlaskForm):
 
-    username = fields.StringField('name', validators=[validators.input_required()])
+    username = fields.StringField('username', validators=[validators.input_required()])
     name = fields.StringField('name', validators=[validators.input_required()])
-    email = fields.StringField('email', validators=[validators.input_required()])
+    email = fields.StringField('email', validators=[validators.input_required(), validators.email()])
     password = fields.PasswordField('password')
     pass_new = fields.PasswordField('New Password', validators=[validators.EqualTo('pass_conf', message='Passwords must match')] )
     pass_conf = fields.PasswordField('Confirm New Password')
+    add_user = fields.SubmitField('Add User', description=None)
     modify_user = fields.SubmitField('Modify User', description=None)
+    delete_user = fields.SubmitField('Delete User', description=None)
 
-    old_groups = fields.SelectField('Select group to remove')
-    new_groups = fields.SelectField('Select group to add')
+    old_groups = fields.SelectField('Select group to remove', choices=[])
+    new_groups = fields.SelectField('Select group to add', choices=[])
     add_group = fields.SubmitField('Add', description=None)
     remove_group = fields.SubmitField('Remove', description=None)
 

@@ -18,14 +18,14 @@
         {% endwith %}
         <div class="container">
             {% for table in req_tables %}
-                <div class="container">
+                <div class="col-md-12 form-group container-fluid">
                     <h4>{{req_titles[loop.index]}}</h4>
                     <font size="1">{{ table|safe }}</font>
                 </div>
             {% endfor %}
         </div>
         <p>
-        <div class="container">
+        <div class="container col-md-8 col-md-offset-2">
             {% for table in all_table %}
                 <h4>{{all_titles[loop.index]}}</h4>
                 <font size="1">{{ table|safe }}</font>

@@ -40,7 +40,9 @@
                             {{ render_field(form2.pass_new) }}
                             {{ render_field(form2.pass_conf) }}
                             <p>
-                            {{ form2.modify_user }}
+                            {{ form2.modify_user(class_="btn btn-primary") }}
+                            {{ form2.add_user(class_="btn btn-success") }}
+                            {{ form2.delete_user(class_="btn btn-danger") }}
                             </p>
                         </p>
 
@@ -49,10 +51,12 @@
                         <div class="input-group">
                             {{ form2.csrf_token }}
                             <p>
-                                {{ render_field(form2.old_groups) }}
-                                {{ form2.remove_group }}
-                                {{ render_field(form2.new_groups) }}
-                                {{ form2.add_group }}
+                                <tr>
+                                    <td>{{ form2.old_groups }}</td>
+                                    <td>{{ form2.remove_group(class_="btn btn-sm btn-danger") }}</td>
+                                    <td>{{ form2.new_groups }}</td>
+                                    <td>{{ form2.add_group(class_="btn btn-sm btn-success") }}</td>
+                                </tr>
                             </p>
                         </div>
                       </div>

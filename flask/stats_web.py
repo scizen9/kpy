@@ -41,6 +41,10 @@ from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource, CDSView, GroupFilter, Label
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
+from bokeh.core.properties import value
+
+
+
 from astropy.time import Time
 import model
 
@@ -61,6 +65,7 @@ def load_stats(statsfile='stats.log'):
 
     data = pd.read_csv(statsfile, header=None, 
                        names=['path', 'obj', 'jd', 'ns', 'fwhm', 'ellipticity', 'bkg', 'airmass', 'in_temp', 'imtype', 'out_temp', 'in_hum'])
+
     jds = data['jd']
     t = Time(jds, format='jd', scale='utc')
     date = t.utc.datetime
@@ -107,7 +112,7 @@ def plot_stats(statsfile, mydate):
     
     p48seeing = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
     p48seeing.circle('date', 'seeing', source=source_static_p48, color="black")
-    p48seeing.title.text = "P48 seeing [arcsec]"
+    p48seeing.title.text = "P18 seeing [arcsec]"
 
     if statsfile:
         ns = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
@@ -128,7 +133,7 @@ def plot_stats(statsfile, mydate):
         temp.line('date', 'in_temp', source=source_static, color='blue', legend="Inside")
         temp.line('date', 'out_temp', source=source_static, color='green', legend="Outside")
         temp.circle('date', 'in_temp', size=1, source=source, color=None, selection_color="orange")
-        temp.title.text =  "Temperature"
+        temp.title.text =  "Temperature [C]"
         
         
         fwhm = figure(plot_width=425, plot_height=250, tools=tools, x_axis_type='datetime', active_drag="box_zoom")
@@ -157,7 +162,7 @@ def plot_stats(statsfile, mydate):
         humidity.x_range = ns.x_range
         humidity.line('date', 'in_hum', source=source_static)
         humidity.circle('date', 'in_hum', size=1, source=source, color=None, selection_color="orange")
-        humidity.title.text = "Inside Humidity"
+        humidity.title.text = "Inside Humidity [%]"
     
         p48seeing.x_range = ns.x_range
 
@@ -191,19 +196,117 @@ def plot_not_found_message(day):
     curdoc().add_root(layout)
     curdoc().title = "Stats not found"
     
-    
-'''#if __name__ == '__main__':
-day = ("%s"%(datetime.datetime.utcnow())).split()[0]
-    
-#This value is for testing, use the value below in production
-#datadir = '/home/nblago/workspace/kpy/tests'
-datadir = join(dirname('/scr2/sedm/phot/'), day, 'stats/stats.log')
 
-daylog = join(datadir, 'stats.log')
+@lru_cache()
+def plot_stats_allocation(data):
+    """
+    Plots in the shape of bars the time available and spent for each active allocation.
+    """
 
-if (os.path.isfile(daylog)):
-    plot_stats(daylog)
-else:
-    plot_not_found_message(day)'''
+
+    #Create the first plot with the allocation hours
+    alloc_names = data['allocations']
+    categories = ["spent_hours", "free_hours"]
+    colors = [ "#e84d60", "darkgreen"] #"#c9d9d3"
+
+    N = len(alloc_names)
+
+    source = ColumnDataSource(data=data)
+    p = figure(x_range=alloc_names, plot_height=420, plot_width=80*8, title="Time spent/available for SEDM allocations this term",
+               toolbar_location=None, tools="")
+
+    p.vbar_stack(categories, x='allocations', width=0.9, color=colors, source=source, legend=["Spent", "Available"])
+    p.y_range.start = 0
+    p.x_range.range_padding = 0.1
+    p.xgrid.grid_line_color = None
+    p.axis.minor_tick_line_color = None
+    p.outline_line_color = None
+    p.legend.location = "top_right"
+    p.legend.orientation = "horizontal"
+    p.yaxis.axis_label = 'Hours'
+    p.xaxis.major_label_orientation = 0.3
+
+    #Create the second plot with the % spent
+    alloc_names = data['allocations']
+    percentage = (data["spent_hours"] / data["alloc_hours"]) * 100
+
+    colors=N*['#084594']
+    '''for i, p in enumerate(percentage):
+        if p<50: colors[i] = '#22A784'
+        elif p>50 and p<75: colors[i] = '#FD9F6C'
+        else: colors[i] = '#DD4968'''
+
+    source = ColumnDataSource(data=dict(alloc_names=alloc_names, percentage=percentage, color=colors))
+
+    p2 = figure(x_range=alloc_names, y_range=(0,100), plot_height=420, plot_width=80*8, title="Percentage of time spent",
+               toolbar_location=None, tools="")
+
+    p2.vbar(x='alloc_names', top='percentage', width=0.9, color='color', source=source)
+
+    p2.xgrid.grid_line_color = None
+    p2.legend.orientation = "horizontal"
+    p2.legend.location = "top_center"
+    p2.yaxis.axis_label = '% time spent'
+    p2.xaxis.major_label_orientation = 0.3
+
+    
+    #Create the pie charts
+    pieColors = 10*["red", "green", "blue", "orange", "yellow", 'lime', 'brown', 'cyan', \
+        'magenta', 'olive', 'black', 'teal', 'gold', 'crimson', 'moccasin', 'greenyellow', 'navy', 'ivory', 'lightpink']
+
+    #First one with the time spent
+
+    # define starts/ends for wedges from percentages of a circle
+    percents_only = np.round( np.array(list(data["spent_hours"] / np.sum(data["spent_hours"])))*100, 1)
+    percents = np.cumsum( [0] + list(data["spent_hours"] / np.sum(data["spent_hours"])))
+    starts = [per*2*np.pi for per in percents[:-1]]
+    ends = [per*2*np.pi for per in percents[1:]]
+
+    p3 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=420, plot_width=600, title="% spent")
+
+    #Add individual wedges:
+    for i in range(N):
+        p3.wedge(x=0, y=0, radius=.9, start_angle=starts[i], end_angle=ends[i], color=pieColors[i], legend="[{0}%] {1}".format(percents_only[i], alloc_names[i]) )
+
+    p3.xgrid.grid_line_color = None
+    p3.ygrid.grid_line_color = None
+    p3.legend.orientation = "vertical"
+    p3.legend.location = "top_right"
+    p3.legend.border_line_alpha = 0
+    p3.legend.background_fill_color = None
+    p3.xaxis.visible = False
+    p3.yaxis.visible = False
+
+    #Second one with the time allocated
+
+    # define starts/ends for wedges from percentages of a circle
+    percents_only = np.round( np.array(list(data["alloc_hours"] / np.sum(data["alloc_hours"])))*100, 1)
+    percents = np.cumsum( [0] + list(data["alloc_hours"] / np.sum(data["alloc_hours"])))
+    starts = [per*2*np.pi for per in percents[:-1]]
+    ends = [per*2*np.pi for per in percents[1:]]
+
+    p4 = figure(x_range=(-1, 2.5), y_range=(-1.1, 1.1), plot_height=420, plot_width=600, title="% time allocated to each program")
+    #Add individual wedges:
+    for i in range(N):
+        p4.wedge(x=0, y=0, radius=.9, start_angle=starts[i], end_angle=ends[i], color=pieColors[i], legend="[{0}%] {1}".format(percents_only[i], alloc_names[i]) ) 
+
+    p4.xgrid.grid_line_color = None
+    p4.ygrid.grid_line_color = None
+    p4.legend.orientation = "vertical"
+    p4.legend.location = "top_right"
+    p4.legend.border_line_alpha = 0
+    p4.legend.background_fill_color = None
+    p4.xaxis.visible = False
+    p4.yaxis.visible = False
+
+
+
+    layout =  row(column(p, p2), column(p4, p3))
+    
+
+    curdoc().add_root(layout)
+    curdoc().title = "Allocation stats"
+
+    return layout
 
 
