@@ -5,6 +5,9 @@ Created on Thu Mar 22 10:30:30 2018
 
 @author: nblago
 """
+from __future__ import print_function
+
+
 import glob, os
 import fitsutils
 import numpy as np
@@ -14,7 +17,6 @@ from pyraf import IrafError
 import subprocess
 import shutil
 import argparse
-from __future__ import print_function
 
 def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
     '''
