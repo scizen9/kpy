@@ -42,11 +42,8 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile(astro) and not overwrite):
         return astro
         
-    #Store a temporary file with the multiplication of the mask
-    mask = "mask.fits"
 
-    cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s \
-      -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
+    cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
     #logger.info( cmd)
