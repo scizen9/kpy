@@ -35,6 +35,8 @@ for d in dlist:
         ss = np.load(s)[0]
         if 'efficiency' not in ss:
             continue
+        if ss['quality'] != 0:
+            continue
 
         ef = ss['efficiency']*100.  # type: np.ndarray
         wl = ss['nm']

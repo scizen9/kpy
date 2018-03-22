@@ -92,13 +92,13 @@ def check_cube(cubename, showlamrms=False, savefig=False, no_stamp=False):
         smn = 0.
         smx = 1.2
         cbtitle = "Wavelength RMS [nm]"
-        outf = "cube_lambdarms.pdf"
+        outf = "cube_lambdarms"
     else:
         ss = [c.trace_sigma for c in cc]
         smx = 2
         smn = 0.8
         cbtitle = "RMS trace width [pix]"
-        outf = "cube_trace_sigma.pdf"
+        outf = "cube_trace_sigma"
 
     pl.figure(1)
     pl.scatter(xs, ys, marker='H', linewidth=0, s=35, c=ss, vmin=smn, vmax=smx,
@@ -122,8 +122,9 @@ def check_cube(cubename, showlamrms=False, savefig=False, no_stamp=False):
     pl.grid(True)
     pl.ioff()
     if savefig:
-        pl.savefig(outf)
-        print("Figure saved to " + outf)
+        pl.savefig("%s.pdf" % outf)
+        pl.savefig("%s.png" % outf)
+        print("Figure saved to " + outf + ",[pdf,png]")
     else:
         pl.show()
 
@@ -187,6 +188,12 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
             dec = hdr['DEC'].split()[0]
         else:
             dec = ''
+        if 'REQ_ID' in hdr:
+            req_id = hdr['REQ_ID']
+            if type(req_id) == str:
+                req_id = 0
+        else:
+            req_id = 0
     else:
         obj = ''
         ra = ''
@@ -417,9 +424,10 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     # Save fig to file
     if savefig:
         outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
-               '_SEDM.pdf'
-        pl.savefig(outf)
-        print("Figure saved to " + outf)
+               '_SEDM'
+        pl.savefig("%s.pdf" % outf)
+        pl.savefig("%s.png" % outf)
+        print("Figure saved to " + outf + ".[pdf,png]")
 
     if not interact and not savefig:
         pl.show()
@@ -432,6 +440,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         outf = specname[(specname.find('_') + 1):specname.rfind('.')] + \
             '_SEDM.txt'
         header = "TELESCOPE: P60\nINSTRUMENT: SED-Machine\nUSER: %s" % user
+        header += "\nREQ_ID: %d" % req_id
         header += "\nOBJECT: %s\nOUTFILE: %s" % (obj, outf)
         header += "\nRA: %s\nDEC: %s" % (ra, dec)
         header += "\nOBSUTC: %s\nEXPTIME: %i" % (utc, et)

@@ -15,6 +15,9 @@ import fitsutils
 import datetime
 import zeropoint
 import logging
+from astropy.io import fits
+from matplotlib import pylab as plt
+import numpy as np
 
 from ConfigParser import SafeConfigParser
 import codecs
@@ -63,13 +66,49 @@ def reduce_all_dir(photdir, overwrite=False):
     	subprocess.call(cmd, shell=True)
     else:
 	os.makedirs(reducedname)
+
+def plot_image(image):
+    '''
+    Plots the reduced image into the png folder.
+
+    '''
+    logger.info("Plotting raw image %s"% image)    
+    
+    image = os.path.abspath(image)
+
+    
+    #Change to image directory
+    imdir, imname = os.path.split(image)
+
+    #Create destination directory
+    png_dir = os.path.join(imdir, "pngraw")
+
+    if (not os.path.isdir(png_dir)):
+        os.makedirs(png_dir)
+
+    f = fits.open(image)[0]
+    d = f.data
+    h = f.header
+    imtype = h.get('IMGTYPE', 0)
+    exptime = h.get('EXPTIME', 0)
+    name = h.get('OBJECT', 'None')
+    filt = h.get('FILTER', 'NA')
+
+    plt.imshow(d, origin="lower", vmin=np.percentile(d.flatten(), 5), vmax=np.percentile(d, 95), cmap=matplotlib.cm.cubehelix)
+    plt.title("{%s} %s %s-band [%ds] "%(imtype, name, filt, exptime))
+    plt.colorbar()
+    logger.info("As %s", os.path.join(png_dir, imname.replace(".fits", "_all.png")))
+    plt.savefig( os.path.join(png_dir, imname.replace(".fits", "_all.png")))
+    plt.close()
     
 def reduce_on_the_fly(photdir):
     '''
     Waits for new images to appear in the directory to trigger their incremental reduction as well.
     '''
     #Get the current the number of files
+
     nfiles = glob.glob(os.path.join(photdir, "rc*[0-9].fits"))
+    logger.info("Starting the on-the-fly reduction for directory %s. Found %d files to process."%(photdir, len(nfiles)))
     
     dayname = os.path.basename(photdir)
     
@@ -79,18 +118,25 @@ def reduce_on_the_fly(photdir):
     #Run this loop for 12h since the start.
     while (time_curr-time_ini).total_seconds() < 12.*3600:
         nfilesnew = glob.glob(os.path.join(photdir, "rc*[0-9].fits"))
+
         if len(nfilesnew) == len(nfiles):
             time.sleep(10)
         else:
             new = [f for f in nfilesnew if f not in nfiles]
+            new.sort()
+            logger.info("Detected new %d incoming files in the last 10s."%len(new))
             for n in new:
+
                 if (not fitsutils.has_par(n, "IMGTYPE")):
                     print "Image",n,"Does not have an IMGTYPE"
                     time.sleep(0.5)
                     if (not fitsutils.has_par(n, "IMGTYPE")):
                         print "Image",n,"STILL Does not have an IMGTYPE"
                         continue
-                if (fitsutils.get_par(n, "IMGTYPE")=="SCIENCE"):
+
+                plot_image(n)
+                imtype = fitsutils.get_par(n, "IMGTYPE")
+                if ( imtype.upper() == "SCIENCE"):
                     reduced = rcred.reduce_image(n)
                     try:
                         zeropoint.calibrate_zeropoint(reduced)
@@ -102,6 +148,8 @@ def reduce_on_the_fly(photdir):
                         subprocess.call(cmd, shell=True)
                         logger.info(cmd)
                         logger.info( "Successfully copied the image: %s"% cmd)
+                
+
         time_curr = datetime.datetime.now()
         nfiles = nfilesnew  
         

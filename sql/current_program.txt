@@ -1,0 +1,12 @@
+  designator   |          name          |        id         |     group_id      |     pi      
+---------------+------------------------+-------------------+-------------------+-------------
+ calib         | calibration program    |                 3 |                 6 | SEDM calib
+ admin         |                        |                 2 |                 3 | 
+ auto_followup | automated ZTF followup | 20171002163720815 | 20170826174800000 | ZTF
+ SEDm_overhead | telescope overhead     | 20171002165800047 |                 6 | SEDm
+ iPTF          | iPTF                   | 20171002165908206 |                 5 | placeholder
+ JPAC          | JPAC                   | 20171002171903862 | 20170820211250023 | placeholder
+ TPAC          | TPAC                   | 20171002171926014 | 20170820211305266 | placeholder
+ CPAC          | CPAC                   | 20171002171957334 | 20170820211258660 | placeholder
+ SEDm          | SEDm program           | 20171002163457445 | 20170820211242345 | SEDm
+

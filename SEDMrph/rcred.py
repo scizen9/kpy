@@ -15,6 +15,7 @@ except:
 from astropy.io import fits
 from astropy import wcs
 
+import matplotlib
 from matplotlib import pylab as plt
 import subprocess
 import argparse
@@ -437,7 +438,7 @@ def create_masterguide(lfiles, out=None):
     if os.path.isfile(bffile):
         os.remove(bffile)
         
-    solve_astrometry(out, overwrite=True)
+    solve_astrometry(out, overwrite=False)
     
     os.chdir(curdir)
 
@@ -783,11 +784,13 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile("none")):
         os.remove("none")
         
-    try:
-        is_on_target(img)
-    except InconsistentAxisTypesError as e:
-        fitsutils.update_par(img, "ONTARGET", 0)
-        print "Error detected with WCS when reading file %s. \n %s"%(img, e)
+
+    if os.path.isfile(astro):
+        try:
+		is_on_target(img)
+        except InconsistentAxisTypesError as e:
+		fitsutils.update_par(img, "ONTARGET", 0)
+		print "Error detected with WCS when reading file %s. \n %s"%(img, e)
         
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
@@ -797,6 +800,9 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
 	return img
     else:
     	return astro
+
+
+
     
 
 def make_mask_cross(img):  
@@ -988,7 +994,43 @@ def init_header_reduced(image):
                 "CRREJ" : 0}
     fitsutils.update_pars(image, pardic)
     
+def plot_image(image):
+    '''
+    Plots the reduced image into the png folder.
+
+    '''
+    logger.info("Plotting image %s"% image)    
+
+    print "Plotting image ", image    
+
     
+    image = os.path.abspath(image)
+
+    
+    #Change to image directory
+    imdir, imname = os.path.split(image)
+
+    #Create destination directory
+
+    png_dir = os.path.join(imdir, "png")
+
+    if (not os.path.isdir(png_dir)):
+        os.makedirs(png_dir)
+
+    f = fits.open(image)[0]
+    d = f.data
+    h = f.header
+    exptime = h.get('EXPTIME', 0)
+    name = h.get('OBJECT', 'None')
+    filt = h.get('FILTER', 'NA')
+    ontarget = h.get('ONTARGET', False)
+
+    plt.imshow(d, origin="lower", vmin=np.percentile(d.flatten(), 5), vmax=np.percentile(d, 95), cmap=matplotlib.cm.cubehelix)
+    plt.title("%s %s-band [%ds]. On target=%s"%(name, filt, exptime, ontarget))
+    plt.savefig( os.path.join(png_dir, imname.replace(".fits", ".png")))
+    plt.close()
+
+
 def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=True, channel='rc', target_dir='reduced', overwrite=False):
     '''
     Applies Flat field and bias calibrations to the image.
@@ -1176,6 +1218,7 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         
         #Get basic statistics for the image
         nsrc, fwhm, ellip, bkg = sextractor.get_image_pars(image)
+	plot_image(image)
         
         logger.info( "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip))
         print "Sextractor statistics: nscr %d, fwhm (arcsec) %.2f, ellipticity %.2f"% (nsrc, fwhm, ellip)
@@ -1323,7 +1366,7 @@ if __name__ == '__main__':
     reducedfiles = []
     for f in myfiles:
         print f
-        make_mask_cross(f)
+        #make_mask_cross(f)
         if ( fitsutils.has_par(f, "IMGTYPE") and (fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or ("ACQUI" in fitsutils.get_par(f, "IMGTYPE").upper() )) ):
 		try:
             		reduced = reduce_image(f, cosmic=cosmic, overwrite=overwrite)

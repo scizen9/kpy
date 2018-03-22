@@ -573,6 +573,10 @@ fieldset[disabled] .btn-danger.active {
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fff2dede', endColorstr='#ffebcccc', GradientType=0);
   background-repeat: repeat-x;
 }
+
+.button1 {background-color: #4CAF50;} /* Green */
+
+
 .well {
   background-image: -webkit-linear-gradient(top, #e8e8e8 0%, #f5f5f5 100%);
   background-image:      -o-linear-gradient(top, #e8e8e8 0%, #f5f5f5 100%);

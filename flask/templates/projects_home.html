@@ -11,9 +11,12 @@
             <div class="media-body">
                 <h5> {{ message }}</h5>
             </div>
-	{% endif %}
+        {% endif %}
 
-	<div class="well">
-        {{ script | safe }}
-	    {{div | safe}}
-	</div>
+
+         <div class="col-md-8 col-md-offset-1 col-sm-10 col-sm-offset-0">
+            {{ script | safe }}
+    	    {{div | safe}}
+        </div>
+                   
+

@@ -1,0 +1,97 @@
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+	{% endif %}
+  </div>
+
+    {% if instrument =='IFU'%}
+  <div class="container col-md-2 col-md-offset-1">
+    <div class="table">
+      <table border="1" class="dataframe">
+        <thead style="text-align: left;">
+        </thead>
+        <tbody>
+            {%for d in data%}
+                <tr>
+                    <td>
+                    <a href={{d[0]}}>{{d[1]}}</a>
+                </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+       </table>
+     </div>
+     </div>
+
+    <div class="well container col-md-8">
+    <h4>{{ instrument}} Files</h4>
+    {{ gallery | safe }}
+    </div>
+
+    {%else%}
+    <!--div class="well container col-md-12"-->
+
+
+    <div class="w3-container col-md-12">
+      <div class="w3-bar w3-black">
+
+            {% for imtype, value in gallerydic.iteritems() %}
+                {% if imtype == 'Acquisition' %}
+                    <button class="w3-bar-item w3-button tablink w3-red" onclick="openImtype(event,'{{imtype}}')">{{imtype}}</button>
+                {% else %}
+                    <button class="w3-bar-item w3-button tablink" onclick="openImtype(event,'{{imtype}}')">{{imtype}}</button>
+                {% endif %}
+
+            {% endfor %}
+
+      </div>
+      
+        {% for key, value in gallerydic.items() %}
+            {% if key == 'Acquisition' %}
+             <div id="{{key}}" class="w3-container w3-border city">
+            {% else %}
+            <div id="{{key}}" class="w3-container w3-border city" style="display:none">
+            {% endif %}
+
+            <h2>{{key}}</h2>
+                {{ value | safe }}
+          </div>
+        {% endfor %}
+
+    </div>
+
+    </div>
+    <!--/div-->
+
+    {%endif%}
+
+    <script type="text/javascript">
+    function openImtype(evt, imType) {
+        var i, x, tablinks;
+        x = document.getElementsByClassName("city");
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablink");
+        for (i = 0; i < x.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" w3-red", "");
+        }
+        document.getElementById(imType).style.display = "block";
+        evt.currentTarget.className += " w3-red";
+    }
+    </script>
+
+
+
+

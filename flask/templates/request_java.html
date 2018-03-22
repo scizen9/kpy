@@ -1,0 +1,79 @@
+{% from "_formhelpers.html" import render_field %}
+        <div class = "container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            {% if message %}
+                <div class="media-body">
+                    <h5> {{ message }}</h5>
+                </div>
+            {% endif %}
+            
+            <div class="row well">
+                <form method="post">
+                    {{ form1.csrf_token }}
+                    <div class="col-md-4">
+                        <h3>Submit an observation request</h3>
+                        <p>
+                            {{ render_field(form1.priority) }}
+                            {{ render_field(form1.allocation) }}
+                            {{ render_field(form1.filters_op) }}
+                            {{ render_field(form1.seq_repeats) }}
+                            {{ render_field(form1.ifu) }}
+                            {{ render_field(form1.ab) }}
+                            {{ render_field(form1.inidate) }}
+                            {{ render_field(form1.enddate) }}
+                            <h4>Optional</h4>
+                            {{ render_field(form1.cadence) }}
+                            {{ render_field(form1.phasesamples) }}
+                            {{ render_field(form1.min_moon_dist) }}
+                            {{ render_field(form1.max_moon_illum) }}
+                            {{ render_field(form1.max_cloud_cover) }}
+                            {{ render_field(form1.submit_req) }}
+                        </p>
+                    </div>
+                    <div class="col-md-8">
+                        <p>&nbsp;</p>
+                        <p>&nbsp;</p>
+                        <h4>Target information</h4>
+                        {{ render_field(form1.obj_name) }}
+                        {{ render_field(form1.typedesig) }}
+                        {% if sso_form %}
+                            <p>&nbsp;</p>
+                            <h4>Please input object data (ephem format)</h4>
+                            {% for field in sso_form.__iter__() %}
+                                {{ render_field(field) }}
+                            {% endfor %}
+                        {% else %}
+                            {{ render_field(form1.obj_ra) }}
+                            {{ render_field(form1.obj_dec) }}
+                        {% endif %}
+                        {% if period_form %}
+                            <h4>Add period data</h4>
+                            {% for field in period_form.__iter__() %}
+                                {{ render_field(field) }}
+                            {% endfor %}
+                        {% endif %}
+                        <script type="text/javascript">
+                            jquery(document).ready(function() {
+                                $("#typedesig").change(function() {
+                                    if (this.val() == "v") {
+                                        $('#obj_dec').hide();
+                                    }
+                                    else if (this.val() == "p") {
+                                        $('#obj_dec').hide()
+                                        $('#obj_ra').hide();
+                                    }
+                                })
+                            })
+                        </script>
+                    </div>
+                </form>
+            </div>
+        </div>

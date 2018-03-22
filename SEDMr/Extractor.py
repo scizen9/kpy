@@ -641,8 +641,9 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     if not no_stamp:
         plot_drp_ver()
     pl.savefig("image_%s.pdf" % outname)
+    pl.savefig("image_%s.png" % outname)
     pl.close()
-    print("Wrote image_%s.pdf" % outname)
+    print("Wrote image_%s.[pdf,png]" % outname)
 
 
 def c_to_nm(coefficients, pix, offset=0.):

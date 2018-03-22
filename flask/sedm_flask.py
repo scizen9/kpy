@@ -10,6 +10,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
+import math
 import pygal
 from pygal.style import Style
 import json
@@ -18,18 +19,29 @@ from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
-from forms import RequestForm, RedirectForm, FindObjectForm, LoginForm, SubmitObjectForm, is_safe_url
+from forms import *
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
+from flask import Flask, make_response
+
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
+import requests as url_requests
+from flask_table import Table, Col, BoolCol, DatetimeCol, ButtonCol
+import StringIO
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from IPython.display import HTML
 import matplotlib.pyplot as plt
 import pandas as pd
-import stats_web
 from bokeh.embed import components
+
+import stats_web
+import model
+
 
 # config
 SECRET_KEY = 'secret'
@@ -44,6 +56,12 @@ app.config.from_object(__name__)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
+config = {
+    'path':{
+    'path_archive':'/scr2/sedmdrp/redux/',
+    'path_phot':'/scr2/sedm/phot/',
+    'path_raw' : '/scr2/sedm/raw/'}
+}
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
 g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a "
@@ -110,33 +128,167 @@ def load_user(user_id):
     get_user_permissions()
     return user
 
-def search_stats_file(mydate = None):
+
+@app.route('/data/<path:filename>')
+@flask_login.login_required
+def data_static(filename):
     '''
-    Returns the last stats file that is present in the system according to the present date.
-    It also returns a message stating what date that was.
+     Get files from the archive
+    :param filename:
+    :return:
     '''
-    #If the date is specified, we will try to located the right file.
-    #None will be returned if it does not exist.
-    if ( not mydate is None):
-        s= os.path.join("/scr2/sedm/phot", mydate, "stats/stats.log")
-        if os.path.isfile(s) and os.path.getsize(s) > 0:
-            return s
+    _p, _f = os.path.split(filename)
+
+    if _f.startswith("rc2018"):
+        return flask.send_from_directory(os.path.join(config['path']['path_phot'], _p), _f)
+    else:
+        return flask.send_from_directory(os.path.join(config['path']['path_archive'], _p), _f)
+
+
+def file_exists(filename):
+    '''
+    Checks in the local directory to see if the file within the main reduction directory exists.
+    '''
+
+    _p, _f = os.path.split(filename)
+    return os.path.isfile( os.path.join(config['path']['path_archive'], _p, _f))
+
+@flask_login.login_required
+def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
+    '''
+    Creates the right formatting for the image gallery.
+    '''
+
+    nrows = int(math.ceil(len(imagelist)*1. / ncols)) 
+
+
+    s = ""  
+    for i in range(nrows):
+        s = s + '<div class="row"> \n'
+        for j in range(ncols):
+            pos =i*ncols + j
+            if ( pos < len(imagelist)):
+
+                if spec:
+                    path = os.path.join(mydate, imagelist[pos])
+                else:
+                    path = imagelist[pos].replace(config["path"]["path_phot"], "")
+                    #path = os.path.join(mydate, 'reduced/png', imagelist[pos])
+ 
+                impath = flask.url_for('data_static', filename=path, spec=spec)
+
+                if spec and file_exists(path.replace(".png", ".pdf")):
+                    impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
+                else:
+                    impathlink = impath
+
+                s = s + '''
+                  <div class="col-md-{0}">
+                    <div class="thumbnail">
+                      <a href="{1}">
+                        <img src="{2}" style="width:{3}% height:"{4}%">
+                      </a>
+                    </div>
+                  </div>\n'''.format(12/ncols, impathlink, impath, width, width)
+            else:
+                s = s + '</div> \n'
+                break
+        s = s + '</div> \n'
+
+    return s
+
+@app.route('/data_access/<path:instrument>', methods=['GET'])
+@flask_login.login_required
+def data_access(instrument):
+    '''
+    Displays the data access page. 
+    It accepts the "date" parameter as the day we want to see the data from.
+    With no parameters, it just searches for the last day that the telescope was open.
+
+    :return:
+
+    '''
+    gallerydic = {}
+    files_table = [("", "")]
+    gallery = ""
+    gallery_phot = ""
+    message = ""
+
+    #Parse the date
+    if 'date' not in flask.request.args:
+        curdate = datetime.datetime.utcnow()
+        mydate = "%d%02d%02d"%(curdate.year, curdate.month, curdate.day)
+    else:
+        mydate_in = flask.request.args['date']
+
+        #Just making sure that we have only allowed digits in the date
+        mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
+        if len(mydate) ==0:
+            message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
+            script, div = "", ""
+            mydate = ""
         else:
-            return None
+            mydate = mydate[0]
+            message = ""
 
-    else:         
-        curdate = datetime.utcnow()
-        #Try to find the stat files up to 100 days before today's date.
-        i = 0
-        while i < 100:
-            newdate = curdate - timedelta(i)
-            newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
-            s = os.path.join("/scr2/sedm/phot", newdatedir, "stats/stats.log")
-            if os.path.isfile(s) and os.path.getsize(s) > 0:
-                return s
-            i = i+1
-        return None
 
+
+    if instrument.lower() =='ifu':
+
+        # get the weather stats
+        if ( not 'date' in flask.request.args):
+            reduxfiles, mydate = model.search_redux_files(None)
+        else:
+            reduxfiles, mydate = model.search_redux_files(mydate)
+
+        if ( not 'date' in flask.request.args and reduxfiles is None):
+            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
+        elif ( not 'date' in flask.request.args and not reduxfiles is None):
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+        
+        elif ( 'date' in flask.request.args and reduxfiles is None):
+            message=message + "No data found for the date %s."%(mydate)
+        else:
+            message = message + "Reduced files found for %s"%( mydate)
+
+        if not reduxfiles is None:
+
+            spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
+            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+            images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
+            gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+
+
+    if instrument.lower() =='rc':
+
+        photfiles = model.search_phot_files_by_imtype(mydate = mydate)
+
+        if ( not 'date' in flask.request.args and photfiles is None):
+            message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
+        elif ( not 'date' in flask.request.args and not photfiles is None):
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+        
+        elif ( 'date' in flask.request.args and photfiles is None):
+            message=message + "No data found for the date %s."%(mydate)
+        else:
+            message = message + "Reduced files found for %s"%( mydate)
+
+        if not photfiles is None:
+            #images = [i[0] for i in photfiles.values if i[0].endswith(".png")]
+            #gallery = create_gallery(images, mydate, ncols=6, width=150, spec=False)
+
+
+            for k in photfiles.keys():
+                if k.lower() != 'guider':
+                    gallerydic[k] = create_gallery(photfiles[k], mydate, ncols=6, width=150, spec=False)    
+        else:
+            gallery= ""
+
+
+
+    return render_template('header.html', current_user=flask_login.current_user) + \
+            render_template('data4date.html', data=files_table, gallery=gallery, gallerydic=gallerydic, instrument=instrument.upper(), message=message) + \
+            render_template('footer.html')
     
 
 @app.route('/weather_stats', methods=['GET'])
@@ -152,8 +304,8 @@ def weather_stats():
 
     if not 'date' in flask.request.args:
         # get the weather stats
-        statsfile = search_stats_file()
-        stats_plot = stats_web.plot_stats(statsfile)
+        statsfile, mydate = model.search_stats_file()
+        stats_plot = stats_web.plot_stats(statsfile, mydate)
         if (stats_plot is None):
             message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
             script, div = None, None
@@ -171,12 +323,14 @@ def weather_stats():
             mydate = mydate[0]
             message = ""
 
-            statsfile = search_stats_file(mydate)
-            if (statsfile is None):
-                message=message + "No statistics log found for the date %s."%(mydate)
-                script, div = "", ""
+            statsfile, mydate_out = model.search_stats_file(mydate)
+            stats_plot = stats_web.plot_stats(statsfile, mydate)
+            if (not statsfile):
+                message=message + "No statistics log found for the date %s. Showing P18 data."%(mydate)
+                script, div = components(stats_plot)
+
             else:
-                stats_plot = stats_web.plot_stats(statsfile)
+                stats_plot = stats_web.plot_stats(statsfile, mydate)
                 message = message + "Weather statistics for selected day: %s"%(mydate)
                 script, div = components(stats_plot)
 
@@ -186,35 +340,32 @@ def weather_stats():
             render_template('footer.html')
 
 @app.route('/')
-#@flask_login.login_required
 def index():
     sys.stdout.flush()  # send any stdout to the logfile
-
+    
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        request_query = ("SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status "
-                 "FROM request r, object o, allocation a WHERE o.id = r.object_id "
-                 "AND a.id = r.allocation_id AND r.user_id = '%s';"
-                 % (flask_login.current_user.id,))
-        req = db.execute_sql(request_query)
+        enddate = datetime.datetime.utcnow() 
+        inidate = enddate - datetime.timedelta(days=7)
+
+        dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
+
+
         # organize requests into dataframes by whether they are completed or not
-        complete = pd.DataFrame([request for request in req if request[5] in ['COMPLETED', 'REDUCED']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
-        active = pd.DataFrame([request for request in req if request[5] in ['PENDING', 'ACTIVE']], columns=['allocation', 'object', 'start date', 'end date', 'priority','status'])
+        complete = dfreq[(dfreq['status']=='COMPLETED') | (dfreq['status']=='REDUCED')]
+        active = dfreq[(dfreq['status']=='PENDING') | (dfreq['status']=='ACTIVE')]
+
         # retrieve information about the user's allocations
-        allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
-                                         "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
-        # create the dataframe and set the allocation names to be linked
-        data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
-        data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
-        active_alloc = data.loc[data.active == True]  # filter for active allocations
-        ac = active_alloc.drop(['allocation id', 'active'], axis=1)
+        ac = model.get_allocations_user(flask_login.current_user.id)
+
+
         # generate the html and table titles
-        request_tables = [HTML(active.to_html(escape=False, classes='active', index=False)), HTML(complete.to_html(escape=False, classes='complete', index=False))]
-        request_titles = ['', 'active requests', 'complete requests']
-        alloc_table = [HTML(ac.to_html(escape=False, classes='allocations', index=False))]
-        alloc_titles = ['', 'active allocations']
+        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False))]
+        request_titles = ['', 'Active Requests for the last 7 days', 'Completed Requests in the last 7 days']
+        alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=10))]
+        alloc_titles = ['', 'Your Active Allocations']
         greeting = 'Hello %s!'%flask_login.current_user.name
-        myimage = ''
+        myimage = flask.url_for('static', filename='img/smile.jpg')
     else:  # if there is not user, set the lists as empty
         request_tables=[]
         request_titles=[]
@@ -266,6 +417,366 @@ def login():
             render_template('login.html', form=form, message=None) +
             render_template('footer.html'))
 
+
+@app.route('/manage_user', methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_user():
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+    message = ""
+    form1 = SearchUserForm()
+    form2 = UsersForm()
+
+    old_groups = []
+    new_groups = []
+    allocations =[]
+
+    #Case with no user at all
+    if len(flask.request.args) ==0:
+        message = "Introduce the search criteria for your user. For exact search try \"."
+
+
+        return (render_template('header.html') +
+                render_template('manage_users.html', form1=form1, from2=form2, message=message) +
+                render_template('footer.html'))
+
+    #Case with when we want to search for a specific user
+    if 'search_user' in flask.request.form:
+        username = form1.search_string.data
+    elif('user' in flask.request.args):    
+        username = flask.request.args['user']
+    elif (form2.username.data):
+        username = form2.username.data
+        username = '"{0}"'.format(username)
+    else:
+        username = ''
+
+    u = model.get_info_user(username)
+    message = u["message"]
+
+    print message
+
+    if username =="" or not "username" in u.keys():
+
+        form2.old_groups.choices = []
+        form2.new_groups.choices = []
+
+        if 'add_user' in flask.request.form:
+
+            name = form2.name.data
+            email = form2.email.data
+            new_password = form2.pass_new.data
+            new_password_conf = form2.pass_conf.data
+
+
+            if form2.pass_new.data and new_password ==new_password_conf:
+                status, mes = db.add_user({"username":username, "name":name, "email":email, "password":new_password})
+                if status ==0:
+                    flash("User created")
+                else:
+                    message = mes
+            else:
+                message = "New user requires a password!"
+
+            return (render_template('header.html') +
+                        render_template('manage_users.html', form1=form1, form2=form2, allocations=[], message=message) +
+                        render_template('footer.html'))
+
+        else:
+            return (render_template('header.html') +
+                        render_template('manage_users.html', form1=form1, form2=form2, allocations=[], message=message) +
+                        render_template('footer.html'))
+    else:
+        form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+        form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+        allocations = u["allocations"]
+
+
+    if 'search_user' in flask.request.form and form1.validate_on_submit():
+        form2.username.data = u["username"]
+        form2.name.data = u["name"]
+        form2.email.data = u["email"]
+
+    elif 'add_group' in flask.request.form :
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
+
+        g = flask.request.form['new_groups']
+        model.add_group(u["id"], g)
+        message = "Added group for user %s"%(form2.username.data)
+
+    elif 'remove_group' in flask.request.form:
+
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
+        g = flask.request.form['old_groups']
+        model.remove_group(u["id"], g)
+        message = "Deleted group for user %s"%form2.username.data
+
+    elif 'modify_user' in flask.request.form and form2.validate_on_submit():
+
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        message = u["message"]
+
+        name = form2.name.data
+        email = form2.email.data
+        new_password = form2.pass_new.data
+        new_password_conf = form2.pass_conf.data
+
+        status, mes = db.update_user({'id': u["id"], 'name':name, 'email':email})  
+        flash("User with username %s updated with name %s, email %s. %s"%(username, name, email, mes))   
+
+        #If there is any infoirmation in the password field, we update
+        if form2.pass_new.data:
+            db.update_user({'id': u["id"], 'password': new_password})
+            flash("Password changed ")
+    elif 'delete_user' in flask.request.form and form2.name.data:
+
+        username = form2.username.data
+        u = model.get_info_user(username)
+
+        if 'username' in u.keys():
+            status, mes = db.remove_user({'id': u["id"]})  
+            flash("Deleted user with username %s. %s"%(username, mes))   
+            return (render_template('header.html') +
+                    render_template('manage_users.html', form1=form1, form2=None, allocations=[], message=message) +
+                    render_template('footer.html'))
+
+    else:
+        print "NOTHING TO BE DONE"
+        pass
+
+    u = model.get_info_user(username)
+    form2.old_groups.choices = [(g[0], g[0]) for g in u["old_groups"]]
+    form2.new_groups.choices = [(g[0], g[0]) for g in u["new_groups"]]
+    allocations = u["allocations"]
+
+    return (render_template('header.html') +
+                    render_template('manage_users.html', form1=form1, form2=form2, allocations=allocations, message=message) +
+                    render_template('footer.html'))
+
+
+@app.route("/delete_allocation", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_allocation():
+    '''
+    This handles when a user needs to cancel a reservation. 
+    '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+    id = int(request.args.get('id'))
+    status, message = model.delete_allocation(id)
+
+    return redirect(url_for('manage_allocation'))
+
+@app.route("/manage_allocation", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_allocation():
+    '''
+    This page allows to add and delete program allocations.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class AllocationTable(Table):
+        id = 0
+        classes = ['table']
+        name = Col('Name')
+        program = Col('Program')
+        description = Col('Description')
+        inidate = DatetimeCol('Initial Date')
+        enddate = DatetimeCol('End Date')
+        time_allocated = Col('Time allocated')
+        time_spent = Col('Time spent')
+        active = BoolCol('Active')
+        delete = ButtonCol('Delete', 'delete_allocation', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, name, program, description, inidate, enddate, time_allocated, time_spent, active):
+            self.id = id
+            self.name = name
+            self.program = program
+            self.description = description
+            self.inidate = inidate
+            self.enddate = enddate
+            self.time_allocated = time_allocated
+            self.time_spent = time_spent
+            self.active = active
+
+    form = AllocationForm()
+
+    if request.method == 'GET':
+        form.program_id.choices = [(row["id"], row["name"]) for row in model.get_all_programs()] 
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  'program_id': int(postform['program_id']),
+                   'designator': postform['designator'],
+                   'inidate' :  datetime.datetime.strptime(postform['inidate'], "%Y-%m-%d %H:%M:%S"),
+                    'enddate' : datetime.datetime.strptime(postform['enddate'], "%Y-%m-%d %H:%M:%S"),
+                    'time_allocated': float(postform['time_allocated'])*3600*24,
+                    'time_spent': float(postform['time_spent'])*3600*24}
+        status, message = db.add_allocation(pardic)
+
+    # Or, more likely, load items from your database with something like
+    # Populate the table
+    items = model.get_allocations()
+    table = AllocationTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('allocation.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
+    
+
+
+@app.route("/delete_program", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_program():
+    '''
+    This handles when a user needs to cancel a reservation. 
+    '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+    id = int(request.args.get('id'))
+    status, message = model.delete_program(id)
+
+    return redirect(url_for('manage_program'))
+
+@app.route("/manage_program", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_program():
+    '''
+    This page allows to add and delete programs.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class ProgramTable(Table):
+        id = 0
+        classes = ['table']
+        designator = Col('Designator')
+        name = Col('Name')
+        group = Col('Group')
+        pi = Col('PI')
+        priority = Col('Priority')
+        delete = ButtonCol('Delete', 'delete_program', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, designator, name, group, pi, priority):
+            self.id = id
+            self.designator = designator
+            self.name = name
+            self.group = group
+            self.pi = pi
+            self.priority = priority
+
+    form = ProgramForm()
+
+
+    form.group.choices = [(row["id"], row["designator"]) for row in model.get_all_groups()] 
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  'group_id': int(postform['group']),
+                   'designator': postform['designator'],
+                   'name': postform['name'],
+                   'PI': postform['pi'],
+                   'priority': float(postform['priority']),
+                    }
+        print pardic
+        status, message = db.add_program(pardic)
+
+    # Populate the table
+    items = model.get_programs()
+    table = ProgramTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('program.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
+    
+
+@app.route("/delete_group", methods=['GET', 'POST'])
+@flask_login.login_required
+
+def delete_group():
+    '''
+    This handles when a user needs to delete a group. 
+    '''
+
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+    id = int(request.args.get('id'))
+    status, message = model.delete_group(id)
+
+    return redirect(url_for('manage_group'))
+
+@app.route("/manage_group", methods=['GET', 'POST'])
+@flask_login.login_required
+def manage_group():
+    '''
+    This page allows to add and delete groups.
+    '''
+    if flask_login.current_user.name != 'SEDM_admin':
+        return redirect(flask.url_for('index'))
+
+
+    message = ""
+    # Declare the table
+    class GroupTable(Table):
+        id = 0
+        classes = ['table']
+        designator = Col('Designator')
+        delete = ButtonCol('Delete', 'delete_group', url_kwargs=dict(id='id'), anchor_attrs={'class': 'btn btn-danger'})
+
+    # Get some objects
+    class Item(object):
+        def __init__(self, id, designator):
+            self.id = id
+            self.designator = designator
+
+    form = GroupForm()
+
+    postform= flask.request.form
+
+    if request.method == 'POST':
+
+        pardic= {  
+                   'designator': postform['designator']
+                    }
+
+        status, message = db.add_group(pardic)
+
+    # Populate the table
+    items = model.get_all_groups()
+    table = GroupTable(items)
+
+
+    return (render_template('header.html', current_user=flask_login.current_user) +
+            render_template('group.html', table=table, form_a = form, message=message) +
+            render_template('footer.html'))
 
 @app.route("/passchange", methods=['GET', 'POST'])
 @flask_login.login_required
@@ -330,20 +841,18 @@ def requests():
     # if form1.validate_on_submit():
     #    print 'form1'
     alloc = db.execute_sql("SELECT id, designator FROM allocation WHERE id IN %s AND active = 't';" % ('(' + str(flask_login.current_user.allocation)[1:-1] + ')',))
-    if alloc and alloc[0] == -1:  # TODO: test and remove
-        flash(alloc[1])
-        return redirect(flask.url_for('/index'))
-    elif not alloc:
+    alloc = model.get_allocations_user(flask_login.current_user.id)
+    if alloc is None or len(alloc)==0:
         choices = [(0, "You have none active!")]
     else:
-        choices = alloc
+        choices = [z for z in zip(alloc['id'], alloc['allocation'])]
     form1.allocation.choices = choices
     user_id = flask_login.current_user.id
     print Time.now()
     if not form1.inidate.data:
-        form1.inidate.data = datetime.today()
+        form1.inidate.data = datetime.datetime.today()
     if not form1.enddate.data:    
-        form1.enddate.data = datetime.today()+timedelta(2)
+        form1.enddate.data = datetime.datetime.today() + datetime.timedelta(2)
     if form1.submit_req.data:
         pass
     if form1.submit_req.data and form1.validate_on_submit():
@@ -583,8 +1092,38 @@ def schedule():
             render_template('schedule.html') +
             render_template('footer.html'))
 
+@app.route('/add_target', methods=['GET','POST'])
+def add_json_target():
+    import model
+
+
+    try:
+        textfields = ['jsonfile']
+        fields = textfields[:]
+        
+        jsonfile = request.get_json(silent=True)
+        if jsonfile:
+            jsonfile = form['jsonfile']
+            try:
+                entryUpdate = json.loads(jsonfile.file.read())
+                message = model.updateFollowupConfig(entryUpdate)
+            except Exception, e:
+                err = open('/home/sedm/kpy/flask/static/error_output%s.txt' % datetime.datetime.utcnow().strftime("%H_%M_%S"),'w')
+                err.write(str(e))
+                err.close()
+        else:
+            message = "30 No json file submitted."
+        return message
+    except Exception, e:
+        err = open('/home/sedm/kpy/flask/static/error.log','a')
+        err.write('%s: %s\n' % (datetime.datetime.utcnow().strftime("%H_%M_%S"),str(e)))
+        err.close()
+
+
+
 
 @app.route('/objects', methods=['GET', 'POST'])
+@flask_login.login_required
 def objects():
     form1 = SubmitObjectForm()
     form2 = FindObjectForm()
@@ -640,8 +1179,9 @@ def objects():
             if form1.obj_ra.data and form1.obj_dec.data and form1.typedesig.data in ['f', 'v']:
                 # add the base object
                 try:
-                    ra = float(form1.obj_ra.data)
-                    coord=SkyCoord(ra, form1.obj_dec.data, unit='deg')
+                    ra = float(form1.obj_ra.data.strip())
+                    dec = float(form1.obj_dec.data.strip())
+                    coord=SkyCoord(ra, dec, unit='deg')
                 except:
                     coord=SkyCoord(form1.obj_ra.data, form1.obj_dec.data, unit=('hourangle', 'deg'))
                 
@@ -652,8 +1192,8 @@ def objects():
                     return (render_template('header.html', current_user=flask_login.current_user) +
                             render_template('object.html', form1=form1, form2=form2, sso_form=None, message=message) +
                             render_template('footer.html'))
-                else:
-                    obj_id = id_list[0]
+                #else:
+                #    obj_id = id_list[0]
             # if it is periodic, make sure there is an entry
             if form1.typedesig.data == 'v':
                 # form is already validated above
@@ -840,6 +1380,137 @@ def objects():
             render_template('footer.html'))
 
 
+def get_panstars_cutout_tag(ra, dec, optionDictionary = {'width' : '150', 'border' : '0'}):
+
+    '''
+    ra: degrees
+    dec: degrees
+    the color cotout of 100 arcsec wide is stored as /tmp/tmp_name.jpg
+    '''
+
+    image_index_url_red = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=i'.format(ra, dec)
+    image_index_url_green = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=r'.format(ra, dec)
+    image_index_url_blue = 'http://ps1images.stsci.edu/cgi-bin/ps1filenames.py?ra={0}&dec={1}&filters=g'.format(ra, dec)
+
+    ix_red_request = url_requests.get(image_index_url_red)
+    ix_green_request = url_requests.get(image_index_url_green)
+    ix_blue_request = url_requests.get(image_index_url_blue)
+
+    ix_red_data = ix_red_request.text.split('\n')
+    ix_red_data[0] = ix_red_data[0].split(' ')
+    ix_red_data[1] = ix_red_data[1].split(' ')
+    ix_red_filename = ix_red_data[1][ix_red_data[0].index('filename')]
+
+    ix_green_data = ix_green_request.text.split('\n')
+    ix_green_data[0] = ix_green_data[0].split(' ')
+    ix_green_data[1] = ix_green_data[1].split(' ')
+    ix_green_filename = ix_green_data[1][ix_green_data[0].index('filename')]
+
+    ix_blue_data = ix_blue_request.text.split('\n')
+    ix_blue_data[0] = ix_blue_data[0].split(' ')
+    ix_blue_data[1] = ix_blue_data[1].split(' ')
+    ix_blue_filename = ix_blue_data[1][ix_blue_data[0].index('filename')]
+
+    image_url = "http://ps1images.stsci.edu/cgi-bin/fitscut.cgi?red=%s&green=%s&blue=%s&filetypes=stack&auxiliary=data&size=400&ra=%.6f&dec=%.6f" % (ix_red_filename, ix_green_filename, ix_blue_filename, ra, dec)
+    image_request = url_requests.get(image_url)
+
+    image_uri = image_request.content.encode('base64').replace('\n', '')
+
+    image_style = ' '
+    for option in optionDictionary:
+        image_style += '%s="%s" ' % (option, optionDictionary[option])
+
+    image_tag = '<img src="data:image/jpg;base64,%s"' % image_uri
+    image_tag += ' %s>\n' % image_style
+
+    link_url = 'ps1images.stsci.edu/cgi-bin/ps1cutouts?pos=%s+%s&filter=color&filter=g&filter=r&filter=i&filter=z&filter=y&filetypes=stack&auxiliary=data&size=240&output_size=0&verbose=0&autoscale=99.500000&catlist=' % (ra, dec)
+    return image_tag, link_url
+
+
+def plot_visibility(ra, dec, name):
+    import base64
+    import astropy.units as u
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+
+    # Get the coordinates of the object:
+    obj = SkyCoord(float(ra), float(dec), unit="deg")
+
+    ##############################################################################
+    # Use `astropy.coordinates.EarthLocation` to provide the location of Palomar
+
+
+    palomar_mountain = EarthLocation(lon=243.1361*u.deg, lat=33.3558*u.deg, height=1712*u.m)
+    utcoffset = -8*u.hour  # Pacific Daylight Time
+    time = Time.now() - utcoffset
+
+    ##############################################################################
+    # This is helpful since it turns out M33 is barely above the horizon at this
+    # time. It's more informative to find M33's airmass over the course of
+    # the night.
+    #
+    # Find the alt,az coordinates of M33 at 100 times evenly spaced between 10pm
+    # and 7am EDT:
+
+    midnight = Time(datetime.datetime(time.datetime.year, time.datetime.month, time.datetime.day)) - utcoffset
+
+    fig = Figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    from astropy.coordinates import get_sun
+    delta_midnight = np.linspace(-8, 8, 1000)*u.hour
+    times_tonight = midnight + delta_midnight
+    frame_tonight = AltAz(obstime=times_tonight, location=palomar_mountain)
+    sunaltazs_tonight = get_sun(times_tonight).transform_to(frame_tonight)
+
+    from astropy.coordinates import get_moon
+    moon_tonight = get_moon(times_tonight)
+    moonaltazs_tonight = moon_tonight.transform_to(frame_tonight)
+
+    ##############################################################################
+    # Find the alt,az coordinates of M33 at those same times:
+
+    objaltazs_tonight = obj.transform_to(frame_tonight)
+    objairmasss_tonight = objaltazs_tonight.secz
+    objairmasss_tonight[objairmasss_tonight < 1] = 1
+    objairmasss_tonight[objairmasss_tonight > 6] = 6
+
+    ##############################################################################
+    # Make a beautiful figure illustrating nighttime and the altitudes of M33 and
+    # the Sun over that time:
+
+    ax.plot(delta_midnight, sunaltazs_tonight.alt, color='r', label='Sun')
+    ax.plot(delta_midnight, moonaltazs_tonight.alt, color=[0.75]*3, ls='--', label='Moon')
+    scat= ax.scatter(delta_midnight, objaltazs_tonight.alt,
+                c=objairmasss_tonight, label=name, lw=0, s=8,
+                cmap='gist_stern_r')
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -0*u.deg, color='0.5', zorder=0)
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -18*u.deg, color='k', zorder=0)
+
+    ax.legend(loc='upper left')
+    ax.set_xlim(-8, 8)
+    #ax.set_xticks(np.arange(9)*2 -12)
+    ax.set_ylim(0, 90)
+    ax.set_xlabel('Hours from PST Midnight')
+    ax.set_ylabel('Altitude [deg]')
+
+    fig.colorbar(scat, label="airmass")
+    fig.suptitle("Visibility for %s UTC"%midnight)
+    canvas = FigureCanvas(fig)
+    output = StringIO.StringIO()
+    #canvas.print_png(output)
+    #response = make_response(output.getvalue())
+    #response.mimetype = 'image/png'
+    
+    Figure.savefig(fig, output, format='png')
+    image_url =  base64.encodestring(output.getvalue())
+
+    image_tag = '<img src="data:image/jpg;base64,%s">' % image_url 
+
+    return image_tag
+
 @app.route('/objects/<path:ident>')
 def show_objects(ident):
     # take name or id and show info about it and images with permission
@@ -859,6 +1530,8 @@ def show_objects(ident):
     # get basic information
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     info = info + deg2hour(info[1], info[2])
+    image_tag, link_url = get_panstars_cutout_tag(info[1], info[2])
+    visibility = plot_visibility(info[1], info[2], info[0])
 
     # TODO: work in SSO objects
     if info[0] == -1:
@@ -899,22 +1572,39 @@ def show_objects(ident):
         return mydiv
 
     for ob in observations:
-        if ob[3]:
+        obs.append(([ob[0], ob[1], ob[2]], None))
+        '''if ob[3]:
+            day = ob[3][3:11]
+            imagepath = os.path.join(config['path']['path_raw'], day, ob[3])
             obs.append(([ob[0], ob[1], ob[2]], make_image(ob[3])))
-        else:
-            obs.append(([ob[0], ob[1], ob[2]], None))
-    # TODO: make sure the above works
+        else:'''
+
 
     return (render_template('header.html') +  # , current_user=flask_login.current_user) +
-            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles) +
+            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url, visibility=visibility) +
             render_template('footer.html'))
 
 
 @app.route('/project_stats')
 @flask_login.login_required
 def projects_home():  # TODO: list groups and projects.
-    # generate a list of (group designator, project id, project designator)    
-    allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
+    # generate a list of (group designator, project id, project designator) 
+
+    if flask_login.current_user.name == 'SEDM_admin':
+        user_id = None
+    else:
+        user_id = flask_login.current_user.id
+
+    alloc_stats = model.get_allocation_stats(user_id)
+    stats_plot = stats_web.plot_stats_allocation(alloc_stats)
+    script, div = components(stats_plot)
+
+    return (render_template('header.html') + 
+            render_template('projects_home.html', script=script, div=div) +  
+            render_template('footer.html'))
+
+    
+    '''allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
                                  "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
     data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
     data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
@@ -922,17 +1612,19 @@ def projects_home():  # TODO: list groups and projects.
     inactive = data.loc[data.active == False]
     ac = active.drop(['allocation id', 'active'], axis=1)
     inac = inactive.drop(['allocation id', 'active'], axis=1)
+
+
     return (render_template('header.html') + 
             render_template('projects_home.html', allocations = allocations, tables=[HTML(ac.to_html(escape=False, classes='active', index=False)), HTML(inac.to_html(escape=False, classes='inactive', index=False))],
                             titles = ['', 'Active allocations', 'Inactive allocations']) + 
-            render_template('footer.html'))
+            render_template('footer.html'))'''
 
 
 @app.route('/project_stats/<program>')
 @flask_login.login_required
 def project_stats(program):
-    day = datetime.now()
-    start = Time(day - timedelta(days=day.weekday())).mjd
+    day = datetime.datetime.now()
+    start = Time(day - datetime.timedelta(days=day.weekday())).mjd
     end = start + 7
     alloc_id = None
 

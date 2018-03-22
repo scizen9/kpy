@@ -39,7 +39,7 @@ def identify_observations(headers):
     e.g. will return:
 
     {'STD-BD+25d4655': {1: ['...']}, {2: ['...']}, 
-           'PTF14dvo': {1: ['...', '...']}}
+           'ZTF14dvo': {1: ['...', '...']}}
     
     where STD-BD+25d4655 was observed at the beginning and end of night. SN
     14dov was observed once with A-B.
@@ -60,7 +60,7 @@ def identify_observations(headers):
         name = header['NAME'].lstrip()
         exptime = header['exptime']
         adcspeed = header['ADCSPEED']
-        if "test" in obj:
+        if "test" in obj or "Test" in obj or "TEST" in obj:
             continue
         if "Calib" in obj or "bias" in obj:
 
@@ -131,7 +131,7 @@ def identify_observations(headers):
     print("\n-- Standard Star Sets --")
     for k, v in objs.items():
         if "STD-" in k:
-            print("%20s : %2.0i" % (k, len(v)))
+            print("%20s : %2.0i" % (k, len(v[1])))
 
     print("\n-- Science Object Sets --")
     for k, v in objs.items():
@@ -154,7 +154,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
-PTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+ZTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -252,6 +252,8 @@ $(FLEX): cube.npy
 
 stds: flat-dome-700to900.npy std-correction.npy
 
+calimgs: dome.fits Hg.fits Cd.fits Xe.fits
+
 cleanstds:
 	rm -f STD-*_SEDM.pdf
 	rm -f std-correction.npy Standard_Correction.pdf
@@ -265,7 +267,7 @@ upload:
 	$(SPCCPY) --specdir $(dir $(mkfile_path))
 
 ptfreport: upload
-	$(PTFREPORT)
+	$(ZTFREPORT)
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))
@@ -317,7 +319,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
     else:
         tp['STD'] = "--std %s" % standard
 
-    if 'PTF' in objname:
+    if 'ZTF' in objname or 'ztf' in objname:
         tp['interact'] = '--interact'
     else:
         tp['interact'] = ''
@@ -378,6 +380,11 @@ sp_%(outname)s: cube.npy %(flexname)s %(obsfile)s.gz
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 %(specplot)s
+
+redo_%(name)s:
+\t@echo re-make-ing sp_%(outname)s
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --interact
+\t$(PLOT) --spec %(specnam)s --savespec --savefig --interact
 
 cube_%(outname)s.fits: %(outname)s
 \t$(PY) $(PYC)/Cube.py %(outname)s --step extract --outname cube_%(outname)s.fits
@@ -510,7 +517,7 @@ def to_makefile(objs, calibs):
                 plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                 if not objname.startswith("STD-"):
-                    if objname.startswith("PTF"):
+                    if objname.startswith("ZTF") or objname.startswith("ztf"):
                         sci += "sp_" + a + " "
                     else:
                         oth += "sp_" + a + " "
@@ -528,7 +535,8 @@ def to_makefile(objs, calibs):
                     plt_dep += a.split('.')[0] + '_SEDM.pdf' + " "
 
                     if not objname.startswith("STD-"):
-                        if objname.startswith("PTF"):
+                        if (objname.startswith("ZTF") or
+                                objname.startswith("ztf")):
                             sci += "sp_" + a + " "
                         else:
                             oth += "sp_" + a + " "

@@ -129,11 +129,11 @@ def get_sextractor_stats(files):
                     continue 
 
                 if not os.path.isfile(sexfiles[i]):
-                    sf =  sextractor.run_sex([f])
+                    sf =  sextractor.run_sex([f])[0]
                 else:
                     sf = sexfiles[i]
-                print f
-                hd = pf.open(files[i])[0].header
+
+                hd = pf.open(f)[0].header
                 try:
                     jd = hd["JD"]
                     obj = hd["OBJECT"]
@@ -143,8 +143,8 @@ def get_sextractor_stats(files):
                     in_hum = hd["IN_HUM"]
                     ns, fwhm, ellipticity, bkg = sextractor.analyse_image(sf)
                     out.write("%s,%s,%.3f,%d,%.2f,%.3f,%.3f,%.2f,%.1f,%s,%.2f,%.2f\n"%(os.path.abspath(f),obj,jd,ns,fwhm,ellipticity,bkg,airmass,in_temp,imtype,out_temp,in_hum))
-                except:
-                    print "Error when retrieving the stats parameters from the header of file %s"%f
+                except Exception as e:
+                    print "Error when retrieving the stats parameters from the header of file %s.\n Error %s"%(f, e)
             except IOError:
                 print "Error when opening file %s"%f
             
