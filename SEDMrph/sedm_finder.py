@@ -20,7 +20,7 @@ import argparse
 import subprocess
 from matplotlib import pylab as plt
  
- from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser
 import codecs
 
 parser = SafeConfigParser()
