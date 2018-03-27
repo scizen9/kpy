@@ -280,6 +280,7 @@ def handle_create(outname=None, filelist=None, plot_filt=False):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             pl.savefig("Standard_Correction.pdf")
+            pl.savefig("Standard_Correction.png")
 
         print("Mean cor: %10.3g, Sigma cor: %10.3g" %
               (float(np.mean(corr_vals)),

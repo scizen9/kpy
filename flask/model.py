@@ -340,13 +340,13 @@ def get_p18obsdata(obsdate):
 
 def get_allocations_user(user_id):
 
-    res = db.execute_sql(""" SELECT a.designator, p.designator, g.designator, a.time_allocated, a.time_spent
+    res = db.execute_sql(""" SELECT a.id, a.designator, p.designator, g.designator, a.time_allocated, a.time_spent
                             FROM allocation a, program p, groups g, usergroups ug
                             WHERE a.program_id = p.id AND p.group_id = g.id 
                             AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d"""%(user_id))
 
     # create the dataframe and set the allocation names to be linked
-    data = DataFrame(res, columns=['allocation', 'program', 'group', 'time allocated', 'time spent'])
+    data = DataFrame(res, columns=['id', 'allocation', 'program', 'group', 'time allocated', 'time spent'])
 
     return data
 

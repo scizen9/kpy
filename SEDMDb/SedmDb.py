@@ -657,7 +657,12 @@ class SedmDB:
         if type_check:
             return (-1, type_check)
 
+        print pardic, keys
+
         sql = _generate_update_sql(pardic, keys, 'allocation')
+
+        print sql
+
         try:
             self.execute_sql(sql)
         except exc.IntegrityError:
@@ -2956,12 +2961,12 @@ class SedmDB:
                                     WHERE status ='COMPLETED' and allocation_id = %d;"""%allocation_id)
 
         if len(exptime) == 0:
-            return
-
-        reqsum = [ np.sum(e) for e in exptime]
-        time_spent = np.sum(reqsum)
+            self.update_allocation({"id":allocation_id, "time_spent": timedelta(days=0.0)})
+        else:
+            reqsum = [ np.sum(e) for e in exptime]
+            time_spent = np.sum(reqsum)
                 
-        exptime  = self.update_allocation({"id":allocation_id, "time_spent":time_spent})
+            self.update_allocation({"id":allocation_id, "time_spent":time_spent})
 
     def update_all_allocations(self):
         """
@@ -2970,6 +2975,7 @@ class SedmDB:
         alloc = self.get_from_allocation(["id"], {"active":True})
         al = list(set(alloc))
         for a in al: 
+            print int(a[0])
             self.update_allocation_time(int(a[0]))
 
 
@@ -3117,10 +3123,10 @@ def _generate_update_sql(pardic, param_list, table, lastmodified=False):
     """
     sql = "UPDATE %s SET " % (table,)
     for param in param_list:
-        if pardic[param]:  # it may be a key with nothing in it
+        if not pardic[param] is None:  # it may be a key with nothing in it
             sql += " %s = '%s'," % (param, pardic[param])
     if lastmodified:
-        sql += " lastmodified = 'NOW()'"
+        sql += " lastmodified = 'NOW()' "
     else:
         sql = sql[:-1]
     sql += " WHERE id = %s;" % (pardic['id'],)

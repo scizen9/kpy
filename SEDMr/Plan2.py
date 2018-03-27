@@ -242,6 +242,7 @@ ptfreport: upload
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))
+	$(REPORT) | tee report.txt
 
 finalreport: classify
 	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
