@@ -255,7 +255,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             status = 1
 
         # Fitted 3-sigma extent
-        if a > 14. or b > 14. or a <= 0. or b <= 0.:
+        if a*sigfac > 14. or b*sigfac > 14. or a <= 0. or b <= 0.:
             print("ERROR: A,B out of bounds: %f, %f" % (a, b))
             print("Using initial guess")
             popt = initial_guess
