@@ -421,6 +421,7 @@ class ScaleCube(object):
         elif event.key == 'n':
             self.noobj = True
             print("no object visible")
+            pl.close(self.figure)
 
 
 class WaveFixer(object):

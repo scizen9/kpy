@@ -542,7 +542,7 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
              ellipse=None, ellipseb=None, sigfac=3.0, bgd_sub=True,
              lmin=650., lmax=700., cmin=None, cmax=None, fwhm=False,
-             no_stamp=False):
+             quality=0, no_stamp=False):
     """ Convert spectra list into image_[outname].pdf
 
     Args:
@@ -643,6 +643,8 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
+    if quality > 0:
+        tlab += ", Quality: %d" % quality
     if not no_stamp:
         pl.title(tlab)
     pl.colorbar()
@@ -2076,7 +2078,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
-                 lmin=lmin, lmax=lmax,
+                 lmin=lmin, lmax=lmax, quality=quality,
                  cmin=stats["cmin"], cmax=stats["cmax"], no_stamp=no_stamp)
 
         kixa = identify_bgd_spectra(ex, adc_a, ellipse=ellipse)
