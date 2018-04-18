@@ -372,6 +372,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
         s = GUI.ScaleCube(kt, bgd_sub=bgd_sub, lmin=lmin, lmax=lmax,
                           objname=objname)
         scaled = s.scaled
+        noobj = s.noobj
 
         if scaled:
             cmin = s.cmin
@@ -381,23 +382,26 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     if message is not None:
         print(message)
 
-    # Get positions
-    g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
-                           lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
-                           objname=objname, nosky=nosky, noobj=noobj)
-    pos = g.picked
-    nosky = g.nosky
-    ellipse = g.ellipse
-    noobj = g.noobj
+    if noobj:
+        pos = (0., 0)
+        nosky = False
+        ellipse = inell
+        print("No object detected")
+    else:
+        # Get positions
+        g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell,
+                               scaled=scaled, lmin=lmin, lmax=lmax,
+                               cmin=cmin, cmax=cmax,
+                               objname=objname, nosky=nosky)
+        pos = g.picked
+        nosky = g.nosky
+        ellipse = g.ellipse
 
     print("Final semimajor axis (arcsec) = %4.1f" % ellipse[0])
     if nosky:
         print("Sky subtraction off")
     else:
         print("Sky subtraction on")
-
-    if noobj:
-        print("No object detected")
 
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
 
@@ -2026,25 +2030,19 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         for ix in sixa:
             ex[ix].is_obj = True
 
-        if noobj:
-            sixb = sixa
-            posb = posa
-            adc_b = adc_a
-            ellipseb = ellipse
-        else:
+        message = "\nMark negative (blue) target next"
 
-            message = "\nMark negative (blue) target next"
-
-            sixb, posb, adc_b, ellipseb, stats = \
-                identify_spectra_gui(ex, radius=radius_used_a,
-                                     prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                     scaled=stats["scaled"],
-                                     lmin=stats["lmin"], lmax=stats["lmax"],
-                                     cmin=stats["cmin"], cmax=stats["cmax"],
-                                     objname=objname, airmass=meta['airmass'],
-                                     nosky=stats["nosky"],
-                                   message=message, ellipse_in=ellipse)
-            for ix in sixb:
+        sixb, posb, adc_b, ellipseb, stats = \
+            identify_spectra_gui(ex, radius=radius_used_a,
+                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                 scaled=stats["scaled"],
+                                 lmin=stats["lmin"], lmax=stats["lmax"],
+                                 cmin=stats["cmin"], cmax=stats["cmax"],
+                                 objname=objname, airmass=meta['airmass'],
+                                 nosky=stats["nosky"],
+                                 noobj=stats["noobj"],
+                                 message=message, ellipse_in=ellipse)
+        for ix in sixb:
                 ex[ix].is_obj = True
 
         if interact:
