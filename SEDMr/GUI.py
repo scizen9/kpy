@@ -31,7 +31,7 @@ def get_ellipse_xys(ell):
 class MouseCross(object):
     """ Draw a cursor with the mouse cursor """
 
-    def __init__(self, ax, ellipse=None, nosky=False, **kwargs):
+    def __init__(self, ax, ellipse=None, nosky=False, noobj=False, **kwargs):
         self.ax = ax
         self.radius_as = ellipse[0]
         self.theta = ellipse[4]
@@ -46,6 +46,7 @@ class MouseCross(object):
             self.pa -= 360.
         self.axrat = ellipse[1]/ellipse[0]
         self.nosky = nosky
+        self.noobj = noobj
         self.ellipse = ellipse
 
         if self.nosky:
@@ -56,6 +57,7 @@ class MouseCross(object):
         print("PA is %.1f" % self.pa)
         print("b/a is %.2f" % self.axrat)
         print("y - toggle sky/host sub")
+        print("n - if no object visible")
         print("x - expand, z - shrink, , - rotate CCW, . - rotate CW, "
               "[ - -b/a, ] - +b/a, ")
 
@@ -97,6 +99,13 @@ class MouseCross(object):
             else:
                 self.nosky = True
                 print("Skysub off")
+
+        elif event.key == "n":
+            if self.noobj:
+                self.noobj = False
+            else:
+                self.noobj = True
+                print("No object visible")
 
         # Rotate ellipse CW
         elif event.key == ",":
@@ -170,9 +179,10 @@ class PositionPicker(object):
     nosky = None
     scaled = None
     ellipse = None
+    noobj = None
 
     def __init__(self, spectra=None, pointsize=35, bgd_sub=False, ellipse=None,
-                 objname=None, scaled=False,
+                 objname=None, scaled=False, noobj=False,
                  lmin=600, lmax=650, cmin=-300, cmax=300, nosky=False):
         """ Create spectum picking gui.
 
@@ -192,6 +202,7 @@ class PositionPicker(object):
         self.nosky = nosky
         self.radius_as = ellipse[0]
         self.ellipse = ellipse
+        self.noobj = noobj
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -243,13 +254,14 @@ class PositionPicker(object):
         # c = Cursor(self.figure.gca(), useblit=True)
 
         cross = MouseCross(self.figure.gca(), ellipse=self.ellipse,
-                           nosky=self.nosky)
+                           nosky=self.nosky, noobj=self.noobj)
         self.figure.canvas.mpl_connect('motion_notify_event', cross.show_cross)
         self.figure.canvas.mpl_connect("key_press_event", cross.size_cross)
         pl.show()
         self.radius_as = cross.radius_as
         self.nosky = cross.nosky
         self.ellipse = cross.ellipse
+        self.noobj = cross.noobj
 
     def __call__(self, event):
         """Event call handler for Picker gui."""

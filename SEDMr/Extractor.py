@@ -340,7 +340,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
                          objname=None, airmass=1.0, nosky=False, message=None,
-                         ellipse_in=None):
+                         ellipse_in=None, noobj=False):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
@@ -384,16 +384,20 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     # Get positions
     g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
                            lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
-                           objname=objname, nosky=nosky)
+                           objname=objname, nosky=nosky, noobj=noobj)
     pos = g.picked
     nosky = g.nosky
     ellipse = g.ellipse
+    noobj = g.noobj
 
     print("Final semimajor axis (arcsec) = %4.1f" % ellipse[0])
     if nosky:
         print("Sky subtraction off")
     else:
         print("Sky subtraction on")
+
+    if noobj:
+        print("No object detected")
 
     leffmic = (lmax+lmin)/2000.0    # Convert to microns
 
@@ -412,7 +416,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
 
-    stats = {"nosky": nosky, "scaled": scaled,
+    stats = {"nosky": nosky, "scaled": scaled, "noobj": noobj,
              "lmin": lmin, "lmax": lmax,
              "cmin": cmin, "cmax": cmax}
 
@@ -2005,6 +2009,8 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         objname = header['OBJECT'].split()[0]
         objname = objname.replace('"', "")
 
+        noobj = False
+
         message = "\nMark positive (red) target first"
 
         sixa, posa, adc_a, ellipse, stats = \
@@ -2014,24 +2020,32 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  lmin=lmin, lmax=lmax,
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=nosky,
+                                 noobj=noobj,
                                  message=message)
         radius_used_a = ellipse[0]
         for ix in sixa:
             ex[ix].is_obj = True
 
-        message = "\nMark negative (blue) target next"
+        if noobj:
+            sixb = sixa
+            posb = posa
+            adc_b = adc_a
+            ellipseb = ellipse
+        else:
 
-        sixb, posb, adc_b, ellipseb, stats = \
-            identify_spectra_gui(ex, radius=radius_used_a,
-                                 prlltc=Angle(meta['PRLLTC'], unit='deg'),
-                                 scaled=stats["scaled"],
-                                 lmin=stats["lmin"], lmax=stats["lmax"],
-                                 cmin=stats["cmin"], cmax=stats["cmax"],
-                                 objname=objname, airmass=meta['airmass'],
-                                 nosky=stats["nosky"],
-                                 message=message, ellipse_in=ellipse)
-        for ix in sixb:
-            ex[ix].is_obj = True
+            message = "\nMark negative (blue) target next"
+
+            sixb, posb, adc_b, ellipseb, stats = \
+                identify_spectra_gui(ex, radius=radius_used_a,
+                                     prlltc=Angle(meta['PRLLTC'], unit='deg'),
+                                     scaled=stats["scaled"],
+                                     lmin=stats["lmin"], lmax=stats["lmax"],
+                                     cmin=stats["cmin"], cmax=stats["cmax"],
+                                     objname=objname, airmass=meta['airmass'],
+                                     nosky=stats["nosky"],
+                                   message=message, ellipse_in=ellipse)
+            for ix in sixb:
+                ex[ix].is_obj = True
 
         if interact:
 
@@ -2055,7 +2069,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                     prom = "Try again: "
             print("Quality = %d, now making outputs..." % quality)
         else:
-            quality = 0
+            if noobj:
+                quality = 4
+            else:
+                quality = 0
             print("Now making outputs...")
 
         # Make an image of the spaxels
