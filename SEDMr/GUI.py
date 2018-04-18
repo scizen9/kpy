@@ -420,6 +420,7 @@ class ScaleCube(object):
                 self.update_cube()
         elif event.key == 'n':
             self.noobj = True
+            self.scaled = True
             print("no object visible")
             pl.close(self.figure)
 
