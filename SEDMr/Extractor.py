@@ -2015,8 +2015,6 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         objname = header['OBJECT'].split()[0]
         objname = objname.replace('"', "")
 
-        noobj = False
-
         message = "\nMark positive (red) target first"
 
         sixa, posa, adc_a, ellipse, stats = \
@@ -2026,9 +2024,9 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  lmin=lmin, lmax=lmax,
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=nosky,
-                                 noobj=noobj,
                                  message=message)
         radius_used_a = ellipse[0]
+        noobj = stats["noobj"]
         for ix in sixa:
             ex[ix].is_obj = True
 
@@ -2073,7 +2071,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                 quality = 4
             else:
                 quality = 0
-            print("Now making outputs...")
+        print("Now making outputs...")
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
@@ -2172,10 +2170,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
-        tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
+        tlab = "%d obj spaxels in %s" % ((len(nsxA) + len(nsxB)),
                                                meta['outname'])
         if 'airmass' in meta:
-            tlab += ", Airmass: %.3f" % meta['airmass']
+            tlab += ", Air: %.3f" % meta['airmass']
         if 1 <= quality <= 4:
             tlab += ", Qual: %d" % quality
         pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
