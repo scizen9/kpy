@@ -56,7 +56,6 @@ class MouseCross(object):
         print("PA is %.1f" % self.pa)
         print("b/a is %.2f" % self.axrat)
         print("y - toggle sky/host sub")
-        print("n - if no object visible")
         print("x - expand, z - shrink, , - rotate CCW, . - rotate CW, "
               "[ - -b/a, ] - +b/a, ")
 
@@ -297,6 +296,7 @@ class ScaleCube(object):
             print(", - to decrease lower limit by 100")
         print("x - exit")
         print("q - to abandon scaling")
+        print("n - if no object visible")
 
         self.spectra = spectra
         self.pointsize = pointsize
