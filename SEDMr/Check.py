@@ -385,7 +385,6 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         print("3 - poor       (major problem)")
         print("4 - no object visible")
         q = 'x'
-        qual = -1
         prom = ": "
         while qual < 1 or qual > 4:
             q = input(prom)
