@@ -1683,7 +1683,10 @@ def handle_single(imfile, fine, outname=None, offset=None,
                         prom = "Try again: "
                 print("Quality = %d, now making outputs..." % quality)
             else:
-                quality = 0
+                if stats["noobj"]:
+                    quality = 4
+                else:
+                    quality = 0
                 print("Now making outputs...")
 
             # Use an annulus for sky spaxels for Science Objects
