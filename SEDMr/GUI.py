@@ -294,8 +294,8 @@ class ScaleCube(object):
             print("< - to decrease upper limit by 100")
             print(". - to increase lower limit by 100")
             print(", - to decrease lower limit by 100")
-        print("x - exit")
-        print("q - to abandon scaling")
+        print("x - keep scaling and continue")
+        print("q - abandon scaling and continue")
         print("n - if no object visible")
 
         self.spectra = spectra
