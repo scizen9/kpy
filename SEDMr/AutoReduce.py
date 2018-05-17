@@ -456,8 +456,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             if nobj > 0:
                 # Use forced psf for faint targets (eventually)
                 print("Extracting spectra for " + ",".join(sciobj))
-                cmd = "extract_star.py %s --auto %s --lstep 2" % (datestr,
-                                                        ",".join(sciobj))
+                cmd = "extract_star.py %s --auto %s --lstep 2  --autobins 6" \
+                      % (datestr, ",".join(sciobj))
                 print(cmd)
                 retcode = os.system(cmd)
                 if retcode > 0:

@@ -234,10 +234,7 @@ newstds: cleanstds stds std_plots std_cogs
 report:
 	$(REPORT) | tee report.txt
 
-upload:
-	$(SPCCPY) --specdir $(dir $(mkfile_path))
-
-ptfreport: upload
+ztfreport: ztf_report.txt
 	$(ZTFREPORT)
 
 classify:

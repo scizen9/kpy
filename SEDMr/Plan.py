@@ -154,7 +154,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
-ZTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+ZTFREPORT = $(PY) $(PYC)/growth.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -263,10 +263,7 @@ newstds: cleanstds stds std_plots std_cogs
 report:
 	$(REPORT) | tee report.txt
 
-upload:
-	$(SPCCPY) --specdir $(dir $(mkfile_path))
-
-ptfreport: upload
+ztfreport: ztf_report.txt
 	$(ZTFREPORT)
 
 classify:
