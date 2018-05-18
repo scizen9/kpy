@@ -167,8 +167,10 @@ def update_request(status, request_id, instrument_id='',
     if not save:
         os.remove(output_file)
 
-    # 5. Return the request response for the user
-    return ret
+    # 5. Print the request response for the user
+    print ret
+
+    return True
 
 
 def get_keywords_from_file(inputfile, keywords, sep=':'):
@@ -312,6 +314,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     # 3. Send the request
     ret = requests.post(growth_spec_url, auth=(user, pwd),
                         files={'jsonfile': jsonFile, 'upfile': upfile})
+    print ret
 
     # 4. Close files and send request response
     upfile.close()
@@ -319,7 +322,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     #if not save:
     #    os.remove(output_file)
 
-    return ret
+    return True
 
 
 def read_request(request_file):
@@ -341,7 +344,9 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     :param objname: 
     :return: 
     """
-
+    status_ret = False
+    spec_ret = False
+    phot_ret = False
     # 1. Start by looking at all files in the target directory
     # this is currently the directory that holds all incoming request
     # dictionary from growth.
@@ -353,11 +358,11 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     files = glob.glob('%s%s*' % (target_dir, target_base_name))
 
     # TODO: Change this to either look at the directory or to the SEDm database
-    if search_db:
-        import SedmDb
-        sedmdb = SedmDb.SedmDB("sedmdb", "pharos.caltech.edu")
+    #if search_db:
+    #    import SedmDb
+    #    sedmdb = SedmDb.SedmDB("sedmdb", "pharos.caltech.edu")
 
-        # 1a. Search for target in the database
+    # 1a. Search for target in the database
 
     for i in files:
         targ = read_request(i)
@@ -377,16 +382,12 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
             print target['requestid']
             spec_ret = upload_spectra(spectra_file, fill_by_file=True,
                                       request_id=target['requestid'])
-            print spec_ret
         if add_phot:
             phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
             status_ret = update_request(status, request_id=target['requestid'])
 
-        return_link = growth_view_source_url + "name=%s" % target['sourcename']
-
-        return return_link
     elif len(match_list) == 0:
         print "Could not match name with any request file"
 
@@ -417,17 +418,15 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
             print target['requestid']
             spec_ret = upload_spectra(spectra_file, fill_by_file=True,
                                       request_id=target['requestid'])
-            print spec_ret
-        
         if add_phot:
             phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
             status_ret = update_request(status, request_id=target['requestid'])
 
-        return_link = growth_view_source_url + "name=%s" % target['sourcename']
+    return_link = growth_view_source_url + "name=%s" % target['sourcename']
 
-        return return_link
+    return return_link, spec_ret, status_ret, phot_ret
 
           
 def parse_ztf_by_dir(target_dir):
@@ -444,14 +443,33 @@ def parse_ztf_by_dir(target_dir):
     out.write("ZTF Upload report for %s generated on %s\n\n" %
               (target_dir.split('/')[-2],
                datetime.datetime.now().strftime("%c")))
-
-    for i in files:
-        objname = os.path.basename(i).split('_')[0]
-        r = update_target_by_object(objname, add_status=True,
-                                    status='Completed', add_spectra=True,
-                                    spectra_file=i, pull_requests=True)
+    pr = True
+    for fi in files:
+        objname = os.path.basename(fi).split('_')[0]
+        r, spec, stat, phot = update_target_by_object(objname,
+                                                      add_status=True,
+                                                      status='Completed',
+                                                      add_spectra=True,
+                                                      spectra_file=fi,
+                                                      pull_requests=pr)
+        # Only need to pull requests the first time
+        pr = False
+        # print Object name
+        out.write("%s: " % objname)
+        # Was a spectrum uploaded?
+        if spec:
+            out.write("OK ")
+        else:
+            out.write("NO ")
+        # Was status updated?
+        if stat:
+            out.write("OK ")
+        else:
+            out.write("NO ")
         print r
         out.write("%s\n" % r)
+
+    # Close log file
     out.close()
 
 
