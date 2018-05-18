@@ -441,8 +441,9 @@ def parse_ztf_by_dir(target_dir):
     files += glob.glob('%sztf*.txt' % target_dir)
 
     out = open(target_dir + "report_ztf.txt", "w")
-    out.write("Report generated on %s\n\n" %
-              datetime.datetime.now().strftime("%c"))
+    out.write("ZTF Upload report for %s generated on %s\n\n" %
+              (target_dir.split('/')[-2],
+               datetime.datetime.now().strftime("%c")))
 
     for i in files:
         objname = os.path.basename(i).split('_')[0]
@@ -450,7 +451,7 @@ def parse_ztf_by_dir(target_dir):
                                     status='Completed', add_spectra=True,
                                     spectra_file=i, pull_requests=True)
         print r
-        out.write("%s" % r)
+        out.write("%s\n" % r)
     out.close()
 
 
