@@ -467,7 +467,7 @@ def parse_ztf_by_dir(target_dir):
         else:
             out.write("NO ")
         print r
-        out.write("%s\n" % r)
+        out.write("%s:\n" % r)
 
     # Close log file
     out.close()
