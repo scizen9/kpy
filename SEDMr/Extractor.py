@@ -1285,23 +1285,27 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Mean flux
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
 
+    # Reference wavelength grid
+    l_grd = resa[0]["nm"]
+
     # Mean flux variance
-    vara, nspxav = interp_spectra(e_var, sixa)
+    vara, nspxav = interp_spectra(e_var, sixa, onto=l_grd)
     # , outname=outname+"_var.pdf")
 
     # Mean sky
     # are we using found sky spaxels
     if skystat == 0:
         skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
-                                  sky=True)
+                                      onto=l_grd, sky=True)
         # Mean sky variance
-        vkya, nspxak = interp_spectra(e_var, kixa, sky=True)
+        vkya, nspxak = interp_spectra(e_var, kixa, sky=True, onto=l_grd)
         # , outname=outname+"_skvar.pdf")
     # or the whole image?
     else:
-        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf",
+                                      onto=l_grd)
         # Mean sky variance
-        vkya, nspxak = interp_spectra(e_var, kixa)
+        vkya, nspxak = interp_spectra(e_var, kixa, onto=l_grd)
         # , outname=outname+"_skvar.pdf")
         # make sure this is marked as bad
         quality = 4
