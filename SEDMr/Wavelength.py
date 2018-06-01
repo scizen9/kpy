@@ -390,7 +390,7 @@ def wavelength_extract_helper(SS):
     ix, flexure_x_corr_nm, flexure_y_corr_pix = SS
 
     ss = wavecalib[ix]
-    if not ss.ok:
+    if not ss.ok or len(ss.lamcoeff) < 5:
         return Extraction.Extraction(seg_id=ss.seg_id, ok=False,
                                      trace_sigma=ss.trace_sigma,
                                      Q_ix=ss.Q_ix, R_ix=ss.R_ix,
