@@ -13,6 +13,8 @@ def report():
     print("\nReport generated on %s" % time.strftime("%c"))
     print("\nSEDM DRP run in %s\nFound %d sp_*.npy files\n" %
           (os.getcwd(), len(flist)))
+    print("\nSee http://pharos.caltech.edu/data_access/ifu?date=%s" %
+          os.getcwd().split('/')[-1])
     totexpt = 0.
     lostexp = 0.
     print("Object                     Obs Method  Exptime Qual Skysb Airmass "
