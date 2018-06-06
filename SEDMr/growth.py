@@ -455,7 +455,7 @@ def parse_ztf_by_dir(target_dir):
         # Only need to pull requests the first time
         pr = False
         # print Object name
-        out.write("%s: " % objname)
+        out.write(" %s: " % objname)
         # Was a spectrum uploaded?
         if spec:
             out.write("OK ")
@@ -467,7 +467,7 @@ def parse_ztf_by_dir(target_dir):
         else:
             out.write("NO ")
         print r
-        out.write("%s:\n" % r)
+        out.write("%s\n" % r)
 
     # Close log file
     out.close()
