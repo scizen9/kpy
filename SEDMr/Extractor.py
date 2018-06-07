@@ -705,8 +705,13 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pix = np.arange(*spectrum.xrange)
 
         # check for saturation
-        if np.max(s) > 1000000:
+        if np.max(s) > 10000:
             print("saturated extraction: %d with max of %d, skipping" %
+                  (ix, np.max(s)))
+            continue
+        # check for latent CRs in sky
+        if sky and np.max(s) > 500:
+            print("latent CR in sky: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
 
