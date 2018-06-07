@@ -1706,7 +1706,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 print("Quality = %d, now making outputs..." % quality)
             else:
                 if stats["noobj"]:
-                    quality = 4
+                    quality = 5
                 else:
                     quality = 0
                 print("Now making outputs...")
@@ -2094,7 +2094,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             print("Quality = %d, now making outputs..." % quality)
         else:
             if noobj:
-                quality = 4
+                quality = 5
             else:
                 quality = 0
         print("Now making outputs...")
