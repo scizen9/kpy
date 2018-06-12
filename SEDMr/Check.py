@@ -384,17 +384,17 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         print("2 - acceptable (minor problem)")
         print("3 - poor       (major problem)")
         print("4 - no object visible")
+        print("5 - bogus target")
         q = 'x'
-        qual = -1
         prom = ": "
-        while qual < 1 or qual > 4:
+        while qual < 1 or qual > 5:
             q = input(prom)
             if type(q) != int:
                 if q.isdigit():
                     qual = int(q)
             else:
                 qual = q
-            if qual < 1 or qual > 4:
+            if qual < 1 or qual > 5:
                 prom = "Try again: "
         print("Quality = %d" % qual)
         tlab = "%s\n(Air: %1.2f | Expt: %i | Skysub: %s | Qual: %d)" % \

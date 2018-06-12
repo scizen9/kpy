@@ -5,18 +5,19 @@ Created on Thu Mar 22 10:30:30 2018
 
 @author: nblago
 """
+from __future__ import print_function
+
+
 import glob, os
 import fitsutils
 import numpy as np
 import coordinates_conversor as cc
 from pyraf import iraf 
-from pyraf import IrafError
 import subprocess
 import shutil
 import argparse
-from __future__ import print_function
 
-def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=False, tweak=3):
+def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=True, tweak=3):
     '''
     img: fits image where astrometry should be solved.
     outimage: name for the astrometry solved image. If none is provided, the name will be "a_"img.
@@ -27,6 +28,11 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     '''
 
     from astropy.wcs import InconsistentAxisTypesError
+    
+    curdir = os.getcwd()
+    imgdir = os.path.dirname(img)
+    
+    os.chdir(imgdir)
     
     img = os.path.abspath(img)
     
@@ -41,16 +47,16 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile(astro) and not overwrite):
         return astro
         
-    #Store a temporary file with the multiplication of the mask
-    mask = "mask.fits"
 
-    cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s \
-      -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
+    cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
         cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
-    #logger.info( cmd)
+    
+    print (cmd)
 
     subprocess.call(cmd, shell=True)
+    
+    print ("Finished astrometry")
     
     #Cleaning after astrometry.net
     if (os.path.isfile(img.replace(".fits", ".axy"))):
@@ -58,17 +64,21 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     if (os.path.isfile(img.replace(".fits", "-indx.xyls"))):
         os.remove(img.replace(".fits", "-indx.xyls"))
     if (os.path.isfile("none")):
-        os.remove("none")
+        try:
+            os.remove("none")
+        except:
+            print ("Could not remove file none.")
         
-        
+    os.chdir(curdir)
+
     if (not outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, outimage)
-	return outimage
+        return outimage
     elif (outimage is None and overwrite and os.path.isfile(astro)):
         shutil.move(astro, img)
-	return img
+        return img
     else:
-    	return astro
+        return astro
     
 def create_masterguide(lfiles, out=None):
     '''
@@ -112,8 +122,8 @@ def create_masterguide(lfiles, out=None):
     if debias:
         try:
             iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)    
-        except IrafError:
-            iraf.imarith("@"+fffile, "-", bias_fast, "@"+bffile)
+        except:
+            print ("Error when debiasing file.")
     else:
         bffile = fffile
 
@@ -124,7 +134,7 @@ def create_masterguide(lfiles, out=None):
                     combine = "median",\
                     scale = "mode",
                     reject = "sigclip", lsigma = 2., hsigma = 2, gain=1.7, rdnoise=4.)
-    iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
+    #iraf.imstat(out, fields="image,npix,mean,stddev,min,max,mode", Stdout="guide_stats")
     #st = np.genfromtxt("guide_stats", names=True, dtype=None)
     
     #Do some cleaning
@@ -190,7 +200,7 @@ def __combine_guiders(ifu_dic, abspath, outdir):
         name, jd_ini, jd_end, rad, decd, exptime = ifu_dic[ifu_i]
         #guiders = rc[(imtypes=="GUIDER") * (rcjd >= ifu_dic[ifu_i][1]) * (rcjd <= ifu_dic[ifu_i][2]) ]
         mymask = (rcjd >= jd_ini) * (rcjd <= jd_end) *\
-            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<1./60 ) * (np.abs(decs - decd)<1./60 )
+            (np.abs(ras - rad)*np.cos(np.deg2rad(decd))<0.5/60 ) * (np.abs(decs - decd)<0.5/60 )
         guiders = rc[mymask]
         im = imtypes[mymask]
         names = objnames[mymask]

@@ -456,8 +456,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             if nobj > 0:
                 # Use forced psf for faint targets (eventually)
                 print("Extracting spectra for " + ",".join(sciobj))
-                cmd = "extract_star.py %s --auto %s" % (datestr,
-                                                        ",".join(sciobj))
+                cmd = "extract_star.py %s --auto %s --lstep 2  --autobins 6" \
+                      % (datestr, ",".join(sciobj))
                 print(cmd)
                 retcode = os.system(cmd)
                 if retcode > 0:
@@ -735,7 +735,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
     # END: cpcal
 
 
-def obs_loop(rawlist=None, redd=None):
+def obs_loop(rawlist=None, redd=None, check_precal=True):
     """One night observing loop: processes calibrations and science data
 
     Copy raw cal files until we are ready to process the night's
@@ -751,6 +751,7 @@ def obs_loop(rawlist=None, redd=None):
     Args:
         rawlist (list): list of raw data directories (usually in /scr2/sedm/raw)
         redd (str): reduced directory (something like /scr2/sedm/redux)
+        check_precal (bool): should we check for images from previous night?
 
     Returns:
         bool: True if night completed normally, False otherwise
@@ -801,7 +802,7 @@ def obs_loop(rawlist=None, redd=None):
             sys.stdout.flush()
             now = ephem.now()
             time.sleep(60)
-            if now.tuple()[3] >= 20:
+            if check_precal and now.tuple()[3] >= 20:
                 print("checking %s for new raw cal files..." % rawlist[-2])
                 ncp = cpprecal(rawlist, outdir)
                 print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
@@ -814,7 +815,8 @@ def obs_loop(rawlist=None, redd=None):
                 # Check to see if we are still before an hour after sunset
                 now = ephem.now()
                 if now < sunset + ephem.hour:
-                    print("UT  = %02d/%02d %02d:%02d < sunset (%02d/%02d %02d:%02d) + 1hr, "
+                    print("UT  = %02d/%02d %02d:%02d < sunset "
+                          "(%02d/%02d %02d:%02d) + 1hr, "
                           "so keep waiting" % (now.tuple()[1], now.tuple()[2],
                                                now.tuple()[3], now.tuple()[4],
                                                sunset.tuple()[1],
@@ -822,7 +824,8 @@ def obs_loop(rawlist=None, redd=None):
                                                sunset.tuple()[3],
                                                sunset.tuple()[4]))
                 else:
-                    print("UT = %02d/%02d %02d:%02d >= sunset (%02d/%02d %02d:%02d) + 1hr, "
+                    print("UT = %02d/%02d %02d:%02d >= sunset "
+                          "(%02d/%02d %02d:%02d) + 1hr, "
                           "time to get a cal set" % (now.tuple()[1],
                                                      now.tuple()[2],
                                                      now.tuple()[3],
@@ -954,7 +957,8 @@ def obs_loop(rawlist=None, redd=None):
                 now = ephem.now()
                 if now >= sunrise:
                     # No new observations and sun is probably up!
-                    print("No new images for %d minutes and UT = %02d/%02d %02d:%02d > "
+                    print("No new images for %d minutes and UT = "
+                          "%02d/%02d %02d:%02d > "
                           "%02d/%02d %02d:%02d so sun is up!" %
                           (nnc, now.tuple()[1], now.tuple()[2],
                            now.tuple()[3], now.tuple()[4],
@@ -965,8 +969,10 @@ def obs_loop(rawlist=None, redd=None):
                     # Normal termination
                     ret = True
                 else:
-                    print("No new image for %d minutes but UT = %02d/%02d %02d:%02d <= "
-                          "%02d/%02d %02d:%02d, so sun is still down, keep waiting" %
+                    print("No new image for %d minutes but UT = %02d/%02d "
+                          "%02d:%02d <= "
+                          "%02d/%02d %02d:%02d, so sun is still down, "
+                          "keep waiting" %
                           (nnc, now.tuple()[1], now.tuple()[2],
                            now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[1], sunrise.tuple()[2],
@@ -986,7 +992,8 @@ def obs_loop(rawlist=None, redd=None):
     # END: obs_loop
 
 
-def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
+def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
+       check_precal=True):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
@@ -997,6 +1004,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
         rawd (str): raw directory, should be /scr2/sedm/raw
         redd (str): reduced directory, should be like /scr2/sedm/redux
         wait (bool): wait for new directory, else start right away
+        check_precal (bool): should we check previous night for cals?
 
     Returns:
         None
@@ -1019,7 +1027,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
           (nraw, rawd, redd))
     print("Latest raw directory is %s" % rawlist[-1])
     if not wait:
-        stat = obs_loop(rawlist, redd)
+        stat = obs_loop(rawlist, redd, check_precal=check_precal)
         its += 1
         print("Finished SEDM observing iteration %d in raw dir %s" %
               (its, rawlist[-1]))
@@ -1051,7 +1059,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False):
             print("Found %d raw directories in %s: putting reduced data in %s" %
                   (nraw, rawd, redd))
             print("Latest raw directory is %s" % rawlist[-1])
-            stat = obs_loop(rawlist, redd)
+            stat = obs_loop(rawlist, redd, check_precal=check_precal)
             its += 1
             print("Finished SEDM observing iteration %d in raw dir %s" %
                   (its, rawlist[-1]))
@@ -1073,7 +1081,10 @@ if __name__ == '__main__':
                         help='Output reduced directory (/scr2/sedmdrp/redux)')
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
+    parser.add_argument('--check_precal', action="store_false", default=True,
+                        help='Check previous day for cal files?')
 
     args = parser.parse_args()
 
-    go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait)
+    go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait,
+       check_precal=args.check_precal)

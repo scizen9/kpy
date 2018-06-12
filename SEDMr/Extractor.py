@@ -255,7 +255,7 @@ def identify_spectra_gauss_fit(spectra, prlltc=None, lmin=400., lmax=900.,
             status = 1
 
         # Fitted 3-sigma extent
-        if a > 14. or b > 14. or a <= 0. or b <= 0.:
+        if a*sigfac > 14. or b*sigfac > 14. or a <= 0. or b <= 0.:
             print("ERROR: A,B out of bounds: %f, %f" % (a, b))
             print("Using initial guess")
             popt = initial_guess
@@ -340,7 +340,7 @@ def find_positions_ellipse(xy, h, k, a, b, theta):
 def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
                          lmin=650., lmax=700., cmin=-300, cmax=300, prlltc=None,
                          objname=None, airmass=1.0, nosky=False, message=None,
-                         ellipse_in=None):
+                         ellipse_in=None, noobj=False):
     """ Returns index of spectra picked in GUI.
 
     NOTE: Index is counted against the array, not seg_id
@@ -372,6 +372,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
         s = GUI.ScaleCube(kt, bgd_sub=bgd_sub, lmin=lmin, lmax=lmax,
                           objname=objname)
         scaled = s.scaled
+        noobj = s.noobj
 
         if scaled:
             cmin = s.cmin
@@ -381,13 +382,20 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     if message is not None:
         print(message)
 
-    # Get positions
-    g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell, scaled=scaled,
-                           lmin=lmin, lmax=lmax, cmin=cmin, cmax=cmax,
-                           objname=objname, nosky=nosky)
-    pos = g.picked
-    nosky = g.nosky
-    ellipse = g.ellipse
+    if noobj:
+        pos = (0., 0)
+        nosky = False
+        ellipse = inell
+        print("No object detected")
+    else:
+        # Get positions
+        g = GUI.PositionPicker(kt, bgd_sub=bgd_sub, ellipse=inell,
+                               scaled=scaled, lmin=lmin, lmax=lmax,
+                               cmin=cmin, cmax=cmax,
+                               objname=objname, nosky=nosky)
+        pos = g.picked
+        nosky = g.nosky
+        ellipse = g.ellipse
 
     print("Final semimajor axis (arcsec) = %4.1f" % ellipse[0])
     if nosky:
@@ -412,7 +420,7 @@ def identify_spectra_gui(spectra, radius=2., scaled=False, bgd_sub=True,
     all_kix = list(itertools.chain(*all_kix))
     kix = list(set(all_kix))
 
-    stats = {"nosky": nosky, "scaled": scaled,
+    stats = {"nosky": nosky, "scaled": scaled, "noobj": noobj,
              "lmin": lmin, "lmax": lmax,
              "cmin": cmin, "cmax": cmax}
 
@@ -534,7 +542,7 @@ def identify_bgd_spectra(spectra, pos, ellipse=None, expfac=1.):
 def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
              ellipse=None, ellipseb=None, sigfac=3.0, bgd_sub=True,
              lmin=650., lmax=700., cmin=None, cmax=None, fwhm=False,
-             no_stamp=False):
+             quality=0, no_stamp=False):
     """ Convert spectra list into image_[outname].pdf
 
     Args:
@@ -635,6 +643,8 @@ def to_image(spectra, meta, outname, posa=None, posb=None, adcpos=None,
     tlab = meta['outname']
     if 'airmass' in meta:
         tlab += ", Airmass: %.3f" % meta['airmass']
+    if quality > 0:
+        tlab += ", Quality: %d" % quality
     if not no_stamp:
         pl.title(tlab)
     pl.colorbar()
@@ -695,8 +705,13 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pix = np.arange(*spectrum.xrange)
 
         # check for saturation
-        if np.max(s) > 1000000:
+        if np.max(s) > 100000:
             print("saturated extraction: %d with max of %d, skipping" %
+                  (ix, np.max(s)))
+            continue
+        # check for latent CRs in sky
+        if sky and np.max(s) > 500:
+            print("latent CR in sky: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
 
@@ -748,6 +763,17 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
             l, s = spectrum.get_counts(the_spec='specf')
             pix = np.arange(*spectrum.xrange)
+
+            # check for saturation
+            if np.max(s) > 100000:
+                print("saturated extraction: %d with max of %d, skipping" %
+                      (ix, np.max(s)))
+                continue
+            # check for latent CRs in sky
+            if sky and np.max(s) > 500:
+                print("latent CR in sky: %d with max of %d, skipping" %
+                      (ix, np.max(s)))
+                continue
 
             # Preference to lamcoeff over mdn_coeff
             if spectrum.lamcoeff is not None:
@@ -1242,17 +1268,18 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         print("2 - acceptable (minor problem)")
         print("3 - poor       (major problem)")
         print("4 - no object visible")
+        print("5 - bogus target")
         q = 'x'
         quality = -1
         prom = ": "
-        while quality < 1 or quality > 4:
+        while quality < 1 or quality > 5:
             q = input(prom)
             if type(q) == str:
                 if q.isdigit():
                     quality = int(q)
             else:
                 quality = q
-            if quality < 1 or quality > 4:
+            if quality < 1 or quality > 5:
                 prom = "Try again: "
         print("Quality = %d, now making outputs..." % quality)
 
@@ -1275,23 +1302,27 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
     # Mean flux
     resa, nspxa = interp_spectra(ex, sixa, outname=outname+".pdf")
 
+    # Reference wavelength grid
+    l_grd = resa[0]["nm"]
+
     # Mean flux variance
-    vara, nspxav = interp_spectra(e_var, sixa)
+    vara, nspxav = interp_spectra(e_var, sixa, onto=l_grd)
     # , outname=outname+"_var.pdf")
 
     # Mean sky
     # are we using found sky spaxels
     if skystat == 0:
         skya, nspxak = interp_spectra(ex, kixa, outname=outname+"_sky.pdf",
-                                  sky=True)
+                                      onto=l_grd, sky=True)
         # Mean sky variance
-        vkya, nspxak = interp_spectra(e_var, kixa, sky=True)
+        vkya, nspxak = interp_spectra(e_var, kixa, sky=True, onto=l_grd)
         # , outname=outname+"_skvar.pdf")
     # or the whole image?
     else:
-        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf")
+        skya, nspxak = interp_spectra(ex, kixa, outname=outname + "_sky.pdf",
+                                      onto=l_grd)
         # Mean sky variance
-        vkya, nspxak = interp_spectra(e_var, kixa)
+        vkya, nspxak = interp_spectra(e_var, kixa, onto=l_grd)
         # , outname=outname+"_skvar.pdf")
         # make sure this is marked as bad
         quality = 4
@@ -1659,21 +1690,25 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 print("2 - acceptable (minor problem)")
                 print("3 - poor       (major problem)")
                 print("4 - no object visible")
+                print("5 - bogus target")
                 q = 'x'
                 quality = -1
                 prom = ": "
-                while quality < 1 or quality > 4:
+                while quality < 1 or quality > 5:
                     q = input(prom)
                     if type(q) == str:
                         if q.isdigit():
                             quality = int(q)
                     else:
                         quality = q
-                    if quality < 1 or quality > 4:
+                    if quality < 1 or quality > 5:
                         prom = "Try again: "
                 print("Quality = %d, now making outputs..." % quality)
             else:
-                quality = 0
+                if stats["noobj"]:
+                    quality = 5
+                else:
+                    quality = 0
                 print("Now making outputs...")
 
             # Use an annulus for sky spaxels for Science Objects
@@ -1751,7 +1786,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         pl.axes().set_aspect('equal')
         if 'airmass' in meta:
             tlab += "\nAirmass: %.3f" % meta['airmass']
-        if 1 <= quality <= 4:
+        if 1 <= quality <= 5:
             tlab += ", Qual: %d" % quality
         if not no_stamp:
             pl.title(tlab)
@@ -2016,6 +2051,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  nosky=nosky,
                                  message=message)
         radius_used_a = ellipse[0]
+        noobj = stats["noobj"]
         for ix in sixa:
             ex[ix].is_obj = True
 
@@ -2029,9 +2065,10 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                  cmin=stats["cmin"], cmax=stats["cmax"],
                                  objname=objname, airmass=meta['airmass'],
                                  nosky=stats["nosky"],
+                                 noobj=stats["noobj"],
                                  message=message, ellipse_in=ellipse)
         for ix in sixb:
-            ex[ix].is_obj = True
+                ex[ix].is_obj = True
 
         if interact:
 
@@ -2041,27 +2078,31 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             print("2 - acceptable (minor problem)")
             print("3 - poor       (major problem)")
             print("4 - no object visible")
+            print("5 - bogus target")
             q = 'x'
             quality = -1
             prom = ": "
-            while quality < 1 or quality > 4:
+            while quality < 1 or quality > 5:
                 q = input(prom)
                 if type(q) == str:
                     if q.isdigit():
                         quality = int(q)
                 else:
                     quality = q
-                if quality < 1 or quality > 4:
+                if quality < 1 or quality > 5:
                     prom = "Try again: "
             print("Quality = %d, now making outputs..." % quality)
         else:
-            quality = 0
-            print("Now making outputs...")
+            if noobj:
+                quality = 5
+            else:
+                quality = 0
+        print("Now making outputs...")
 
         # Make an image of the spaxels
         to_image(ex, meta, outname, posa=posa, posb=posb, adcpos=adc_a,
                  ellipse=ellipse, ellipseb=ellipseb,
-                 lmin=lmin, lmax=lmax,
+                 lmin=lmin, lmax=lmax, quality=quality,
                  cmin=stats["cmin"], cmax=stats["cmax"], no_stamp=no_stamp)
 
         kixa = identify_bgd_spectra(ex, adc_a, ellipse=ellipse)
@@ -2155,11 +2196,11 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
 
         pl.xlabel("RA offset [asec] @ %6.1f nm" % meta['fiducial_wavelength'])
         pl.ylabel("Dec offset [asec]")
-        tlab = "%d selected spaxels for %s" % ((len(nsxA) + len(nsxB)),
+        tlab = "%d obj spaxels in %s" % ((len(nsxA) + len(nsxB)),
                                                meta['outname'])
         if 'airmass' in meta:
-            tlab += ", Airmass: %.3f" % meta['airmass']
-        if 1 <= quality <= 4:
+            tlab += ", Air: %.3f" % meta['airmass']
+        if 1 <= quality <= 5:
             tlab += ", Qual: %d" % quality
         pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
         pl.scatter(xsb, ysb, color='blue', marker='H', s=40, linewidth=0)

@@ -275,6 +275,7 @@ class ScaleCube(object):
     lmax = None
     cmin = None
     cmax = None
+    noobj = None
 
     def __init__(self, spectra=None, pointsize=35, bgd_sub=False,
                  objname=None, lmin=600, lmax=650):
@@ -293,8 +294,9 @@ class ScaleCube(object):
             print("< - to decrease upper limit by 100")
             print(". - to increase lower limit by 100")
             print(", - to decrease lower limit by 100")
-        print("x - exit")
-        print("q - to abandon scaling")
+        print("x - keep scaling and continue")
+        print("q - abandon scaling and continue")
+        print("n - if no object visible")
 
         self.spectra = spectra
         self.pointsize = pointsize
@@ -305,6 +307,7 @@ class ScaleCube(object):
         self.scaled = False
         self.scat = None
         self.cb = None
+        self.noobj = False
 
         self.Xs, self.Ys, self.Vs = spectra.to_xyv(lmin=lmin, lmax=lmax)
 
@@ -415,6 +418,11 @@ class ScaleCube(object):
             if not self.bgd_sub:
                 self.cmin -= 100.
                 self.update_cube()
+        elif event.key == 'n':
+            self.noobj = True
+            self.scaled = True
+            print("no object visible")
+            pl.close(self.figure)
 
 
 class WaveFixer(object):

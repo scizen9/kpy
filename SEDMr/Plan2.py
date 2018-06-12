@@ -162,7 +162,7 @@ PLOT = $(PY) $(PYC)/Check.py
 REPORT = $(PY) $(PYC)/DrpReport.py
 CLASS = $(PY) $(PYC)/Classify.py
 SPCCPY = $(PY) $(PYP)/sedmspeccopy.py
-ZTFREPORT = $(PY) $(PYC)/PtfDrpReport.py
+ZTFUPLOAD = $(PY) $(PYC)/growth.py
 COG = $(PY) $(PYC)/CurveOfGrowth.py
 
 BSUB = $(PY) $(PYC)/Debias.py
@@ -234,17 +234,15 @@ newstds: cleanstds stds std_plots std_cogs
 report:
 	$(REPORT) | tee report.txt
 
-upload:
-	$(SPCCPY) --specdir $(dir $(mkfile_path))
-
-ptfreport: upload
-	$(ZTFREPORT)
+ztfupload:
+	$(ZTFUPLOAD)
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))
+	$(REPORT) | tee report.txt
 
-finalreport: classify
-	$(REPORT) | tee report.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu
+finalreport:
+	cat report*.txt | mail -s "SEDM DRP Report for $(current_dir)" neill@srl.caltech.edu,rsw@astro.caltech.edu,nblago@caltech.edu,fremling@caltech.edu,ah@astro.caltech.edu,yashuvatsas@gmail.com
 
 """
 
