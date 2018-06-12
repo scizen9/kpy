@@ -1,0 +1,98 @@
+{% extends "sedm_base.html" %}
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+	{% endif %}
+  </div>
+{% block content %}
+    <br>
+    <div class="well container col-md-8 col-md-offset-1">
+    <div id="infoheader">
+        <table id="req_info">
+            <tr>
+                <th>OBJECT</th>
+                <th>RA</th>
+                <th>DEC</th>
+                <th>PRIORITY</th>
+                <th>CURRENT STATUS</th>
+                <th>CURRENT OBS SEQUENCE</th>
+                <th>LAST OBSERVED</th>
+                <th>DELETE</th>
+            </tr>
+            <tr>
+                <td>{{ req.objname }}</td>
+                <td>{{ req.ra }}</td>
+                <td>{{ req.dec }}</td>
+                <td>{{ req.reqpriority }}</td>
+                <td>{{ req.status }}</td>
+                <td>{{ req.obs_seq }}<br>
+                    {{ req.exptime }}</td>
+
+                <td>{{ req.last_obs_jd }}</td>
+                <td><a href="delete_request?id={{ req.req_id }}"><p style="color:red"><b>X</b></p></a> </td>
+            </tr>
+        </table>
+    </div>
+    <div id="request_form">
+        <h3>Update Current Request</h3>
+        <br>
+        <form action="update_request" method="post">
+            <input type="hidden" id="reqid" name="id" value="{{ req.req_id }}">
+            Priority<input type="text" id="priority" name="priority" value="{{ req.priority }}"/><br><br><br>
+            <div class="radbox">
+                Change Status:
+                <input type="radio" id='pending' name="status" value="PENDING"> PENDING
+                <input type="radio" id='completed' name="status" value="COMPLETED"> COMPLETED
+                <input type="radio" id='observed' name="status" value="OBSERVED"> OBSERVED
+            </div>
+            <br><br>
+            <div id="ifu">
+                <table id="sedmfltlist">
+                    <tr><th>Filter</th><th>Observe</th><th>Exptime</th><th>Number of Repeats</th></tr>
+                    <tr><td>IFU
+                        <td><input type="checkbox" id="ifu_checked" name="filters" value="ifu" {{ flt.ifu_checked }}>
+                        <td><input type="text" id="ifu_exptime" class="resizedTextbox" name="ifu_exptime"  value={{ flt.ifu_exptime }}>s
+                        <td><input type="text" id="ifu_repeat" class="resizedTextboxn" name="ifu_repeat" value={{ flt.ifu_repeat }}>
+                    </tr>
+                    <tr><td>r</td>
+                        <td><input type="checkbox" id="r_checked"  name="filters" value="r" {{ flt.r_checked }}></td>
+                        <td><input type="text" id="r_exptime" class="resizedTextbox" name="r_exptime"  value={{ flt.r_exptime }}>s</td>
+                        <td><input type="text" id="r_repeat" class="resizedTextboxn" name="r_repeat" value={{ flt.r_repeat }}></td>
+                    </tr>
+                    <tr><td>g</td>
+                        <td><input type="checkbox" id="g_checked" name="filters" value="g" {{ flt.g_checked }}></td>
+                        <td><input type="text" id="g_exptime" class="resizedTextbox" name="g_exptime"  value={{ flt.g_exptime }}>s</td>
+                        <td><input type="text" id="g_repeat" class="resizedTextboxn" name="g_repeat" value={{ flt.g_repeat }}></td>
+                    </tr>
+                    <tr><td>i</td>
+                        <td><input type="checkbox" id="i_checked" name="filters" value="i" {{ flt.i_checked }}></td>
+                        <td><input type="text" id="i_exptime" class="resizedTextbox" name="i_exptime"  value={{ flt.i_exptime }}>s</td>
+                        <td><input type="text" id="i_repeat"  class="resizedTextboxn" name="i_repeat" value={{ flt.i_repeat }}></td>
+                    </tr>
+                    <tr><td>u</td>
+                        <td><input type="checkbox" id="u_checked" name="filters" value="u" {{ flt.u_checked }}></td>
+                        <td><input type="input" id="u_exptime" class="resizedTextbox" name="u_exptime"  value={{ flt.u_exptime }}>s</td>
+                        <td><input type="input" id="u_repeat" class="resizedTextboxn" name="u_repeat" value={{ flt.u_repeat }}></td>
+                    </tr>
+                </table>
+            </div>
+            <div id="update">
+                <input id="updatebutton" type="button" value="update" class="btn btn-m btn-success" onclick="update_request()"/>
+            </div>
+        </form>
+    </div>
+    </div>
+    <br>
+{% endblock %}
+

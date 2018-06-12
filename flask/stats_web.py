@@ -38,7 +38,8 @@ import os
 
 from bokeh.io import curdoc
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, CDSView, GroupFilter, Label
+from bokeh.models import ColumnDataSource, Label
+from bokeh.models import CDSView, GroupFilter
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 from bokeh.core.properties import value

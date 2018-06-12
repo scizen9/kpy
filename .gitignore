@@ -58,3 +58,5 @@ docs/build/*
 .DS_Store
 ._.DS_Store
 
+# Intermediate files
+*.*~

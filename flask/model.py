@@ -2,8 +2,11 @@ import numpy as np
 import json
 import datetime 
 import os, glob
-from SEDMDb.SedmDb import SedmDB 
+from SEDMDb.SedmDb import SedmDB
 from pandas import DataFrame
+import psycopg2
+from psycopg2 import extras
+
 from sqlalchemy.exc import IntegrityError
 import requests
 import SEDMrph.fitsutils as fitsutils
@@ -54,6 +57,115 @@ def updateFollowupConfig(entryUpdate):
 
     return message
 
+def get_request_by_id(request_id):
+    """
+    Grab pertinent information on the request id and create a page that can
+    be used to update the request
+    :param request_id: 
+    :return: 
+    """
+
+    request_query = """SELECT r.id as req_id, r.object_id as obj_id, 
+                            r.user_id, r.marshal_id, r.exptime, r.maxairmass,
+                            r.max_fwhm, r.min_moon_dist, r.max_moon_illum, 
+                            r.max_cloud_cover, r.status, 
+                            r.priority as reqpriority, r.inidate, r.enddate,
+                            r.cadence, r.phasesamples, r.sampletolerance, 
+                            r.filters, r.nexposures, r.obs_seq, r.seq_repeats,
+                            r.seq_completed, r.last_obs_jd, r.creationdate,
+                            r.lastmodified, r.allocation_id, r.marshal_id, 
+                            o.id as objid, o.name as objname, o.iauname, o.ra, o."dec",
+                            o.typedesig, o.epoch, o.magnitude, o.creationdate, 
+                            u.id as user_id, u.email, a.id as all_id, a.inidate, a.enddate, a.time_spent, 
+                            a.time_allocated, a.program_id, a.active, 
+                            p.designator, p.name, p.group_id, p.pi,
+                            p.time_allocated, r.priority, p.inidate,
+                            p.enddate 
+                            FROM "public".request r
+                            INNER JOIN "public"."object" o ON ( r.object_id = o.id  )  
+                            INNER JOIN "public".users u ON ( r.user_id = u.id  )  
+                            INNER JOIN "public".allocation a ON ( r.allocation_id = a.id  )  
+                            INNER JOIN "public".program p ON ( a.program_id = p.id  )
+                            WHERE r.id = %s
+                            """ % request_id
+
+    conn = psycopg2.connect("dbname=sedmdb user=sedmuser "
+                            "host=localhost " 
+                            "password=user$edm1235")
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute(request_query)
+    results = cursor.fetchone()
+
+    if isinstance(results, psycopg2.extras.DictRow):
+        obs_dict = parse_obs(results['obs_seq'], results['exptime'])
+    else:
+        obs_dict = ''
+
+    return results, obs_dict
+
+def parse_obs(sequence, exptime_sequence):
+    """
+    Parse all available filters
+    :param seq: 
+    :param exptime: 
+    :return: 
+    """
+    flt_list = ['ifu', 'r', 'g', 'i', 'u']
+    seq = list(sequence)
+    exptime = list(exptime_sequence)
+
+    obs_dict = {}
+    print seq, exptime
+    for flt in flt_list:
+        index = [i for i, s in enumerate(seq) if flt in s]
+
+        if index:
+            obs_dict['%s_checked' % flt] = 'checked'
+            obs_dict['%s_exptime' % flt] = exptime[index[0]]
+            obs_dict['%s_repeat' % flt] = int(seq[index[0]].replace(flt,""))
+
+            for i in index:
+                seq.pop(index[0])
+                exptime.pop(index[0])
+
+        else:
+            obs_dict['%s_checked' % flt] = ''
+            obs_dict['%s_exptime' % flt] = 0
+            obs_dict['%s_repeat' % flt] = 0
+    return obs_dict
+
+def delete_request_by_id(id):
+    """
+    
+    :param id: 
+    :return: 
+    """
+    obs_dict = {'id': int(id),
+                'status': 'CANCELED'}
+
+    ret = db.update_request(obs_dict)
+    print ret
+    return "Canceled"
+
+
+def parse_update(update_dict):
+    """
+    
+    :param update_dict: 
+    :return: 
+    """
+
+    if update_dict['type'] == 'priority':
+        print int(update_dict['id'])
+        print db.update_request({'id': int(update_dict['id']),
+                           'priority': update_dict['priority']})
+    elif update_dict['type'] == 'status':
+        print db.update_request({'id': int(update_dict['id']),
+                           'status': update_dict['status']})
+    elif update_dict['type'] == 'filters':
+        pass
+
+    return {'response': True}
 
 def search_stats_file(mydate = None):
     '''
@@ -98,8 +210,9 @@ def search_redux_files(mydate = None, user=None):
         s2 = os.path.join("/scr2/sedmdrp/redux/", mydate, "image*png")
         s3 = os.path.join("/scr2/sedmdrp/redux/", mydate, "*_SEDM*png")
         s4 = os.path.join("/scr2/sedmdrp/redux/", mydate, "cube*png")
+        s5 = os.path.join("/scr2/sedmdrp/redux/", mydate, "Standard_Correction.png")
         
-        files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4)
+        files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4) + glob.glob(s5)
 
         if len(files) == 0:
             files = None
@@ -116,8 +229,9 @@ def search_redux_files(mydate = None, user=None):
             s2= os.path.join("/scr2/sedmdrp/redux/", newdatedir, "image*png")
             s3 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "*_SEDM*png")
             s4 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "cube*png")
+            s5 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "Standard_Correction.png")
 
-            files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4)
+            files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4) + glob.glob(s5)
             if len(files) > 0:
                 mydate = newdatedir
                 break
@@ -179,6 +293,46 @@ def search_phot_files(mydate = None, user=None):
 
     return df, mydate
 
+def search_finder_files(mydate = None, user=None):
+    '''
+    Returns the files that are present in the disk at a given date.
+    It also returns a message stating what date that was.
+
+    TODO: This routine that looks in the disk, should look at the database and retrieve only the files which
+    correspond to the privileges of the user.
+    '''
+    #If the date is specified, we will try to located the right file.
+    #None will be returned if it does not exist.
+    if ( not mydate is None):
+        files = glob.glob(os.path.join("/scr2/sedm/phot", mydate, "finders/*ACQ*.jpg"))
+        if len(files) == 0:
+            files = None
+
+    else:         
+        curdate = datetime.datetime.utcnow()
+        #Try to find the stat files up to 100 days before today's date.
+        i = 0
+        files = []
+        while i < 100:
+            newdate = curdate - datetime.timedelta(i)
+            newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
+            files = glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "finders/*ACQ*.jpg"))
+
+            if len(files) > 0:
+                mydate = newdatedir
+                break
+
+            i = i+1
+
+    if not files is None:
+        files.sort(reverse=True)
+        d = {'filename':files}
+        df = DataFrame.from_records(d)
+    else:
+        df = None
+
+    return df, mydate
+
 def search_phot_files_by_imtype(mydate = None, user=None):
     '''
     Returns the files that are present in the disk at a given date.
@@ -210,19 +364,33 @@ def get_requests_for_user(user_id, inidate, enddate):
         - By any member of the group where the user with user_id belongs to.
         - In the last 5 days
     '''
-    request_query = ("""SELECT a.designator, o.name, r.inidate, r.enddate, r.priority, r.status, r.lastmodified 
+    request_query = ("""SELECT a.designator, o.name, o.ra, o.dec, r.inidate, r.enddate, r.priority, r.status, r.lastmodified, r.id 
                         FROM request r, object o, allocation a 
                         WHERE o.id = r.object_id AND a.id = r.allocation_id  
-                            AND ( r.lastmodified > DATE('%s') AND r.lastmodified < DATE('%s') )
+                            AND ( r.lastmodified >= DATE('%s') AND r.lastmodified <= DATE('%s') )
                             AND r.allocation_id IN
                            (SELECT a.id
                             FROM allocation a, groups g, usergroups ug, users u, program p
                             WHERE ug.user_id = u.id AND ug.group_id = g.id AND u.id = %d AND p.group_id = g.id AND a.program_id = p.id
                             ) ORDER BY r.lastmodified DESC;"""% (inidate, enddate, user_id))
     req = db.execute_sql(request_query)
-    req = DataFrame(req, columns=['allocation', 'object', 'start date', 'end date', 'priority','status', 'lastmodified'])
+    req = DataFrame(req, columns=['allocation', 'object', 'RA', 'DEC', 'start date', 'end date', 'priority','status', 'lastmodified', 'UPDATE'])
+    if user_id in [189, 2, 20180523190352189]:
+        req['UPDATE'] = req['UPDATE'].apply(convert_to_link)
+        #req['object'] = req['object'].apply(convert_to_growth_link)
+    else:
+        req.drop(columns=['UPDATE', 'RA', 'DEC'])
+
 
     return req
+
+def convert_to_link(reqid):
+
+    return """<a href='view_request?id=%s'>+</a>""" % reqid
+
+def convert_to_growth_link(reqid):
+
+    return """<a href='http://skipper.caltech.edu:8080/cgi-bin/growth/view_source.cgi?name=%s'>%s</a>""" % (reqid, reqid)
 
 def get_info_user(username):
     '''
@@ -432,7 +600,7 @@ def delete_group(id):
     return (status, message)
 
 
-def get_allocation_stats(user_id):
+def get_allocation_stats(user_id, inidate=None, enddate=None):
     """
     Obtains a list of allocations that belong to the user and 
     query the total allocated name and time spent for that allocation.
@@ -441,19 +609,50 @@ def get_allocation_stats(user_id):
     """
     if (user_id is None):
         res = db.get_from_allocation(["designator", "time_allocated", "time_spent"], {"active":True})
+        df = DataFrame(res, columns=["designator", "time_allocated", "time_spent"])
+
+        alloc_hours = np.array([ta.total_seconds() / 3600. for ta in df["time_allocated"]])
+        spent_hours = np.array([ts.total_seconds() / 3600. for ts in df["time_spent"]])
+        free_hours = alloc_hours - spent_hours
+
+        df = df.assign(alloc_hours=alloc_hours, spent_hours=spent_hours, free_hours=free_hours)
+
     else:
-        res = db.execute_sql(""" SELECT a.designator, a.time_allocated, a.time_spent
-                                FROM allocation a, program p, groups g, usergroups ug
-                                WHERE a.program_id = p.id AND p.group_id = g.id 
-                                AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d"""%(user_id))
+        if (inidate is None or enddate is None):
+            res = db.execute_sql(""" SELECT a.designator, a.time_allocated, a.time_spent
+                                    FROM allocation a, program p, groups g, usergroups ug
+                                    WHERE a.program_id = p.id AND p.group_id = g.id 
+                                    AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d"""%(user_id))
 
-    df = DataFrame(res, columns=["designator", "time_allocated", "time_spent"])
+            df = DataFrame(res, columns=["designator", "time_allocated", "time_spent"])
 
-    alloc_hours = np.array([ta.total_seconds() / 3600. for ta in df["time_allocated"]])
-    spent_hours = np.array([ts.total_seconds() / 3600. for ts in df["time_spent"]])
-    free_hours = alloc_hours - spent_hours
+            alloc_hours = np.array([ta.total_seconds() / 3600. for ta in df["time_allocated"]])
+            spent_hours = np.array([ts.total_seconds() / 3600. for ts in df["time_spent"]])
+            free_hours = alloc_hours - spent_hours
 
-    df = df.assign(alloc_hours=alloc_hours, spent_hours=spent_hours, free_hours=free_hours)
+            df = df.assign(alloc_hours=alloc_hours, spent_hours=spent_hours, free_hours=free_hours)
+
+
+        else:
+            res = db.execute_sql(""" SELECT DISTINCT a.id, a.designator, a.time_allocated
+                                    FROM allocation a, program p, groups g, usergroups ug
+                                    WHERE a.program_id = p.id AND p.group_id = g.id 
+                                    AND g.id = ug.group_id AND a.active is True AND ug.user_id = %d;"""%(user_id))
+            allocdes = []
+            spent_hours = []
+            alloc = []
+            for ais in res:
+                spent = db.get_allocation_spent_time(ais[0], inidate, enddate)
+                allocdes.append(ais[1])
+                spent_hours.append(int(spent)/3600.)
+                alloc.append(ais[2])
+            res = np.array([allocdes, alloc, spent_hours])
+
+            df = DataFrame(res.T, columns=["designator", "time_allocated", "time_spent"])
+            alloc_hours = np.array([ta.total_seconds() / 3600. for ta in df["time_allocated"]])
+            free_hours = alloc_hours - spent_hours
+            df = df.assign(alloc_hours=alloc_hours, spent_hours=spent_hours, free_hours=free_hours)
+
 
     df = df.sort_values(by=["alloc_hours"], ascending=False)
 
@@ -468,3 +667,6 @@ def get_allocation_stats(user_id):
 
     return data
 
+if __name__ == "__main__":
+    #get_request_by_id(20180416223941629)
+    pass
