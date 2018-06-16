@@ -18,7 +18,7 @@ def report():
     totexpt = 0.
     lostexp = 0.
     print("Object                     Obs Method  Exptime Qual Skysb Airmass "
-          "   Reducer   RQID Type      z         Rlap")
+          "   Reducer  RQID         Type      z         Rlap")
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
@@ -118,7 +118,7 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %5s %-9s  %6s  %6s" %
+        print("%-25s %4s %6s  %7.1f %4d %5s  %5.3f   %12s  %5s %-9s  %6s  %6s" %
               (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
                air, reducer, rqid, ctype, zmch, rlap))
     print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
