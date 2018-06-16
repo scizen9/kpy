@@ -51,6 +51,9 @@ def report():
                 else:
                     rlap = ""
                 sfl.close()
+        if ctype == "":
+            if "STD" in f:
+                ctype = "STD"
 
         # load the spectrum file
         sp = np.load(f)[0]
