@@ -18,7 +18,7 @@ def report():
     totexpt = 0.
     lostexp = 0.
     print("Object                     Obs Method  Exptime Qual Skysb Airmass "
-          "   Reducer          RQID  Type      z         Rlap")
+          "   Reducer    Allocation  Type      z         Rlap")
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
