@@ -1081,10 +1081,10 @@ if __name__ == '__main__':
                         help='Output reduced directory (/scr2/sedmdrp/redux)')
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
-    parser.add_argument('--check_precal', action="store_false", default=True,
-                        help='Check previous day for cal files?')
+    parser.add_argument('--skip_precal', action="store_true", default=False,
+                        help='Skip check of previous day for cal files?')
 
     args = parser.parse_args()
 
     go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait,
-       check_precal=args.check_precal)
+       check_precal=(not args.skip_precal))
