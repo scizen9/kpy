@@ -50,9 +50,10 @@ def finder(myfile,searchrad=0.2/60.):
     dx = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
     
     imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
+    imgslice_target = img[int(target_pix[0])-dx:int(target_pix[0])+dx, int(target_pix[1])-dx:int(target_pix[1])+dx]
     #zmin, zmax = zscale.zscale()
-    zmin = np.percentile(imgslice.flatten(), 5)
-    zmax = np.percentile(imgslice.flatten(), 98)
+    zmin = np.percentile(imgslice_target.flatten(), 5)
+    zmax = np.percentile(imgslice_target.flatten(), 98.5)
    
     print "Min: %.1f, max: %.1f"%(zmin, zmax) 
     gc = aplpy.FITSFigure(myfile, figsize=(10,9), north=True)
@@ -127,9 +128,11 @@ if __name__=="__main__":
     files = glob.glob("a_*fits")
     files.sort()
     for f in files:
-	object = fitsutils.get_par(f, "OBJECT")
-        if (fitsutils.get_par(f, "IMGTYPE") == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE" ) and "STD" not in object and "BD" not in object and "SA" not in object:
+	object = fitsutils.get_par(f, "OBJECT").upper()
+        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ) and "STD" not in object and "BD" not in object and "SA" not in object:
 	    findername = 'finder_%s_%s.jpg'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+	    print "Generating finder", findername
+
 	    if(not os.path.isfile("finders/" + findername)):
             	findername = finder(f)
             if(os.path.isfile(findername)):

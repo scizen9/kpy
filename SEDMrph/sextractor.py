@@ -236,28 +236,39 @@ def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, deb
         sb = s[ (s["x"]> 200) * (s["x"]<1848) * (s["y"]>200) * (s["y"]<1848)]
         
         sb = sb[ np.abs(sb["theta_image"])<10]
-        sb = sb[ np.abs(sb["a_image"])>10]
+        sb = sb[ np.abs(sb["a_image"])>20]
 
         if(debug):
+
+	
+            plt.figure(figsize=(10,7))
+            plt.suptitle('Focus %.2f'%pos, fontsize=10, horizontalalignment="right")
             ax = plt.subplot2grid((2,3), (0,0))
-            ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=5)
-            #plt.colorbar()
+            magmap = ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=5, edgecolors='face')
+            plt.title("flux / spaxel")
+            plt.colorbar(magmap, label="flux", format="%.2e")
             
             ax = plt.subplot2grid((2,3), (0,1))
-            ax.hist(sb["a_image"], bins=20, range=(10,60))
+            ax.hist(sb["a_image"], bins=20, range=(20,80))
+            plt.title("A image")
 
             ax = plt.subplot2grid((2,3), (0,2))
-            ax.hist(sb["ellipticity"], bins=20, range=(0.9,1))
+            ax.hist(sb["ellipticity"], bins=50, range=(0.9,1))
+            plt.title("Ellipticity")
 
             ax = plt.subplot2grid((2,3), (1,0))
-            ax.hist(sb["b_image"], bins=20, range=(0.5,3))
+            ax.hist(sb["b_image"], bins=20, range=(0.8,2))
+            plt.title("B image")
             
             ax = plt.subplot2grid((2,3), (1,1))
-            ax.hist(sb["theta_image"], bins=20, range=(-10,10))
+            ax.hist(sb["theta_image"], bins=20, range=(-1,1))
+            plt.title("Theta (A/B)")
             
             ax = plt.subplot2grid((2,3), (1,2))
             ax.hist(sb["mag"], bins=20)
+            plt.title("mag")
             
+            plt.tight_layout()
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
@@ -266,7 +277,7 @@ def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, deb
         mags.append(np.average(sb["mag"]))
         mags_std.append(np.std(sb["mag"]))
         trace_width.append(np.median(sb["b_image"]))
-        trace_width_std.append(np.minimum(0.5, np.std(sb["b_image"])))
+        trace_width_std.append(np.minimum(0.3, np.std(sb["b_image"])))
 
         #std_fwhm.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
         std_fwhm.append(np.std(sb["a_image"]))# < np.percentile(sb["b_image"], 15)))
@@ -274,23 +285,24 @@ def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, deb
     
     focpos = np.array(focpos)
     fwhms = np.array(fwhms)
+    std_fwhm = np.minimum(6.5, np.array(std_fwhm))
+
     trace_width = np.array(trace_width)
     trace_width_std = np.array(trace_width_std)
-    mags_std = np.array(mags_std)
 
-    std_fwhm = np.minimum(7.5, np.array(std_fwhm))
+    mags_std = np.array(mags_std)
 
     
     coefs = np.polyfit(focpos, fwhms, w=1/std_fwhm, deg=2)
     coefs_mag = np.polyfit(focpos, mags, w=1/mags_std, deg=2)
-    
+    coefs_width = np.polyfit(focpos, trace_width, w=1/trace_width_std, deg=2)
+
     x = np.linspace(np.min(focpos), np.max(focpos), 100)
     p = np.poly1d(coefs)
     pmag = np.poly1d(coefs_mag)
+    pwidth = np.poly1d(coefs_width)
     
     print "Best focus:%.2f"% x[np.argmax(p(x))], coefs,std_fwhm
-    
-
 
     if (plot==True):
         plt.title("Best focus:%.2f"% x[np.argmax(p(x))])
@@ -300,12 +312,24 @@ def analyse_sex_ifu_spectrograph(sexfileslist, plot=True, interactive=False, deb
         plt.errorbar(focpos, fwhms, yerr=std_fwhm, fmt="o")
         plt.plot(x, p(x), "-")
         plt.xlabel("Focus (mm)")
-        plt.ylabel("Brightest spaxel")
+        plt.ylabel("Median trace longitude [pixels]")
         if (interactive):
             plt.show()
         else:
-            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_trace_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_tracelength_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
             plt.clf()
+
+    '''if (plot==True):
+        plt.title("Best focus:%.2f"% x[np.argmin(p(x))])
+        plt.errorbar(focpos, trace_width, yerr=trace_width_std, fmt="ro")
+        plt.plot(x, pwidth(x), "-")
+        plt.xlabel("Focus (mm)")
+        plt.ylabel("Median trace width [pixels]")
+        if (interactive):
+            plt.show()
+        else:
+            plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_tracewidth_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
+            plt.clf()'''
 
     if (plot==True):
         plt.title("Best focus:%.2f"% x[np.argmin(pmag(x))])
@@ -526,3 +550,35 @@ def get_image_pars(image, arcsecpix=0.394, is_rccam=True):
     
     return pars[0], pars[1], pars[2], pars[3]
     
+def plot_quadrants(lfiles, quadsize=125):
+    
+    for myfile in lfiles:
+        hdulist = pf.open(myfile)[0]
+        img = hdulist.data * 1.            
+
+        X, Y = img.shape
+
+        dx = X / 3
+        dy = Y / 3
+
+
+        pos= float(hdulist.header['ifufocus'])
+        plt.suptitle('Focus %.2f'%pos, fontsize=10, horizontalalignment="right")
+
+        for i in range(3):
+            for j in range(3):
+
+		    plt.subplot(3,3,i*3+j+1)
+		    imgslice = img[i*dx:i*dx+quadsize, j*dy:j*dy+quadsize].T
+		    #zmin, zmax = zscale.zscale()
+		    zmin = np.percentile(imgslice.flatten(), 5)
+		    zmax = np.percentile(imgslice.flatten(), 98)
+	       
+		    plt.imshow(imgslice.T, vmin=zmin, vmax=zmax)
+		
+        findername = os.path.join(os.path.dirname(myfile), 'sextractor', os.path.basename(myfile).replace(".fits", "_corners.png"))
+
+        plt.savefig(findername)
+        plt.close()
+    
+
