@@ -218,7 +218,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj and 'Test' not in obj:
             # Symlink to save disk space
             os.symlink(src, dest)
             if 'STD-' in obj:
@@ -605,7 +605,7 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                 # Get OBJECT keyword
                 obj = hdr['OBJECT']
                 # Filter Calibs and avoid test images
-                if 'Calib' in obj and 'of' in obj and 'test' not in obj:
+                if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
@@ -700,7 +700,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 obj = ''
             # Filter Calibs and avoid test images and be sure it is part of
             # a series.
-            if 'Calib' in obj and 'of' in obj and 'test' not in obj:
+            if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
                 exptime = hdr['EXPTIME']
                 lampcur = hdr['LAMPCUR']
                 # Check for dome exposures
