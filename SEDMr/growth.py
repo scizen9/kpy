@@ -429,7 +429,7 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     return return_link, spec_ret, status_ret, phot_ret
 
           
-def parse_ztf_by_dir(target_dir):
+def parse_ztf_by_dir(target_dir, upobj=None):
     """Given a target directory get all files that have ztf or ZTF as base 
        name"""
 
@@ -439,13 +439,19 @@ def parse_ztf_by_dir(target_dir):
     files = glob.glob('%sZTF*.txt' % target_dir)
     files += glob.glob('%sztf*.txt' % target_dir)
 
-    out = open(target_dir + "report_ztf.txt", "w")
+    out = open(target_dir + "report_ztf.txt", "a")
     out.write("ZTF Upload report for %s generated on %s\n\n" %
               (target_dir.split('/')[-2],
                datetime.datetime.now().strftime("%c")))
     pr = True
     for fi in files:
         objname = os.path.basename(fi).split('_')[0]
+        # upload only one file
+        if upobj is not None:
+            # if this is not the file, skip
+            if upobj not in objname:
+                continue
+        # upload
         r, spec, stat, phot = update_target_by_object(objname,
                                                       add_status=True,
                                                       status='Completed',
@@ -454,7 +460,7 @@ def parse_ztf_by_dir(target_dir):
                                                       pull_requests=pr)
         # Only need to pull requests the first time
         pr = False
-        # print Object name
+        # log upload
         out.write(" %s: " % objname)
         # Was a spectrum uploaded?
         if spec:
@@ -480,7 +486,7 @@ if __name__ == '__main__':
 
     reddir = '/scr2/sedmdrp/redux/'
 
-    if len(sys.argv) == 2:
+    if len(sys.argv) >= 2:
         utc = sys.argv[1]
     else:
         utc = datetime.datetime.utcnow().strftime("%Y%m%d")
@@ -497,7 +503,12 @@ if __name__ == '__main__':
             os.mkdir(reqdir)
         if not os.path.exists(trgdir):
             os.mkdir(trgdir)
+
+        if len(sys.argv) >= 3:
+            uplobj = sys.argv[2]
+        else:
+            uplobj = None
       
-        parse_ztf_by_dir(srcdir)
-        # Test to see if I can update from a given directory
+        parse_ztf_by_dir(srcdir, upobj=uplobj)
+
 

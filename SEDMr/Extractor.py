@@ -710,7 +710,7 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
                   (ix, np.max(s)))
             continue
         # check for latent CRs in sky
-        if sky and np.max(s) > 500:
+        if sky and np.max(s) > 1500:
             print("latent CR in sky: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
