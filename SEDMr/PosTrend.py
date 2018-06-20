@@ -51,8 +51,9 @@ pl.title('Position Trend')
 pl.legend(loc=2)
 pl.grid(True)
 ofil = os.path.join(sdir, 'SEDM_pos_trend.pdf')
+tfil = os.path.join(sdir, 'SEDM_pos_trend.txt')
 pl.savefig(ofil)
-with open('SEDM_pos_trend.txt', 'wb') as dfil:
+with open(tfil, 'wb') as dfil:
     dat_writer = csv.writer(dfil, delimiter=" ", quoting=csv.QUOTE_MINIMAL)
     dat_writer.writerows(izip(jd, xas, yas, ras))
 
