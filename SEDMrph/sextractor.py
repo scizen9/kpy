@@ -375,6 +375,8 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
     focpos = []
     mags = []
     std_mags = []
+    mags98perc = []
+
     for i, f in enumerate(sexfileslist):
         print f
         fits = f.replace("sextractor/", "").replace(".sex", ".fits")
@@ -394,25 +396,32 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
         
 
         if(debug):
+            plt.figure(figsize=(10,7))
+            plt.suptitle('Focus %.2f'%pos, fontsize=10, horizontalalignment="right")
             ax = plt.subplot2grid((2,2), (0,0))
-            ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=5)
-            #plt.colorbar()
+            magmap = ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=6, edgecolors='face')
+            plt.title("flux / spaxel")
+            plt.colorbar(magmap, label="flux", format="%.1e")
+
             
             ax = plt.subplot2grid((2,2), (0,1))
-            ax.hist(sb["a_image"], bins=20, range=(10,60))
+            ax.hist(sb["a_image"], bins=30, range=(0,60))
+            plt.title("A image")
 
             ax = plt.subplot2grid((2,2), (1,0))
             ax.hist(sb["b_image"], bins=20, range=(0,5))
+            plt.title("B image")
             
             ax = plt.subplot2grid((2,2), (1,1))
-            ax.hist(sb["theta_image"], bins=20, range=(-10,10))
+            ax.hist(sb["mag"], bins=25, range=(-14, -4))
+            plt.title("mags image")
             
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
         focpos.append(pos)
-        mags.append(np.percentile(sb["mag"], 25))
-        std_mags.append(np.std(sb["mag"] < np.percentile(sb["mag"], 15)))
+        mags.append(np.percentile(sb["mag"], 50))
+        std_mags.append(np.std(sb["mag"] < np.percentile(sb["mag"], 50)))
     
     focpos = np.array(focpos)
     mags = np.array(mags)
@@ -427,19 +436,21 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
     
     
     if (plot==True):
-        plt.title("Best focus:%.2f"% x[np.argmax(p(x))])
+	plt.figure()
+        plt.title("Best focus IFU:%.2f"% x[np.argmax(p(x))])
         with open(os.path.join(rootdir, "focus"), "w") as f:
             f.write(str(focpos))
             f.write(str(mags))
         plt.errorbar(focpos, mags, yerr=std_mags, fmt="o")
         plt.plot(x, p(x), "-")
         plt.xlabel("Focus (mm)")
-        plt.ylabel("Brightest spaxel")
+        plt.ylabel("Mag brightest spaxel")
         if (interactive):
             plt.show()
         else:
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),"focus_ifu_%s.png"%(datetime.datetime.utcnow()).strftime("%Y%m%d-%H:%M:%S")))
             plt.clf()
+	plt.close("all")
 
     return x[np.argmax(p(x))], coefs[0]
     
@@ -528,8 +539,10 @@ def get_focus_ifu(lfiles, plot=True, debug=False, interactive=False):
     Receives a list of focus ifu files and returns the best focus.
     '''
     sexfiles = run_sex(lfiles)
-    focus, sigma = analyse_sex_ifu(sexfiles, plot=plot, debug=debug, interactive=interactive)
+    res = analyse_sex_ifu(sexfiles, plot=plot, debug=debug, interactive=interactive)
     
+    print res
+    focus, sigma = res
     return focus, sigma
     
 def get_focus_ifu_spectrograph(lfiles, plot=True, debug=False):
