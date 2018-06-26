@@ -13,15 +13,15 @@ PARAMETERS_NAME  /tmp/sex.{user}.param  # name of the file containing catalog co
 #------------------------------- Extraction ----------------------------------
  
 DETECT_TYPE      CCD            # CCD (linear) or PHOTO (with gamma correction)
-DETECT_MINAREA   100              # minimum number of pixels above threshold
+DETECT_MINAREA   100            # minimum number of pixels above threshold
 DETECT_THRESH    3.0            # <sigmas> or <threshold>,<ZP> in mag.arcsec-2
 ANALYSIS_THRESH  3.0            # <sigmas> or <threshold>,<ZP> in mag.arcsec-2
  
 FILTER           N              # apply filter for detection (Y or N)?
-#FILTER_NAME      default.conv   # name of the file containing the filter
+#FILTER_NAME      default.conv  # name of the file containing the filter
  
 DEBLEND_NTHRESH  32             # Number of deblending sub-thresholds
-DEBLEND_MINCONT  0.8          # Minimum contrast parameter for deblending
+DEBLEND_MINCONT  0.4            # Minimum contrast parameter for deblending
  
 CLEAN            Y              # Clean spurious detections? (Y or N)?
 CLEAN_PARAM      1.0            # Cleaning efficiency
@@ -31,7 +31,7 @@ MASK_TYPE        CORRECT        # type of detection MASKing: can be one of
  
 #------------------------------ Photometry -----------------------------------
  
-PHOT_APERTURES   32              # MAG_APER aperture diameter(s) in pixels
+PHOT_APERTURES   32             # MAG_APER aperture diameter(s) in pixels
 PHOT_AUTOPARAMS  2.5, 3.5       # MAG_AUTO parameters: <Kron_fact>,<min_radius>
 PHOT_PETROPARAMS 2.0, 3.5       # MAG_PETRO parameters: <Petrosian_fact>,
                                 # <min_radius>

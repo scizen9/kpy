@@ -859,7 +859,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
                     # Process wavelengths
                     start_time = time.time()
                     # Spawn nsub sub-processes to solve wavelengths faster
-                    nsub = 20
+                    nsub = 5
                     os.system("derive_wavesolution.py %s --nsub %d"
                               % (cur_date_str, nsub))
                     time.sleep(60)
