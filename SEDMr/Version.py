@@ -13,4 +13,4 @@ def ifu_drp_version():
     except:
         ver = "%s" % datetime.datetime.now()
 
-    return ver
+    return str(ver)
