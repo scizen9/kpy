@@ -391,15 +391,15 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
         ("petro_radius", np.float)])
         
         #for the focus purpose, we only want traces, meaning that their ellipticity needs to be large.
-        sb = s[s["a_image"]> 30]
         sb = s[ (s["x"]> 200) * (s["x"]<1848) * (s["y"]>200) * (s["y"]<1848)]
+        #sb = sb[sb["a_image"]> 30]
         
 
         if(debug):
             plt.figure(figsize=(10,7))
             plt.suptitle('Focus %.2f'%pos, fontsize=10, horizontalalignment="right")
             ax = plt.subplot2grid((2,2), (0,0))
-            magmap = ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=6, edgecolors='face')
+            magmap = ax.scatter(sb["x"], sb["y"], c=10**(-0.4*sb["mag"]), s=10, edgecolors='face')
             plt.title("flux / spaxel")
             plt.colorbar(magmap, label="flux", format="%.1e")
 
@@ -413,15 +413,18 @@ def analyse_sex_ifu(sexfileslist, plot=True, interactive=False, debug=False, ifu
             plt.title("B image")
             
             ax = plt.subplot2grid((2,2), (1,1))
-            ax.hist(sb["mag"], bins=25, range=(-14, -4))
+            ax.hist(sb["mag"], bins=25, range=(-15, -4))
             plt.title("mags image")
             
             plt.savefig(os.path.join(os.path.dirname(sexfileslist[0]),os.path.basename(f).replace(".sex",".png")))
             plt.clf()
         
         focpos.append(pos)
-        mags.append(np.percentile(sb["mag"], 50))
-        std_mags.append(np.std(sb["mag"] < np.percentile(sb["mag"], 50)))
+	avex = np.average(sb["x"])
+	avey = np.average(sb["y"])
+        mags.append( np.std(np.sqrt((sb["x"]-avex)**2+ (sb["y"]-avey)**2)))
+        #mags.append(np.percentile(sb["mag"], 25))
+        std_mags.append(np.std(sb["mag"] < np.percentile(sb["mag"], 25)))
     
     focpos = np.array(focpos)
     mags = np.array(mags)

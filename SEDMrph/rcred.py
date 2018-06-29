@@ -724,7 +724,7 @@ def copy_ref_calib(curdir, calib="Flat"):
    
     #Try to go 100 days before the data was taken.
     i = 0
-    while i < 100 and not np.all(calib_dic.values()):
+    while i < 1000 and not np.all(calib_dic.values()):
 	i = i+1
 	newdate = curdate - datetime.timedelta(i)
 	newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
