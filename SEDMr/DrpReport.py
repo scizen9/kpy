@@ -11,12 +11,14 @@ def report():
              if "_A_" not in f and "_B_" not in f]
     flist.sort()
     print("\nReport generated on %s" % time.strftime("%c"))
-    print("\nSEDM DRP run in %s\nFound %d sp_*.npy files\n" %
+    print("\nSEDM DRP run in %s\nFound %d sp_*.npy files" %
           (os.getcwd(), len(flist)))
+    print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
+          os.getcwd().split('/')[-1])
     totexpt = 0.
     lostexp = 0.
     print("Object                     Obs Method  Exptime Qual Skysb Airmass "
-          "   Reducer   Type      z         Rlap")
+          "   Reducer    Allocation  Type      z         Rlap")
     for f in flist:
         if '_A_' in f or '_B_' in f:
             continue
@@ -49,6 +51,9 @@ def report():
                 else:
                     rlap = ""
                 sfl.close()
+        if ctype == "":
+            if "STD" in f:
+                ctype = " STD"
 
         # load the spectrum file
         sp = np.load(f)[0]
@@ -95,6 +100,15 @@ def report():
             air = meta['airmass']
         else:
             air = 0.
+        # get RQID
+        if 'header' in meta:
+            hdr = meta['header']
+            if 'P60PRID' in hdr:
+                rqid = hdr['P60PRID']
+            else:
+                rqid = 'None'
+        else:
+            rqid = 'None'
 
         # Don't count bad objects
         if qual < 3:
@@ -107,9 +121,9 @@ def report():
         else:
             objname = "_".join(objname.split('_')[1:])
 
-        print("%-25s %4s %6s   %6.1f %4d %5s  %5.3f   %9s  %-9s  %6s  %6s" %
+        print("%-25s %4s %6s  %7.1f %4d %5s  %5.3f   %9s  %12s %-9s  %6s  %6s" %
               (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
-               air, reducer, ctype, zmch, rlap))
+               air, reducer, rqid, ctype, zmch, rlap))
     print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
     if lostexp > 0:
         print("Total exposure time lost to bad targets = %.1f s\n" % lostexp)

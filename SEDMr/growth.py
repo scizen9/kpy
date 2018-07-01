@@ -140,7 +140,7 @@ def update_request(status, request_id, instrument_id='',
 
     # 1. Make sure that we have the required fields
     if not request_id:
-        print "Can't update a request without the request id"
+        print("Can't update a request without the request id")
         return False
 
     if not instrument_id:
@@ -168,7 +168,7 @@ def update_request(status, request_id, instrument_id='',
         os.remove(output_file)
 
     # 5. Print the request response for the user
-    print ret
+    print(ret)
 
     return True
 
@@ -187,7 +187,7 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
         out = commands.getoutput('grep %s %s' % (v, inputfile))
         if k.upper() == 'EXPTIME':
             outstr = out.split(sep,1)[-1]
-            print outstr
+            print(outstr)
             return_dict[k] = int(outstr)
         else:
             return_dict[k] = out.split(sep,1)[-1]
@@ -270,7 +270,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     :return: 
     """
     if not request_id:
-        print "Can't update without a request id"
+        print("Can't update without a request id")
         return False
 
     basefile = os.path.basename(spec_file)
@@ -292,19 +292,19 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
         quality = int(submission_dict['quality'])
         del submission_dict['quality']
 
-    print type(format_type), type(request_id), type(instrument_id)
+    print(type(format_type), type(request_id), type(instrument_id))
     submission_dict.update({'format': format_type.rstrip().lstrip(),
                            'instrument_id': instrument_id,
                             'request_id': request_id,
                             'observer': observer.rstrip().lstrip()})
     
-    print type(submission_dict['instrument_id'])
+    print(type(submission_dict['instrument_id']))
 
     # 1a. [Optional] Check the quality if it is smaller or equal to min quality
     # then upload spectra
     
     if check_quality and quality > min_quality:
-        print "Spectra quality does not pass"
+        print("Spectra quality does not pass")
         return False
     
     # 2. Open the configuration and spec file for transmission
@@ -314,7 +314,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     # 3. Send the request
     ret = requests.post(growth_spec_url, auth=(user, pwd),
                         files={'jsonfile': jsonFile, 'upfile': upfile})
-    print ret
+    print(ret)
 
     # 4. Close files and send request response
     upfile.close()
@@ -351,7 +351,7 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     # this is currently the directory that holds all incoming request
     # dictionary from growth.
     if pull_requests:
-        print "Gathering all request files"
+        print("Gathering all request files")
         import growth_watcher
         growth_watcher.pull_request_from_remote()
     match_list = []
@@ -375,11 +375,11 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
             match_list.append(targ)
          
     if len(match_list) == 1:
-        print match_list
+        print(match_list)
         target = match_list[0]
-        print "Uploading target %s files" % objname
+        print("Uploading target %s files" % objname)
         if add_spectra:
-            print target['requestid']
+            print(target['requestid'])
             spec_ret = upload_spectra(spectra_file, fill_by_file=True,
                                       request_id=target['requestid'])
         if add_phot:
@@ -389,10 +389,10 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
             status_ret = update_request(status, request_id=target['requestid'])
 
     elif len(match_list) == 0:
-        print "Could not match name with any request file"
+        print("Could not match name with any request file")
 
     else:
-        print 'Multiple matches have been made for target: %s' % objname
+        print('Multiple matches have been made for target: %s' % objname)
         request_id_list = []
         for j in match_list:
             request_id_list.append(j['requestid'])
@@ -407,15 +407,15 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
             # TODO: Handle case in which an update has been sent
             # For now we just use highest value
             request_id = sorted(request_id_list)[-1]
-            print request_id_list
+            print(request_id_list)
             for j in match_list:
                 if j['requestid'] == request_id:
                     target = j
                     break
 
-        print "Updating target %s" % objname
+        print("Updating target %s" % objname)
         if add_spectra:
-            print target['requestid']
+            print(target['requestid'])
             spec_ret = upload_spectra(spectra_file, fill_by_file=True,
                                       request_id=target['requestid'])
         if add_phot:
@@ -429,7 +429,7 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     return return_link, spec_ret, status_ret, phot_ret
 
           
-def parse_ztf_by_dir(target_dir):
+def parse_ztf_by_dir(target_dir, upobj=None):
     """Given a target directory get all files that have ztf or ZTF as base 
        name"""
 
@@ -439,13 +439,19 @@ def parse_ztf_by_dir(target_dir):
     files = glob.glob('%sZTF*.txt' % target_dir)
     files += glob.glob('%sztf*.txt' % target_dir)
 
-    out = open(target_dir + "report_ztf.txt", "w")
+    out = open(target_dir + "report_ztf.txt", "a")
     out.write("ZTF Upload report for %s generated on %s\n\n" %
               (target_dir.split('/')[-2],
                datetime.datetime.now().strftime("%c")))
     pr = True
     for fi in files:
         objname = os.path.basename(fi).split('_')[0]
+        # upload only one file
+        if upobj is not None:
+            # if this is not the file, skip
+            if upobj not in objname:
+                continue
+        # upload
         r, spec, stat, phot = update_target_by_object(objname,
                                                       add_status=True,
                                                       status='Completed',
@@ -454,8 +460,8 @@ def parse_ztf_by_dir(target_dir):
                                                       pull_requests=pr)
         # Only need to pull requests the first time
         pr = False
-        # print Object name
-        out.write("%s: " % objname)
+        # log upload
+        out.write(" %s: " % objname)
         # Was a spectrum uploaded?
         if spec:
             out.write("OK ")
@@ -466,8 +472,8 @@ def parse_ztf_by_dir(target_dir):
             out.write("OK ")
         else:
             out.write("NO ")
-        print r
-        out.write("%s:\n" % r)
+        print(r)
+        out.write("%s\n" % r)
 
     # Close log file
     out.close()
@@ -480,7 +486,7 @@ if __name__ == '__main__':
 
     reddir = '/scr2/sedmdrp/redux/'
 
-    if len(sys.argv) == 2:
+    if len(sys.argv) >= 2:
         utc = sys.argv[1]
     else:
         utc = datetime.datetime.utcnow().strftime("%Y%m%d")
@@ -497,7 +503,12 @@ if __name__ == '__main__':
             os.mkdir(reqdir)
         if not os.path.exists(trgdir):
             os.mkdir(trgdir)
+
+        if len(sys.argv) >= 3:
+            uplobj = sys.argv[2]
+        else:
+            uplobj = None
       
-        parse_ztf_by_dir(srcdir)
-        # Test to see if I can update from a given directory
+        parse_ztf_by_dir(srcdir, upobj=uplobj)
+
 

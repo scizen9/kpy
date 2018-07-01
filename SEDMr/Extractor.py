@@ -705,8 +705,13 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
         pix = np.arange(*spectrum.xrange)
 
         # check for saturation
-        if np.max(s) > 1000000:
+        if np.max(s) > 100000:
             print("saturated extraction: %d with max of %d, skipping" %
+                  (ix, np.max(s)))
+            continue
+        # check for latent CRs in sky
+        if sky and np.max(s) > 150000:
+            print("latent CR in sky: %d with max of %d, skipping" %
                   (ix, np.max(s)))
             continue
 
@@ -758,6 +763,17 @@ def interp_spectra(all_spectra, six, sign=1., outname=None, plot=False,
 
             l, s = spectrum.get_counts(the_spec='specf')
             pix = np.arange(*spectrum.xrange)
+
+            # check for saturation
+            if np.max(s) > 100000:
+                print("saturated extraction: %d with max of %d, skipping" %
+                      (ix, np.max(s)))
+                continue
+            # check for latent CRs in sky
+            if sky and np.max(s) > 150000:
+                print("latent CR in sky: %d with max of %d, skipping" %
+                      (ix, np.max(s)))
+                continue
 
             # Preference to lamcoeff over mdn_coeff
             if spectrum.lamcoeff is not None:
@@ -1252,17 +1268,18 @@ def handle_std(stdfile, fine, outname=None, standard=None, offset=None,
         print("2 - acceptable (minor problem)")
         print("3 - poor       (major problem)")
         print("4 - no object visible")
+        print("5 - bogus target")
         q = 'x'
         quality = -1
         prom = ": "
-        while quality < 1 or quality > 4:
+        while quality < 1 or quality > 5:
             q = input(prom)
             if type(q) == str:
                 if q.isdigit():
                     quality = int(q)
             else:
                 quality = q
-            if quality < 1 or quality > 4:
+            if quality < 1 or quality > 5:
                 prom = "Try again: "
         print("Quality = %d, now making outputs..." % quality)
 
@@ -1673,22 +1690,23 @@ def handle_single(imfile, fine, outname=None, offset=None,
                 print("2 - acceptable (minor problem)")
                 print("3 - poor       (major problem)")
                 print("4 - no object visible")
+                print("5 - bogus target")
                 q = 'x'
                 quality = -1
                 prom = ": "
-                while quality < 1 or quality > 4:
+                while quality < 1 or quality > 5:
                     q = input(prom)
                     if type(q) == str:
                         if q.isdigit():
                             quality = int(q)
                     else:
                         quality = q
-                    if quality < 1 or quality > 4:
+                    if quality < 1 or quality > 5:
                         prom = "Try again: "
                 print("Quality = %d, now making outputs..." % quality)
             else:
                 if stats["noobj"]:
-                    quality = 4
+                    quality = -1
                 else:
                     quality = 0
                 print("Now making outputs...")
@@ -1768,7 +1786,7 @@ def handle_single(imfile, fine, outname=None, offset=None,
         pl.axes().set_aspect('equal')
         if 'airmass' in meta:
             tlab += "\nAirmass: %.3f" % meta['airmass']
-        if 1 <= quality <= 4:
+        if 1 <= quality <= 5:
             tlab += ", Qual: %d" % quality
         if not no_stamp:
             pl.title(tlab)
@@ -2060,22 +2078,23 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
             print("2 - acceptable (minor problem)")
             print("3 - poor       (major problem)")
             print("4 - no object visible")
+            print("5 - bogus target")
             q = 'x'
             quality = -1
             prom = ": "
-            while quality < 1 or quality > 4:
+            while quality < 1 or quality > 5:
                 q = input(prom)
                 if type(q) == str:
                     if q.isdigit():
                         quality = int(q)
                 else:
                     quality = q
-                if quality < 1 or quality > 4:
+                if quality < 1 or quality > 5:
                     prom = "Try again: "
             print("Quality = %d, now making outputs..." % quality)
         else:
             if noobj:
-                quality = 4
+                quality = -1
             else:
                 quality = 0
         print("Now making outputs...")
@@ -2181,7 +2200,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
                                                meta['outname'])
         if 'airmass' in meta:
             tlab += ", Air: %.3f" % meta['airmass']
-        if 1 <= quality <= 4:
+        if 1 <= quality <= 5:
             tlab += ", Qual: %d" % quality
         pl.scatter(xsa, ysa, color='red', marker='H', s=40, linewidth=0)
         pl.scatter(xsb, ysb, color='blue', marker='H', s=40, linewidth=0)

@@ -218,7 +218,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj and 'Test' not in obj:
             # Symlink to save disk space
             os.symlink(src, dest)
             if 'STD-' in obj:
@@ -434,7 +434,8 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             return 0, None
         # Build cube for each observation copied
         print("Building cube for " + ",".join(stds))
-        cmd = "ccd_to_cube.py %s --build %s" % (datestr, ",".join(copied))
+        cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr,
+                                                           ",".join(copied))
         print(cmd)
         retcode = os.system(cmd)
         # Check results
@@ -456,7 +457,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             if nobj > 0:
                 # Use forced psf for faint targets (eventually)
                 print("Extracting spectra for " + ",".join(sciobj))
-                cmd = "extract_star.py %s --auto %s --lstep 2  --autobins 6" \
+                cmd = "extract_star.py %s --auto %s --autobins 6" \
                       % (datestr, ",".join(sciobj))
                 print(cmd)
                 retcode = os.system(cmd)
@@ -605,7 +606,7 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                 # Get OBJECT keyword
                 obj = hdr['OBJECT']
                 # Filter Calibs and avoid test images
-                if 'Calib' in obj and 'of' in obj and 'test' not in obj:
+                if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
@@ -700,7 +701,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 obj = ''
             # Filter Calibs and avoid test images and be sure it is part of
             # a series.
-            if 'Calib' in obj and 'of' in obj and 'test' not in obj:
+            if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
                 exptime = hdr['EXPTIME']
                 lampcur = hdr['LAMPCUR']
                 # Check for dome exposures
@@ -735,7 +736,7 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
     # END: cpcal
 
 
-def obs_loop(rawlist=None, redd=None, check_precal=True):
+def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
     """One night observing loop: processes calibrations and science data
 
     Copy raw cal files until we are ready to process the night's
@@ -752,6 +753,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
         rawlist (list): list of raw data directories (usually in /scr2/sedm/raw)
         redd (str): reduced directory (something like /scr2/sedm/redux)
         check_precal (bool): should we check for images from previous night?
+        indir (str): input directory for single night processing
 
     Returns:
         bool: True if night completed normally, False otherwise
@@ -768,7 +770,10 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
     sun = ephem.Sun()
 
     # Source directory is most recent raw dir
-    srcdir = rawlist[-1]
+    if indir is None:
+        srcdir = rawlist[-1]
+    else:
+        srcdir = indir
     # Default return value
     ret = False
     # Did we get our cals from a previous night?
@@ -859,7 +864,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
                     # Process wavelengths
                     start_time = time.time()
                     # Spawn nsub sub-processes to solve wavelengths faster
-                    nsub = 20
+                    nsub = 5
                     os.system("derive_wavesolution.py %s --nsub %d"
                               % (cur_date_str, nsub))
                     time.sleep(60)
@@ -993,7 +998,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
 
 
 def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
-       check_precal=True):
+       check_precal=True, indate=None):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
@@ -1005,6 +1010,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
         redd (str): reduced directory, should be like /scr2/sedm/redux
         wait (bool): wait for new directory, else start right away
         check_precal (bool): should we check previous night for cals?
+        indate (str): input date to process: YYYYMMDD (e.g. 20180626)
 
     Returns:
         None
@@ -1025,47 +1031,56 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
     nraw = len(rawlist)
     print("Found %d raw directories in %s: putting reduced data in %s" %
           (nraw, rawd, redd))
-    print("Latest raw directory is %s" % rawlist[-1])
-    if not wait:
-        stat = obs_loop(rawlist, redd, check_precal=check_precal)
-        its += 1
-        print("Finished SEDM observing iteration %d in raw dir %s" %
-              (its, rawlist[-1]))
-    try:
-        while dobs:
-            if stat:
-                print("Now we wait until we get a new raw directory")
-                waiting = True
-                while waiting:
-                    print("waiting 10min for new raw directory...")
-                    sys.stdout.flush()
-                    time.sleep(600)
-                    # Get all raw directories
-                    new_rawlist = sorted([d for d in glob.glob(fspec)
-                                          if os.path.isdir(d)])
-                    new_nraw = len(new_rawlist)
-                    if new_nraw > nraw:
-                        waiting = False
-                        sys.stdout.flush()
-                        rawlist = new_rawlist
-                        nraw = new_nraw
-                        print("Starting next SEDM observing iteration with "
-                              "raw dir %s" % rawlist[-1])
-                    else:
-                        gm = time.gmtime()
-                        print("UT = %02d:%02d No new directories yet, "
-                              "so keep waiting" % (gm.tm_hour, gm.tm_min))
-                        sys.stdout.flush()
-            print("Found %d raw directories in %s: putting reduced data in %s" %
-                  (nraw, rawd, redd))
-            print("Latest raw directory is %s" % rawlist[-1])
+    if indate is None:
+        print("Latest raw directory is %s" % rawlist[-1])
+
+        if not wait:
             stat = obs_loop(rawlist, redd, check_precal=check_precal)
             its += 1
             print("Finished SEDM observing iteration %d in raw dir %s" %
                   (its, rawlist[-1]))
-    # Handle a ctrl-C
-    except KeyboardInterrupt:
-        sys.exit("Exiting")
+        try:
+            while dobs:
+                if stat:
+                    print("Now we wait until we get a new raw directory")
+                    waiting = True
+                    while waiting:
+                        print("waiting 10min for new raw directory...")
+                        sys.stdout.flush()
+                        time.sleep(600)
+                        # Get all raw directories
+                        new_rawlist = sorted([d for d in glob.glob(fspec)
+                                              if os.path.isdir(d)])
+                        new_nraw = len(new_rawlist)
+                        if new_nraw > nraw:
+                            waiting = False
+                            sys.stdout.flush()
+                            rawlist = new_rawlist
+                            nraw = new_nraw
+                            print("Starting next SEDM observing iteration with "
+                                  "raw dir %s" % rawlist[-1])
+                        else:
+                            gm = time.gmtime()
+                            print("UT = %02d:%02d No new directories yet, "
+                                  "so keep waiting" % (gm.tm_hour, gm.tm_min))
+                            sys.stdout.flush()
+                print("Found %d raw directories in %s: putting reduced data in %s" %
+                      (nraw, rawd, redd))
+                print("Latest raw directory is %s" % rawlist[-1])
+                stat = obs_loop(rawlist, redd, check_precal=check_precal)
+                its += 1
+                print("Finished SEDM observing iteration %d in raw dir %s" %
+                      (its, rawlist[-1]))
+        # Handle a ctrl-C
+        except KeyboardInterrupt:
+            sys.exit("Exiting")
+    else:
+        indir = os.path.join(rawd, indate)
+        print("Processing raw data from %s" % indir)
+        stat = obs_loop(rawlist, redd, check_precal=check_precal, indir=indir)
+        its += 1
+        print("Finished SEDM processing in raw dir %s with status %d" %
+              (indir, stat))
     # END: go
 
 
@@ -1081,10 +1096,12 @@ if __name__ == '__main__':
                         help='Output reduced directory (/scr2/sedmdrp/redux)')
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
-    parser.add_argument('--check_precal', action="store_false", default=True,
-                        help='Check previous day for cal files?')
+    parser.add_argument('--skip_precal', action="store_true", default=False,
+                        help='Skip check of previous day for cal files?')
+    parser.add_argument('--date', type=str, default=None,
+                        help='Select date to process')
 
     args = parser.parse_args()
 
     go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait,
-       check_precal=args.check_precal)
+       check_precal=(not args.skip_precal), indate=args.date)

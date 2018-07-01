@@ -86,7 +86,11 @@ def plot_image(image):
     if (not os.path.isdir(png_dir)):
         os.makedirs(png_dir)
 
-    f = fits.open(image)[0]
+    try:
+    	f = fits.open(image)[0]
+    except:
+	logger.error("FATAL! Could not open image %s."%image)
+	return
     d = f.data
     h = f.header
     imtype = h.get('IMGTYPE', 0)

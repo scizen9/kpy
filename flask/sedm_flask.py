@@ -15,7 +15,7 @@ import pygal
 from pygal.style import Style
 import json
 from flask import Flask, request, flash, redirect, render_template, url_for, make_response, get_flashed_messages
-from SEDMDb.SedmDb import SedmDB 
+from SEDMDb.SedmDb import SedmDB
 from SEDMDb.SedmDb_tools import DbTools
 from werkzeug.security import check_password_hash
 import forms
@@ -23,7 +23,7 @@ from forms import *
 # from flask.ext.appbuilder.charts.views import DirectByChartView
 import flask
 import flask_login
-from flask import Flask, make_response
+from flask import Flask, make_response, jsonify
 
 from wtforms import Form, HiddenField, fields, validators
 from astropy.io import fits
@@ -62,6 +62,8 @@ config = {
     'path_phot':'/scr2/sedm/phot/',
     'path_raw' : '/scr2/sedm/raw/'}
 }
+
+prev_users = ['SEDM_Admin', 'rsw', 'SEDmCzar']
 
 g_p_a_dict = {}  # {g.id: (g.designator, {p.id: (p.designator, {a.id: a.designator})}  )}
 g_p_a = db.execute_sql("SELECT g.id, g.designator, p.id, p.designator, a.id, a.designator FROM groups g, program p, allocation a "
@@ -139,7 +141,7 @@ def data_static(filename):
     '''
     _p, _f = os.path.split(filename)
 
-    if _f.startswith("rc2018"):
+    if _f.startswith('rc') or _f.startswith('finder'):
         return flask.send_from_directory(os.path.join(config['path']['path_phot'], _p), _f)
     else:
         return flask.send_from_directory(os.path.join(config['path']['path_archive'], _p), _f)
@@ -154,7 +156,7 @@ def file_exists(filename):
     return os.path.isfile( os.path.join(config['path']['path_archive'], _p, _f))
 
 @flask_login.login_required
-def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
+def create_gallery(imagelist, mydate, ncols=6, width=80, filetype='spec'):
     '''
     Creates the right formatting for the image gallery.
     '''
@@ -169,15 +171,22 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
             pos =i*ncols + j
             if ( pos < len(imagelist)):
 
-                if spec:
+                if filetype=='spec':
                     path = os.path.join(mydate, imagelist[pos])
-                else:
+                #Removing the part of the path which is redundant with the photometric folder.
+                elif filetype == 'phot':
                     path = imagelist[pos].replace(config["path"]["path_phot"], "")
-                    #path = os.path.join(mydate, 'reduced/png', imagelist[pos])
- 
-                impath = flask.url_for('data_static', filename=path, spec=spec)
+                elif filetype == 'finder':
+                    path = imagelist[pos].replace(config["path"]["path_phot"], "")
+                else:
+                    print ("File type not found.")
+                impath = flask.url_for('data_static', filename=path)
+                print (impath)
 
-                if spec and file_exists(path.replace(".png", ".pdf")):
+                imdir, imname = os.path.split(path)
+                imname = imname.split(".")[0]
+
+                if filetype=='spec' and file_exists(path.replace(".png", ".pdf")):
                     impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
                 else:
                     impathlink = impath
@@ -185,15 +194,17 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, spec=True):
                 s = s + '''
                   <div class="col-md-{0}">
                     <div class="thumbnail">
-                      <a href="{1}">
-                        <img src="{2}" style="width:{3}% height:"{4}%">
+                       <div class="desc">{1}</div>
+                      <a href="{2}">
+                        <img src="{3}" style="width:{4}% height:"{5}%">
                       </a>
                     </div>
-                  </div>\n'''.format(12/ncols, impathlink, impath, width, width)
+                  </div>\n'''.format(12/ncols, imname, impathlink, impath, width, width)
             else:
                 s = s + '</div> \n'
                 break
         s = s + '</div> \n'
+
 
     return s
 
@@ -255,8 +266,10 @@ def data_access(instrument):
 
             spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
             files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+            files_table.sort()
             images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
-            gallery = create_gallery(images, mydate, ncols=4, width=100, spec=True)
+            images.sort()
+            gallery = create_gallery(images, mydate, ncols=2, width=100, filetype='spec')
 
 
     if instrument.lower() =='rc':
@@ -275,14 +288,34 @@ def data_access(instrument):
 
         if not photfiles is None:
             #images = [i[0] for i in photfiles.values if i[0].endswith(".png")]
-            #gallery = create_gallery(images, mydate, ncols=6, width=150, spec=False)
+            #gallery = create_gallery(images, mydate, ncols=6, width=150, filetype='spec')
 
 
             for k in photfiles.keys():
                 if k.lower() != 'guider':
-                    gallerydic[k] = create_gallery(photfiles[k], mydate, ncols=6, width=150, spec=False)    
+                    fs = photfiles[k]
+                    fs.sort()
+                    gallerydic[k] = create_gallery(fs, mydate, ncols=6, width=150, filetype='phot')    
+
+    if instrument.lower() =='finders':
+
+        photfiles, mydate = model.search_finder_files(mydate = mydate)
+
+        if ( not 'date' in flask.request.args and photfiles is None):
+            message=message + " No finder charts found up to 100 days prior to today... Weather has been terrible lately!"
+        elif ( not 'date' in flask.request.args and not photfiles is None):
+            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+        
+        elif ( 'date' in flask.request.args and photfiles is None):
+            message=message + "No finder charts found for the date %s."%(mydate)
         else:
-            gallery= ""
+            message = message + "Finder charts found for %s"%( mydate)
+
+        if not photfiles is None:
+            fs = list(photfiles['filename'])
+            fs.sort()
+            print (fs)
+            gallery = create_gallery(fs, mydate, ncols=4, width=150, filetype='finder')   
 
 
 
@@ -345,8 +378,8 @@ def index():
     
     if flask_login.current_user.is_authenticated:
         # retrieve all of the requests submitted by the user
-        enddate = datetime.datetime.utcnow() 
-        inidate = enddate - datetime.timedelta(days=7)
+        enddate = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        inidate = datetime.datetime.utcnow() - datetime.timedelta(days=7, hours=8)
 
         dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
 
@@ -449,7 +482,8 @@ def manage_user():
         username = flask.request.args['user']
     elif (form2.username.data):
         username = form2.username.data
-        username = '"{0}"'.format(username)
+        #username.replace("'", "").replace('"', '')
+        #username = '"{0}"'.format(username)
     else:
         username = ''
 
@@ -500,7 +534,9 @@ def manage_user():
         form2.email.data = u["email"]
 
     elif 'add_group' in flask.request.form :
-        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        username = form2.username.data
+        #username.replace("'", "").replace('"', '')
+        u = model.get_info_user(username)#'"{0}"'.format(username))
         message = u["message"]
 
         g = flask.request.form['new_groups']
@@ -509,15 +545,17 @@ def manage_user():
 
     elif 'remove_group' in flask.request.form:
 
-        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        username = form2.username.data
+        #username.replace("'", "").replace('"', '')
+        u = model.get_info_user(username)#'"{0}"'.format(username))
         message = u["message"]
         g = flask.request.form['old_groups']
         model.remove_group(u["id"], g)
         message = "Deleted group for user %s"%form2.username.data
 
     elif 'modify_user' in flask.request.form and form2.validate_on_submit():
-
-        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        username = form2.username.data
+        u = model.get_info_user(username) #'"{0}"'.format(form2.username.data))
         message = u["message"]
 
         name = form2.name.data
@@ -830,6 +868,47 @@ def user_info():
     return (render_template('header.html', current_user=flask_login.current_user) +
             render_template('footer.html'))
 
+@app.route('/view_request', methods=['GET', 'POST'])
+@flask_login.login_required
+def view_request():
+
+    message = ""
+    if flask_login.current_user.name not in prev_users:
+        return redirect(flask.url_for('index'))
+
+    request_id = request.args.get('id')
+    if not request_id:
+        request_id = 20180416223941629
+        message = "Assuming default id for the request."
+
+    req, flt = model.get_request_by_id(request_id)
+    message = "seeing the request"
+
+    return render_template('view_request.html', req=req, flt=flt, message=message)
+
+@app.route('/update_request', methods=['GET', 'POST'])
+@flask_login.login_required
+def update_request():
+    if flask_login.current_user.name not in prev_users:
+        return redirect(flask.url_for('index'))
+
+    if request.is_json:
+        print request.json
+        ret = model.parse_update(request.json)
+    return jsonify(ret)
+
+@app.route('/delete_request', methods=['GET', 'POST'])
+@flask_login.login_required
+def delete_request():
+    if flask_login.current_user.name not in prev_users:
+        return redirect(flask.url_for('index'))
+
+    request_id = request.args.get('id')
+    if not request_id:
+        request_id = 20180416223941629
+    ret = model.delete_request_by_id(request_id)
+
+    return redirect('view_request?id=%s' % request_id)
 
 @app.route('/request', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -1044,21 +1123,37 @@ def requests():
                             render_template('footer.html'))
                 else:
                     obj_id = obj[0][0]
-                    
+                   
+ 
             # generate 'nexposures' from ifu and filter inputs
             if 'ifu' in form1 and form1.ifu.data:
-                if 'ab' in form1 and form1.ab.data:
-                    exposures = '{2,'
-                else:
-                    exposures = '{1,'
+                exposures = '{1, '
+                obs_seq = '{1ifu,'
+                exptime = '{2400,'
             else:
-                exposures = '{0,'
-            exposures += form1.filters_op.data
+                exposures = '{'
+                obs_seq = '{'
+                exptime = '{'
+            
+            myseq = form1.filters_op.data
+            myseq = myseq[0:-1]
+            filt_seq = np.array([ int(d) for d in myseq.split(",")])
+
+            for b, f in zip(filt_seq, ['u', 'g', 'r', 'i']):
+                if b>0:
+                    obs_seq += str(b) +f+','
+                    exptime += '60,'
+
+
+            exposures = exposures + form1.filters_op.data
+            obs_seq = obs_seq[0:-1] + '}'
+            exptime = exptime[0:-1] + '}'
+
             # generate the input dictionary for add_request
-            pardic = {'object_id': obj_id, 'exptime': '{120, 2400}',
+            pardic = {'object_id': obj_id, 'exptime': exptime,
                       'priority': form1.priority.data, 'inidate': str(form1.inidate.data),
                       'enddate': str(form1.enddate.data), 'user_id': user_id, 'allocation_id': form1.allocation.data,
-                      'nexposures': exposures}
+                      'nexposures': exposures, 'obs_seq': obs_seq}
             # add in the optional parameters
             if form1.cadence.data:
                 pardic['cadence'] = form1.cadence.data
@@ -1532,7 +1627,7 @@ def show_objects(ident):
     info = info + deg2hour(info[1], info[2])
     image_tag, link_url = get_panstars_cutout_tag(info[1], info[2])
     visibility = plot_visibility(info[1], info[2], info[0])
-
+    #visibility = ""
     # TODO: work in SSO objects
     if info[0] == -1:
         flash("Searching for id '%s' caused error '%s', please report issue")
@@ -1599,26 +1694,17 @@ def projects_home():  # TODO: list groups and projects.
     stats_plot = stats_web.plot_stats_allocation(alloc_stats)
     script, div = components(stats_plot)
 
+    
+    '''alloc_stats_week = model.get_allocation_stats(user_id, datetime.datetime.utcnow()-datetime.timedelta(days=1, hours=8), datetime.datetime.utcnow() - datetime.timedelta(hours=8) )
+    stats_plot_week = stats_web.plot_stats_allocation(alloc_stats_week)
+    script_week, div_week = components(stats_plot_week)'''
+
     return (render_template('header.html') + 
             render_template('projects_home.html', script=script, div=div) +  
+            #render_template('projects_home.html', script=script_week, div=div_week) +  
             render_template('footer.html'))
 
     
-    '''allocations = db.execute_sql("SELECT a.id, a.designator, a.active, p.designator, g.designator FROM allocation a, program p, groups g WHERE "
-                                 "a.program_id=p.id AND p.group_id = g.id AND a.id IN %s;" % ('(' + str(flask_login.current_user.allocation)[1:-1] +')',))
-    data = pd.DataFrame(allocations, columns=['allocation id', 'allocation', 'active', 'program', 'group'])
-    data['allocation'] = data['allocation'].apply(lambda x: '<a href="/project_stats/%s">%s</a>' % (x,x))
-    active = data.loc[data.active == True]
-    inactive = data.loc[data.active == False]
-    ac = active.drop(['allocation id', 'active'], axis=1)
-    inac = inactive.drop(['allocation id', 'active'], axis=1)
-
-
-    return (render_template('header.html') + 
-            render_template('projects_home.html', allocations = allocations, tables=[HTML(ac.to_html(escape=False, classes='active', index=False)), HTML(inac.to_html(escape=False, classes='inactive', index=False))],
-                            titles = ['', 'Active allocations', 'Inactive allocations']) + 
-            render_template('footer.html'))'''
-
 
 @app.route('/project_stats/<program>')
 @flask_login.login_required
