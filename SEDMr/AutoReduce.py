@@ -978,11 +978,11 @@ def obs_loop(rawlist=None, redd=None, check_precal=True):
                            sunrise.tuple()[1], sunrise.tuple()[2],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
         # do automatic processing
-        auto_status = proc_auto()
-        if auto_status:
-            print("Automatic processing successful")
-        else:
-            print("Automatic processing not successful")
+        # auto_status = proc_auto()
+        # if auto_status:
+        #    print("Automatic processing successful")
+        # else:
+        #    print("Automatic processing not successful")
 
     # Handle a ctrl-C
     except KeyboardInterrupt:
