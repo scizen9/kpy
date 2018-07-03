@@ -1523,6 +1523,10 @@ def get_panstars_cutout_tag(ra, dec, optionDictionary = {'width' : '150', 'borde
 
 
 def plot_visibility(ra, dec, name):
+    '''
+	Creates a plot with the visibility for ra, dec.
+
+    '''
     import base64
     import astropy.units as u
     from astropy.time import Time
@@ -1540,12 +1544,8 @@ def plot_visibility(ra, dec, name):
     time = Time.now() - utcoffset
 
     ##############################################################################
-    # This is helpful since it turns out M33 is barely above the horizon at this
-    # time. It's more informative to find M33's airmass over the course of
-    # the night.
-    #
-    # Find the alt,az coordinates of M33 at 100 times evenly spaced between 10pm
-    # and 7am EDT:
+    # Find the alt,az coordinates of Mthe targets at 60 times evenly spaced between minus 8 and plus 8 hours to midnight:
+
 
     midnight = Time(datetime.datetime(time.datetime.year, time.datetime.month, time.datetime.day)) - utcoffset
 
@@ -1553,7 +1553,7 @@ def plot_visibility(ra, dec, name):
     ax = fig.add_subplot(1, 1, 1)
 
     from astropy.coordinates import get_sun
-    delta_midnight = np.linspace(-8, 8, 1000)*u.hour
+    delta_midnight = np.linspace(-8, 8, 60)*u.hour
     times_tonight = midnight + delta_midnight
     frame_tonight = AltAz(obstime=times_tonight, location=palomar_mountain)
     sunaltazs_tonight = get_sun(times_tonight).transform_to(frame_tonight)
