@@ -299,7 +299,11 @@ def data_access(instrument):
 
     if instrument.lower() =='finders':
 
-        photfiles, mydate = model.search_finder_files(mydate = mydate)
+        photfiles, mydate = model.search_finder_files(mydate=mydate)
+
+        #If there are no files on that date, search for them 100 days back.
+        if photfiles is None:
+            photfiles, mydate = model.search_finder_files()
 
         if ( not 'date' in flask.request.args and photfiles is None):
             message=message + " No finder charts found up to 100 days prior to today... Weather has been terrible lately!"
@@ -387,14 +391,15 @@ def index():
         # organize requests into dataframes by whether they are completed or not
         complete = dfreq[(dfreq['status']=='COMPLETED') | (dfreq['status']=='REDUCED')]
         active = dfreq[(dfreq['status']=='PENDING') | (dfreq['status']=='ACTIVE')]
+        expired = dfreq[(dfreq['status']=='EXPIRED')]
 
         # retrieve information about the user's allocations
         ac = model.get_allocations_user(flask_login.current_user.id)
 
 
         # generate the html and table titles
-        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False))]
-        request_titles = ['', 'Active Requests for the last 7 days', 'Completed Requests in the last 7 days']
+        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False)), HTML(expired.to_html(escape=False, classes='table', index=False))]
+        request_titles = ['', 'Active Requests for the last 7 days', 'Completed Requests in the last 7 days', 'Expired in the last 7 days']
         alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=10))]
         alloc_titles = ['', 'Your Active Allocations']
         greeting = 'Hello %s!'%flask_login.current_user.name
@@ -412,6 +417,39 @@ def index():
             render_template('index.html', req_tables = request_tables, req_titles=request_titles, all_table = alloc_table, all_titles = alloc_titles, greeting=greeting, myimage=myimage) + \
             render_template('footer.html')
 
+@app.route('/visibility')
+def visibility():
+    sys.stdout.flush()  # send any stdout to the logfile
+    
+    if flask_login.current_user.is_authenticated:
+        # retrieve all of the requests submitted by the user
+        enddate = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        inidate = datetime.datetime.utcnow() - datetime.timedelta(days=7, hours=8)
+
+        dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
+
+
+        # organize requests into dataframes by whether they are completed or not
+        complete = dfreq[(dfreq['status']=='COMPLETED') | (dfreq['status']=='REDUCED')]
+        active = dfreq[(dfreq['status']=='PENDING') | (dfreq['status']=='ACTIVE')]
+
+        # retrieve information about the user's allocations
+        ac = model.get_allocations_user(flask_login.current_user.id)
+
+
+        # generate the html and table titles
+        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False))]
+        request_titles = ['Active Requests for the last 7 days']
+
+
+        visibility = plot_visibilities(active['RA'], active['DEC'], active['object'], active['allocation'], active['priority'])
+    else:  # if there is not user, set the lists as empty
+        return redirect(flask.url_for('index'))
+
+            #render_template('weather_stats.html', script=script, div=div, message=message) + \
+    return render_template('header.html', current_user=flask_login.current_user) + \
+            render_template('requests_visibility.html', req_tables = request_tables, req_titles=request_titles, visibility=visibility) + \
+            render_template('footer.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1599,6 +1637,104 @@ def plot_visibility(ra, dec, name):
     #response = make_response(output.getvalue())
     #response.mimetype = 'image/png'
     
+    Figure.savefig(fig, output, format='png')
+    image_url =  base64.encodestring(output.getvalue())
+
+    image_tag = '<img src="data:image/jpg;base64,%s">' % image_url 
+
+    return image_tag
+
+def plot_visibilities(ra, dec, name, allocations, priority):
+    import base64
+    import astropy.units as u
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+    from astropy.coordinates import get_sun
+    from astropy.coordinates import get_moon
+
+    colors = ['b', 'r', 'g', 'orange', 'gray', 'yellow', 'w', 'purple', 'brown', 'pink', 'lime', 'c']
+    allocations = np.array(allocations)
+    name = np.array(name)
+    priority = np.array(priority, dtype=np.float)
+    allocset = list(set(allocations))
+    colordic = {}
+    for i, a in enumerate(allocset):
+        colordic[a] = colors[i%len(colors)]
+
+    # Get the coordinates of the object:
+    objs = SkyCoord(np.array(ra, dtype=np.float), np.array(dec, dtype=np.float), unit="deg")
+
+    ##############################################################################
+    # Use `astropy.coordinates.EarthLocation` to provide the location of Palomar
+
+
+    palomar_mountain = EarthLocation(lon=243.1361*u.deg, lat=33.3558*u.deg, height=1712*u.m)
+    utcoffset = -8*u.hour  # Pacific Daylight Time
+    time = Time.now() - utcoffset
+
+    ##############################################################################
+    # Find the alt,az coordinates of the targets at 60 times evenly spaced between -7 and 7 hours
+
+    midnight = Time(datetime.datetime(time.datetime.year, time.datetime.month, time.datetime.day)) - utcoffset
+
+    fig = Figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    delta_midnight = np.linspace(-7, 7, 60)*u.hour
+    times_tonight = midnight + delta_midnight
+    frame_tonight = AltAz(obstime=times_tonight, location=palomar_mountain)
+    sunaltazs_tonight = get_sun(times_tonight).transform_to(frame_tonight)
+
+
+    moon_tonight = get_moon(times_tonight)
+    moonaltazs_tonight = moon_tonight.transform_to(frame_tonight)
+
+    ##############################################################################
+    # Make a beautiful figure illustrating nighttime and the altitudes of the Sun over that time:
+
+    ax.plot(delta_midnight, sunaltazs_tonight.alt, color='yellow', label='Sun')
+    ax.plot(delta_midnight, moonaltazs_tonight.alt, color=[0.75]*3, ls='--', label='Moon')
+
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -0*u.deg, color='lightgray', zorder=0)
+    ax.fill_between(delta_midnight.to('hr').value, 0, 90,
+                     sunaltazs_tonight.alt < -18*u.deg, color='darkgray', zorder=0)
+    ax.hlines(30, -7, 7, colors="k", linestyles="dashed", lw=0.5)
+
+    ##############################################################################
+    # Find the alt,az coordinates of the objects at those same times:
+    # The lines will be grouped by program (color) and priority (line thickness)
+
+    for i, obj in enumerate(objs):
+
+        objaltazs_tonight = obj.transform_to(frame_tonight)
+
+        scat= ax.plot(delta_midnight, objaltazs_tonight.alt, label=name[i], lw=0.3+priority[i]*0.33, c=colordic.get(allocations[i], "m"))
+
+    # Shrink current axis by 20%
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+    # Put a legend to the right of the current axis
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=6)
+
+    #Set the time edges as 5 degrees above the horizon for the Sun
+    xmin = delta_midnight.to('hr').value[sunaltazs_tonight.alt < 5*u.deg][0]
+    xmax = delta_midnight.to('hr').value[sunaltazs_tonight.alt < 5*u.deg][-1]
+    ax.set_xlim(xmin, xmax)
+
+    ax.set_ylim(0, 90)
+    ax.set_xlabel('Hours from PST Midnight')
+    ax.set_ylabel('Altitude [deg]')
+
+    fig.suptitle("Visibility for %s UTC"%midnight)
+    canvas = FigureCanvas(fig)
+    output = StringIO.StringIO()
+    #canvas.print_png(output)
+    #response = make_response(output.getvalue())
+    #response.mimetype = 'image/png'
+    
+    # Return the figure as a string.
     Figure.savefig(fig, output, format='png')
     image_url =  base64.encodestring(output.getvalue())
 

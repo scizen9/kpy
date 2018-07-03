@@ -15,30 +15,34 @@
 	{% endif %}
   </div>
 
-    {% if instrument =='IFU' or instrument == 'FINDERS'%}
-  <div class="container col-md-2 col-md-offset-1">
-    <div class="table">
-      <table border="1" class="dataframe">
-        <thead style="text-align: left;">
-        </thead>
-        <tbody>
-            {%for d in data%}
-                <tr>
-                    <td>
-                    <a href={{d[0]}}>{{d[1]}}</a>
-                </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-       </table>
-     </div>
-     </div>
+   {% if instrument =='IFU'%}
+      <div class="container col-md-2">
+        <div class="table">
+          <table border="1" class="dataframe">
+            <thead style="text-align: left;">
+            </thead>
+            <tbody>
+                {%for d in data%}
+                    <tr>
+                        <td>
+                        <a href={{d[0]}}>{{d[1]}}</a>
+                    </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+           </table>
+         </div>
+         </div>
 
-    <div class="well container col-md-8">
-    <h4>{{ instrument}} Files</h4>
-    {{ gallery | safe }}
-    </div>
-
+        <div class="well container col-md-8 col-md-offset-1">
+        <h4>{{ instrument}} Files</h4>
+        {{ gallery | safe }}
+        </div>
+    {%elif instrument == 'FINDERS'%}
+        <div class="well container col-md-12">
+        <h4>{{ instrument}} Files</h4>
+        {{ gallery | safe }}
+        </div>
     {%else%}
     <!--div class="well container col-md-12"-->
 
