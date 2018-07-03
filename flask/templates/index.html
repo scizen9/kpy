@@ -17,6 +17,9 @@
             {% endif %}
         {% endwith %}
         <div class="container">
+			{% if current_user.is_authenticated %}
+             <a href="/visibility">Show active requests visibility</a>
+            {%endif%}
             {% for table in req_tables %}
                 <div class="col-md-12 form-group container-fluid">
                     <h4>{{req_titles[loop.index]}}</h4>
