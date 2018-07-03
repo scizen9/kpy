@@ -1645,6 +1645,9 @@ def plot_visibility(ra, dec, name):
     return image_tag
 
 def plot_visibilities(ra, dec, name, allocations, priority):
+    '''
+    Plots the visibilities of a set of objects with coordinates ra, dec and names. Each object also has an allocation name and a priority.
+    '''
     import base64
     import astropy.units as u
     from astropy.time import Time
@@ -1709,7 +1712,7 @@ def plot_visibilities(ra, dec, name, allocations, priority):
 
         objaltazs_tonight = obj.transform_to(frame_tonight)
 
-        scat= ax.plot(delta_midnight, objaltazs_tonight.alt, label=name[i], lw=0.3+priority[i]*0.33, c=colordic.get(allocations[i], "m"))
+        scat= ax.plot(delta_midnight, objaltazs_tonight.alt, label=name[i], lw=0.2+(priority[i]**2)*0.1, c=colordic.get(allocations[i], "m"))
 
     # Shrink current axis by 20%
     box = ax.get_position()
