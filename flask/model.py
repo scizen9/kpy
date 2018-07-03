@@ -305,6 +305,7 @@ def search_finder_files(mydate = None, user=None):
     #None will be returned if it does not exist.
     if ( not mydate is None):
         files = glob.glob(os.path.join("/scr2/sedm/phot", mydate, "finders/*ACQ*.jpg"))
+        files = files + glob.glob(os.path.join("/scr2/sedm/phot", mydate, "finders/*ACQ*.png"))
         if len(files) == 0:
             files = None
 
@@ -317,7 +318,7 @@ def search_finder_files(mydate = None, user=None):
             newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
             files = glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "finders/*ACQ*.jpg"))
-
+            files = files + glob.glob(os.path.join("/scr2/sedm/phot", newdatedir, "finders/*ACQ*.png"))
             if len(files) > 0:
                 mydate = newdatedir
                 break

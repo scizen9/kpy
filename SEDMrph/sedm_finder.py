@@ -4,6 +4,9 @@ Created on Tue Jul 14 15:01:50 2015
 
 @author: nadiablago
 """
+
+from __future__ import print_function
+
 import matplotlib
 matplotlib.use("Agg")
 import pyfits as pf
@@ -14,10 +17,11 @@ import aplpy
 import coordinates_conversor
 import fitsutils
 import datetime
-import os
+import os, sys
 import glob
 import argparse
 import subprocess
+from scipy import ndimage
 from matplotlib import pylab as plt
  
 from ConfigParser import SafeConfigParser
@@ -34,10 +38,10 @@ with codecs.open(configfile, 'r') as f:
 _logpath = parser.get('paths', 'logpath')
 _photpath = parser.get('paths', 'photpath')
 
-def finder(myfile,searchrad=0.2/60.):
+def finder(myfile, searchrad=0.2/60.):
     
     ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
-
+    
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
@@ -51,17 +55,28 @@ def finder(myfile,searchrad=0.2/60.):
     
     imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
     imgslice_target = img[int(target_pix[0])-dx:int(target_pix[0])+dx, int(target_pix[1])-dx:int(target_pix[1])+dx]
+
+    #Maybe the object has moved out of this frame. In this case, make the finder larger.
+    x, y = imgslice_target.shape
+
+    print (img.shape, target_pix, corner_pix, dx, int(target_pix[0])-dx, int(target_pix[0])+dx, int(target_pix[1])-dx, int(target_pix[1])+dx)
+
+    if  (x < 2*dx-1) or (y< 2*dx-1):
+    	imgslice_target = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
+
+
     #zmin, zmax = zscale.zscale()
     zmin = np.percentile(imgslice_target.flatten(), 5)
     zmax = np.percentile(imgslice_target.flatten(), 98.5)
    
-    print "Min: %.1f, max: %.1f"%(zmin, zmax) 
+    print ("Min: %.1f, max: %.1f"%(zmin, zmax) )
     gc = aplpy.FITSFigure(myfile, figsize=(10,9), north=True)
     gc.show_grayscale(vmin=zmin, vmax=zmax, smooth=1, kernel="gauss")
     gc.show_scalebar(0.1/60.)
     gc.scalebar.set_label('10 arcsec')
     gc.scalebar.set_color('white')
     gc.recenter(ra, dec, searchrad)
+
     #gc.show_markers(ra,dec+searchrad/20.,edgecolor='red',facecolor='none',marker="|",s=250, lw=10)
     #gc.show_markers(ra-(searchrad/20.)/np.cos(np.deg2rad(dec)),dec,edgecolor='red',facecolor='none',marker="_",s=250, lw=10)
 
@@ -82,18 +97,43 @@ def finder(myfile,searchrad=0.2/60.):
     gc.add_label(ras[1]+dxs[1]*1.1, decs[1]+dys[1]*1.1, 'E', relative=False, color="k", horizontalalignment="center")
 
 
-    name = fitsutils.get_par(myfile, "NAME")
+    name = fitsutils.get_par(myfile, "NAME").strip()
     filter = fitsutils.get_par(myfile, "FILTER")
     gc.add_label(0.05, 0.95, 'Object: %s'%(name), relative=True, color="white", horizontalalignment="left")                   
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
     gc.add_label(0.05, 0.84, 'Filter: SDSS %s'%filter, relative=True, color="white", horizontalalignment="left")
     
-    findername = 'finders/finder_%s_%s.jpg'%(name, filter)
+    findername = 'finders/finder_%s_%s.png'%(name, filter)
 
     gc.save(findername)
     
     return findername
-    
+
+def simple_finder(myfile, searchrad=0.2/60.):  
+
+    hdulist = pf.open(myfile)[0]
+    img = hdulist.data * 1.            
+    img = img.T
+    img = img[1165:2040, 1137:2040]
+    newimg = img #ndimage.filters.gaussian_filter(img, 1, order=0, mode='constant', cval=0.0, truncate=20.0)
+
+    name = fitsutils.get_par(myfile, "NAME")
+    filter = fitsutils.get_par(myfile, "FILTER")
+
+    #zmin, zmax = zscale.zscale()
+    zmin = np.percentile(newimg.flatten(), 10)
+    zmax = np.percentile(newimg.flatten(), 99)
+    plt.figure(figsize=(10,9))
+    plt.imshow(newimg, origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
+
+    findername = 'finders/finder_%s_%s.png'%(name, filter)
+
+    print (findername)
+
+    plt.savefig(findername)
+
+    return findername
+
 
 if __name__=="__main__":  
     parser = argparse.ArgumentParser(description=\
@@ -119,7 +159,7 @@ if __name__=="__main__":
 	timestamp = os.path.basename(os.path.abspath(photdir))
 
     os.chdir(photdir)
-    print "Changed to directory where the data is. %s"%photdir
+    print ("Changed to directory where the data is. %s"%photdir)
     
     if not (os.path.isdir("finders")):
 	os.makedirs("finders")
@@ -129,18 +169,21 @@ if __name__=="__main__":
     files.sort()
     for f in files:
 	object = fitsutils.get_par(f, "OBJECT").upper()
-        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ) and "STD" not in object and "BD" not in object and "SA" not in object:
-	    findername = 'finder_%s_%s.jpg'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-	    print "Generating finder", findername
+        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ):
+	    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+	    print ("Generating finder", findername)
 
 	    if(not os.path.isfile("finders/" + findername)):
-            	findername = finder(f)
-            if(os.path.isfile(findername)):
-                cmd = "rcp %s sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/."%(findername, timestamp)
-		print cmd
-		subprocess.call(cmd, shell=True)
-
-    cmd = "rcp /tmp/finders.php sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/."%(timestamp)
-    print cmd
-    subprocess.call(cmd, shell=True)
+		try:
+            		findername = finder(f)
+		except AttributeError:
+            		plt.close("all")
+			print ("Error when generating the finder for file %s"%f)
+			print (sys.exc_info()[0])
+            		findername = simple_finder(f)
+		except IndexError:
+            		plt.close("all")
+			print ("Error when generating the finder for file %s"%f)
+			print (sys.exc_info()[0])
+            		findername = simple_finder(f)
 
