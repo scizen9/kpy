@@ -319,8 +319,10 @@ def MF_single(objname, obsnum, ifile, standard=None):
 
     if 'ZTF' in objname or 'ztf' in objname:
         tp['interact'] = '--interact'
+        tp['auto'] = ''
     else:
         tp['interact'] = ''
+        tp['auto'] = '--autoExtract'
 
     tp['flexname'] = "flex_bs_crr_b_%s.npy" % os.path.splitext(ifile)[0]
 
@@ -329,7 +331,7 @@ def MF_single(objname, obsnum, ifile, standard=None):
 \t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s
 
 sp_%(outname)s: %(outname)s
-\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract --autoExtract
+\t$(EXTSINGLE) cube.npy --A %(obsfile)s.gz --outname %(outname)s %(STD)s --flat_correction flat-dome-700to900.npy --Aoffset %(flexname)s --specExtract %(auto)s
 \t$(PLOT) --spec %(specnam)s --savespec --savefig %(interact)s
 
 %(specplot)s
