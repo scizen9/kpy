@@ -345,7 +345,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     if skyspec is not None:
         if sky_scale != 1.0:
             pl.step(lamz[ok], skyspec[ok]*sky_scale)
-            legend.append("sky (%f)" % sky_scale)
+            legend.append("sky (%.3f)" % sky_scale)
         else:
             pl.step(lamz[ok], skyspec[ok])
             legend.append("sky")
