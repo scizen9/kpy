@@ -248,9 +248,12 @@ def extraction_to_cube(exts, outname="G.npy"):
         # get pixel and wavelength vectors
         ixs = np.arange(*ex.xrange)
         ll = chebval(ixs, coeff)
+        # get fiducial x value
+        test = ll < 656.3
+        wx = len(ll) - len(test)
         
         # fill in the x,y pix positions
-        xs[ix] = np.nanmin(ex.xrange) + ex.xrefpix
+        xs[ix] = np.nanmin(ex.xrange) + wx  # ex.xrefpix
         ys[ix] = np.nanmean(ex.yrange)
         ex.X_pix = xs[ix]
         ex.Y_pix = ys[ix]

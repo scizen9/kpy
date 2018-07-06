@@ -40,7 +40,7 @@ import pylab as pl
 import scipy.signal
 from scipy.stats import sigmaclip
 
-import IO
+import SEDMr.IO as IO
 import NPK.Standards as Stds
 
 
