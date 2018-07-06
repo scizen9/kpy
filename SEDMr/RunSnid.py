@@ -160,23 +160,23 @@ def run_snid(spec_file=None, overwrite=False):
 
             # check for previous classification
             clas = [li for li in l if "TYPE" in li]
-            print "classification: ", clas
+            print("classification: ", clas)
 
         if q < 3 and (len(clas) <= 0 or overwrite):
             # If we are here, we run the classification with snid
             cm = "snid wmin=4500 wmax=9500 skyclip=1 medlen=20 aband=1" \
                  " rlapmin=4 inter=0 plot=2 %s" % fl
-            print cm
+            print(cm)
             try:
                 subprocess.call(cm, shell=True)
                 ran = True
             except:
-                print "Error running snid"
+                print("Error running snid")
         else:
             if q >= 3:
-                print "low quality spectrum"
+                print("low quality spectrum")
             if len(clas) > 0:
-                print "already classified"
+                print("already classified")
     return ran
     # END run_snid
 
@@ -201,7 +201,7 @@ def record_snid(spec_file=None):
                    "Age=%(agem).2f+-%(agemerr)s day, "
                    "z=%(zmed).4f+-%(zmederr).4f" % pars)
         except:
-            print "Error recording snid"
+            print("Error recording snid")
             res = ""
         return res
 
@@ -226,10 +226,10 @@ if __name__ == '__main__':
 
     # Run snid on extracted spectra and record results in specfile
     if args.update:
-        print "Updating snid results in %s" % args.specfile
+        print("Updating snid results in %s" % args.specfile)
         record_snid(spec_file=args.specfile)
     else:
-        print "Running snid on and recording results in %s" % args.specfile
+        print("Running snid on and recording results in %s" % args.specfile)
         good = run_snid(spec_file=args.specfile, overwrite=args.overwrite)
         if good:
             record_snid(spec_file=args.specfile)

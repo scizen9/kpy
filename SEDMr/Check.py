@@ -319,6 +319,13 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
     mx = np.nanmax(spec[ok])
     pl.ylim(-mx / 10, mx + (mx / 20))
 
+    # sky scaling
+    mxsky = np.nanmax(skyspec[ok])
+    if mxsky > mx:
+        sky_scale = mx / mxsky
+    else:
+        sky_scale = 1.0
+
     # No smoothing
     if smoothing == 0:
         pl.step(lamz[ok], spec[ok], linewidth=3)  # Plot data
@@ -336,8 +343,12 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
 
     # Overplot sky spectrum
     if skyspec is not None:
-        pl.step(lamz[ok], skyspec[ok])
-        legend.append("sky")
+        if sky_scale != 1.0:
+            pl.step(lamz[ok], skyspec[ok]*sky_scale)
+            legend.append("sky (%f)" % sky_scale)
+        else:
+            pl.step(lamz[ok], skyspec[ok])
+            legend.append("sky")
 
     # Overplot standard deviation spectrum
     if stdspec is not None:
