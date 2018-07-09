@@ -520,6 +520,9 @@ def dosci(destdir='./', datestr=None):
             ff.close()
             # Get OBJECT keyword
             obj = hdr['OBJECT']
+            # skip Cal files
+            if 'Calib:' in obj:
+                continue
             # record action
             copied.append(fn)
             ncp += 1
