@@ -498,75 +498,57 @@ def dosci(destdir='./', datestr=None):
 
     """
 
-    # Get files in destination directory
-    dflist = sorted(glob.glob(os.path.join(destdir, 'spec*auto*.fits')))
     # Record copies and standard star observations
     ncp = 0
     nstd = 0
-    nobj = 0
     copied = []
     stds = []
-    sciobj = []
     # Get list of source files in destination directory
     srcfiles = sorted(glob.glob(os.path.join(destdir, 'crr_b_ifu*.fits')))
     # Loop over source files
     for f in srcfiles:
         # get base filename
         fn = f.split('/')[-1]
-        pfn = 'spec*auto*' + fn.split('.')[0] + '*.fits'
-        proced = glob.glob(os.path.join(destdir, pfn))
+        procfn = 'spec*auto*' + fn.split('.')[0] + '*.fits'
+        proced = glob.glob(os.path.join(destdir, procfn))
         # Is our source file processed?
         if len(proced) == 0:
-            # has it been previously copied?
+            # has it been previously processed?
             # Read FITS header
             ff = pf.open(f)
             hdr = ff[0].header
             ff.close()
             # Get OBJECT keyword
             obj = hdr['OBJECT']
+            # record action
             copied.append(fn)
             ncp += 1
-            if 'STD-' in obj:
-                nstd += 1
-                stds.append(fn)
-            elif 'ZTF' in obj or 'ztf' in obj:
-                nobj += 1
-                sciobj.append(fn)
-    # We have files to process
-    print("Processing %d files" % ncp)
-    if ncp > 0:
-        # Build cube for each observation copied
-        print("Building cube for " + ",".join(copied))
-        cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr,
-                                                           ",".join(copied))
-        print(cmd)
-        retcode = os.system(cmd)
-        # Check results
-        if retcode > 0:
-            print("Error generating cube for " + ",".join(copied))
-        else:
-            # Cube succeeded, now extract spectra
-            # Standard stars
-            if nstd > 0:
-                # Use auto aperture for standard stars
-                print("Extracting spectra for " + ",".join(stds))
-                cmd = "extract_star.py %s --auto %s --std" % (datestr,
-                                                              ",".join(stds))
-                print(cmd)
-                retcode = os.system(cmd)
-                if retcode > 0:
-                    print("Error extracting spectrum for " + ",".join(stds))
-            # Science targets
-            if nobj > 0:
-                # Use forced psf for faint targets (eventually)
-                print("Extracting spectra for " + ",".join(sciobj))
-                cmd = "extract_star.py %s --auto %s --autobins 6" \
-                      % (datestr, ",".join(sciobj))
-                print(cmd)
-                retcode = os.system(cmd)
-                if retcode > 0:
-                    print("Error extracting spectrum for " + ",".join(sciobj))
-
+            # Build cube for each observation
+            print("Building cube for " + fn)
+            cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr, fn)
+            print(cmd)
+            retcode = os.system(cmd)
+            # Check results
+            if retcode > 0:
+                print("Error generating cube for " + fn)
+            else:
+                if 'STD-' in obj:
+                    # Use auto aperture for standard stars
+                    print("Extracting std star spectra for " + fn)
+                    cmd = "extract_star.py %s --auto %s --std" % (datestr, fn)
+                    print(cmd)
+                    retcode = os.system(cmd)
+                    if retcode > 0:
+                        print("Error extracting std star spectra for " + fn)
+                else:
+                    # Use forced psf for faint targets (eventually)
+                    print("Extracting object spectra for " + fn)
+                    cmd = "extract_star.py %s --auto %s --autobins 6" \
+                          % (datestr, fn)
+                    print(cmd)
+                    retcode = os.system(cmd)
+                    if retcode > 0:
+                        print("Error extracting object spectrum for " + fn)
     return ncp, copied
     # END: dosci
 
