@@ -901,6 +901,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
         sunset = p60.next_setting(sun)
         if piggyback:
             print("Skipping check for raw cal files")
+            ncp = 0
         else:
             # Copy raw cal files from previous date directory
             npre = cpprecal(rawlist, outdir)
