@@ -100,7 +100,8 @@ def bias_ready(caldir='./'):
     return ret
 
 
-def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
+def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0,
+                   test_cal_ims=False):
     """Check counts for all required raw cal file types in caldir directory.
 
     Args:
@@ -108,6 +109,7 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
         fsize (int): size of completely copied file in bytes
         mintest (bool): test for minimum required number of files
         ncp (int): number of cal images most recently copied
+        test_cal_ims (bool): test for presence of input cal images
 
     Returns:
         bool: True if required raw cal files are present, False otherwise
@@ -122,57 +124,67 @@ def cal_proc_ready(caldir='./', fsize=8400960, mintest=False, ncp=0):
     ndome = 0
     ret = False
 
-    # Get files in calibration directory
-    cflist = sorted(glob.glob(os.path.join(caldir, 'ifu*.fits')))
-    # Are there any files yet?
-    if len(cflist) > 0:
-        # Loop over files
-        for cal in cflist:
-            # Are we complete?
-            if os.stat(cal).st_size >= fsize:
-                # Read FITS header
-                f = pf.open(cal)
-                hdr = f[0].header
-                f.close()
-                # Get OBJECT keyword
-                try:
-                    obj = hdr['OBJECT']
-                except KeyError:
-                    obj = ''
-                # Get ADCSPEED keyword
-                speed = hdr['ADCSPEED']
-
-                # Check for calibration files
-                if 'Calib' in obj:
-                    if 'bias' in obj:
-                        if speed == 2.0:
-                            nbias2 += 1
-                        if speed == 0.1:
-                            nbias += 1
-                    if 'Xe' in obj:
-                        nxe += 1
-                    if 'dome' in obj:
-                        ndome += 1
-                    if 'Hg' in obj:
-                        nhg += 1
-                    if 'Cd' in obj:
-                        ncd += 1
-
-        # Do we have the ideal number of calibration files?
-        if (nbias2 >= 10 and nbias >= 10 and nxe >= 5 and ndome >= 5 and
-                nhg >= 5 and ncd >= 5):
+    if test_cal_ims:
+        dof = glob.glob(os.path.join(caldir, 'dome.fits'))
+        hgf = glob.glob(os.path.join(caldir, 'Hg.fits'))
+        cdf = glob.glob(os.path.join(caldir, 'Cd.fits'))
+        xef = glob.glob(os.path.join(caldir, 'Xe.fits'))
+        if len(dof) == 1 and len(hgf) == 1 and len(cdf) == 1 and len(xef) == 1:
             ret = True
-        # Do we have the minimum allowed number of calibration files?
-        if mintest:
-            if (nbias2 >= 5 and nbias >= 5 and nxe >= 3 and ndome >= 3 and
-                    nhg >= 3 and ncd >= 3):
+
+    else:
+
+        # Get files in calibration directory
+        cflist = sorted(glob.glob(os.path.join(caldir, 'ifu*.fits')))
+        # Are there any files yet?
+        if len(cflist) > 0:
+            # Loop over files
+            for cal in cflist:
+                # Are we complete?
+                if os.stat(cal).st_size >= fsize:
+                    # Read FITS header
+                    f = pf.open(cal)
+                    hdr = f[0].header
+                    f.close()
+                    # Get OBJECT keyword
+                    try:
+                        obj = hdr['OBJECT']
+                    except KeyError:
+                        obj = ''
+                    # Get ADCSPEED keyword
+                    speed = hdr['ADCSPEED']
+
+                    # Check for calibration files
+                    if 'Calib' in obj:
+                        if 'bias' in obj:
+                            if speed == 2.0:
+                                nbias2 += 1
+                            if speed == 0.1:
+                                nbias += 1
+                        if 'Xe' in obj:
+                            nxe += 1
+                        if 'dome' in obj:
+                            ndome += 1
+                        if 'Hg' in obj:
+                            nhg += 1
+                        if 'Cd' in obj:
+                            ncd += 1
+
+            # Do we have the ideal number of calibration files?
+            if (nbias2 >= 10 and nbias >= 10 and nxe >= 5 and ndome >= 5 and
+                    nhg >= 5 and ncd >= 5):
                 ret = True
-    print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
-          (nbias2, nbias, ndome, nxe, nhg, ncd))
-    sys.stdout.flush()
-    # Should we process biases?
-    if nbias2 >= 10 and nbias >= 10 and ncp > 0:
-        proc_bias_crrs(ncp=ncp)
+            # Do we have the minimum allowed number of calibration files?
+            if mintest:
+                if (nbias2 >= 5 and nbias >= 5 and nxe >= 3 and ndome >= 3 and
+                        nhg >= 3 and ncd >= 3):
+                    ret = True
+        print("bias2.0: %d, bias0.1: %d, dome: %d, Xe: %d, Hg: %d, Cd: %d" %
+              (nbias2, nbias, ndome, nxe, nhg, ncd))
+        sys.stdout.flush()
+        # Should we process biases?
+        if nbias2 >= 10 and nbias >= 10 and ncp > 0:
+            proc_bias_crrs(ncp=ncp)
 
     return ret
     # END: cal_proc_ready
@@ -433,7 +445,7 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
             print("Illegal datestr parameter")
             return 0, None
         # Build cube for each observation copied
-        print("Building cube for " + ",".join(stds))
+        print("Building cube for " + ",".join(copied))
         cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr,
                                                            ",".join(copied))
         print(cmd)
@@ -466,6 +478,97 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
 
     return ncp, copied
     # END: cpsci
+
+
+def dosci(destdir='./', datestr=None):
+    """Copies new science ifu image files from srcdir to destdir.
+
+    Searches for most recent ifu image in destdir and looks for and
+    copies any ifu images in srcdir that are newer and complete.
+    Then bias subtracts and CR rejects the copied images.  If any are standard
+    star observations, process them as well.
+
+    Args:
+        srcdir (str): source directory (typically in /scr2/sedm/raw)
+        destdir (str): destination directory (typically in /scr2/sedm/redux)
+        datestr (str): YYYYMMDD date string
+
+    Returns:
+        int: Number of ifu images actually copied
+
+    """
+
+    # Get files in destination directory
+    dflist = sorted(glob.glob(os.path.join(destdir, 'spec*auto*.fits')))
+    # Record copies and standard star observations
+    ncp = 0
+    nstd = 0
+    nobj = 0
+    copied = []
+    stds = []
+    sciobj = []
+    # Get list of source files in destination directory
+    srcfiles = sorted(glob.glob(os.path.join(destdir, 'crr_b_ifu*.fits')))
+    # Loop over source files
+    for f in srcfiles:
+        # get base filename
+        fn = f.split('/')[-1]
+        pfn = 'spec*auto*' + fn.split('.')[0] + '*.fits'
+        proced = glob.glob(os.path.join(destdir, pfn))
+        # Is our source file processed?
+        if len(proced) == 0:
+            # has it been previously copied?
+            # Read FITS header
+            ff = pf.open(f)
+            hdr = ff[0].header
+            ff.close()
+            # Get OBJECT keyword
+            obj = hdr['OBJECT']
+            copied.append(fn)
+            ncp += 1
+            if 'STD-' in obj:
+                nstd += 1
+                stds.append(fn)
+            elif 'ZTF' in obj or 'ztf' in obj:
+                nobj += 1
+                sciobj.append(fn)
+    # We have files to process
+    print("Processing %d files" % ncp)
+    if ncp > 0:
+        # Build cube for each observation copied
+        print("Building cube for " + ",".join(copied))
+        cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr,
+                                                           ",".join(copied))
+        print(cmd)
+        retcode = os.system(cmd)
+        # Check results
+        if retcode > 0:
+            print("Error generating cube for " + ",".join(copied))
+        else:
+            # Cube succeeded, now extract spectra
+            # Standard stars
+            if nstd > 0:
+                # Use auto aperture for standard stars
+                print("Extracting spectra for " + ",".join(stds))
+                cmd = "extract_star.py %s --auto %s --std" % (datestr,
+                                                              ",".join(stds))
+                print(cmd)
+                retcode = os.system(cmd)
+                if retcode > 0:
+                    print("Error extracting spectrum for " + ",".join(stds))
+            # Science targets
+            if nobj > 0:
+                # Use forced psf for faint targets (eventually)
+                print("Extracting spectra for " + ",".join(sciobj))
+                cmd = "extract_star.py %s --auto %s --autobins 6" \
+                      % (datestr, ",".join(sciobj))
+                print(cmd)
+                retcode = os.system(cmd)
+                if retcode > 0:
+                    print("Error extracting spectrum for " + ",".join(sciobj))
+
+    return ncp, copied
+    # END: dosci
 
 
 def find_recent(redd, fname, destdir, dstr):
@@ -736,7 +839,8 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
     # END: cpcal
 
 
-def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
+def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
+             piggyback=False):
     """One night observing loop: processes calibrations and science data
 
     Copy raw cal files until we are ready to process the night's
@@ -754,6 +858,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
         redd (str): reduced directory (something like /scr2/sedm/redux)
         check_precal (bool): should we check for images from previous night?
         indir (str): input directory for single night processing
+        piggyback (bool): basic processing done by StartObs.py
 
     Returns:
         bool: True if night completed normally, False otherwise
@@ -794,60 +899,66 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
     if not cube_ready(outdir, cur_date_str):
         # Wait for cal files until sunset
         sunset = p60.next_setting(sun)
-        # Copy raw cal files from previous date directory
-        npre = cpprecal(rawlist, outdir)
-        print("Linked %d raw cal files from %s" % (npre, rawlist[-2]))
-        # Now check the current source dir for raw cal files
-        ncp = cpcal(srcdir, outdir)
-        print("Linked %d raw cal files from %s" % (ncp, srcdir))
+        if piggyback:
+            print("Skipping check for raw cal files")
+        else:
+            # Copy raw cal files from previous date directory
+            npre = cpprecal(rawlist, outdir)
+            print("Linked %d raw cal files from %s" % (npre, rawlist[-2]))
+            # Now check the current source dir for raw cal files
+            ncp = cpcal(srcdir, outdir)
+            print("Linked %d raw cal files from %s" % (ncp, srcdir))
         # Now loop until we have the raw cal files we need or sun is down
-        while not cal_proc_ready(outdir, ncp=ncp):
+        while not cal_proc_ready(outdir, ncp=ncp, test_cal_ims=piggyback):
             # Wait a minute
             print("waiting 60s...")
             sys.stdout.flush()
             now = ephem.now()
             time.sleep(60)
-            if check_precal and now.tuple()[3] >= 20:
-                print("checking %s for new raw cal files..." % rawlist[-2])
-                ncp = cpprecal(rawlist, outdir)
-                print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
+            if piggyback:
+                print("checking for processed cal files")
             else:
-                print("checking %s for new raw cal files..." % srcdir)
-                ncp = cpcal(srcdir, outdir)
-            print("Linked %d raw cal files from %s" % (ncp, srcdir))
-            sys.stdout.flush()
-            if ncp <= 0:
-                # Check to see if we are still before an hour after sunset
-                now = ephem.now()
-                if now < sunset + ephem.hour:
-                    print("UT  = %02d/%02d %02d:%02d < sunset "
-                          "(%02d/%02d %02d:%02d) + 1hr, "
-                          "so keep waiting" % (now.tuple()[1], now.tuple()[2],
-                                               now.tuple()[3], now.tuple()[4],
-                                               sunset.tuple()[1],
-                                               sunset.tuple()[2],
-                                               sunset.tuple()[3],
-                                               sunset.tuple()[4]))
+                if check_precal and now.tuple()[3] >= 20:
+                    print("checking %s for new raw cal files..." % rawlist[-2])
+                    ncp = cpprecal(rawlist, outdir)
+                    print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
                 else:
-                    print("UT = %02d/%02d %02d:%02d >= sunset "
-                          "(%02d/%02d %02d:%02d) + 1hr, "
-                          "time to get a cal set" % (now.tuple()[1],
-                                                     now.tuple()[2],
-                                                     now.tuple()[3],
-                                                     now.tuple()[4],
-                                                     sunset.tuple()[1],
-                                                     sunset.tuple()[2],
-                                                     sunset.tuple()[3],
-                                                     sunset.tuple()[4]))
-                    break
-            else:
-                # Get new listing
-                retcode = os.system("~/spy what ifu*.fits > what.list")
-                if retcode > 0:
-                    print("what oops!")
+                    print("checking %s for new raw cal files..." % srcdir)
+                    ncp = cpcal(srcdir, outdir)
+                print("Linked %d raw cal files from %s" % (ncp, srcdir))
+                sys.stdout.flush()
+                if ncp <= 0:
+                    # Check to see if we are still before an hour after sunset
+                    now = ephem.now()
+                    if now < sunset + ephem.hour:
+                        print("UT  = %02d/%02d %02d:%02d < sunset "
+                              "(%02d/%02d %02d:%02d) + 1hr, "
+                              "so keep waiting" % (now.tuple()[1], now.tuple()[2],
+                                                   now.tuple()[3], now.tuple()[4],
+                                                   sunset.tuple()[1],
+                                                   sunset.tuple()[2],
+                                                   sunset.tuple()[3],
+                                                   sunset.tuple()[4]))
+                    else:
+                        print("UT = %02d/%02d %02d:%02d >= sunset "
+                              "(%02d/%02d %02d:%02d) + 1hr, "
+                              "time to get a cal set" % (now.tuple()[1],
+                                                         now.tuple()[2],
+                                                         now.tuple()[3],
+                                                         now.tuple()[4],
+                                                         sunset.tuple()[1],
+                                                         sunset.tuple()[2],
+                                                         sunset.tuple()[3],
+                                                         sunset.tuple()[4]))
+                        break
+                else:
+                    # Get new listing
+                    retcode = os.system("~/spy what ifu*.fits > what.list")
+                    if retcode > 0:
+                        print("what oops!")
 
         # Process calibrations if we are using them
-        if cal_proc_ready(outdir, mintest=True):
+        if cal_proc_ready(outdir, mintest=True, test_cal_ims=piggyback):
             # bias subtract and CR reject
             start_time = time.time()
             if proc_bias_crrs(20):
@@ -946,8 +1057,11 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
             sys.stdout.flush()
             # Record starting time for new file processing
             start_time = time.time()
-            ncp, copied = cpsci(srcdir, outdir, oldcals=oldcals,
-                                datestr=cur_date_str)
+            if piggyback:
+                ncp, copied = dosci(outdir, datestr=cur_date_str)
+            else:
+                ncp, copied = cpsci(srcdir, outdir, oldcals=oldcals,
+                                    datestr=cur_date_str)
             # We copied some new ones so report processing time
             if ncp > 0:
                 proc_time = int(time.time() - start_time)
@@ -982,12 +1096,6 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
                            now.tuple()[3], now.tuple()[4],
                            sunrise.tuple()[1], sunrise.tuple()[2],
                            sunrise.tuple()[3], sunrise.tuple()[4]))
-        # do automatic processing
-        # auto_status = proc_auto()
-        # if auto_status:
-        #    print("Automatic processing successful")
-        # else:
-        #    print("Automatic processing not successful")
 
     # Handle a ctrl-C
     except KeyboardInterrupt:
@@ -998,7 +1106,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None):
 
 
 def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
-       check_precal=True, indate=None):
+       check_precal=True, indate=None, piggyback=False):
     """Outermost infinite loop that watches for a new raw directory.
 
     Keep a list of raw directories in `redd` and fire off
@@ -1011,6 +1119,7 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
         wait (bool): wait for new directory, else start right away
         check_precal (bool): should we check previous night for cals?
         indate (str): input date to process: YYYYMMDD (e.g. 20180626)
+        piggyback (bool): True if using other script to copy data
 
     Returns:
         None
@@ -1035,7 +1144,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
         print("Latest raw directory is %s" % rawlist[-1])
 
         if not wait:
-            stat = obs_loop(rawlist, redd, check_precal=check_precal)
+            stat = obs_loop(rawlist, redd, check_precal=check_precal,
+                            piggyback=piggyback)
             its += 1
             print("Finished SEDM observing iteration %d in raw dir %s" %
                   (its, rawlist[-1]))
@@ -1064,8 +1174,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
                             print("UT = %02d:%02d No new directories yet, "
                                   "so keep waiting" % (gm.tm_hour, gm.tm_min))
                             sys.stdout.flush()
-                print("Found %d raw directories in %s: putting reduced data in %s" %
-                      (nraw, rawd, redd))
+                print("Found %d raw directories in %s: "
+                      "putting reduced data in %s" % (nraw, rawd, redd))
                 print("Latest raw directory is %s" % rawlist[-1])
                 stat = obs_loop(rawlist, redd, check_precal=check_precal)
                 its += 1
