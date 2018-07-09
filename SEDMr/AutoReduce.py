@@ -1206,6 +1206,8 @@ if __name__ == '__main__':
                         help='Output reduced directory (/scr2/sedmdrp/redux)')
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
+    parser.add_argument('--piggyback', action="store_true", default=False,
+                        help='Do not copy data, assume copied by another script')
     parser.add_argument('--skip_precal', action="store_true", default=False,
                         help='Skip check of previous day for cal files?')
     parser.add_argument('--date', type=str, default=None,
@@ -1214,4 +1216,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     go(rawd=args.rawdir, redd=args.reduxdir, wait=args.wait,
-       check_precal=(not args.skip_precal), indate=args.date)
+       check_precal=(not args.skip_precal), indate=args.date,
+       piggyback=args.piggyback)
