@@ -380,13 +380,16 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
         print("Uploading target %s files" % objname)
         if add_spectra:
             print(target['requestid'])
-            spec_ret = upload_spectra(spectra_file, fill_by_file=True,
-                                      request_id=target['requestid'])
+            spec_ret = True
+            #spec_ret = upload_spectra(spectra_file, fill_by_file=True,
+            #                          request_id=target['requestid'])
         if add_phot:
-            phot_ret = upload_phot(phot_file, request_id=target['requestid'])
+            phot_ret = True
+            #phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
-            status_ret = update_request(status, request_id=target['requestid'])
+            status_ret = True
+            #status_ret = update_request(status, request_id=target['requestid'])
 
     elif len(match_list) == 0:
         print("Could not match name with any request file")
@@ -416,13 +419,16 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
         print("Updating target %s" % objname)
         if add_spectra:
             print(target['requestid'])
-            spec_ret = upload_spectra(spectra_file, fill_by_file=True,
-                                      request_id=target['requestid'])
+            spec_ret = True
+            #spec_ret = upload_spectra(spectra_file, fill_by_file=True,
+            #                          request_id=target['requestid'])
         if add_phot:
-            phot_ret = upload_phot(phot_file, request_id=target['requestid'])
+            phot_ret = True
+            #phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
-            status_ret = update_request(status, request_id=target['requestid'])
+            status_ret = True
+            #status_ret = update_request(status, request_id=target['requestid'])
 
     return_link = growth_view_source_url + "name=%s" % target['sourcename']
 
@@ -449,7 +455,7 @@ def parse_ztf_by_dir(target_dir, upobj=None):
         if "notfluxcal" in fi:
             continue
         if "spec" in fi:
-            objname = os.path.basename(fi).split('_')[-1]
+            objname = os.path.basename(fi).split('_')[-1].split('.')[0]
         else:
             objname = os.path.basename(fi).split('_')[0]
         # upload only one file
@@ -458,17 +464,14 @@ def parse_ztf_by_dir(target_dir, upobj=None):
             if upobj not in objname:
                 continue
         # upload
-        #r, spec, stat, phot = update_target_by_object(objname,
-        #                                              add_status=True,
-        #                                              status='Completed',
-        #                                              add_spectra=True,
-        #                                              spectra_file=fi,
-        #                                              pull_requests=pr)
+        r, spec, stat, phot = update_target_by_object(objname,
+                                                      add_status=True,
+                                                      status='Completed',
+                                                      add_spectra=True,
+                                                      spectra_file=fi,
+                                                      pull_requests=pr)
         # Only need to pull requests the first time
         pr = False
-        r = "a_link"
-        spec = True
-        stat = True
         # log upload
         out.write(" %s: " % objname)
         # Was a spectrum uploaded?
