@@ -9,7 +9,7 @@ import glob
 import os
 import argparse
 import re
-import RunSnid
+import SEDMr.RunSnid as RunSnid
 
 
 def classify(spec_dir='./', overwrite=False):
@@ -20,8 +20,11 @@ def classify(spec_dir='./', overwrite=False):
     """
 
     summary = []
-    for fl in glob.glob(os.path.join(spec_dir, "*_SEDM.txt")):
-        print fl
+    flo = glob.glob(os.path.join(spec_dir, "*_SEDM.txt"))
+    fln = glob.glob(os.path.join(spec_dir, "spec_*.txt"))
+    flb = flo + fln
+    for fl in flb:
+        print(fl)
         # don't classify standard stars
         if "STD" in fl or "BD" in fl or "Feige" in fl or "HZ" in fl:
             print("standard star")
@@ -37,21 +40,28 @@ def classify(spec_dir='./', overwrite=False):
         if "TYC" in fl or "SAO" in fl or "HD" in fl or "Tycho" in fl:
             print("star")
             continue
+        # skip uncalibrated objects
+        if "notfluxcal" in fl:
+            print("uncalibrated")
+            continue
         # retrieve the quality of the spectra.
         with open(fl, "r") as sfl:
-            l = sfl.readlines()
+            lines = sfl.readlines()
 
-            q = [li for li in l if "QUALITY" in li]
+            q = [li for li in lines if "QUALITY" in li]
 
             if len(q) > 0:
                 token = re.search(r'\(?([0-9]+)\)?', q[0])
                 q = int(token.group(1))
             else:
-                q = 5
+                if "crr_b_ifu" in fl:
+                    q = 1
+                else:
+                    q = 5
 
             # If quality is good, check for previous classification
             if q < 3:
-                clas = [li for li in l if "TYPE" in li]
+                clas = [li for li in lines if "TYPE" in li]
                 # If the file has been classified, move to the next
                 if len(clas) > 0 and not overwrite:
                     print ("already classified")
@@ -68,7 +78,7 @@ def classify(spec_dir='./', overwrite=False):
             summary.append(res)
     # END loop over each file matching *_SEDM.txt
     for res in summary:
-        print res
+        print(res)
 
     
 if __name__ == '__main__':
@@ -104,7 +114,7 @@ if __name__ == '__main__':
         timestamp = os.path.basename(specdir)
         os.chdir(specdir)
 
-    print os.getcwd()
+    print(os.getcwd())
 
     # Run snid on extracted spectra
     classify(spec_dir=specdir, overwrite=args.overwrite)
