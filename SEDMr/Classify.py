@@ -64,17 +64,17 @@ def classify(spec_dir='./', overwrite=False):
                 clas = [li for li in lines if "SNID" in li]
                 # If the file has been classified, move to the next
                 if len(clas) > 0 and not overwrite:
-                    print ("already classified")
+                    print("already classified")
                     continue
             else:
                 print ("low quality")
                 continue
             
         # If we are here, we run the classification with snid
-        good = RunSnid.run_snid(spec_file=fl, overwrite=overwrite)
+        specfl = fl.split('/')[-1]
+        good = RunSnid.run_snid(spec_file=specfl, overwrite=overwrite)
         # If we actually ran, record the results
         if good:
-            specfl = fl.split('/')[-1]
             res = specfl + " " + RunSnid.record_snid(spec_file=specfl)
             summary.append(res)
     # END loop over each file matching *_SEDM.txt
