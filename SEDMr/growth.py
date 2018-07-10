@@ -380,16 +380,13 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
         print("Uploading target %s files" % objname)
         if add_spectra:
             print(target['requestid'])
-            spec_ret = True
-            #spec_ret = upload_spectra(spectra_file, fill_by_file=True,
-            #                          request_id=target['requestid'])
+            spec_ret = upload_spectra(spectra_file, fill_by_file=True,
+                                      request_id=target['requestid'])
         if add_phot:
-            phot_ret = True
-            #phot_ret = upload_phot(phot_file, request_id=target['requestid'])
+            phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
-            status_ret = True
-            #status_ret = update_request(status, request_id=target['requestid'])
+            status_ret = update_request(status, request_id=target['requestid'])
 
     elif len(match_list) == 0:
         print("Could not match name with any request file")
@@ -419,16 +416,13 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
         print("Updating target %s" % objname)
         if add_spectra:
             print(target['requestid'])
-            spec_ret = True
-            #spec_ret = upload_spectra(spectra_file, fill_by_file=True,
-            #                          request_id=target['requestid'])
+            spec_ret = upload_spectra(spectra_file, fill_by_file=True,
+                                      request_id=target['requestid'])
         if add_phot:
-            phot_ret = True
-            #phot_ret = upload_phot(phot_file, request_id=target['requestid'])
+            phot_ret = upload_phot(phot_file, request_id=target['requestid'])
 
         if add_status:
-            status_ret = True
-            #status_ret = update_request(status, request_id=target['requestid'])
+            status_ret = update_request(status, request_id=target['requestid'])
 
     return_link = growth_view_source_url + "name=%s" % target['sourcename']
 
