@@ -347,14 +347,14 @@ def weather_stats():
             message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
             script, div = None, None
         else:
-            message = " Weather statistics for last opened day: %s \r To try a different date, type in the navigation bar: ?date=YYYYDDMM"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
+            message = " Weather statistics for last opened day: %s \r To try a different date, type in the navigation bar: ?date=YYYYMMDD"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
             script, div = components(stats_plot)
     else:
         mydate_in = flask.request.args['date']
         #Just making sure that we have only allowed digits in the date
         mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
         if len(mydate) ==0:
-            message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. \n"%(mydate_in) 
+            message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. Please repeat. \n"%(mydate_in) 
             script, div = "", ""
         else:
             mydate = mydate[0]
