@@ -155,11 +155,14 @@ def run_snid(spec_file=None, overwrite=False):
                 token = re.search(r'\(?([0-9]+)\)?', q[0])
                 q = int(token.group(1))
             else:
-                q = 5
+                if "crr_b_ifu" in fl:
+                    q = 1
+                else:
+                    q = 5
             print("quality = %d" % q)
 
             # check for previous classification
-            clas = [li for li in l if "TYPE" in li]
+            clas = [li for li in l if "SNID" in li]
             print("classification: ", clas)
 
         if q < 3 and (len(clas) <= 0 or overwrite):
