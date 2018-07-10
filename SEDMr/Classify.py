@@ -67,7 +67,7 @@ def classify(spec_dir='./', overwrite=False):
                     print("already classified")
                     continue
             else:
-                print ("low quality")
+                print("low quality")
                 continue
             
         # If we are here, we run the classification with snid

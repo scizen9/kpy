@@ -438,6 +438,7 @@ def parse_ztf_by_dir(target_dir, upobj=None):
 
     files = glob.glob('%sZTF*.txt' % target_dir)
     files += glob.glob('%sztf*.txt' % target_dir)
+    files += glob.glob('%sspec_*ZTF*.txt' % target_dir)
 
     out = open(target_dir + "report_ztf.txt", "a")
     out.write("ZTF Upload report for %s generated on %s\n\n" %
@@ -445,21 +446,29 @@ def parse_ztf_by_dir(target_dir, upobj=None):
                datetime.datetime.now().strftime("%c")))
     pr = True
     for fi in files:
-        objname = os.path.basename(fi).split('_')[0]
+        if "notfluxcal" in fi:
+            continue
+        if "spec" in fi:
+            objname = os.path.basename(fi).split('_')[-1]
+        else:
+            objname = os.path.basename(fi).split('_')[0]
         # upload only one file
         if upobj is not None:
             # if this is not the file, skip
             if upobj not in objname:
                 continue
         # upload
-        r, spec, stat, phot = update_target_by_object(objname,
-                                                      add_status=True,
-                                                      status='Completed',
-                                                      add_spectra=True,
-                                                      spectra_file=fi,
-                                                      pull_requests=pr)
+        #r, spec, stat, phot = update_target_by_object(objname,
+        #                                              add_status=True,
+        #                                              status='Completed',
+        #                                              add_spectra=True,
+        #                                              spectra_file=fi,
+        #                                              pull_requests=pr)
         # Only need to pull requests the first time
         pr = False
+        r = "a_link"
+        spec = True
+        stat = True
         # log upload
         out.write(" %s: " % objname)
         # Was a spectrum uploaded?
