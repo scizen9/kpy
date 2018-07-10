@@ -172,7 +172,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # Was a standard star observation copied?
     nstd = 0
     # Check if dome conditions are not right
-    if onsky and 'CLOSED' in dome:
+    if onsky and ('CLOSED' in dome or 'closed' in dome):
         if verbose:
             print('On sky and dome is closed, skipping %s' % src)
     # All other conditions are OK

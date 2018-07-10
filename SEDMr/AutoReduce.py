@@ -224,7 +224,7 @@ def docp(src, dest, onsky=True, verbose=False):
     # Was a ZTF object copied
     nztf = 0
     # Check if dome conditions are not right
-    if onsky and 'CLOSED' in dome:
+    if onsky and ('CLOSED' in dome or 'closed' in dome):
         if verbose:
             print('On sky and dome is closed, skipping %s' % src)
     # All other conditions are OK
@@ -520,8 +520,13 @@ def dosci(destdir='./', datestr=None):
             ff.close()
             # Get OBJECT keyword
             obj = hdr['OBJECT']
+            # Get DOMEST keyword
+            dome = hdr['DOMEST']
             # skip Cal files
             if 'Calib:' in obj:
+                continue
+            # skip if dome closed
+            if 'CLOSED' in dome or 'closed' in dome:
                 continue
             # record action
             copied.append(fn)
