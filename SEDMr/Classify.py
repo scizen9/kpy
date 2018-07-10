@@ -61,7 +61,7 @@ def classify(spec_dir='./', overwrite=False):
 
             # If quality is good, check for previous classification
             if q < 3:
-                clas = [li for li in lines if "TYPE" in li]
+                clas = [li for li in lines if "SNID" in li]
                 # If the file has been classified, move to the next
                 if len(clas) > 0 and not overwrite:
                     print ("already classified")
