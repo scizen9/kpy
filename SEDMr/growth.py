@@ -320,16 +320,15 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     
     # 2. Open the configuration and spec file for transmission
     jsonFile = open(write_json_file(submission_dict, output_file), 'r')
-    #upfile = open(spec_file, 'r')
+    upfile = open(spec_file, 'r')
 
     # 3. Send the request
-    #ret = requests.post(growth_spec_url, auth=(user, pwd),
-    #                    files={'jsonfile': jsonFile, 'upfile': upfile})
-    ret = 'a_url'
+    ret = requests.post(growth_spec_url, auth=(user, pwd),
+                        files={'jsonfile': jsonFile, 'upfile': upfile})
     print(ret)
 
     # 4. Close files and send request response
-    #upfile.close()
+    upfile.close()
     jsonFile.close()
     #if not save:
     #    os.remove(output_file)
