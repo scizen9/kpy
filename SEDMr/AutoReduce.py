@@ -253,12 +253,13 @@ def docp(src, dest, onsky=True, verbose=False):
     # END: docp
 
 
-def proc_bias_crrs(ncp=1, oldcals=False):
+def proc_bias_crrs(ncp=1, oldcals=False, piggyback=False):
     """Process biases and CR rejection steps.
 
     Args:
         ncp (int): number of images to process
         oldcals (bool): are we using older calibrations?
+        piggyback (bool): are we using another script to process data?
 
     Returns:
         bool: True if processing was successful, otherwise False
@@ -267,41 +268,44 @@ def proc_bias_crrs(ncp=1, oldcals=False):
 
     # Default return value
     ret = False
-    # Get new listing
-    retcode = os.system("~/spy what ifu*.fits > what.list")
-    if retcode == 0:
-        # Generate new Makefile
-        # Are we using a previous calibration set?
-        if oldcals:
-            retcode2 = os.system("~/spy plan2 ifu*.fits")
-        # This calibration set has been generated here
-        else:
-            retcode2 = os.system("~/spy plan ifu*.fits")
-        if retcode2 == 0:
-            # Make bias + bias subtraction
-            retcode3 = os.system("make -j 16 bias")
-            if retcode3 != 0:
-                print("bias failed, try again")
-                retcode3 = os.system("make bias")
-            if retcode3 == 0:
-                # Make CR rejection
-                retcode4 = os.system("make -j 8 crrs")
-                if retcode4 != 0:
-                    print("crrs failed, try again")
-                    retcode4 = os.system("make crrs")
-                # Success on all fronts!
-                if retcode4 == 0:
-                    print("bias, crrs processed for %d new images" % ncp)
-                    ret = True
-                # Report failures
-                else:
-                    print("could not make crrs")
-            else:
-                print("could not make bias")
-        else:
-            print("could not make plan")
+    if piggyback:
+        ret = True
     else:
-        print("could not make what.list")
+        # Get new listing
+        retcode = os.system("~/spy what ifu*.fits > what.list")
+        if retcode == 0:
+            # Generate new Makefile
+            # Are we using a previous calibration set?
+            if oldcals:
+                retcode2 = os.system("~/spy plan2 ifu*.fits")
+            # This calibration set has been generated here
+            else:
+                retcode2 = os.system("~/spy plan ifu*.fits")
+            if retcode2 == 0:
+                # Make bias + bias subtraction
+                retcode3 = os.system("make -j 16 bias")
+                if retcode3 != 0:
+                    print("bias failed, try again")
+                    retcode3 = os.system("make bias")
+                if retcode3 == 0:
+                    # Make CR rejection
+                    retcode4 = os.system("make -j 8 crrs")
+                    if retcode4 != 0:
+                        print("crrs failed, try again")
+                        retcode4 = os.system("make crrs")
+                    # Success on all fronts!
+                    if retcode4 == 0:
+                        print("bias, crrs processed for %d new images" % ncp)
+                        ret = True
+                    # Report failures
+                    else:
+                        print("could not make crrs")
+                else:
+                    print("could not make bias")
+            else:
+                print("could not make plan")
+        else:
+            print("could not make what.list")
 
     return ret
     # END: proc_bias_crrs
@@ -952,10 +956,11 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
         if cal_proc_ready(outdir, mintest=True, test_cal_ims=piggyback):
             # bias subtract and CR reject
             start_time = time.time()
-            if proc_bias_crrs(20):
+            if proc_bias_crrs(20, piggyback=piggyback):
                 procb_time = int(time.time() - start_time)
-                # Make cal images
-                os.system("make calimgs")
+                if not piggyback:
+                    # Make cal images
+                    os.system("make calimgs")
                 # Process calibration
                 start_time = time.time()
                 os.system("ccd_to_cube.py %s --tracematch --hexagrid"
