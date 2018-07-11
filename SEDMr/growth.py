@@ -183,8 +183,7 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     :return: 
     """
     return_dict = {}
-    if 'crr_b_ifu' in inputfile:
-        sep = ' '
+
     for k, v in keywords.iteritems():
         out = commands.getoutput('grep %s %s' % (v, inputfile))
         if k.upper() == 'EXPTIME':
@@ -289,12 +288,16 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
                          'obsdate': 'OBSUTC',
                          'exptime': 'EXPTIME',
                          'quality': 'QUALITY'}
-        
+        if 'crr_b_ifu' in spec_file:
+            keywords_dict.update({'obsdate': 'OBSDATE'})
+
         submission_dict = get_keywords_from_file(spec_file, keywords_dict)
-        if len(submission_dict['quality']) > 0:
-            quality = int(submission_dict['quality'])
-        else:
-            quality = 0
+        if 'crr_b_ifu' in spec_file:
+            submission_dict.update({'quality': 0})
+            reducer = os.getenv("SEDM_USER")
+            submission_dict.update({'reducedby', reducer})
+
+        quality = int(submission_dict['quality'])
         del submission_dict['quality']
 
     print(type(format_type), type(request_id), type(instrument_id))
@@ -314,15 +317,16 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     
     # 2. Open the configuration and spec file for transmission
     jsonFile = open(write_json_file(submission_dict, output_file), 'r')
-    upfile = open(spec_file, 'r')
+    #upfile = open(spec_file, 'r')
 
     # 3. Send the request
-    ret = requests.post(growth_spec_url, auth=(user, pwd),
-                        files={'jsonfile': jsonFile, 'upfile': upfile})
+    #ret = requests.post(growth_spec_url, auth=(user, pwd),
+    #                    files={'jsonfile': jsonFile, 'upfile': upfile})
+    ret = 'a_url'
     print(ret)
 
     # 4. Close files and send request response
-    upfile.close()
+    #upfile.close()
     jsonFile.close()
     #if not save:
     #    os.remove(output_file)
