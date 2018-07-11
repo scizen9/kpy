@@ -184,6 +184,9 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     """
     return_dict = {}
 
+    if 'crr_b_ifu' in inputfile:
+        sep = ' '
+
     for k, v in keywords.iteritems():
         out = commands.getoutput('grep %s %s' % (v, inputfile))
         if k.upper() == 'EXPTIME':
