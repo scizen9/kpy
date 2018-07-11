@@ -298,7 +298,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
         if 'crr_b_ifu' in spec_file:
             submission_dict.update({'quality': 0})
             reducer = os.getenv("SEDM_USER")
-            submission_dict.update({'reducedby', reducer})
+            submission_dict.update({'reducedby': reducer})
 
         quality = int(submission_dict['quality'])
         del submission_dict['quality']
