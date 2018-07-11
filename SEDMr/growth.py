@@ -178,14 +178,13 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     Get keywords from file.  It is dependent on files having a specific format
     where the keyword is on the left and the value on the right by some common
     seperator
-    
-    :param keywords: 
-    :return: 
+
+    :param inputfile: input spectrum text file
+    :param keywords: dictionary of keywords to get from file
+    :param sep: separator character
+    :return:
     """
     return_dict = {}
-
-    if 'crr_b_ifu' in inputfile:
-        sep = ' '
 
     for k, v in keywords.iteritems():
         out = commands.getoutput('grep %s %s' % (v, inputfile))
