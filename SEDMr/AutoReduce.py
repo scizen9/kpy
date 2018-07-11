@@ -1036,6 +1036,8 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
         print("Calibrations already present in %s" % outdir)
 
     print("Calibration stage complete, ready for science!")
+    # Link recent flux cal file
+    find_recent_bias(redd, 'fluxcal*.fits', outdir)
     # Keep track of no copy
     nnc = 0
     # loop and copy new files
