@@ -183,14 +183,16 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     :return: 
     """
     return_dict = {}
+    if 'crr_b_ifu' in inputfile:
+        sep = ' '
     for k, v in keywords.iteritems():
         out = commands.getoutput('grep %s %s' % (v, inputfile))
         if k.upper() == 'EXPTIME':
-            outstr = out.split(sep,1)[-1]
+            outstr = out.split(sep, 1)[-1]
             print(outstr)
             return_dict[k] = int(outstr)
         else:
-            return_dict[k] = out.split(sep,1)[-1]
+            return_dict[k] = out.split(sep, 1)[-1]
     return return_dict
 
 
