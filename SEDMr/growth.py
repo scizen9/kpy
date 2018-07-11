@@ -190,7 +190,7 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
         if k.upper() == 'EXPTIME':
             outstr = out.split(sep, 1)[-1]
             print(outstr)
-            return_dict[k] = int(outstr)
+            return_dict[k] = int(outstr.split('.')[0])
         else:
             return_dict[k] = out.split(sep, 1)[-1]
     return return_dict
