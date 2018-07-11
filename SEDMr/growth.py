@@ -291,7 +291,10 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
                          'quality': 'QUALITY'}
         
         submission_dict = get_keywords_from_file(spec_file, keywords_dict)
-        quality = int(submission_dict['quality'])
+        if len(submission_dict['quality']) > 0:
+            quality = int(submission_dict['quality'])
+        else:
+            quality = 0
         del submission_dict['quality']
 
     print(type(format_type), type(request_id), type(instrument_id))
