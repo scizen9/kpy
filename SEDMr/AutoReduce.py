@@ -653,6 +653,49 @@ def find_recent_bias(redd, fname, destdir):
     return ret
 
 
+def find_recent_fluxcal(redd, fname, destdir):
+    """Find the most recent version of fname and copy it to destdir.
+
+    Look through sorted list of redux directories to find most recent
+    version of the input file.  Copy it to the destination directory.
+
+    Args:
+        redd (str): reduced directory (something like /scr2/sedm/redux)
+        fname (str): what file to look for
+        destdir (str): where the file should go
+
+    Returns:
+        bool: True if file found and copied, False otherwise.
+
+    """
+
+    # Default return value
+    ret = False
+    # Make sure the file doesn't already exist in destdir
+    local_file = glob.glob(os.path.join(destdir, fname))
+    if len(local_file) == 1:
+        print("%s already exists in %s" % (fname, destdir))
+        ret = True
+    # Search in redd for file
+    else:
+        # Get all but the most recent reduced data directories
+        fspec = os.path.join(redd, '20??????')
+        redlist = sorted([d for d in glob.glob(fspec)
+                          if os.path.isdir(d)])[0:-1]
+        # Go back in reduced dir list until we find our file
+        for d in reversed(redlist):
+            src = glob.glob(os.path.join(d, fname))
+            if len(src) == 1:
+                os.symlink(src[0], os.path.join(destdir, src[0].split('/')[-1]))
+                ret = True
+                print("Found %s in directory %s, linking to %s" %
+                      (fname, d, os.path.join(destdir, src[0].split('/')[-1])))
+                break
+    if not ret:
+        print("%s not found" % fname)
+    return ret
+
+
 def cpprecal(dirlist, destdir='./', fsize=8400960):
     """Copy raw cal files from previous date's directory
 
@@ -1037,7 +1080,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
 
     print("Calibration stage complete, ready for science!")
     # Link recent flux cal file
-    find_recent_bias(redd, 'fluxcal*.fits', outdir)
+    find_recent_fluxcal(redd, 'fluxcal*.fits', outdir)
     # Keep track of no copy
     nnc = 0
     # loop and copy new files
