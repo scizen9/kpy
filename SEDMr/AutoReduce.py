@@ -1218,7 +1218,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
                 print("Found %d raw directories in %s: "
                       "putting reduced data in %s" % (nraw, rawd, redd))
                 print("Latest raw directory is %s" % rawlist[-1])
-                stat = obs_loop(rawlist, redd, check_precal=check_precal)
+                stat = obs_loop(rawlist, redd, check_precal=check_precal,
+                                piggyback=piggyback)
                 its += 1
                 print("Finished SEDM observing iteration %d in raw dir %s" %
                       (its, rawlist[-1]))
@@ -1228,7 +1229,8 @@ def go(rawd='/scr2/sedm/raw', redd='/scr2/sedmdrp/redux', wait=False,
     else:
         indir = os.path.join(rawd, indate)
         print("Processing raw data from %s" % indir)
-        stat = obs_loop(rawlist, redd, check_precal=check_precal, indir=indir)
+        stat = obs_loop(rawlist, redd, check_precal=check_precal, indir=indir,
+                        piggyback=piggyback)
         its += 1
         print("Finished SEDM processing in raw dir %s with status %d" %
               (indir, stat))
