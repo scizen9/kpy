@@ -552,6 +552,9 @@ def dosci(destdir='./', datestr=None):
                     retcode = os.system(cmd)
                     if retcode > 0:
                         print("Error extracting std star spectra for " + fn)
+                        badfn = "spec_auto_notfluxcal_" +fn.split('.')[0] + "_failed.fits"
+                        cmd = "touch %s" % badfn
+                        retcode = os.system(cmd)
                 else:
                     # Use forced psf for faint targets (eventually)
                     print("Extracting object spectra for " + fn)
@@ -561,6 +564,9 @@ def dosci(destdir='./', datestr=None):
                     retcode = os.system(cmd)
                     if retcode > 0:
                         print("Error extracting object spectrum for " + fn)
+                        badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + "_failed.fits"
+                        cmd = "touch %s" % badfn
+                        retcode = os.system(cmd)
     return ncp, copied
     # END: dosci
 
