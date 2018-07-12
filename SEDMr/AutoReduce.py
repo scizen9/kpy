@@ -692,10 +692,14 @@ def find_recent_fluxcal(redd, fname, destdir):
         for d in reversed(redlist):
             src = glob.glob(os.path.join(d, fname))
             if len(src) == 1:
-                os.symlink(src[0], os.path.join(destdir, src[0].split('/')[-1]))
+                try:
+                    newfile = os.path.join(destdir, src[0].split('/')[-1])
+                    os.symlink(src[0], newfile)
+                except OSError:
+                    print("File already exists: %s" % newfile)
                 ret = True
                 print("Found %s in directory %s, linking to %s" %
-                      (fname, d, os.path.join(destdir, src[0].split('/')[-1])))
+                      (fname, d, newfile))
                 break
     if not ret:
         print("%s not found" % fname)
