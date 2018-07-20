@@ -431,11 +431,10 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
                 dotted = p.line('times', 'alt', color=color, source=source, line_dash='2 2',
                                 name=names[i], line_width=1, legend=legend)
                 # manually crop the source so only thick observed part has tooltips
-                if i == 0:
-                    print endobs[0] - exptime * u.second
-                    print delta_midnight[498:502] + midnight + utcoffset
                 endtime = endobs[i]
                 initime = endtime - exptime * u.second
+                if i > 0:
+                    initime = max(initime, endobs[i - 1])
                 mask = np.logical_and(delta_midnight + midnight + utcoffset > initime,
                                       delta_midnight + midnight + utcoffset < endtime)
                 source = ColumnDataSource(pd.DataFrame(source.data)[mask])
