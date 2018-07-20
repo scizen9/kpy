@@ -1,0 +1,29 @@
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flashes>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% if message %}
+            <div class="media-body">
+                <h5> {{ message }}</h5>
+            </div>
+        {% endif %}
+
+	<div class="container">
+           <div class="text-center" style='text-align: center'> <!-- not working? -->
+                {{ script | safe }}
+                {{ div | safe }}
+            </div>
+            {% for table in req_tables %}
+                <div class="col-md-12 form-group container-fluid">
+                    <h4>{{req_titles[loop.index]}}</h4>
+                    <font size="1">{{ table|safe }}</font>
+                </div>
+            {% endfor %}
+        </div>
+
+

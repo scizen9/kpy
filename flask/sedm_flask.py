@@ -339,41 +339,58 @@ def weather_stats():
     '''
 
 
-    if not 'date' in flask.request.args:
+    if not 'date' in flask.request.args: # find the most recent stats
         # get the weather stats
         statsfile, mydate = model.search_stats_file()
         stats_plot = stats_web.plot_stats(statsfile, mydate)
         if (stats_plot is None):
-            message=message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
+            message = message + " No statistics log found up to 100 days prior to today... Weather has been terrible lately!"
             script, div = None, None
+            mydate = None
         else:
             message = " Weather statistics for last opened day: %s \r To try a different date, type in the navigation bar: ?date=YYYYMMDD"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
             script, div = components(stats_plot)
-    else:
+                    
+    else: # user specified date
         mydate_in = flask.request.args['date']
         #Just making sure that we have only allowed digits in the date
         mydate = re.findall(r"(2\d{3}[0-1]\d{1}[0-3]\d{1})", mydate_in)
-        if len(mydate) ==0:
+        if len(mydate) == 0: # no matches for a valid date
+            mydate = None
             message = "Incorrect format for the date! Your input is: %s. Shall be YYYYMMDD. Please repeat. \n"%(mydate_in) 
             script, div = "", ""
-        else:
+        else: # correct format
             mydate = mydate[0]
             message = ""
 
             statsfile, mydate_out = model.search_stats_file(mydate)
             stats_plot = stats_web.plot_stats(statsfile, mydate)
             if (not statsfile):
-                message=message + "No statistics log found for the date %s. Showing P18 data."%(mydate)
+                message = message + "No statistics log found for the date %s. Showing P18 data."%(mydate)
                 script, div = components(stats_plot)
-
             else:
                 stats_plot = stats_web.plot_stats(statsfile, mydate)
                 message = message + "Weather statistics for selected day: %s"%(mydate)
                 script, div = components(stats_plot)
 
+    if mydate == None:
+        vscript, vdiv = "", ""
+    else:
+        inidate = datetime.datetime(year=int(mydate[:4]), month=int(mydate[4:6]), day=int(mydate[6:8]), hour=12)
+        request_query = ("""SELECT a.designator, o.name, o.ra, o.dec, r.priority, r.lastmodified
+                            FROM request r, object o, allocation a
+                            WHERE o.id = r.object_id AND a.id = r.allocation_id AND r.status = 'COMPLETED'
+                                AND (r.lastmodified > '{0}' AND r.lastmodified <= '{1}')
+                                AND r.status = 'COMPLETED'
+                            ORDER BY r.lastmodified ASC;""".format(inidate - datetime.timedelta(days=1), inidate))
+
+        req = pd.DataFrame(db.execute_sql(request_query), columns=['alloc', 'name', 'ra', 'dec', 'priority', 'endobs'])
+        print req['endobs']
+        visibility_plot = stats_web.plot_visibility(req['ra'], req['dec'], req['name'], req['alloc'], req['priority'], req['endobs'], date=mydate)
+        vscript, vdiv = components(visibility_plot)
 
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('weather_stats.html', script=script, div=div, message=message) + \
+            render_template('weather_stats.html', script=script, div=div, vscript=vscript, vdiv=vdiv, message=message) + \
             render_template('footer.html')
 
 @app.route('/')
@@ -441,14 +458,15 @@ def visibility():
         request_tables = [HTML(active.to_html(escape=False, classes='table', index=False))]
         request_titles = ['Active Requests for the last 7 days']
 
+        visibility_plot = stats_web.plot_visibility(active['RA'], active['DEC'], active['object'], active['allocation'], active['priority'])
+        script, div = components(visibility_plot)
 
-        visibility = plot_visibilities(active['RA'], active['DEC'], active['object'], active['allocation'], active['priority'])
     else:  # if there is not user, set the lists as empty
         return redirect(flask.url_for('index'))
 
             #render_template('weather_stats.html', script=script, div=div, message=message) + \
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('requests_visibility.html', req_tables = request_tables, req_titles=request_titles, visibility=visibility) + \
+            render_template('requests_visibility.html', req_tables = request_tables, req_titles=request_titles, script=script, div=div) + \
             render_template('footer.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1765,7 +1783,9 @@ def show_objects(ident):
     info = db.get_from_object(['name', 'ra', 'dec', 'typedesig', 'epoch', 'id'], {'id': iden})[0]
     info = info + deg2hour(info[1], info[2])
     image_tag, link_url = get_panstars_cutout_tag(info[1], info[2])
-    visibility = plot_visibility(info[1], info[2], info[0])
+    visibility_plot = stats_web.plot_visibility([info[1]], [info[2]], [info[0]])
+    script, div = components(visibility_plot)
+
     #visibility = ""
     # TODO: work in SSO objects
     if info[0] == -1:
@@ -1815,7 +1835,7 @@ def show_objects(ident):
 
 
     return (render_template('header.html') +  # , current_user=flask_login.current_user) +
-            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url, visibility=visibility) +
+            render_template('object_stats.html', info=info, observations=obs, req_table=req_table, req_titles=req_titles, image_tag = image_tag, image_url=link_url, script=script, div=div) +
             render_template('footer.html'))
 
 

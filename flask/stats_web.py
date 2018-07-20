@@ -38,15 +38,21 @@ import os
 
 from bokeh.io import curdoc
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, Label
-from bokeh.models import CDSView, GroupFilter
+from bokeh.models import ColumnDataSource, Label, CDSView, GroupFilter, Range1d, LinearAxis
+from bokeh.models import HoverTool
+from bokeh.models.annotations import BoxAnnotation
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 from bokeh.core.properties import value
-
+from bokeh.palettes import Paired
 
 
 from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon
+import astropy.units as u
+
+#from datetime import datetime, timedelta
+import datetime
 import model
 
 
@@ -311,3 +317,140 @@ def plot_stats_allocation(data):
     return layout
 
 
+def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[None], exptime=2430, date=None):
+    ''' makes a visibility plot for one or many objects, highlighting observed patches if relevant
+    all arguments are arrays, even if they are of size 1
+    priorities:   integers
+    obsd:         list/array of observed objects, should match 'names'
+    endobs:       'YYYY-MM-DDTHH:MM:SS.ssssssssss' (as outputed from sql query)
+    exptime:      in seconds
+    date:         YYYYMMDD, conveniently matching the folder name'''
+    
+    allocpalette = Paired[12][1::2] + Paired[12][::2]
+    priorities = np.array(priorities, dtype=np.int)
+    allocs = np.asarray(allocs)
+    names = np.asarray(names)
+
+    p = figure(plot_width=700, plot_height=500, toolbar_location='above',
+               y_range=(0, 90), y_axis_location="right")
+
+    ### setup with axes, sun/moon, frames, background 
+    palomar_mountain = EarthLocation(lon=243.1361*u.deg, lat=33.3558*u.deg, height=1712*u.m)
+    utcoffset = -7 * u.hour  # Pacific Daylight Time
+    
+    if date == None:
+        time = (Time.now() - utcoffset).datetime # date is based on local time
+        time = Time(datetime.datetime(time.year, time.month, time.day)) 
+    else:
+        time = Time(datetime.datetime(int(date[:4]), int(date[4:6]), int(date[6:8])))
+    midnight = time - utcoffset # 7am local time of correct date, midnight UTC
+
+    if endobs[0] != None:
+        print endobs[0]
+        endobs = Time(np.array(endobs, dtype='|S32'), format='isot')
+        print endobs[0]
+        endobs.format = u'datetime'
+        print endobs[0], 'finished prep'
+
+    delta_midnight = np.linspace(-8, 8, 1000) * u.hour
+    t = midnight + delta_midnight
+    abstimes = [i.datetime.strftime('%I:%M %p') for i in t + utcoffset]
+    frame = AltAz(obstime=t, location=palomar_mountain)
+    sun_alt  =  get_sun(t).transform_to(frame).alt
+    moon_alt = get_moon(t).transform_to(frame).alt
+    
+    # shading for nighttime and twilight
+    dark_times    = delta_midnight[sun_alt < 0].value
+    twilit_times  = delta_midnight[sun_alt < -18 * u.deg].value
+    plotted_times = delta_midnight[sun_alt <   5 * u.deg].value
+    
+    twilight = BoxAnnotation(left=min(twilit_times), right=max(twilit_times), bottom=0, 
+                             fill_alpha=0.15, fill_color='black', level='underlay')
+    night    = BoxAnnotation(left=min(dark_times),    right=max(dark_times),    bottom=0, 
+                             fill_alpha=0.25, fill_color='black', level='underlay')
+    earth    = BoxAnnotation(top=0, fill_alpha=0.8, fill_color='sienna')
+    
+    p.add_layout(night)
+    p.add_layout(twilight)
+    p.add_layout(earth)
+    
+    # sun and moon
+    sun  = p.line(delta_midnight, sun_alt,  line_color='red', name="Sun", legend='Sun', line_dash='dashed')
+    moon = p.line(delta_midnight, moon_alt, line_color='yellow', line_dash='dashed', 
+                                                   name="Moon", legend='Moon')
+    # labels and axes
+    p.title.text = "Visibility for %s UTC" %midnight
+    p.xaxis.axis_label = "Hours from PDT Midnight"
+    p.x_range.start = min(plotted_times)
+    p.x_range.end   = max(plotted_times)
+    p.yaxis.axis_label = "Airmass"
+    
+    # primary airmass label on right
+    airmasses = (1.01, 1.1, 1.25, 1.5, 2., 3., 6.)
+    ticker = [90 - np.arccos(1./i) * 180/np.pi for i in airmasses]
+    p.yaxis.ticker = ticker
+    p.yaxis.major_label_overrides = {tick: str(airmasses[i]) for i, tick in enumerate(ticker)}
+    
+    # add supplementary alt label on left
+    p.extra_y_ranges = {"altitude": Range1d(0, 90)}
+    p.add_layout(LinearAxis(y_range_name="altitude", axis_label='Altitude [deg]'), 'left')
+
+
+    ### adding data from the actual objects
+    objs = SkyCoord(np.array(ras,  dtype=np.float), 
+                    np.array(decs, dtype=np.float), unit="deg")
+    alloc_color = {}
+    for i, val in enumerate(np.unique(allocs)):
+        alloc_color[val] = allocpalette[i % len(allocpalette)]
+        
+    tooltipped = [] # things with tooltips
+    tooltips = [('obj',        '@name'), # make it #name when we get to bokeh 0.13
+                ('time',       '@abstime'), 
+                ('altitude',   u"@alt\N{DEGREE SIGN}"), 
+                ('airmass',    '@airmass'),
+                ('priority',   '@priority'), 
+                ('allocation', '@alloc')]
+        
+    for i in np.array(allocs).argsort(): # go in order by alloc for an alphabetized legend
+        color = alloc_color[allocs[i]]
+        obj = objs[i].transform_to(frame)
+        source = ColumnDataSource(    dict(times=delta_midnight, 
+                                             alt=obj.alt,
+                                         airmass=obj.secz,
+                                         abstime=abstimes,
+                                        priority=np.full(len(abstimes), priorities[i]),
+                                           alloc=np.full(len(abstimes), allocs[i]),
+                                            name=np.full(len(abstimes), names[i]))) # delete the name when we get to bokeh 0.13
+        if allocs[i] == None: # single object
+            legend = names[i]
+            tooltips = tooltips[:4]
+        else:
+            legend = '{}'.format(allocs[i])
+            if endobs[0] != None: # plot that highlights observed part of the night
+                # full path of the night
+                dotted = p.line('times', 'alt', color=color, source=source, line_dash='2 2',
+                                name=names[i], line_width=1, legend=legend)
+                # manually crop the source so only thick observed part has tooltips
+                if i == 0:
+                    print endobs[0] - exptime * u.second
+                    print delta_midnight[498:502] + midnight + utcoffset
+                endtime = endobs[i]
+                initime = endtime - exptime * u.second
+                mask = np.logical_and(delta_midnight + midnight + utcoffset > initime,
+                                      delta_midnight + midnight + utcoffset < endtime)
+                source = ColumnDataSource(pd.DataFrame(source.data)[mask])
+                priorities[i] += 3 # all it changes is the line width                    
+                
+        line = p.line('times', 'alt', color=color, source=source, name=''.format(names[i]),
+                      line_width=priorities[i], legend=legend)
+            
+        tooltipped.append(line)
+    
+    p.legend.click_policy = 'hide'
+    p.legend.location = 'bottom_right'
+    p.add_tools(HoverTool(renderers=tooltipped, tooltips=tooltips))
+    
+    curdoc().add_root(p)
+    curdoc().title = 'Visibility plot'
+    
+    return p
