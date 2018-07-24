@@ -1,18 +1,31 @@
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul class=flashes>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-        {% if message %}
+        <div class="container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            {% if message %}
             <div class="media-body">
                 <h5> {{ message }}</h5>
             </div>
-	{% endif %}
+            {% endif %}
 
+	    <form method="get">
+                <div class="input-group date" data-provide="datepicker" data-date-format="yyyymmdd" data-date-today-highlight="True" data-date-auto-close="True">
+                    <input type="text" name="date" class="form-control">
+                    <div class="input-group-addon">
+                        <span class="glyphicon glyphicon-calendar"></span>
+                    </div>
+                </div>
+	        <div class="form-group">
+	            <button class="btn btn-primary " type="submit">Submit</button>
+                </div>
+            </form>
+	</div>
 	<div class="well">
         {{ script | safe }}
 	    {{div | safe}}
@@ -20,5 +33,7 @@
 	<div class="container col-md-offset-2">
             {{ vscript | safe }}
 	    {{ vdiv | safe }}
-	</div>
-
+        </div>
+	<!-- at the end so it loads faster, but in this file because exclusive to this page -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.4.1/js/bootstrap-datepicker.min.js"></script>

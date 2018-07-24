@@ -255,7 +255,7 @@ def data_access(instrument):
         if ( not 'date' in flask.request.args and reduxfiles is None):
             message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
         elif ( not 'date' in flask.request.args and not reduxfiles is None):
-            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+            message = " Data reduction for the last opened day %s. \r To see a different date, choose below:"%mydate
         
         elif ( 'date' in flask.request.args and reduxfiles is None):
             message=message + "No data found for the date %s."%(mydate)
@@ -308,7 +308,7 @@ def data_access(instrument):
         if ( not 'date' in flask.request.args and photfiles is None):
             message=message + " No finder charts found up to 100 days prior to today... Weather has been terrible lately!"
         elif ( not 'date' in flask.request.args and not photfiles is None):
-            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+            message = " Data reduction for the last opened day %s. \r To see a different day, choose below:M"%mydate
         
         elif ( 'date' in flask.request.args and photfiles is None):
             message=message + "No finder charts found for the date %s."%(mydate)
@@ -348,7 +348,7 @@ def weather_stats():
             script, div = None, None
             mydate = None
         else:
-            message = " Weather statistics for last opened day: %s \r To try a different date, type in the navigation bar: ?date=YYYYMMDD"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
+            message = " Weather statistics for last opened day: %s \r To try a different date, choose below:"%(os.path.basename(os.path.dirname(os.path.dirname(statsfile))))
             script, div = components(stats_plot)
                     
     else: # user specified date
@@ -385,7 +385,6 @@ def weather_stats():
                             ORDER BY r.lastmodified ASC;""".format(inidate - datetime.timedelta(days=1), inidate))
 
         req = pd.DataFrame(db.execute_sql(request_query), columns=['alloc', 'name', 'ra', 'dec', 'priority', 'endobs'])
-        print req['endobs']
         visibility_plot = stats_web.plot_visibility(req['ra'], req['dec'], req['name'], req['alloc'], req['priority'], req['endobs'], date=mydate)
         vscript, vdiv = components(visibility_plot)
 

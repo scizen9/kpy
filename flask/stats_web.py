@@ -352,7 +352,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         endobs.format = u'datetime'
         print endobs[0], 'finished prep'
 
-    delta_midnight = np.linspace(-8, 8, 1000) * u.hour
+    delta_midnight = np.linspace(-8, 8, 200) * u.hour
     t = midnight + delta_midnight
     abstimes = [i.datetime.strftime('%I:%M %p') for i in t + utcoffset]
     frame = AltAz(obstime=t, location=palomar_mountain)
