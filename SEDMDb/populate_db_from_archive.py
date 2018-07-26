@@ -14,6 +14,7 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 import astropy.units as u
 import datetime
+import SedmDb
 from astropy.io import fits
 import archive_mod_sedmdb  # this file requires being able to submit observations with pre-determined id values, which isn't allowed in the original
 
@@ -83,7 +84,9 @@ def fill_par_dic_obs(fitsfile):
     if fitsutils.has_par(fitsfile, 'obs_id'):
         obs_id = f[0].header['obs_id']
         pardic_obs['id'] = obs_id  # if there is no obs_id, add_observation will add its own
-
+    else:
+        pardic_obs['id'] = SedmDb.__id_from_time()
+        
     return pardic_obs
 
 
@@ -146,7 +149,7 @@ def create_allocation(f, allocation_desig):
 def create_sci_request(files, inidate, enddate, scitype, object_id, allocation):
     filt = fitsutils.get_par(files[0], 'FILTER')
     if filt not in ['u','g','r','i']:
-        nex = '{0, %s, 0, 0, 0}' % len(files)
+        nex = '{%s, 0, 0, 0, 0}' % len(files)
     elif filt == 'u':
         nex = '{0, %s, 0, 0, 0}' % len(files)
     elif filt == 'g':
@@ -178,8 +181,9 @@ def create_cal_request(files, inidate, enddate, caltype, obj_id):
     It also looks at each file and creates an atomic request associated to each observation.
     '''    
     #First check that there is no request for that night
+    #TODO: Make sure that calibrations receive the right allocation_id for their semester.
     res = sdb.get_from_request(['object_id'],
-    {'object_id': obj_id, 'user_id':32, 'allocation_id':1, 'inidate':inidate, 'enddate':enddate},
+    {'object_id': obj_id, 'user_id':32, 'allocation_id':20180131224646741, 'inidate':inidate, 'enddate':enddate},
     {'inidate':'>=', 'enddate':'<='})
     
     #If there is no request, we add it.
@@ -187,7 +191,7 @@ def create_cal_request(files, inidate, enddate, caltype, obj_id):
         exptime = fitsutils.get_par(files[0], "EXPTIME")
         pardic = {'object_id':obj_id,
                   'user_id':32,
-                  'allocation_id':1,
+                  'allocation_id':20180131224646741,
                   'exptime':'{0, %d}'%exptime,
                   'priority':.1,
                   'inidate': inidate, #('year-month-day') (start of observing window),
@@ -205,6 +209,7 @@ def create_obs(reqid, files, inidate, enddate, caltype, obj_id):
     '''
     for f in files:
                 
+        #TODO: Not sure why inidate and enddate are improtante here. Probably they shall be removed.
         jd_init = fitsutils.get_par(f, "JD")
         jd_end = jd_init + fitsutils.get_par(f, "EXPTIME")/(3600*24.)
 
@@ -248,6 +253,7 @@ def log_calibrations(lfiles, caltype="test"):
     jd_end = fitsutils.get_par(lfiles[-1], "JD")
     
     inidate = Time(jd_init, format='jd').iso
+    #TODO: add exposure time to the end time
     enddate = Time(jd_end, format='jd').iso
     
     #Select the object_id
@@ -270,37 +276,15 @@ def log_science(lfiles, scitype):
     '''
     
     for f in lfiles:
-        #Initial time of the request is the starting JD.
-        jd_init = fitsutils.get_par(f, "JD")
-        #The end time of the request is the starting point plus the exposure plus 60s overhead.
-        jd_end = fitsutils.get_par(f, "JD") + (fitsutils.get_par(f, "EXPTIME") + 60)/(24*3600.) 
         
-        inidate = Time(jd_init, format='jd').iso
-        enddate = Time(jd_end, format='jd').iso
-    
-        #First make sure that its allocation exists
-        if fitsutils.has_par(f, "P60PRID"):
-            allocation = fitsutils.get_par(f, "P60PRID").upper()
-        else:
-            continue  #skip if there is no allocation
-        allocations = sdb.get_from_allocation(['designator', 'id'])
-        if allocation not in [al[0] for al in allocations]:
-            all_id = create_allocation(f, allocation)
-        else:
-            all_id = [al[1] for al in allocations if al[0] == allocation][0]
-        if all_id == -1:  # if there was an issue creat_allocation will return -1
-            print("Error finding or creating the allocation for file %s!" % (f,))
-            continue  # skip to next file if we can't get a valid allocation
-        
-
-        #Next make sure that its object exists
+        #Make sure that its object exists. We will associate the observation with the object in DB which is within 15 arcsec of the RA, dEc in the fits file.
         name = fitsutils.get_par(f, "OBJNAME").replace('"', '').lower()
         RA = ra_to_decimal(fitsutils.get_par(f, "RA"))
         DEC = dec_to_decimal(fitsutils.get_par(f, "DEC"))
         exists = sdb.get_from_object(['id', 'ra', 'dec'],{'name': name})
 
         # check if there was an object found with the same name and coordinates
-        if exists and SkyCoord(ra=exists[0][1]*u.deg, dec=exists[0][2]*u.deg, frame='icrs').separation(SkyCoord(ra=RA*u.deg, dec=DEC*u.deg, frame='icrs')) < .001*u.deg:
+        if exists and SkyCoord(ra=exists[0][1]*u.deg, dec=exists[0][2]*u.deg, frame='icrs').separation(SkyCoord(ra=RA*u.deg, dec=DEC*u.deg, frame='icrs')) < .004*u.deg:
             obj_id = exists[0][0]
         else:
             obj_id = sdb.add_object({'name': name, 'typedesig': 'f', 'ra': RA, 'dec': DEC})[0]
@@ -308,12 +292,42 @@ def log_science(lfiles, scitype):
         if obj_id == -1:
             print("Error adding the object for file %s!" % (f,))
             continue  # skip to next file if we can't get a valid object
+            
+            
+        # Request ID exists in the database. Create observations linked to the request
+        if fitsutils.has_par(f, "REQ_ID"):
+            req_id = fitsutils.get_par(f, "REQ_ID")
+            
+        #We need to create the request and ssociate it to the right allocation
+        else:
+            #Initial time of the request is the starting JD.
+            jd_init = fitsutils.get_par(f, "JD")
+            #The end time of the request is the starting point plus the exposure plus 60s overhead.
+            jd_end = fitsutils.get_par(f, "JD") + (fitsutils.get_par(f, "EXPTIME") + 60)/(24*3600.) 
+            
+            inidate = Time(jd_init, format='jd').iso
+            enddate = Time(jd_end, format='jd').iso
         
-        # create individual requests for each file
-        req_id = create_sci_request([f], inidate, enddate, scitype, obj_id, all_id)
-        if req_id == -1:
-            continue
-        # create observations linked to the requests
+            #First make sure that its allocation exists
+            if fitsutils.has_par(f, "P60PRID"):
+                allocation = fitsutils.get_par(f, "P60PRID").upper()
+            else:
+                continue  #skip if there is no allocation
+            allocations = sdb.get_from_allocation(['designator', 'id'])
+            if allocation not in [al[0] for al in allocations]:
+                all_id = create_allocation(f, allocation)
+            else:
+                all_id = [al[1] for al in allocations if al[0] == allocation][0]
+            if all_id == -1:  # if there was an issue creat_allocation will return -1
+                print("Error finding or creating the allocation for file %s!" % (f,))
+                continue  # skip to next file if we can't get a valid allocation
+        
+            # create individual requests for each file
+            req_id = create_sci_request([f], inidate, enddate, scitype, obj_id, all_id)
+            if req_id == -1:
+                continue
+
+
         create_obs(req_id, [f], inidate, enddate, scitype, obj_id)
     
     

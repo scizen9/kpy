@@ -1101,7 +1101,7 @@ def find_zeropoint_noid(ref_stars, image, plot=True, plotdir="."):
     return np.round(p[0], 3), np.round(p[1], 3), np.round(mad, 3)
 
 
-def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False, refstars=None):
+def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False, refstars=None, minexp=1):
     '''
     Calibrates the zeropoint using SDSS catalogue.    
     '''
@@ -1134,7 +1134,7 @@ def calibrate_zeropoint(image, plot=True, plotdir=None, astro=False, debug=False
     
     logger.info( "Starting calibration of ZP for image %s for object %s with filter %s."%(image, objname, band))
 
-    if (exptime < 10):
+    if (exptime < minexp):
         logger.error( "ERROR. Exposure time too short for image (%s) to see anything..."%image)
         return 
 

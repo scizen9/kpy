@@ -55,6 +55,8 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
     # The special keyword _doprint=0 turns off displaying the tasks 
     # when loading a package. 
     
+    from pyraf import iraf 
+
     if (not plot_only):
         iraf.noao(_doprint=0)
         iraf.digiphot(_doprint=0)

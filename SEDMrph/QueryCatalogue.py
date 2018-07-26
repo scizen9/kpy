@@ -10,7 +10,7 @@ import urllib
 import datetime
 from astropy.io import votable
 import numpy as np
-import os
+import os, sys
 import logging
 import warnings
 from numpy.lib import recfunctions as rfn
@@ -36,9 +36,31 @@ class QueryCatalogue:
         
         if (logger is None):
             FORMAT = '%(asctime)-15s %(levelname)s [%(name)s] %(message)s'
-            logging.basicConfig(format=FORMAT, level=logging.INFO)
-            self.logger = logging.getLogger('zeropoint')
+            '''now = datetime.datetime.utcnow()
+            timestamp=datetime.datetime.isoformat(now)
+            creationdate = timestamp
+            timestamp=timestamp.split("T")[0]'''
+
+            console = logging.StreamHandler()
+            
+            formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+            console.setFormatter(formatter)
+            
+            # add the handler to the root logger
+            logging.getLogger('').addHandler(console)
+            
+            #logging.basicConfig(format=FORMAT, level=logging.INFO)
+            self.logger = logging.getLogger('QueryCatalogue')
     
+            '''ch = logging.StreamHandler(sys.stdout)
+            ch.setFormatter(format)
+            self.logger.addHandler(ch)'''
+            
+            #logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+  
+
+
+
     def query_usnob1(self):
     
         #ra, dec = coordinates_conversor.hour2deg(f[0].header['RA'], f[0].header['DEC'])
@@ -95,7 +117,7 @@ class QueryCatalogue:
         timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
     
         
-        catalog_url = 'https://www.aavso.org/cgi-bin/apass_download.pl?ra=%.5f&dec=%.5f&radius=%.4f8&outtype=1' % (self.ra, self.dec, self.rad)
+        catalog_url = 'http://www.aavso.org/cgi-bin/apass_download.pl?ra=%.5f&dec=%.5f&radius=%.4f8&outtype=1' % (self.ra, self.dec, self.rad)
         self.logger.info( "Downloading APASS catalog...")
         self.logger.info(catalog_url)
         
@@ -196,6 +218,7 @@ class QueryCatalogue:
 
         catalog = catalog.as_array().data
 
+        print (catalog)
 
         #If it is PS1, we know what fields we want. 
         #Otherwise, we just return everything.
