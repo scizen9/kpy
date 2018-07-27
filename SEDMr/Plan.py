@@ -264,7 +264,7 @@ report:
 	$(REPORT) | tee report.txt
 
 ztfupload:
-	$(ZTFUPLOAD)
+	$(ZTFUPLOAD) $(current_dir)
 
 classify:
 	$(CLASS) --specdir $(dir $(mkfile_path))

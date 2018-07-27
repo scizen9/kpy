@@ -965,6 +965,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
             time.sleep(60)
             if piggyback:
                 print("checking for processed cal files")
+                ncp = 0
             else:
                 if check_precal and now.tuple()[3] >= 20:
                     print("checking %s for new raw cal files..." % rawlist[-2])
@@ -975,35 +976,35 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                     ncp = cpcal(srcdir, outdir)
                 print("Linked %d raw cal files from %s" % (ncp, srcdir))
                 sys.stdout.flush()
-                if ncp <= 0:
-                    # Check to see if we are still before an hour after sunset
-                    now = ephem.now()
-                    if now < sunset + ephem.hour:
-                        print("UT  = %02d/%02d %02d:%02d < sunset "
-                              "(%02d/%02d %02d:%02d) + 1hr, "
-                              "so keep waiting" % (now.tuple()[1], now.tuple()[2],
-                                                   now.tuple()[3], now.tuple()[4],
-                                                   sunset.tuple()[1],
-                                                   sunset.tuple()[2],
-                                                   sunset.tuple()[3],
-                                                   sunset.tuple()[4]))
-                    else:
-                        print("UT = %02d/%02d %02d:%02d >= sunset "
-                              "(%02d/%02d %02d:%02d) + 1hr, "
-                              "time to get a cal set" % (now.tuple()[1],
-                                                         now.tuple()[2],
-                                                         now.tuple()[3],
-                                                         now.tuple()[4],
-                                                         sunset.tuple()[1],
-                                                         sunset.tuple()[2],
-                                                         sunset.tuple()[3],
-                                                         sunset.tuple()[4]))
-                        break
+            if ncp <= 0:
+                # Check to see if we are still before an hour after sunset
+                now = ephem.now()
+                if now < sunset + ephem.hour:
+                    print("UT  = %02d/%02d %02d:%02d < sunset "
+                          "(%02d/%02d %02d:%02d) + 1hr, "
+                          "so keep waiting" % (now.tuple()[1], now.tuple()[2],
+                                               now.tuple()[3], now.tuple()[4],
+                                               sunset.tuple()[1],
+                                               sunset.tuple()[2],
+                                               sunset.tuple()[3],
+                                               sunset.tuple()[4]))
                 else:
-                    # Get new listing
-                    retcode = os.system("~/spy what ifu*.fits > what.list")
-                    if retcode > 0:
-                        print("what oops!")
+                    print("UT = %02d/%02d %02d:%02d >= sunset "
+                          "(%02d/%02d %02d:%02d) + 1hr, "
+                          "time to get a cal set" % (now.tuple()[1],
+                                                     now.tuple()[2],
+                                                     now.tuple()[3],
+                                                     now.tuple()[4],
+                                                     sunset.tuple()[1],
+                                                     sunset.tuple()[2],
+                                                     sunset.tuple()[3],
+                                                     sunset.tuple()[4]))
+                    break
+            else:
+                # Get new listing
+                retcode = os.system("~/spy what ifu*.fits > what.list")
+                if retcode > 0:
+                    print("what oops!")
 
         # Process calibrations if we are using them
         if cal_proc_ready(outdir, mintest=True, test_cal_ims=piggyback):
