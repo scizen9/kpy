@@ -397,6 +397,7 @@ def check_spec(specname, corrname='std-correction.npy', redshift=0, smoothing=0,
         print("4 - no object visible")
         print("5 - bogus target")
         q = 'x'
+        qual = -1
         prom = ": "
         while qual < 1 or qual > 5:
             q = input(prom)

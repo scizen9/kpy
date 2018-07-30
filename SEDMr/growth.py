@@ -439,7 +439,7 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     return return_link, spec_ret, status_ret, phot_ret
 
           
-def parse_ztf_by_dir(target_dir, upobj=None):
+def parse_ztf_by_dir(target_dir, upfil=None):
     """Given a target directory get all files that have ztf or ZTF as base 
        name"""
 
@@ -463,9 +463,9 @@ def parse_ztf_by_dir(target_dir, upobj=None):
         else:
             objname = os.path.basename(fi).split('_')[0]
         # upload only one file
-        if upobj is not None:
+        if upfil is not None:
             # if this is not the file, skip
-            if upobj not in objname:
+            if upfil not in fi:
                 continue
         # upload
         r, spec, stat, phot = update_target_by_object(objname,
@@ -521,10 +521,10 @@ if __name__ == '__main__':
             os.mkdir(trgdir)
 
         if len(sys.argv) >= 3:
-            uplobj = sys.argv[2]
+            uplfil = sys.argv[2]
         else:
-            uplobj = None
+            uplfil = None
       
-        parse_ztf_by_dir(srcdir, upobj=uplobj)
+        parse_ztf_by_dir(srcdir, upfil=uplfil)
 
 
