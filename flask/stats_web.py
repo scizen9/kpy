@@ -337,7 +337,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     ### setup with axes, sun/moon, frames, background 
     palomar_mountain = EarthLocation(lon=243.1361*u.deg, lat=33.3558*u.deg, height=1712*u.m)
     utcoffset = -7 * u.hour  # Pacific Daylight Time
-    
+
     if date == None:
         time = (Time.now() - utcoffset).datetime # date is based on local time
         time = Time(datetime.datetime(time.year, time.month, time.day)) 
@@ -352,7 +352,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         endobs.format = u'datetime'
         print endobs[0], 'finished prep'
 
-    delta_midnight = np.linspace(-8, 8, 200) * u.hour
+    delta_midnight = np.linspace(-8, 8, 500) * u.hour
     t = midnight + delta_midnight
     abstimes = [i.datetime.strftime('%I:%M %p') for i in t + utcoffset]
     frame = AltAz(obstime=t, location=palomar_mountain)
@@ -399,6 +399,14 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     ### adding data from the actual objects
     #objs = SkyCoord(np.array(ras,  dtype=np.float), 
     #                np.array(decs, dtype=np.float), unit="deg")
+    
+    approx_midnight = int(Time.now().jd - .5) + .5 + 7./24
+    palo_sin_lat = 0.549836545
+    palo_cos_lat = 0.835272275
+    palo_long = 243.1362
+
+    ras = np.array(ras, dtype=np.float)
+    decs = np.array(decs, dtype=np.float)
     alloc_color = {}
     for i, val in enumerate(np.unique(allocs)):
         alloc_color[val] = allocpalette[i % len(allocpalette)]
@@ -415,7 +423,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         color = alloc_color[allocs[i]]
         #obj = objs[i].transform_to(frame)
         alt = 180 / np.pi * np.arcsin(palo_cos_lat * \
-              np.cos(np.pi/180 * (palo_long - ras[i] + 15 * (18.697374558 + 24.06570982 * (delta_midnight.value/24. + midnight - 2451545)))) * \
+              np.cos(np.pi/180 * (palo_long - ras[i] + 15 * (18.697374558 + 24.06570982 * (delta_midnight.value/24. + approx_midnight - 2451545)))) * \
               np.cos(decs[i] * np.pi/180) + palo_sin_lat * np.sin(decs[i] * np.pi/180))
         airmass = 1./np.cos((90 - alt) * np.pi/180)
         source = ColumnDataSource(    dict(times=delta_midnight, 
