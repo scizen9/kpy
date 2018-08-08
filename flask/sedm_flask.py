@@ -279,7 +279,7 @@ def data_access(instrument):
         if ( not 'date' in flask.request.args and photfiles is None):
             message=message + " No data found up to 100 days prior to today... Weather has been terrible lately!"
         elif ( not 'date' in flask.request.args and not photfiles is None):
-            message = " Data reduction for the last opened day %s. \r To see a different date, type in the navigation bar: ?date=YYYYDDMM"%mydate
+            message = " Data reduction for the last opened day %s. \r To see a different date, choose below:"
         
         elif ( 'date' in flask.request.args and photfiles is None):
             message=message + "No data found for the date %s."%(mydate)
@@ -308,7 +308,7 @@ def data_access(instrument):
         if ( not 'date' in flask.request.args and photfiles is None):
             message=message + " No finder charts found up to 100 days prior to today... Weather has been terrible lately!"
         elif ( not 'date' in flask.request.args and not photfiles is None):
-            message = " Data reduction for the last opened day %s. \r To see a different day, choose below:M"%mydate
+            message = " Data reduction for the last opened day %s. \r To see a different day, choose below:"%mydate
         
         elif ( 'date' in flask.request.args and photfiles is None):
             message=message + "No finder charts found for the date %s."%(mydate)

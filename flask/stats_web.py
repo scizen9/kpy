@@ -397,8 +397,8 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
 
 
     ### adding data from the actual objects
-    objs = SkyCoord(np.array(ras,  dtype=np.float), 
-                    np.array(decs, dtype=np.float), unit="deg")
+    #objs = SkyCoord(np.array(ras,  dtype=np.float), 
+    #                np.array(decs, dtype=np.float), unit="deg")
     alloc_color = {}
     for i, val in enumerate(np.unique(allocs)):
         alloc_color[val] = allocpalette[i % len(allocpalette)]
@@ -413,10 +413,14 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         
     for i in np.array(allocs).argsort(): # go in order by alloc for an alphabetized legend
         color = alloc_color[allocs[i]]
-        obj = objs[i].transform_to(frame)
+        #obj = objs[i].transform_to(frame)
+        alt = 180 / np.pi * np.arcsin(palo_cos_lat * \
+              np.cos(np.pi/180 * (palo_long - ras[i] + 15 * (18.697374558 + 24.06570982 * (delta_midnight.value/24. + midnight - 2451545)))) * \
+              np.cos(decs[i] * np.pi/180) + palo_sin_lat * np.sin(decs[i] * np.pi/180))
+        airmass = 1./np.cos((90 - alt) * np.pi/180)
         source = ColumnDataSource(    dict(times=delta_midnight, 
-                                             alt=obj.alt,
-                                         airmass=obj.secz,
+                                             alt=alt,
+                                         airmass=airmass,
                                          abstime=abstimes,
                                         priority=np.full(len(abstimes), priorities[i]),
                                            alloc=np.full(len(abstimes), allocs[i]),

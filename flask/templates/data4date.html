@@ -13,10 +13,10 @@
             <h5> {{ message }}</h5>
         </div>
     {% endif %}
-    <form method="get">
+    <form method="get" autocomplete="off">
         <!-- calendar picker -->
         <div class="input-group date" data-provide="datepicker" data-date-format="yyyymmdd" data-date-today-highlight="True">
-            <input type="text" name="date" class="form-control">
+            <input type="text" name="date" class="form-control" data-date-end-date="0d" data-date-autoclose="true">
             <div class="input-group-addon">
                 <span class="glyphicon glyphicon-calendar"></span>
             </div>
@@ -108,7 +108,7 @@
     }
     </script>
 
-    <!-- for calendar picker -->
+    <!-- for calendar picker. we already have jquery in the footer but it must be imported BEFORE the datepicker -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.4.1/js/bootstrap-datepicker.min.js"></script>
 

@@ -14,9 +14,9 @@
             </div>
             {% endif %}
 
-	    <form method="get">
+	    <form method="get" autocomplete="off">
                 <div class="input-group date" data-provide="datepicker" data-date-format="yyyymmdd" data-date-today-highlight="True" data-date-auto-close="True">
-                    <input type="text" name="date" class="form-control">
+                    <input type="text" name="date" class="form-control" data-date-end-date="+0d">
                     <div class="input-group-addon">
                         <span class="glyphicon glyphicon-calendar"></span>
                     </div>
@@ -35,5 +35,5 @@
 	    {{ vdiv | safe }}
         </div>
 	<!-- at the end so it loads faster, but in this file because exclusive to this page -->
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script> <!-- TODO check why I put this here, if it's actually needed -->
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.4.1/js/bootstrap-datepicker.min.js"></script>
