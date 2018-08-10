@@ -1066,7 +1066,9 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
         if not cube_ready(outdir, cur_date_str):
             print("These calibrations failed!")
             print("Let's get our calibrations from a previous night")
-            nct = find_recent(redd, '_TraceMatch_WithMasks.pkl', outdir,
+            nct = find_recent(redd, '_TraceMatch.pkl', outdir,
+                              cur_date_str)
+            nctm = find_recent(redd, '_TraceMatch_WithMasks.pkl', outdir,
                               cur_date_str)
             ncg = find_recent(redd, '_HexaGrid.pkl', outdir, cur_date_str)
             ncw = find_recent(redd, '_WaveSolution.pkl', outdir, cur_date_str)
@@ -1078,10 +1080,10 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                 ncb = True
                 nc2 = True
             # Check for failure
-            if not nct or not ncg or not ncw or not ncf or not ncb or not nc2:
-                msg = "Calibration stage failed: trace = %s, grid = %s, " \
+            if not nct or not nctm or not ncg or not ncw or not ncf or not ncb or not nc2:
+                msg = "Calibration stage failed: trace = %s, trace/mask = %s grid = %s, " \
                       "wave = %s, flat = %s, bias0.1 = %s, bias2.0 = %s, " \
-                      "stopping" % (nct, ncg, ncw, ncf, ncb, nc2)
+                      "stopping" % (nct, nctm, ncg, ncw, ncf, ncb, nc2)
                 sys.exit(msg)
             # If we get here, we are done
             oldcals = True
