@@ -314,81 +314,6 @@ def proc_bias_crrs(ncp=1, oldcals=False, piggyback=False):
     # END: proc_bias_crrs
 
 
-def proc_stds(ncp):
-    """Process standard star observations.
-
-    Args:
-        ncp (int): number of standard star images copied into redux directory
-
-    Returns:
-        bool: True if processing was successful, otherwise False
-
-    """
-
-    # Default return value
-    ret = False
-    # Make new stds
-    start_time = time.time()
-    retcode = os.system("make newstds")
-    proc_time = int(time.time() - start_time)
-    # Did it work?
-    if retcode == 0:
-        print("%d new standard star observations processed in %d s" %
-              (ncp, proc_time))
-        ret = True
-
-    return ret
-
-
-def proc_auto():
-    """Process automatic observations.
-
-    Returns:
-        bool: True if processing was successful, otherwise False
-
-    """
-
-    # Default return value
-    ret = False
-    # Make new stds
-    start_time = time.time()
-    retcode = os.system("make auto")
-    proc_time = int(time.time() - start_time)
-    # Did it work?
-    if retcode == 0:
-        print("automatic observations processed in %d s" % proc_time)
-        ret = True
-
-    return ret
-
-
-def proc_bkg_flex(copied):
-    """Process bkg subtractions and flexure calculations.
-
-        Args:
-            copied (list): list of ifu*.fits files copied (linked)
-
-        Returns:
-            bool: True if processing was successful, otherwise False
-
-    """
-
-    # Default return value
-    ret = True
-    # subtract bkg
-    start_time = time.time()
-    for c in copied:
-        f = c.split('.')[0]
-        retcode = os.system("make flex_bs_crr_b_%s.npy" % f)
-        if retcode != 0:
-            print("Error subtracting bkg from %s" % c)
-            ret = False
-
-    proc_time = int(time.time() - start_time)
-    print("%d files bkg subtracted in %d s" % (len(copied), proc_time))
-    return ret
-
-
 def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
     """Copies new science ifu image files from srcdir to destdir.
 
@@ -451,37 +376,6 @@ def cpsci(srcdir, destdir='./', fsize=8400960, oldcals=False, datestr=None):
         if datestr is None:
             print("Illegal datestr parameter")
             return 0, None
-        # Build cube for each observation copied
-        print("Building cube for " + ",".join(copied))
-        cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr,
-                                                           ",".join(copied))
-        print(cmd)
-        retcode = os.system(cmd)
-        # Check results
-        if retcode > 0:
-            print("Error generating cube for " + ",".join(copied))
-        else:
-            # Cube succeeded, now extract spectra
-            # Standard stars
-            if nstd > 0:
-                # Use auto aperture for standard stars
-                print("Extracting spectra for " + ",".join(stds))
-                cmd = "extract_star.py %s --auto %s --std" % (datestr,
-                                                              ",".join(stds))
-                print(cmd)
-                retcode = os.system(cmd)
-                if retcode > 0:
-                    print("Error extracting spectrum for " + ",".join(stds))
-            # Science targets
-            if nobj > 0:
-                # Use forced psf for faint targets (eventually)
-                print("Extracting spectra for " + ",".join(sciobj))
-                cmd = "extract_star.py %s --auto %s --autobins 6" \
-                      % (datestr, ",".join(sciobj))
-                print(cmd)
-                retcode = os.system(cmd)
-                if retcode > 0:
-                    print("Error extracting spectrum for " + ",".join(sciobj))
 
     return ncp, copied
     # END: cpsci
@@ -496,7 +390,6 @@ def dosci(destdir='./', datestr=None):
     star observations, process them as well.
 
     Args:
-        srcdir (str): source directory (typically in /scr2/sedm/raw)
         destdir (str): destination directory (typically in /scr2/sedm/redux)
         datestr (str): YYYYMMDD date string
 
@@ -507,9 +400,7 @@ def dosci(destdir='./', datestr=None):
 
     # Record copies and standard star observations
     ncp = 0
-    nstd = 0
     copied = []
-    stds = []
     # Get list of source files in destination directory
     srcfiles = sorted(glob.glob(os.path.join(destdir, 'crr_b_ifu*.fits')))
     # Loop over source files
@@ -520,7 +411,6 @@ def dosci(destdir='./', datestr=None):
         proced = glob.glob(os.path.join(destdir, procfn))
         # Is our source file processed?
         if len(proced) == 0:
-            # has it been previously processed?
             # Read FITS header
             ff = pf.open(f)
             hdr = ff[0].header
@@ -555,15 +445,18 @@ def dosci(destdir='./', datestr=None):
                     retcode = os.system(cmd)
                     if retcode > 0:
                         print("Error extracting std star spectra for " + fn)
-                        badfn = "spec_auto_notfluxcal_" +fn.split('.')[0] + "_failed.fits"
+                        badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + \
+                                "_failed.fits"
                         cmd = "touch %s" % badfn
                         retcode = os.system(cmd)
                     else:
-                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn.split('.')[0])
+                        cmd = "pysedm_report.py %s --contains %s --slack" % \
+                              (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
-                            print("Error running report for " + fn.split('.')[0])
+                            print("Error running report for " +
+                                  fn.split('.')[0])
                 else:
                     # Use forced psf for faint targets
                     print("Extracting object spectra for " + fn)
@@ -573,7 +466,8 @@ def dosci(destdir='./', datestr=None):
                     retcode = os.system(cmd)
                     if retcode > 0:
                         print("Error extracting object spectrum for " + fn)
-                        badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + "_failed.fits"
+                        badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + \
+                                "_failed.fits"
                         cmd = "touch %s" % badfn
                         retcode = os.system(cmd)
                     else:
@@ -583,11 +477,13 @@ def dosci(destdir='./', datestr=None):
                         retcode = os.system(cmd)
                         if retcode > 0:
                             print("Error running SNID")
-                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn.split('.')[0])
+                        cmd = "pysedm_report.py %s --contains %s --slack" % \
+                              (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
-                            print("Error running report for " + fn.split('.')[0])
+                            print("Error running report for " +
+                                  fn.split('.')[0])
     return ncp, copied
     # END: dosci
 
@@ -1133,14 +1029,17 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
             # Record starting time for new file processing
             start_time = time.time()
             if piggyback:
-                ncp, copied = dosci(outdir, datestr=cur_date_str)
+                nsci, science = dosci(outdir, datestr=cur_date_str)
+                ncp = nsci
             else:
                 ncp, copied = cpsci(srcdir, outdir, oldcals=oldcals,
                                     datestr=cur_date_str)
+                nsci, science = dosci(outdir, datestr=cur_date_str)
             # We copied some new ones so report processing time
             if ncp > 0:
                 proc_time = int(time.time() - start_time)
-                print("%d new ifu images processed in %d s" % (ncp, proc_time))
+                print("%d new ifu images copied and %d processed in %d s" %
+                      (ncp, nsci, proc_time))
                 sys.stdout.flush()
                 nnc = 0
             else:
