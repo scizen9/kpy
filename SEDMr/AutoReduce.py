@@ -555,6 +555,12 @@ def dosci(destdir='./', datestr=None):
                         badfn = "spec_auto_notfluxcal_" +fn.split('.')[0] + "_failed.fits"
                         cmd = "touch %s" % badfn
                         retcode = os.system(cmd)
+                    else:
+                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn)
+                        print(cmd)
+                        retcode = os.system(cmd)
+                        if retcode > 0:
+                            print("Error running report for " + fn)
                 else:
                     # Use forced psf for faint targets
                     print("Extracting object spectra for " + fn)
@@ -575,6 +581,7 @@ def dosci(destdir='./', datestr=None):
                         if retcode > 0:
                             print("Error running SNID")
                         cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn)
+                        print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
                             print("Error running report for " +fn)
