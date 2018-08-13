@@ -15,7 +15,7 @@ def report():
           os.getcwd().split('/')[-1])
 
     print("Time     Object                    Exptime Air "
-          "     Allocation         Type Subtype  z         Rlap")
+          "     Allocation          Type Subtype  z           Rlap")
     for f in flist:
         # Get object name
         objname = f.split('_')[-1].split('.')[0]
@@ -77,7 +77,7 @@ def report():
             if "STD" in f:
                 ctype = " STD"
 
-        print("%8s %-25s %7s %5s  %12s  %12s %6s %-9s  %6s" %
+        print("%8s %-25s %7s %5s  %12s  %12s  %6s %-9s  %6s" %
               (tstr, objname, expt, air, prid, ctype, stype, zmch, rlap))
 
 
