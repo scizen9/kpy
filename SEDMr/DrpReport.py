@@ -15,7 +15,7 @@ def report():
           os.getcwd().split('/')[-1])
 
     print("Time     Object                    Exptime Air "
-          "     Allocation              Type Subtype  z         Rlap")
+          "     Allocation         Type Subtype  z         Rlap")
     for f in flist:
         # Get object name
         objname = f.split('_')[-1].split('.')[0]
