@@ -14,13 +14,13 @@ def report():
     print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
           os.getcwd().split('/')[-1])
 
-    print("Time     Object                    Exptime Air    Flxcal"
+    print("UT       Object                    Exptime Air    Flxcal"
           "   Allocation          Type Subtype  z           Rlap")
     for f in flist:
         # Get object name
         objname = f.split('_')[-1].split('.')[0]
         # Get time string
-        tstr = '_'.join(f.split('_')[-4:-1])
+        tstr = ':'.join(f.split('_')[-4:-1])
         # check the ascii spectrum file for SNID data
         with open(f, "r") as sfl:
             lines = sfl.readlines()
