@@ -14,7 +14,7 @@ def report():
     print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
           os.getcwd().split('/')[-1])
 
-    print("Time     Object                    Exptime Air "
+    print("Time     Object                    Exptime Air  Flxcal"
           "     Allocation          Type Subtype  z           Rlap")
     for f in flist:
         # Get object name
@@ -77,8 +77,8 @@ def report():
             if "STD" in f:
                 ctype = " STD"
 
-        print("%8s %-25s %7s %5s  %12s  %12s  %6s %-9s  %6s" %
-              (tstr, objname, expt, air, prid, ctype, stype, zmch, rlap))
+        print("%8s %-25s %7s %5s  %6s %12s  %12s  %6s %-9s  %6s" %
+              (tstr, objname, expt, air, flxcal, prid, ctype, stype, zmch, rlap))
 
 
 if __name__ == '__main__':
