@@ -14,11 +14,13 @@ def report():
     print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
           os.getcwd().split('/')[-1])
 
-    print("Object                     Exptime Airmass "
+    print("Object                    Exptime Air "
           "   Allocation  Type      Subtype  z         Rlap")
     for f in flist:
         # Get object name
         objname = f.split('_')[-1].split('.')[0]
+        # Get time string
+        tstr = '_'.join(f.split('_')[-4:-1])
         # check the ascii spectrum file for SNID data
         with open(f, "r") as sfl:
             lines = sfl.readlines()
@@ -75,8 +77,8 @@ def report():
             if "STD" in f:
                 ctype = " STD"
 
-        print("%-25s %7s %5s  %9s  %12s %6s %-9s  %6s" %
-              (objname, expt, air, prid, ctype, stype, zmch, rlap))
+        print("%8s %-25s %7s %5s  %12s  %12s %6s %-9s  %6s" %
+              (tstr, objname, expt, air, prid, ctype, stype, zmch, rlap))
 
 
 if __name__ == '__main__':
