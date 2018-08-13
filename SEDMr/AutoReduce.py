@@ -484,6 +484,11 @@ def dosci(destdir='./', datestr=None):
                         if retcode > 0:
                             print("Error running report for " +
                                   fn.split('.')[0])
+                        # Upload spectrum to marshal
+                        cmd = "make ztfupload"
+                        retcode = os.system(cmd)
+                        if retcode > 0:
+                            print("Error uploading spectra to marshal")
     return ncp, copied
     # END: dosci
 
@@ -1060,6 +1065,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                     print("Time to wait until we have a new raw directory")
                     doit = False
                     # Normal termination
+                    os.system("make report")
                     ret = True
                 else:
                     print("No new image for %d minutes but UT = %02d/%02d "
