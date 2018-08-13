@@ -53,24 +53,27 @@ def cube_ready(caldir='./', cur_date_str=None):
 
     # Files to look for
     if cur_date_str is None:
-        tmf = 'TraceMatch_WithMasks.pkl'
+        tmf = 'TraceMatch.pkl'
+        tmmf = 'TraceMatch_WithMasks.pkl'
         hgf = 'HexaGrid.pkl'
         wsf = 'WaveSolution.pkl'
         fff = 'Flat.fits'
     else:
-        tmf = cur_date_str + '_TraceMatch_WithMasks.pkl'
+        tmf = cur_date_str + '_TraceMatch.pkl'
+        tmmf = cur_date_str + '_TraceMatch_WithMasks.pkl'
         hgf = cur_date_str + '_HexaGrid.pkl'
         wsf = cur_date_str + '_WaveSolution.pkl'
         fff = cur_date_str + '_Flat.fits'
 
     # Do we have all the calibration files?
     ft = os.path.exists(os.path.join(caldir, tmf))
+    ftm = os.path.exists(os.path.join(caldir, tmmf))
     fg = os.path.exists(os.path.join(caldir, hgf))
     fw = os.path.exists(os.path.join(caldir, wsf))
     ff = os.path.exists(os.path.join(caldir, fff))
-    print("Cals ready?: trace: %d, grid: %d, wave: %d, flat: %d" %
-          (ft, fg, fw, ff))
-    if ft and fg and fw and ff:
+    print("Cals ready?: trace: %d, trace/mask: %d, grid: %d, wave: %d, flat: %d" %
+          (ft, ftm, fg, fw, ff))
+    if ft and ftm and fg and fw and ff:
         ret = True
 
     return ret
