@@ -556,11 +556,11 @@ def dosci(destdir='./', datestr=None):
                         cmd = "touch %s" % badfn
                         retcode = os.system(cmd)
                     else:
-                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn)
+                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
-                            print("Error running report for " + fn)
+                            print("Error running report for " + fn.split('.')[0])
                 else:
                     # Use forced psf for faint targets
                     print("Extracting object spectra for " + fn)
@@ -580,11 +580,11 @@ def dosci(destdir='./', datestr=None):
                         retcode = os.system(cmd)
                         if retcode > 0:
                             print("Error running SNID")
-                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn)
+                        cmd = "pysedm_report.py %s --contains %s --slack" % (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
-                            print("Error running report for " +fn)
+                            print("Error running report for " + fn.split('.')[0])
     return ncp, copied
     # END: dosci
 
