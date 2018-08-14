@@ -4,7 +4,7 @@ import time
 
 
 def report():
-    """Generate DRP report using output sp_<object>.npy files"""
+    """Generate DRP report using output spec_*.txt files"""
 
     flist = glob.glob("spec_*.txt")
     flist.sort()

@@ -450,10 +450,12 @@ def parse_ztf_by_dir(target_dir, upfil=None):
     files += glob.glob('%sztf*.txt' % target_dir)
     files += glob.glob('%sspec_*ZTF*.txt' % target_dir)
 
+    started = os.path.exists(os.path.join(target_dir, "report_ztf.txt"))
     out = open(target_dir + "report_ztf.txt", "a")
-    out.write("ZTF Upload report for %s generated on %s\n\n" %
-              (target_dir.split('/')[-2],
-               datetime.datetime.now().strftime("%c")))
+    if not started:
+        out.write("\nZTF Upload report for %s started on %s\n\n" %
+                  (target_dir.split('/')[-2],
+                   datetime.datetime.now().strftime("%c")))
     pr = True
     for fi in files:
         # Has it already been uploaded?
