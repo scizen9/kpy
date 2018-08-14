@@ -601,7 +601,7 @@ def find_recent_fluxcal(redd, fname, destdir):
     ret = False
     # Make sure the file doesn't already exist in destdir
     local_file = glob.glob(os.path.join(destdir, fname))
-    if len(local_file) == 1:
+    if len(local_file) >= 1:
         print("%s already exists in %s" % (fname, destdir))
         ret = True
     # Search in redd for file
@@ -613,7 +613,7 @@ def find_recent_fluxcal(redd, fname, destdir):
         # Go back in reduced dir list until we find our file
         for d in reversed(redlist):
             src = glob.glob(os.path.join(d, fname))
-            if len(src) == 1:
+            if len(src) >= 1:
                 try:
                     newfile = os.path.join(destdir, src[0].split('/')[-1])
                     os.symlink(src[0], newfile)

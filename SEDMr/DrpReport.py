@@ -14,7 +14,7 @@ def report():
     print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
           os.getcwd().split('/')[-1])
 
-    print("UT       Object                    Exptime Air    Flxcal"
+    print("UTStart  Object                    Exptime Air    Flxcal"
           "   Allocation          Type Subtype  z           Rlap")
     for f in flist:
         # Get object name
