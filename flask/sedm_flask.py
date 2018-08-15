@@ -185,6 +185,7 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, filetype='spec'):
 
                 imdir, imname = os.path.split(path)
                 imname = imname.split(".")[0]
+                imname = imname.split("ifu")[-1]
 
                 if filetype=='spec' and file_exists(path.replace(".png", ".pdf")):
                     impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
@@ -264,11 +265,10 @@ def data_access(instrument):
 
         if not reduxfiles is None:
 
-            spec_files = [i[0].endswith(".txt") for i in reduxfiles.values ]
-            spec_files.sort()
-            spec_files = np.array(spec_files)
+            #Make the mask to obtain the text files from all the returned files.
+            spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
 
-            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0].split("ifu")[-1]) for i in reduxfiles[spec_files].values]
             files_table.sort()
 
             images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
