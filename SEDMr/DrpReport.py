@@ -18,9 +18,13 @@ def report():
           "   Allocation          Type Subtype  z           Rlap")
     for f in flist:
         # Get object name
-        objname = f.split('_')[-1].split('.')[0]
+        tname = f.split('ifu')[-1].split('_')[4:]
+        if len(tname) > 1:
+            objname = '_'.join(tname).split('.txt')[0]
+        else:
+            objname = tname[0].split('.txt')[0]
         # Get time string
-        tstr = ':'.join(f.split('_')[-4:-1])
+        tstr = ':'.join(f.split('ifu')[-1].split('_')[1:4])
         # check the ascii spectrum file for SNID data
         with open(f, "r") as sfl:
             lines = sfl.readlines()
