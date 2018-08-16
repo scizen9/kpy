@@ -670,7 +670,7 @@ def get_allocation_stats(user_id, inidate=None, enddate=None):
     data = {'allocations' : alloc_names}
 
     for cat in category:
-        data[cat] = df[cat]
+        data[cat] = df.fillna(0)[cat]
 
     return data
 
