@@ -378,9 +378,7 @@ def weather_stats():
                 message = message + "Weather statistics for selected day: %s"%(mydate)
                 script, div = components(stats_plot)
 
-    if mydate == None:
-        vscript, vdiv = "", ""
-    else:
+    if flask_login.current_user.is_authenticated and mydate != None:
         inidate = datetime.datetime(year=int(mydate[:4]), month=int(mydate[4:6]), day=int(mydate[6:8]), hour=12)
         request_query = ("""SELECT a.designator, o.name, o.ra, o.dec, r.priority, r.lastmodified
                             FROM request r, object o, allocation a
@@ -392,6 +390,8 @@ def weather_stats():
         req = pd.DataFrame(db.execute_sql(request_query), columns=['alloc', 'name', 'ra', 'dec', 'priority', 'endobs'])
         visibility_plot = stats_web.plot_visibility(req['ra'], req['dec'], req['name'], req['alloc'], req['priority'], req['endobs'], date=mydate)
         vscript, vdiv = components(visibility_plot)
+    else:
+        vscript, vdiv = "", ""
 
     return render_template('header.html', current_user=flask_login.current_user) + \
             render_template('weather_stats.html', script=script, div=div, vscript=vscript, vdiv=vdiv, message=message) + \
@@ -447,7 +447,8 @@ def visibility():
         enddate = datetime.datetime.utcnow() + datetime.timedelta(days=1)
         inidate = datetime.datetime.utcnow() - datetime.timedelta(days=7, hours=8)
 
-        dfreq = model.get_requests_for_user(flask_login.current_user.id, inidate, enddate)
+        dfreq = model.get_requests_for_user('SEDM_admin', inidate, enddate)
+        allowed_allocations = model.get_allocations_user(flask_login.current_user.id)
 
 
         # organize requests into dataframes by whether they are completed or not
@@ -462,7 +463,9 @@ def visibility():
         request_tables = [HTML(active.to_html(escape=False, classes='table', index=False))]
         request_titles = ['Active Requests for the last 7 days']
 
-        visibility_plot = stats_web.plot_visibility(active['RA'], active['DEC'], active['object'], active['allocation'], active['priority'])
+        visibility_plot = stats_web.plot_visibility(active['RA'], active['DEC'], 
+                             active['object'], active['allocation'], active['priority'],
+                             allowed_allocs=allowed_allocations['allocation'])
         script, div = components(visibility_plot)
 
     else:  # if there is not user, set the lists as empty
