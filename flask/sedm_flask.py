@@ -596,7 +596,8 @@ def manage_user():
     elif 'add_group' in flask.request.form :
         username = form2.username.data
         #username.replace("'", "").replace('"', '')
-        u = model.get_info_user(username)#'"{0}"'.format(username))
+        #u = model.get_info_user(username)#'"{0}"'.format(username))
+        u = model.get_info_user('"{0}"'.format(username))
         message = u["message"]
 
         g = flask.request.form['new_groups']
@@ -607,7 +608,8 @@ def manage_user():
 
         username = form2.username.data
         #username.replace("'", "").replace('"', '')
-        u = model.get_info_user(username)#'"{0}"'.format(username))
+        #u = model.get_info_user(username)#'"{0}"'.format(username))
+        u = model.get_info_user('"{0}"'.format(username))
         message = u["message"]
         g = flask.request.form['old_groups']
         model.remove_group(u["id"], g)
@@ -615,7 +617,8 @@ def manage_user():
 
     elif 'modify_user' in flask.request.form and form2.validate_on_submit():
         username = form2.username.data
-        u = model.get_info_user(username) #'"{0}"'.format(form2.username.data))
+        u = model.get_info_user('"{0}"'.format(form2.username.data))
+        #u = model.get_info_user(username) #'"{0}"'.format(form2.username.data))
         message = u["message"]
 
         name = form2.name.data

@@ -124,7 +124,7 @@
                 {% endif %}
                 {% if current_user.is_authenticated %}
                     <li><a href="/objects">Objects</a></li>
-                    {% if current_user.name=='SEDM_admin' %}
+                    {% if (current_user.name=='SEDM_admin' or current_user.name=='SEDmCzar') %}
                         <li><a href="/request">Request</a></li>
                     {% endif %}
                     <li><a href="/project_stats">Project Statistics</a></li>
