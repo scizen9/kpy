@@ -185,6 +185,7 @@ def create_gallery(imagelist, mydate, ncols=6, width=80, filetype='spec'):
 
                 imdir, imname = os.path.split(path)
                 imname = imname.split(".")[0]
+                imname = imname.split("ifu")[-1]
 
                 if filetype=='spec' and file_exists(path.replace(".png", ".pdf")):
                     impathlink = flask.url_for('data_static', filename=path.replace(".png", ".pdf"))
@@ -264,11 +265,15 @@ def data_access(instrument):
 
         if not reduxfiles is None:
 
+            #Make the mask to obtain the text files from all the returned files.
             spec_files = np.array([i[0].endswith(".txt") for i in reduxfiles.values ])
-            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0]) for i in reduxfiles[spec_files].values]
+
+            files_table = [("/data/%s/%s"%(mydate,i[0]), i[0].split("ifu")[-1]) for i in reduxfiles[spec_files].values]
             files_table.sort()
+
             images = [i[0] for i in reduxfiles.values if i[0].endswith(".png")]
             images.sort()
+
             gallery = create_gallery(images, mydate, ncols=2, width=100, filetype='spec')
 
 
@@ -1811,7 +1816,7 @@ def show_objects(ident):
     req = db.execute_sql(request_query)
     # generate a dataframe, filter for requests that weren't canceled or expired
     req_data = pd.DataFrame(req, columns=['Requester', 'Allocation', 'Start Date', 'End Date', 'Priority', 'Status'])
-    req_data = req_data.loc[req_data.Status.isin(['PENDING', 'ACTIVE', 'COMPLETED', 'REDUCED'])]
+    req_data = req_data.loc[req_data.Status.isin(['PENDING', 'ACTIVE', 'COMPLETED', 'REDUCED', 'EXPIRED'])]
     req_table = [HTML(req_data.to_html(escape=False, classes='complete', index=False))]
     req_titles = ['', 'Requests']
 

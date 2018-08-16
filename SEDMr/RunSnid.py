@@ -82,9 +82,9 @@ def parse_and_fill(spec, snidoutput):
                 pars["bestMatchSubtype"] = '-'
             pars["bestMatchRedshift"] = float(lines[best_match_line].split()[5])
 
-    print ("SNID RESULTS: Type=%(bestMatchType)s, Rlap=%(rlap).2f, "
-           "Age=%(agem).2f+-%(agemerr)s day, "
-           "z=%(zmed).4f+-%(zmederr).4f" % pars)
+    print("SNID RESULTS: Type=%(bestMatchType)s, Rlap=%(rlap).2f, "
+          "Age=%(agem).2f+-%(agemerr)s day, "
+          "z=%(zmed).4f+-%(zmederr).4f" % pars)
 
     with open(spec, "r") as specIn:
         spec_lines = specIn.readlines()
@@ -167,7 +167,7 @@ def run_snid(spec_file=None, overwrite=False):
 
         if q < 3 and (len(clas) <= 0 or overwrite):
             # If we are here, we run the classification with snid
-            cm = "snid wmin=4500 wmax=9500 skyclip=1 medlen=20 aband=1" \
+            cm = "snid wmin=4000 wmax=9500 skyclip=1 medlen=20 aband=1" \
                  " rlapmin=4 inter=0 plot=2 %s" % fl
             print(cm)
             try:

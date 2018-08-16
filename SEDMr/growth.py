@@ -450,30 +450,39 @@ def parse_ztf_by_dir(target_dir, upfil=None):
     files += glob.glob('%sztf*.txt' % target_dir)
     files += glob.glob('%sspec_*ZTF*.txt' % target_dir)
 
+    started = os.path.exists(os.path.join(target_dir, "report_ztf.txt"))
     out = open(target_dir + "report_ztf.txt", "a")
-    out.write("ZTF Upload report for %s generated on %s\n\n" %
-              (target_dir.split('/')[-2],
-               datetime.datetime.now().strftime("%c")))
+    if not started:
+        out.write("\nZTF Upload report for %s started on %s\n\n" %
+                  (target_dir.split('/')[-2],
+                   datetime.datetime.now().strftime("%c")))
     pr = True
     for fi in files:
+        # Has it already been uploaded?
+        if os.path.exists(fi.split('.')[0] + ".upl"):
+            continue
+        # Is it flux calibrated?
         if "notfluxcal" in fi:
             continue
+        # Extract object name
         if "spec" in fi:
             objname = os.path.basename(fi).split('_')[-1].split('.')[0]
         else:
             objname = os.path.basename(fi).split('_')[0]
-        # upload only one file
+        # Are we uploading only one file?
         if upfil is not None:
             # if this is not the file, skip
             if upfil not in fi:
                 continue
-        # upload
+        # Upload
         r, spec, stat, phot = update_target_by_object(objname,
                                                       add_status=True,
                                                       status='Completed',
                                                       add_spectra=True,
                                                       spectra_file=fi,
                                                       pull_requests=pr)
+        # Mark as uploaded
+        os.system("touch " + fi.split('.')[0] + ".upl")
         # Only need to pull requests the first time
         pr = False
         # log upload

@@ -206,13 +206,15 @@ def search_redux_files(mydate = None, user=None):
     #If the date is specified, we will try to located the right file.
     #None will be returned if it does not exist.
     if ( not mydate is None):
-        s = os.path.join("/scr2/sedmdrp/redux/", mydate, "*SEDM.txt")
-        s2 = os.path.join("/scr2/sedmdrp/redux/", mydate, "image*png")
-        s3 = os.path.join("/scr2/sedmdrp/redux/", mydate, "*_SEDM*png")
-        s4 = os.path.join("/scr2/sedmdrp/redux/", mydate, "cube*png")
-        s5 = os.path.join("/scr2/sedmdrp/redux/", mydate, "Standard_Correction.png")
-        
-        files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4) + glob.glob(s5)
+
+        basedir = os.path.join("/scr2/sedmdrp/redux/", mydate)
+        patterns = ["*SEDM.txt", "image*png", "*_SEDM*png", "cube*png", "Standard_Correction.png", \
+            "spec_*.png", "spec_*.txt", "ifu_spaxels*.png", "*flat3d.png", "*wavesolution_dispersionmap.png"]
+
+        files = []
+
+        for p in patterns:
+            files.extend(glob.glob(os.path.join(basedir, p)))
 
         if len(files) == 0:
             files = None
@@ -225,18 +227,22 @@ def search_redux_files(mydate = None, user=None):
         while i < 100:
             newdate = curdate - datetime.timedelta(i)
             newdatedir = "%d%02d%02d"%(newdate.year, newdate.month, newdate.day)
-            s = os.path.join("/scr2/sedmdrp/redux", newdatedir, "*SEDM.txt")
-            s2= os.path.join("/scr2/sedmdrp/redux/", newdatedir, "image*png")
-            s3 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "*_SEDM*png")
-            s4 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "cube*png")
-            s5 = os.path.join("/scr2/sedmdrp/redux/", newdatedir, "Standard_Correction.png")
+            basedir = os.path.join("/scr2/sedmdrp/redux/", newdatedir)
 
-            files = glob.glob(s) + glob.glob(s2) + glob.glob(s3) + glob.glob(s4) + glob.glob(s5)
+            patterns = ["*SEDM.txt", "image*png", "*_SEDM*png", "cube*png", "Standard_Correction.png", \
+                "spec_*.png", "spec_*.txt", "ifu_spaxels*.png", "*flat3d.png", "*wavesolution_dispersionmap.png"]
+
+            files = []
+
+            for p in patterns:
+                files.extend(glob.glob(os.path.join(basedir, p)))
+
             if len(files) > 0:
                 mydate = newdatedir
                 break
 
             i = i+1
+
 
     if not files is None:
         filenames = [os.path.basename(f) for f in files]
@@ -664,7 +670,7 @@ def get_allocation_stats(user_id, inidate=None, enddate=None):
     data = {'allocations' : alloc_names}
 
     for cat in category:
-        data[cat] = df[cat]
+        data[cat] = df.fillna(0)[cat]
 
     return data
 

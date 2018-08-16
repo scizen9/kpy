@@ -1,132 +1,88 @@
 import glob
 import os
 import time
-import numpy as np
 
 
 def report():
-    """Generate DRP report using output sp_<object>.npy files"""
+    """Generate DRP report using output spec_*.txt files"""
 
-    flist = [f for f in glob.glob("sp_*.npy")
-             if "_A_" not in f and "_B_" not in f]
+    flist = glob.glob("spec_*.txt")
     flist.sort()
     print("\nReport generated on %s" % time.strftime("%c"))
-    print("\nSEDM DRP run in %s\nFound %d sp_*.npy files" %
+    print("\nSEDM DRP run in %s\nFound %d spec_*.txt files" %
           (os.getcwd(), len(flist)))
     print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
           os.getcwd().split('/')[-1])
-    totexpt = 0.
-    lostexp = 0.
-    print("Object                     Obs Method  Exptime Qual Skysb Airmass "
-          "   Reducer    Allocation  Type      z         Rlap")
+
+    print("UTStart  Object                    Exptime Air    Flxcal"
+          "   Allocation          Type Subtype  z           Rlap")
     for f in flist:
-        if '_A_' in f or '_B_' in f:
-            continue
-        # trim the .npy off the end
-        objname = '.'.join(f.split('.')[0:-1])
-        # check the ascii spectrum file for a type
-        sfile = objname[3:] + "_SEDM.txt"
-        ctype = ""
-        zmch = ""
-        rlap = ""
-        if os.path.exists(sfile):
-            with open(sfile, "r") as sfl:
-                lines = sfl.readlines()
-                # check for previous classification
-                clas = [li for li in lines if "TYPE" in li]
-                ctype = ""
-                if len(clas) > 0:
-                    for cl in clas:
-                        ctype += (" %s" % cl.split()[-1])
-                # get redshift
-                zmch = [li for li in lines if "REDSHIFT" in li]
-                if len(zmch) > 0:
-                    zmch = ("%.4f" % float(zmch[0].split()[-1]))
-                else:
-                    zmch = ""
-                # get rlap
-                rlap = [li for li in lines if "RLAP" in li]
-                if len(rlap) > 0:
-                    rlap = ("%.2f" % float(rlap[0].split()[-1]))
-                else:
-                    rlap = ""
-                sfl.close()
+        # Get object name
+        tname = f.split('ifu')[-1].split('_')[4:]
+        if len(tname) > 1:
+            objname = '_'.join(tname).split('.txt')[0]
+        else:
+            objname = tname[0].split('.txt')[0]
+        # Get time string
+        tstr = ':'.join(f.split('ifu')[-1].split('_')[1:4])
+        # check the ascii spectrum file for SNID data
+        with open(f, "r") as sfl:
+            lines = sfl.readlines()
+            # check for SNID classification
+            clas = [li for li in lines if "SNIDMATCHTYPE" in li]
+            ctype = ""
+            if len(clas) > 0:
+                for cl in clas:
+                    ctype += (" %s" % cl.split()[-1])
+            # check for SNID classification
+            clas = [li for li in lines if "SNIDMATCHSUBTYPE" in li]
+            stype = ""
+            if len(clas) > 0:
+                for cl in clas:
+                    stype += (" %s" % cl.split()[-1])
+            # get redshift
+            zmch = [li for li in lines if "REDSHIFT" in li]
+            if len(zmch) > 0:
+                zmch = ("%.4f" % float(zmch[0].split()[-1]))
+            else:
+                zmch = ""
+            # get rlap
+            rlap = [li for li in lines if "RLAP" in li]
+            if len(rlap) > 0:
+                rlap = ("%.2f" % float(rlap[0].split()[-1]))
+            else:
+                rlap = ""
+            # get flux calibration
+            flxcal = [li for li in lines if "FLUXCAL" in li]
+            if len(flxcal) > 0:
+                flxcal = flxcal[0].split()[-1]
+            else:
+                flxcal = "False"
+            # get exposure time
+            expt = [li for li in lines if "EXPTIME" in li]
+            if len(expt) > 0:
+                expt = ("%.1f" % float(expt[0].split()[-1]))
+            else:
+                expt = "-"
+            # get airmass
+            air = [li for li in lines if "AIRMASS" in li]
+            if len(air) > 0:
+                air = ("%.3f" % float(air[0].split()[-1]))
+            else:
+                air = "-"
+            # get program ID
+            prid = [li for li in lines if "P60PRID" in li]
+            if len(prid) > 0:
+                prid = prid[0].split()[-1]
+            else:
+                prid = "-"
+            sfl.close()
         if ctype == "":
             if "STD" in f:
                 ctype = " STD"
 
-        # load the spectrum file
-        sp = np.load(f)[0]
-        if 'quality' in sp:
-            qual = sp['quality']
-        else:
-            qual = 0
-        if 'reducer' in sp:
-            reducer = sp['reducer']
-        else:
-            reducer = '-'
-        if 'sky_subtraction' in sp:
-            skysub = sp['sky_subtraction']
-        else:
-            skysub = 1
-        if '_obs' in f:
-            if len(objname.split('_')) > 2:
-                obs = objname.split('_')[-1]
-            elif len(objname.split('_')) == 2:
-                obs = objname.split('_')[-1]
-            else:
-                obs = "obs1"
-        else:
-            obs = "obs1"
-        obs = obs.split('s')[-1]
-        if 'object_spaxel_ids_A' in sp:
-            meth = "A / B"
-        else:
-            meth = "Single"
-
-        if 'exptime' in sp:
-            expt = sp['exptime']
-            if "A / B" in meth:
-                expt *= 2.
-        else:
-            expt = 0.
-        # get airmass
-        meta = sp['meta']
-        if 'airmass1' in meta:
-            air = meta['airmass1']
-            if 'airmass2' in meta:
-                air = (air + meta['airmass2']) / 2.
-        elif 'airmass' in meta:
-            air = meta['airmass']
-        else:
-            air = 0.
-        # get RQID
-        if 'header' in meta:
-            hdr = meta['header']
-            if 'P60PRID' in hdr:
-                rqid = hdr['P60PRID']
-            else:
-                rqid = 'None'
-        else:
-            rqid = 'None'
-
-        # Don't count bad objects
-        if qual < 3:
-            totexpt += expt
-        else:
-            lostexp += expt
-
-        if '_obs' in objname:
-            objname = "_".join(objname.split('_')[1:-1])
-        else:
-            objname = "_".join(objname.split('_')[1:])
-
-        print("%-25s %4s %6s  %7.1f %4d %5s  %5.3f   %9s  %12s %-9s  %6s  %6s" %
-              (objname, obs, meth, expt, qual, ("on" if skysub else "off"),
-               air, reducer, rqid, ctype, zmch, rlap))
-    print("\nTotal quality (1-3) science exposure time = %.1f s" % totexpt)
-    if lostexp > 0:
-        print("Total exposure time lost to bad targets = %.1f s\n" % lostexp)
+        print("%8s %-25s %7s %5s  %6s %12s  %12s  %6s %-9s  %6s" %
+              (tstr, objname, expt, air, flxcal, prid, ctype, stype, zmch, rlap))
 
 
 if __name__ == '__main__':
