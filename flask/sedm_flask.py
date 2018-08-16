@@ -388,7 +388,7 @@ def weather_stats():
                             ORDER BY r.lastmodified ASC;""".format(inidate - datetime.timedelta(days=1), inidate))
 
         req = pd.DataFrame(db.execute_sql(request_query), columns=['alloc', 'name', 'ra', 'dec', 'priority', 'endobs'])
-        visibility_plot = stats_web.plot_visibility(req['ra'], req['dec'], req['name'], req['alloc'], req['priority'], req['endobs'], date=mydate)
+        visibility_plot = stats_web.plot_visibility(req['ra'], req['dec'], req['name'], req['alloc'], req['priority'], req['endobs'], date=mydate, allowed_allocs=model.get_allocations_user(flask_login.current_user.id)['allocation'])
         vscript, vdiv = components(visibility_plot)
     else:
         vscript, vdiv = "", ""
@@ -447,9 +447,10 @@ def visibility():
         enddate = datetime.datetime.utcnow() + datetime.timedelta(days=1)
         inidate = datetime.datetime.utcnow() - datetime.timedelta(days=7, hours=8)
 
-        dfreq = model.get_requests_for_user('SEDM_admin', inidate, enddate)
+        all_dfreq = model.get_requests_for_user(2, inidate, enddate) # admin
         allowed_allocations = model.get_allocations_user(flask_login.current_user.id)
-
+        all_active = all_dfreq[(all_dfreq['status']=='PENDING') | (all_dfreq['status']=='ACTIVE')]
+        dfreq = all_dfreq[all_dfreq['allocation'].isin(allowed_allocations['allocation'])]
 
         # organize requests into dataframes by whether they are completed or not
         complete = dfreq[(dfreq['status']=='COMPLETED') | (dfreq['status']=='REDUCED')]
@@ -463,8 +464,8 @@ def visibility():
         request_tables = [HTML(active.to_html(escape=False, classes='table', index=False))]
         request_titles = ['Active Requests for the last 7 days']
 
-        visibility_plot = stats_web.plot_visibility(active['RA'], active['DEC'], 
-                             active['object'], active['allocation'], active['priority'],
+        visibility_plot = stats_web.plot_visibility(all_active['RA'], all_active['DEC'], 
+                             all_active['object'], all_active['allocation'], all_active['priority'],
                              allowed_allocs=allowed_allocations['allocation'])
         script, div = components(visibility_plot)
 

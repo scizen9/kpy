@@ -332,6 +332,8 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     priorities = np.array(priorities, dtype=np.int)
     allocs = np.asarray(allocs)
     names = np.asarray(names)
+    allowed_allocs = np.asarray(allowed_allocs)
+    allocs[~np.isin(allocs, allowed_allocs)] = 'other'
 
     p = figure(plot_width=700, plot_height=500, toolbar_location='above',
                y_range=(0, 90), y_axis_location="right")
@@ -411,7 +413,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         if val in allowed_allocs:
             alloc_color[val] = allocpalette[i % len(allocpalette)]
         else:
-            alloc_color[val] = 'black'
+            alloc_color[val] = 'lightgray'
         
     tooltipped = [] # things with tooltips
     tooltips = [('obj',        '@name'), # make it #name when we get to bokeh 0.13
@@ -438,10 +440,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
             legend = names[i]
             tooltips = tooltips[:4]
         else:
-            if allocs[i] in allowed_allocs:
-                legend = '{}'.format(allocs[i])
-            else:
-                legend = "other"
+            legend = '{}'.format(allocs[i])
             if endobs[0] != None: # plot that highlights observed part of the night
                 # full path of the night
                 dotted = p.line('times', 'alt', color=color, source=source, line_dash='2 2',
