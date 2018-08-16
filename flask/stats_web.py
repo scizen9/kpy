@@ -317,14 +317,16 @@ def plot_stats_allocation(data):
     return layout
 
 
-def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[None], exptime=2430, date=None):
+def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[None], 
+                    exptime=2430, date=None, allowed_allocs=[None]):
     ''' makes a visibility plot for one or many objects, highlighting observed patches if relevant
-    all arguments are arrays, even if they are of size 1
-    priorities:   integers
-    obsd:         list/array of observed objects, should match 'names'
-    endobs:       'YYYY-MM-DDTHH:MM:SS.ssssssssss' (as outputed from sql query)
-    exptime:      in seconds
-    date:         YYYYMMDD, conveniently matching the folder name'''
+    all these arguments are lists/arrays/iterables, even if they are of size 1
+        priorities:   integers
+        obsd:         list/array of observed objects, should match 'names'
+        endobs:       'YYYY-MM-DDTHH:MM:SS.ssssssssss' (as outputed from sql query) of the time the observation ended
+        exptime:      in seconds
+    date:             YYYYMMDD, conveniently matching the folder names, of midnight
+    allowed_allocs:   list of string allocation names visible to a user'''
     
     allocpalette = Paired[12][1::2] + Paired[12][::2]
     priorities = np.array(priorities, dtype=np.int)
@@ -346,11 +348,8 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     midnight = time - utcoffset # 7am local time of correct date, midnight UTC
 
     if endobs[0] != None:
-        print endobs[0]
         endobs = Time(np.array(endobs, dtype='|S32'), format='isot')
-        print endobs[0]
         endobs.format = u'datetime'
-        print endobs[0], 'finished prep'
 
     delta_midnight = np.linspace(-8, 8, 500) * u.hour
     t = midnight + delta_midnight
@@ -400,7 +399,7 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     #objs = SkyCoord(np.array(ras,  dtype=np.float), 
     #                np.array(decs, dtype=np.float), unit="deg")
     
-    approx_midnight = int(Time.now().jd - .5) + .5 + 7./24
+    approx_midnight = int(Time.now().jd - .5) + .5 - utcoffset.value/24.
     palo_sin_lat = 0.549836545
     palo_cos_lat = 0.835272275
     palo_long = 243.1362
@@ -409,7 +408,10 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
     decs = np.array(decs, dtype=np.float)
     alloc_color = {}
     for i, val in enumerate(np.unique(allocs)):
-        alloc_color[val] = allocpalette[i % len(allocpalette)]
+        if val in allowed_allocs:
+            alloc_color[val] = allocpalette[i % len(allocpalette)]
+        else:
+            alloc_color[val] = 'black'
         
     tooltipped = [] # things with tooltips
     tooltips = [('obj',        '@name'), # make it #name when we get to bokeh 0.13
@@ -421,7 +423,6 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
         
     for i in np.array(allocs).argsort(): # go in order by alloc for an alphabetized legend
         color = alloc_color[allocs[i]]
-        #obj = objs[i].transform_to(frame)
         alt = 180 / np.pi * np.arcsin(palo_cos_lat * \
               np.cos(np.pi/180 * (palo_long - ras[i] + 15 * (18.697374558 + 24.06570982 * (delta_midnight.value/24. + approx_midnight - 2451545)))) * \
               np.cos(decs[i] * np.pi/180) + palo_sin_lat * np.sin(decs[i] * np.pi/180))
@@ -437,7 +438,10 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
             legend = names[i]
             tooltips = tooltips[:4]
         else:
-            legend = '{}'.format(allocs[i])
+            if allocs[i] in allowed_allocs:
+                legend = '{}'.format(allocs[i])
+            else:
+                legend = "other"
             if endobs[0] != None: # plot that highlights observed part of the night
                 # full path of the night
                 dotted = p.line('times', 'alt', color=color, source=source, line_dash='2 2',
@@ -454,8 +458,8 @@ def plot_visibility(ras, decs, names, allocs=[None], priorities=[5], endobs=[Non
                 
         line = p.line('times', 'alt', color=color, source=source, name=''.format(names[i]),
                       line_width=priorities[i], legend=legend)
-            
-        tooltipped.append(line)
+        if allocs[i] in allowed_allocs:
+            tooltipped.append(line)
     
     p.legend.click_policy = 'hide'
     p.legend.location = 'bottom_right'
