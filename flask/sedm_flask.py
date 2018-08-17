@@ -472,7 +472,7 @@ def pretty_req_table(df):
                .format({'object': '<a href="http://skipper.caltech.edu:8080/cgi-bin/growth/view_source.cgi?name={0}">{0}</a>',
                    'priority': '{:0f}', 'UPDATE': '<a href="{}">+</a>'})\
                .set_table_styles([{'text-align': 'left'}])\
-               .set_table_attributes('style="width:100%" class="dataframe table table-striped nowrap"')\
+               .set_table_attributes('style="width:100%" class="dataframe_fancy table table-striped nowrap"')\
                .set_table_styles(
                     [{'selector': '.row_heading',
                          'props': [('display', 'none')]},
