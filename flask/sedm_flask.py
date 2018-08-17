@@ -452,26 +452,32 @@ def pretty_req_table(df):
             -priority is an int, I don't know why it was ever a float
     '''
     
-    def highlight_set(row, color='red'):
+    def highlight_set(row, color='#ff9999'):
         '''makes 'RA' and 'DEC' fields highlighted if it won't get high when it's light out
         meant for tables with both 'RA' and 'DEC' columns
         '''
         attr = 'background-color: {}'.format(color)
         try:
-            if (row['RA'] < 270 and row['RA'] > 50) or row['DEC'] < 0 # TODO these are filler values
-                return [attr if i in ('RA', 'DEC') else '' for i in row.index.values]
+            if (row['RA'] < 220 and row['RA'] > 100):
+                return [attr if i in ('RA') else '' for i in row.index.values]
+            if row['DEC'] < 0: # TODO these are filler values
+                return [attr if i in ('DEC') else '' for i in row.index.values]
             else:
                 return ['' for i in row.index.values]
         except KeyError:
             return ['' for i in row.index.values]
     
     styled = df.style\
-               .apply(highlight_pos, axis=1)\
+               .apply(highlight_set, axis=1)\
                .format({'object': '<a href="http://skipper.caltech.edu:8080/cgi-bin/growth/view_source.cgi?name={0}">{0}</a>',
-                        'priority': '{:0f}')\
+                   'priority': '{:0f}', 'UPDATE': '<a href="{}">+</a>'})\
                .set_table_styles([{'text-align': 'left'}])\
-               .set_table_attributes('style="width:100%" class="table nowrap"')\
-               .hide_index()
+               .set_table_attributes('style="width:100%" class="dataframe table table-striped nowrap"')\
+               .set_table_styles(
+                    [{'selector': '.row_heading',
+                         'props': [('display', 'none')]},
+                     {'selector': '.blank.level0',
+                         'props': [('display', 'none')]}])
                
     return HTML(styled.render()) # unclear why this needs to go in a HTML() but I'm keeping it
     
@@ -498,7 +504,7 @@ def visibility():
 
 
         # generate the html and table titles
-        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False))]
+        request_tables = [pretty_req_table(active)]
         request_titles = ['Active Requests for the last 7 days']
 
         visibility_plot = stats_web.plot_visibility(all_active['RA'], all_active['DEC'], 
@@ -506,13 +512,13 @@ def visibility():
                              allowed_allocs=allowed_allocations['allocation'])
         script, div = components(visibility_plot)
 
-    else:  # if there is not user, set the lists as empty
+    else: # if there is not user, set the lists as empty
         return redirect(flask.url_for('index'))
 
-            #render_template('weather_stats.html', script=script, div=div, message=message) + \
+          #render_template('weather_stats.html', script=script, div=div, message=message) + \
     return render_template('header.html', current_user=flask_login.current_user) + \
-            render_template('requests_visibility.html', req_tables = request_tables, req_titles=request_titles, script=script, div=div) + \
-            render_template('footer.html')
+           render_template('requests_visibility.html', req_tables = request_tables, req_titles=request_titles, script=script, div=div) + \
+           render_template('footer.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
