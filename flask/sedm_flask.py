@@ -458,7 +458,7 @@ def pretty_req_table(df):
         '''
         attr = 'background-color: {}'.format(color)
         try:
-            if row['RA'] < 0 and row['DEC'] > 100 # TODO these are filler values
+            if (row['RA'] < 270 and row['RA'] > 50) or row['DEC'] < 0 # TODO these are filler values
                 return [attr if i in ('RA', 'DEC') else '' for i in row.index.values]
             else:
                 return ['' for i in row.index.values]
