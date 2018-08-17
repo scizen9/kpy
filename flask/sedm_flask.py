@@ -419,7 +419,7 @@ def index():
 
 
         # generate the html and table titles
-        request_tables = [HTML(active.to_html(escape=False, classes='table', index=False)), HTML(complete.to_html(escape=False, classes='table', index=False)), HTML(expired.to_html(escape=False, classes='table', index=False))]
+        request_tables = [pretty_req_table(i) for i in (active, complete, expired)]
         request_titles = ['', 'Active Requests for the last 7 days', 'Completed Requests in the last 7 days', 'Expired in the last 7 days']
         alloc_table = [HTML(ac.to_html(escape=False, classes='table table-striped', index=False, col_space=10))]
         alloc_titles = ['', 'Your Active Allocations']
@@ -438,6 +438,43 @@ def index():
             render_template('index.html', req_tables = request_tables, req_titles=request_titles, all_table = alloc_table, all_titles = alloc_titles, greeting=greeting, myimage=myimage) + \
             render_template('footer.html')
 
+def pretty_req_table(df):
+    '''
+    df: pandas dataframe
+        intended for tables of requests from get_requests_for_user, ie with columns:
+            ['allocation', 'object', 'RA', 'DEC', 'start date', 'end date', 'priority','status', 'lastmodified', 'UPDATE']
+        
+    returns: IPython HTML object
+        the html for df but with the following changes:
+            -if 'RA' and 'Dec' mean it won't rise tonight, both fields are red
+            -'name' column now has links to the growth marshal
+            -table width is 100%, which is important for the fancy tables to display right
+            -priority is an int, I don't know why it was ever a float
+    '''
+    
+    def highlight_set(row, color='red'):
+        '''makes 'RA' and 'DEC' fields highlighted if it won't get high when it's light out
+        meant for tables with both 'RA' and 'DEC' columns
+        '''
+        attr = 'background-color: {}'.format(color)
+        try:
+            if row['RA'] < 0 and row['DEC'] > 100 # TODO these are filler values
+                return [attr if i in ('RA', 'DEC') else '' for i in row.index.values]
+            else:
+                return ['' for i in row.index.values]
+        except KeyError:
+            return ['' for i in row.index.values]
+    
+    styled = df.style\
+               .apply(highlight_pos, axis=1)\
+               .format({'object': '<a href="http://skipper.caltech.edu:8080/cgi-bin/growth/view_source.cgi?name={0}">{0}</a>',
+                        'priority': '{:0f}')\
+               .set_table_styles([{'text-align': 'left'}])\
+               .set_table_attributes('style="width:100%" class="table nowrap"')\
+               .hide_index()
+               
+    return HTML(styled.render()) # unclear why this needs to go in a HTML() but I'm keeping it
+    
 @app.route('/visibility')
 def visibility():
     sys.stdout.flush()  # send any stdout to the logfile
