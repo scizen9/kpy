@@ -428,17 +428,20 @@ def dosci(destdir='./', datestr=None):
             # record action
             copied.append(fn)
             ncp += 1
-            # Build cube for each observation
-            print("Building cube for " + fn)
-            cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr, fn)
-            print(cmd)
-            retcode = os.system(cmd)
-            # Check results
-            if retcode > 0:
-                print("Error generating cube for " + fn)
-            else:
-                if 'STD-' in obj:
-                    # Use auto aperture for standard stars
+            # are we a standard star?
+            if 'STD-' in obj:
+                # Build cube for STD observation
+                print("Building STD cube for " + fn)
+                # Don't solve WCS for standards (always brightest in IFU)
+                cmd = "ccd_to_cube.py %s --build %s" % (
+                datestr, fn)
+                print(cmd)
+                retcode = os.system(cmd)
+                # Check results
+                if retcode > 0:
+                    print("Error generating cube for " + fn)
+                else:
+                    # Use auto psf aperture for standard stars
                     print("Extracting std star spectra for " + fn)
                     cmd = "extract_star.py %s --auto %s --std" % (datestr, fn)
                     print(cmd)
@@ -457,6 +460,17 @@ def dosci(destdir='./', datestr=None):
                         if retcode > 0:
                             print("Error running report for " +
                                   fn.split('.')[0])
+            else:
+                # Build cube for science observation
+                print("Building science cube for " + fn)
+                # Solve WCS for science targets
+                cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (
+                datestr, fn)
+                print(cmd)
+                retcode = os.system(cmd)
+                # Check results
+                if retcode > 0:
+                    print("Error generating cube for " + fn)
                 else:
                     # Use forced psf for faint targets
                     print("Extracting object spectra for " + fn)
