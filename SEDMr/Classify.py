@@ -86,10 +86,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
         """
 
-        Copies the output ascii spectra to the iPTF marshal
-
-        Checks to be sure spectra have quality > 3 and only
-        copies spectra for objects with "PTF" prefix.
+        Classifies the output ascii spectra
 
         Specify input directory with -d, or --specdir parameters.
         If none specified, use current date directory in /scr2/sedmdrp/redux/
@@ -97,7 +94,7 @@ if __name__ == '__main__':
         """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-d', '--specdir', type=str, dest="specdir",
-                        help='Directory with output PTF*_SEDM.txt files.',
+                        help='Directory with output spec_*.txt files.',
                         default=None)
     parser.add_argument('--overwrite', action="store_true", default=False,
                         help='Overwrite existing classification')
