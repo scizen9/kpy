@@ -224,8 +224,6 @@ def docp(src, dest, onsky=True, verbose=False):
     nstd = 0
     # Was a science object copied
     nobj = 0
-    # Was a ZTF object copied
-    nztf = 0
     # Check if dome conditions are not right
     if onsky and ('CLOSED' in dome or 'closed' in dome):
         if verbose:
@@ -233,7 +231,8 @@ def docp(src, dest, onsky=True, verbose=False):
     # All other conditions are OK
     else:
         # Skip test and Focus images
-        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj and 'Test' not in obj:
+        if 'test' not in obj and 'Focus:' not in obj and 'STOW' not in obj and \
+                'Test' not in obj:
             # Symlink to save disk space
             os.symlink(src, dest)
             if 'STD-' in obj:
@@ -242,8 +241,6 @@ def docp(src, dest, onsky=True, verbose=False):
             else:
                 nobj = 1
                 print('Target %s linked to %s' % (obj, dest))
-                if 'ZTF' in obj or 'ztf' in obj:
-                    nztf = 1
             ncp = 1
         # Report skipping and type
         else:
@@ -433,8 +430,7 @@ def dosci(destdir='./', datestr=None):
                 # Build cube for STD observation
                 print("Building STD cube for " + fn)
                 # Don't solve WCS for standards (always brightest in IFU)
-                cmd = "ccd_to_cube.py %s --build %s" % (
-                datestr, fn)
+                cmd = "ccd_to_cube.py %s --build %s" % (datestr, fn)
                 print(cmd)
                 retcode = os.system(cmd)
                 # Check results
@@ -451,7 +447,7 @@ def dosci(destdir='./', datestr=None):
                         badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + \
                                 "_failed.fits"
                         cmd = "touch %s" % badfn
-                        retcode = os.system(cmd)
+                        os.system(cmd)
                     else:
                         cmd = "pysedm_report.py %s --contains %s --slack" % \
                               (datestr, fn.split('.')[0])
@@ -464,8 +460,7 @@ def dosci(destdir='./', datestr=None):
                 # Build cube for science observation
                 print("Building science cube for " + fn)
                 # Solve WCS for science targets
-                cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (
-                datestr, fn)
+                cmd = "ccd_to_cube.py %s --build %s --solvewcs" % (datestr, fn)
                 print(cmd)
                 retcode = os.system(cmd)
                 # Check results
@@ -483,7 +478,7 @@ def dosci(destdir='./', datestr=None):
                         badfn = "spec_auto_notfluxcal_" + fn.split('.')[0] + \
                                 "_failed.fits"
                         cmd = "touch %s" % badfn
-                        retcode = os.system(cmd)
+                        os.system(cmd)
                     else:
                         print("Running SNID for " + fn)
                         cmd = "make classify"
@@ -692,7 +687,8 @@ def cpprecal(dirlist, destdir='./', fsize=8400960):
                 # Get OBJECT keyword
                 obj = hdr['OBJECT']
                 # Filter Calibs and avoid test images
-                if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
+                if 'Calib' in obj and 'of' in obj and 'test' not in obj and \
+                        'Test' not in obj:
                     # Copy cal images
                     imf = src.split('/')[-1]
                     destfil = os.path.join(destdir, imf)
@@ -787,7 +783,8 @@ def cpcal(srcdir, destdir='./', fsize=8400960):
                 obj = ''
             # Filter Calibs and avoid test images and be sure it is part of
             # a series.
-            if 'Calib' in obj and 'of' in obj and 'test' not in obj and 'Test' not in obj:
+            if 'Calib' in obj and 'of' in obj and 'test' not in obj and \
+                    'Test' not in obj:
                 exptime = hdr['EXPTIME']
                 lampcur = hdr['LAMPCUR']
                 # Check for dome exposures
@@ -906,7 +903,8 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                 if check_precal and now.tuple()[3] >= 20:
                     print("checking %s for new raw cal files..." % rawlist[-2])
                     ncp = cpprecal(rawlist, outdir)
-                    print("Linked %d raw cal files from %s" % (ncp, rawlist[-2]))
+                    print("Linked %d raw cal files from %s" % (ncp,
+                                                               rawlist[-2]))
                 else:
                     print("checking %s for new raw cal files..." % srcdir)
                     ncp = cpcal(srcdir, outdir)
@@ -1005,7 +1003,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
             nct = find_recent(redd, '_TraceMatch.pkl', outdir,
                               cur_date_str)
             nctm = find_recent(redd, '_TraceMatch_WithMasks.pkl', outdir,
-                              cur_date_str)
+                               cur_date_str)
             ncg = find_recent(redd, '_HexaGrid.pkl', outdir, cur_date_str)
             ncw = find_recent(redd, '_WaveSolution.pkl', outdir, cur_date_str)
             ncf = find_recent(redd, '_Flat.fits', outdir, cur_date_str)
@@ -1016,9 +1014,11 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                 ncb = True
                 nc2 = True
             # Check for failure
-            if not nct or not nctm or not ncg or not ncw or not ncf or not ncb or not nc2:
-                msg = "Calibration stage failed: trace = %s, trace/mask = %s grid = %s, " \
-                      "wave = %s, flat = %s, bias0.1 = %s, bias2.0 = %s, " \
+            if not nct or not nctm or not ncg or not ncw or not ncf or not ncb \
+                    or not nc2:
+                msg = "Calibration stage failed: trace = %s, trace/mask = %s" \
+                      "grid = %s, wave = %s, flat = %s, " \
+                      "bias0.1 = %s, bias2.0 = %s, " \
                       "stopping" % (nct, nctm, ncg, ncw, ncf, ncb, nc2)
                 sys.exit(msg)
             # If we get here, we are done
@@ -1203,7 +1203,7 @@ if __name__ == '__main__':
     parser.add_argument('--wait', action="store_true", default=False,
                         help='Wait for new directory first')
     parser.add_argument('--piggyback', action="store_true", default=False,
-                        help='Do not copy data, assume copied by another script')
+                        help='Do not copy data, copied by another script')
     parser.add_argument('--skip_precal', action="store_true", default=False,
                         help='Skip check of previous day for cal files?')
     parser.add_argument('--date', type=str, default=None,
