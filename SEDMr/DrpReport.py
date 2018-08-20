@@ -15,7 +15,9 @@ def report():
           os.getcwd().split('/')[-1])
 
     print("UTStart  Object                    Exptime Air    Flxcal"
-          "   Allocation          Type Subtype  z           Rlap")
+          "                           method   Allocation          Type Subtype"
+          "  z           Rlap")
+    recs = []
     for f in flist:
         # Get object name
         tname = f.split('ifu')[-1].split('_')[4:]
@@ -58,6 +60,8 @@ def report():
                 flxcal = flxcal[0].split()[-1]
             else:
                 flxcal = "False"
+            # get method
+            meth = f.split('__crr')[0].split('spec_')[-1]
             # get exposure time
             expt = [li for li in lines if "EXPTIME" in li]
             if len(expt) > 0:
@@ -81,8 +85,12 @@ def report():
             if "STD" in f:
                 ctype = " STD"
 
-        print("%8s %-25s %7s %5s  %6s %12s  %12s  %6s %-9s  %6s" %
-              (tstr, objname, expt, air, flxcal, prid, ctype, stype, zmch, rlap))
+        recs.append("%8s %-25s %7s %5s  %6s %32s %12s  %12s  %6s %-9s  %6s" %
+                    (tstr, objname, expt, air, flxcal, meth, prid, ctype, stype,
+                     zmch, rlap))
+    recs.sort()
+    for r in recs:
+        print(r)
 
 
 if __name__ == '__main__':
