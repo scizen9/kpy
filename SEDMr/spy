@@ -14,7 +14,7 @@ export PYTHONPATH
 if [ "$#" -eq 0 ]
 then 
     echo "Starting Python"
-    ipython --pylab --colors LightBG
+    ipython --pylab
 else
     case $1 in
         what) python $SEDMPATH/SEDMr/What.py "$@";;
