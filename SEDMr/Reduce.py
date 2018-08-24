@@ -239,7 +239,7 @@ def proc_bias_crrs(ncp=1, oldcals=False, piggyback=False):
     # END: proc_bias_crrs
 
 
-def dosci(destdir='./', datestr=None, ztfupld=False):
+def dosci(destdir='./', datestr=None, ztfupld=False, slack=False):
     """Copies new science ifu image files from srcdir to destdir.
 
     Searches for most recent ifu image in destdir and looks for and
@@ -251,6 +251,7 @@ def dosci(destdir='./', datestr=None, ztfupld=False):
         destdir (str): destination directory (typically in /scr2/sedm/redux)
         datestr (str): YYYYMMDD date string
         ztfupld (bool): upload to ZTF marshal?
+        slack (bool): upload to pysedm-report Slack channel?
 
     Returns:
         int: Number of ifu images actually copied
@@ -311,8 +312,12 @@ def dosci(destdir='./', datestr=None, ztfupld=False):
                         cmd = "touch %s" % badfn
                         os.system(cmd)
                     else:
-                        cmd = "pysedm_report.py %s --contains %s" % \
-                              (datestr, fn.split('.')[0])
+                        if slack:
+                            cmd = "pysedm_report.py %s --contains %s --slack" %\
+                                  (datestr, fn.split('.')[0])
+                        else:
+                            cmd = "pysedm_report.py %s --contains %s" % \
+                                  (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
@@ -348,8 +353,12 @@ def dosci(destdir='./', datestr=None, ztfupld=False):
                         retcode = os.system(cmd)
                         if retcode > 0:
                             print("Error running SNID")
-                        cmd = "pysedm_report.py %s --contains %s" % \
-                              (datestr, fn.split('.')[0])
+                        if slack:
+                            cmd = "pysedm_report.py %s --contains %s --slack" %\
+                                  (datestr, fn.split('.')[0])
+                        else:
+                            cmd = "pysedm_report.py %s --contains %s" % \
+                                  (datestr, fn.split('.')[0])
                         print(cmd)
                         retcode = os.system(cmd)
                         if retcode > 0:
@@ -365,12 +374,13 @@ def dosci(destdir='./', datestr=None, ztfupld=False):
     # END: dosci
 
 
-def red_loop(outdir=None, upld=False):
+def red_loop(outdir=None, upld=False, slack=False):
     """One night observing loop: processes calibrations and science data
 
     Args:
         outdir (str): directory for single night processing
         upld (bool): upload to ZTF marshal?
+        slack (bool): upload to pysedm-report Slack channel?
 
     Returns:
         bool: True if night completed normally, False otherwise
@@ -456,7 +466,8 @@ def red_loop(outdir=None, upld=False):
     print("Calibration stage complete, ready for science!")
     # process files
     start_time = time.time()
-    nsci, science = dosci(outdir, datestr=cur_date_str, ztfupld=upld)
+    nsci, science = dosci(outdir, datestr=cur_date_str, ztfupld=upld,
+                          slack=slack)
     # We copied some new ones so report processing time
 
     proc_time = int(time.time() - start_time)
@@ -476,7 +487,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--upload', action="store_true", default=False,
                         help='Upload to ZTF marshal')
-
+    parser.add_argument('--toslack', action="store_true", default=False,
+                        help='Upload to pysedm-report Slack channel')
     args = parser.parse_args()
 
     # Get current directory
@@ -487,4 +499,4 @@ if __name__ == '__main__':
     if reduxenv not in reduxdir:
         print("ERROR: setenv SEDMREDUXPATH correctly and try again")
     else:
-        red_loop(outdir=curdir, upld=args.upload)
+        red_loop(outdir=curdir, upld=args.upload, slack=args.toslack)
