@@ -292,7 +292,7 @@ def dosci(destdir='./', datestr=None, ztfupld=False):
                 # Build cube for STD observation
                 print("Building STD cube for " + fn)
                 # Don't solve WCS for standards (always brightest in IFU)
-                cmd = "ccd_to_cube.py %s --build %s" % (datestr, fn)
+                cmd = "ccd_to_cube.py %s --build %s --noguider" % (datestr, fn)
                 print(cmd)
                 retcode = os.system(cmd)
                 # Check results
