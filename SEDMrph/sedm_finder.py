@@ -10,7 +10,6 @@ from __future__ import print_function
 import matplotlib
 matplotlib.use("Agg")
 from astropy.io import fits as pf
-import zscale
 from astropy.wcs import WCS
 import numpy as np
 import aplpy
@@ -23,6 +22,7 @@ import argparse
 import subprocess
 from scipy import ndimage
 from matplotlib import pylab as plt
+
 import rcred
  
 from ConfigParser import SafeConfigParser
@@ -139,7 +139,7 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
-    img = img.T
+    #img = img.T
     #img = img[1165:2040, 1137:2040]
     newimg = img #ndimage.filters.gaussian_filter(img, 1, order=0, mode='constant', cval=0.0, truncate=20.0)
 
@@ -157,7 +157,7 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
     size = int( (28./0.394)/2)
     
     #zmin, zmax = zscale.zscale()
-    newimg = img[X-size: X+size, Y - size : Y+ size]
+    newimg = img[X-size: X+size, Y - size : Y + size]
 
     zmin = np.percentile(newimg.flatten(), 5)
     zmax = np.percentile(newimg.flatten(), 98.5)
@@ -165,16 +165,16 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
     print ("X %d Y %d Size %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,size,zmin,zmax, newimg.shape))
 
     plt.figure(figsize=(10,9))
+    plt.imshow(np.flip(newimg,axis=0), \
+        origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
     #plt.imshow(newimg, \
-    #    origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
-    plt.imshow(newimg, \
-        origin="lower", cmap=plt.get_cmap('gray'))
-    plt.plot(size, size, "ro", ms=20, mfc=None)
+    #    origin="lower", cmap=plt.get_cmap('gray'))
+    plt.plot(size, size, "+", color="r", ms=20, mfc=None, mew=2)
     findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
 
     print (findername)
 
-    plt.savefig(findername)
+    #plt.savefig(findername)
 
     return findername
     
