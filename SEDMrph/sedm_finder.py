@@ -174,7 +174,7 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
 
     print (findername)
 
-    #plt.savefig(findername)
+    plt.savefig(findername)
 
     return findername
     
@@ -240,11 +240,11 @@ if __name__=="__main__":
                 	print ("Error when generating the finder for file %s"%f)
                 	print (sys.exc_info()[0])
     
-                	findername = simple_finder_astro(f)
+                	findername = simple_finder_astro(astrof)
     
             	except:
                 	plt.close("all")
-                	print ("Error when generating the finder for file %s"%f)
+                	print ("Error when generating the finder for file %s. Probably montage is broken."%f)
                 	print (sys.exc_info()[0])
-                	findername = simple_finder_astro(f)
+                	findername = simple_finder_astro(astrof)
 
