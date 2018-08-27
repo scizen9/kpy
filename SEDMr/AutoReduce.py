@@ -616,16 +616,26 @@ def find_recent_fluxcal(redd, fname, destdir):
     # Search in redd for file
     else:
         # Get all but the most recent reduced data directories
-        fspec = os.path.join(redd, '20??????')
-        redlist = sorted([d for d in glob.glob(fspec)
+        dspec = os.path.join(redd, '20??????')
+        redlist = sorted([d for d in glob.glob(dspec)
                           if os.path.isdir(d)])[0:-1]
         # Go back in reduced dir list until we find our file
         for d in reversed(redlist):
-            src = glob.glob(os.path.join(d, fname))
-            if len(src) >= 1:
+            src = sorted(glob.glob(os.path.join(d, fname)))
+            for s in src:
+                # Skip sym-links
+                if os.path.islink(s):
+                    continue
+                # Read FITS header
+                f = pf.open(s)
+                hdr = f[0].header
+                f.close()
+                # Skip if not Telluric corrected
+                if 'TELLFLTR' not in hdr:
+                    continue
                 try:
-                    newfile = os.path.join(destdir, src[0].split('/')[-1])
-                    os.symlink(src[0], newfile)
+                    newfile = os.path.join(destdir, s.split('/')[-1])
+                    os.symlink(s, newfile)
                 except OSError:
                     print("File already exists: %s" % newfile)
                 ret = True
