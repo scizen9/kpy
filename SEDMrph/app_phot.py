@@ -16,13 +16,13 @@ try:
 except:
     print "Not loading iraf"
 import os, sys, math
-import pyfits as pf
+from astropy.io import fits as pf
 import zscale
 import fitsutils
 import glob
 import argparse
 import coordinates_conversor as cc
-import pywcs
+from astropy.wcs import WCS
 import matplotlib.lines as mlines
 import subprocess
 import warnings
@@ -193,7 +193,7 @@ def get_app_phot(coords, image, plot_only=False, store=True, wcsin="world", fwhm
 def get_xy_coords(image, ra, dec):
     '''
     Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
-    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    Sometime the wcs module does not seem to be providing the correct answer, as it does not seem
     to be using the SIP extension.
     
     '''
@@ -231,7 +231,7 @@ def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="
     iraf.unlearn("apphot")
     
     impf = pf.open(image)
-    wcs = pywcs.WCS(impf[0].header)
+    wcs = WCS(impf[0].header)
     #Check that actually the object is within this frame.
     if (ra is None or dec is None):
         if (fitsutils.has_par(image, "OBJRA") and fitsutils.has_par(image, "OBJRA")):
@@ -245,7 +245,7 @@ def get_app_phot_target(image, ra=None, dec=None, plot=True, store=True, wcsin="
         if("logic" in wcsin):
             pra, pdec = ra, dec
         else:
-        #Using new method to derive the X, Y pixel coordinates, as pywcs does not seem to be working well.
+        #Using new method to derive the X, Y pixel coordinates, as wcs module does not seem to be working well.
             try:
                 #pra, pdec = wcs.wcs_sky2pix(ra, dec, 1)
                 #print "Retrieved the pixel number"

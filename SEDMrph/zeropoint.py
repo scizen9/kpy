@@ -9,11 +9,11 @@ from __future__ import print_function
 import matplotlib
 matplotlib.use("Agg")
 import zscale
-import pyfits as pf
+from astropy.io import fits as pf
 import numpy as np
 import matplotlib.pyplot as plt
 import math, glob
-import pywcs 
+from astropy.wcs import WCS
 from astropy.io.votable import parse_single_table
 import coordinates_conversor
 import app_phot
@@ -229,7 +229,7 @@ def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, re
     maxmag = 20.0
         
     f = pf.open(imfile)
-    wcs = pywcs.WCS(f[0].header)
+    wcs = WCS(f[0].header)
 
     img = f[0].data
     img[img<0] = 0

@@ -7,7 +7,7 @@ Created on Thu Jan  7 11:30:32 2016
 import fitsutils
 import subprocess, os, sys
 import pyfits as pf
-import pywcs
+from astropy.wcs import WCS
 import coordinates_conversor as cc
 import numpy as np
 import argparse
@@ -112,7 +112,7 @@ def get_offset_center_failed_astro(f, plot=False, interactive=True):
 
     image = pf.open(f)
     data = image[0].data
-    wcs = pywcs.WCS(image[0].header)
+    wcs = WCS(image[0].header)
     ra, dec = cc.hour2deg(image[0].header['OBJRA'], image[0].header['OBJDEC'] )
 
     pra, pdec = wcs.wcs_sky2pix(ra, dec, 0)
@@ -177,7 +177,7 @@ def get_offset_center(f, plot=False, interactive=False):
         return -1, 0,0
     else:
         image = pf.open(f)
-        wcs = pywcs.WCS(image[0].header)
+        wcs = WCS(image[0].header)
         rra, rdec = cc.hour2deg(image[0].header['OBJRA'],image[0].header['OBJDEC'] )
         x, y = np.round(wcs.wcs_sky2pix(rra, rdec, 0), 0)
         pra, pdec = wcs.wcs_pix2sky(np.array([[1293., 1280.]] , np.float_), 0)[0]
@@ -238,7 +238,7 @@ def get_offsets_A_B(f, plot=False, interactive=False):
     
     image = pf.open(f)
     data = image[0].data.T
-    wcs = pywcs.WCS(image[0].header)
+    wcs = WCS(image[0].header)
     ra, dec = cc.hour2deg(image[0].header['OBJRA'], image[0].header['OBJDEC'] )
     obj = fitsutils.get_par(f, "OBJECT")
     pra, pdec = wcs.wcs_sky2pix(ra, dec, 0)

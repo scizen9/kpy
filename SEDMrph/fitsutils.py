@@ -15,7 +15,7 @@ import os, sys
 from optparse import OptionParser
 import matplotlib
 import numpy as np
-import astropy.wcs as pywcs
+from astropy.wcs import WCS
 import zscale
 import time_utils
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
             if (ra * dec != 0):
     
                 # Get pixel coordinates of SN
-                wcs = pywcs.WCS(prihdr)
+                wcs = WCS(prihdr)
                 try:
                     target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
                 except:
@@ -120,7 +120,7 @@ def get_frames_with_target(myfile, ra, dec, debug=False):
         if (ra * dec != 0):
 
             # Get pixel coordinates of SN
-            wcs = pywcs.WCS(prihdr)
+            wcs = WCS(prihdr)
             try:
                 target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
             except:
@@ -147,7 +147,7 @@ def cut_frame_with_target(myfile, ra, dec, h=4000, w=2000, debug=False):
     if (ra * dec != 0):
 
         # Get pixel coordinates of SN
-        wcs = pywcs.WCS(hdulist.header)
+        wcs = WCS(hdulist.header)
         try:
             target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
         except:

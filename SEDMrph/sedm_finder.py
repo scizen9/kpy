@@ -9,9 +9,9 @@ from __future__ import print_function
 
 import matplotlib
 matplotlib.use("Agg")
-import pyfits as pf
+from astropy.io import fits as pf
 import zscale
-import pywcs
+from astropy.wcs import WCS
 import numpy as np
 import aplpy
 import coordinates_conversor
@@ -47,7 +47,7 @@ def finder(myfile, searchrad=0.2/60.):
     img = hdulist.data * 1.            
     img = img.T
 
-    wcs = pywcs.WCS(hdulist.header)
+    wcs = WCS(hdulist.header)
 
     target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
     corner_pix = wcs.wcs_sky2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
@@ -168,7 +168,12 @@ if __name__=="__main__":
     files = glob.glob("a_*fits")
     files.sort()
     for f in files:
-	object = fitsutils.get_par(f, "OBJECT").upper()
+	try:
+	    object = fitsutils.get_par(f, "OBJECT").upper()
+	except:
+	    print ('There is no object in this file %s. Skipping the finder and moving to the next file.'%f)
+	    continue
+
         if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ):
 	    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
 	    print ("Generating finder", findername)
