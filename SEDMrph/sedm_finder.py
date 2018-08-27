@@ -135,7 +135,7 @@ def simple_finder(myfile, searchrad=0.2/60.):
 
     return findername
 
-def simple_finder_astro(myfile, searchrad=0.2/60.):  
+def simple_finder_astro(myfile, searchrad=28./3600):  
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
@@ -151,25 +151,30 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
     wcs = WCS(hdulist.header)
 
     target_pix = wcs.wcs_world2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    corner_pix = wcs.wcs_world2pix([(np.array([ra+searchrad,dec+searchrad], np.float_))], 1)[0]
     X = int(target_pix[0])
     Y = int(target_pix[1])
     #Size of the finder in pixels
-    size = int( (28./0.394)/2)
+    
+    dx = int(np.abs(np.ceil(corner_pix[0] - target_pix[0])))
+    dy = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
+    
+    #size = int( (searchrad/0.394)/2)
     
     #zmin, zmax = zscale.zscale()
-    newimg = img[X-size: X+size, Y - size : Y + size]
+    newimg = img[X-dx : X+dx, Y-dy : Y+dy]
 
     zmin = np.percentile(newimg.flatten(), 5)
     zmax = np.percentile(newimg.flatten(), 98.5)
     
-    print ("X %d Y %d Size %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,size,zmin,zmax, newimg.shape))
+    print ("X %d Y %d Size %d, %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,dx,dy,zmin,zmax, newimg.shape))
 
     plt.figure(figsize=(10,9))
     plt.imshow(np.flip(newimg,axis=0), \
         origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
     #plt.imshow(newimg, \
     #    origin="lower", cmap=plt.get_cmap('gray'))
-    plt.plot(size, size, "+", color="r", ms=20, mfc=None, mew=2)
+    plt.plot(dx, dy, "+", color="r", ms=20, mfc=None, mew=2)
     findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
 
     print (findername)
