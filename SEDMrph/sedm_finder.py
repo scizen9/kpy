@@ -140,7 +140,7 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
     img = img.T
-    img = img[1165:2040, 1137:2040]
+    #img = img[1165:2040, 1137:2040]
     newimg = img #ndimage.filters.gaussian_filter(img, 1, order=0, mode='constant', cval=0.0, truncate=20.0)
 
     name = fitsutils.get_par(myfile, "NAME")
@@ -150,19 +150,27 @@ def simple_finder_astro(myfile, searchrad=0.2/60.):
     
     wcs = WCS(hdulist.header)
 
-    target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    target_pix = wcs.wcs_world2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    X = int(target_pix[0])
+    Y = int(target_pix[1])
     #Size of the finder in pixels
     size = int( (28./0.394)/2)
     
     #zmin, zmax = zscale.zscale()
+    newimg = img[X-size: X+size, Y - size : Y+ size]
+
     zmin = np.percentile(newimg.flatten(), 5)
     zmax = np.percentile(newimg.flatten(), 98.5)
     
+    print ("X %d Y %d Size %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,size,zmin,zmax, newimg.shape))
+
     plt.figure(figsize=(10,9))
-    plt.imshow(newimg[target_pix[0]-size: target_pix[0]+size, target_pix[1] - size:target_pix[1] + size], \
-        origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
-    plt.plot(target_pix[0], target_pix[1], "ro", ms=10)
-    findername = 'finders/finder_%s_%s.png'%(name, filter)
+    #plt.imshow(newimg, \
+    #    origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
+    plt.imshow(newimg, \
+        origin="lower", cmap=plt.get_cmap('gray'))
+    plt.plot(size, size, "ro", ms=20, mfc=None)
+    findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
 
     print (findername)
 
@@ -205,7 +213,7 @@ if __name__=="__main__":
     filesacq = []
     
     for f in files:
-        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()):
+        if ( (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()) and ("TEST" not in fitsutils.get_par(f, "IMGTYPE").upper())):
             filesacq.append(f)
     
     print ("Found %d files for finders: %s"%(len(filesacq), filesacq))
@@ -217,27 +225,26 @@ if __name__=="__main__":
             print ('There is no object in this file %s. Skipping the finder and moving to the next file.'%f)
             continue
     
-    #We generate only one finder for each object.
+    	#We generate only one finder for each object.
     
-    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-    if not os.path.isfile(findername):
-        print ("Generating finder", findername)
-        #Solving for astrometry
-        astrof = rcred.solve_astrometry(f)
+    	findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+    	if not os.path.isfile(os.path.join("finders/",findername)):
+        	print ("Generating finder", findername)
+        	#Solving for astrometry
+        	astrof = rcred.solve_astrometry(f)
     
-        if(not os.path.isfile("finders/" + findername)):
-            try:
-                findername = finder(astrof)
-            except AttributeError:
-                plt.close("all")
-                print ("Error when generating the finder for file %s"%f)
-                print (sys.exc_info()[0])
+            	try:
+                	findername = finder(astrof)
+            	except AttributeError:
+                	plt.close("all")
+                	print ("Error when generating the finder for file %s"%f)
+                	print (sys.exc_info()[0])
     
-                findername = simple_finder_astro(f)
+                	findername = simple_finder_astro(f)
     
-            except IndexError:
-                plt.close("all")
-                print ("Error when generating the finder for file %s"%f)
-                print (sys.exc_info()[0])
-                findername = simple_finder_astro(f)
+            	except:
+                	plt.close("all")
+                	print ("Error when generating the finder for file %s"%f)
+                	print (sys.exc_info()[0])
+                	findername = simple_finder_astro(f)
 
