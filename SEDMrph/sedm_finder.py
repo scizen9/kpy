@@ -23,7 +23,7 @@ import argparse
 import subprocess
 from scipy import ndimage
 from matplotlib import pylab as plt
- import rcred
+import rcred
  
 from ConfigParser import SafeConfigParser
 import codecs
@@ -50,8 +50,8 @@ def finder(myfile, searchrad=0.2/60.):
 
     wcs = WCS(hdulist.header)
 
-    target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
-    corner_pix = wcs.wcs_sky2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
+    target_pix = wcs.wcs_world2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    corner_pix = wcs.wcs_world2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
     dx = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
     
     imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
@@ -166,9 +166,17 @@ if __name__=="__main__":
 	os.makedirs("finders")
 
     #We gather all RC images to locate the Acquisition ones.
-    files = glob.glob("rc_*fits")
+    files = glob.glob("rc*fits")
     files.sort()
+    filesacq = []
+
     for f in files:
+        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()):
+	    filesacq.append(f)
+
+    print ("Found %d files for finders: %s"%(len(filesacq), filesacq))
+
+    for f in filesacq:
 	try:
 	    object = fitsutils.get_par(f, "OBJECT").upper()
 	except:
@@ -176,24 +184,24 @@ if __name__=="__main__":
 	    continue
 
         #We generate only one finder for each object.
-        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()):
-	    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-	    print ("Generating finder", findername)
 
+	findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+	print ("Generating finder", findername)
+	if not os.path.isfile(findername):
 	    #Solving for astrometry
-	    rcred.solve_astrometry(f)
+	    astrof = rcred.solve_astrometry(f)
 
 	    if(not os.path.isfile("finders/" + findername)):
 		try:
-            		findername = finder(f)
-		except AttributeError:
+            		findername = finder(astrof)
+		except ZeroDivisionError: #AttributeError:
             		plt.close("all")
 			print ("Error when generating the finder for file %s"%f)
 			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
+            		findername = simple_finder(astrof)
 		except IndexError:
             		plt.close("all")
 			print ("Error when generating the finder for file %s"%f)
 			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
+            		findername = simple_finder(astrof)
 
