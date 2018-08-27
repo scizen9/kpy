@@ -135,7 +135,39 @@ def simple_finder(myfile, searchrad=0.2/60.):
 
     return findername
 
+def simple_finder_astro(myfile, searchrad=0.2/60.):  
 
+    hdulist = pf.open(myfile)[0]
+    img = hdulist.data * 1.            
+    img = img.T
+    img = img[1165:2040, 1137:2040]
+    newimg = img #ndimage.filters.gaussian_filter(img, 1, order=0, mode='constant', cval=0.0, truncate=20.0)
+
+    name = fitsutils.get_par(myfile, "NAME")
+    filter = fitsutils.get_par(myfile, "FILTER")
+
+    ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
+    
+    wcs = WCS(hdulist.header)
+
+    target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    #Size of the finder in pixels
+    size = int( (28./0.394)/2)
+    
+    #zmin, zmax = zscale.zscale()
+    zmin = np.percentile(newimg.flatten(), 10)
+    zmax = np.percentile(newimg.flatten(), 99)
+    plt.figure(figsize=(10,9))
+    plt.imshow(newimg[target_pix[0]-size: targetpix[0]+size, targetpix[1] - size:targetpix[0] + size], origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
+    plt.plot(target_pix[0], target_pix[1], "ro", ms=10)
+    findername = 'finders/finder_%s_%s.png'%(name, filter)
+
+    print (findername)
+
+    plt.savefig(findername)
+
+    return findername
+    
 if __name__=="__main__":  
     parser = argparse.ArgumentParser(description=\
     '''
@@ -190,10 +222,10 @@ if __name__=="__main__":
             		plt.close("all")
 			print ("Error when generating the finder for file %s"%f)
 			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
+            		findername = simple_finder_astro(f)
 		except IndexError:
             		plt.close("all")
 			print ("Error when generating the finder for file %s"%f)
 			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
+            		findername = simple_finder_astro(f)
 
