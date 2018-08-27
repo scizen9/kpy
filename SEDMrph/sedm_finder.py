@@ -23,6 +23,7 @@ import argparse
 import subprocess
 from scipy import ndimage
 from matplotlib import pylab as plt
+ import rcred
  
 from ConfigParser import SafeConfigParser
 import codecs
@@ -164,8 +165,8 @@ if __name__=="__main__":
     if not (os.path.isdir("finders")):
 	os.makedirs("finders")
 
-    #We only generate onle finder with the first image.
-    files = glob.glob("a_*fits")
+    #We gather all RC images to locate the Acquisition ones.
+    files = glob.glob("rc_*fits")
     files.sort()
     for f in files:
 	try:
@@ -174,9 +175,13 @@ if __name__=="__main__":
 	    print ('There is no object in this file %s. Skipping the finder and moving to the next file.'%f)
 	    continue
 
-        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ):
+        #We generate only one finder for each object.
+        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()):
 	    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
 	    print ("Generating finder", findername)
+
+	    #Solving for astrometry
+	    rcred.solve_astrometry(f)
 
 	    if(not os.path.isfile("finders/" + findername)):
 		try:
