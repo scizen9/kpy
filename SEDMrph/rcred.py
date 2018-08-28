@@ -13,7 +13,7 @@ try:
 except:
     pass
 from astropy.io import fits
-from astropy import wcs
+from astropy.wcs import WCS
 
 import matplotlib
 from matplotlib import pylab as plt
@@ -64,7 +64,7 @@ except:
 def get_xy_coords(image, ra, dec):
     '''
     Uses the wcs-rd2xy routine to compute the proper pixel number where the target is.
-    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    Sometime the wcs module does not seem to be providing the correct answer, as it does not seem
     to be using the SIP extension.
     
     '''
@@ -84,7 +84,7 @@ def get_xy_coords(image, ra, dec):
 def get_rd_coords(image, x, y):
     '''
     Uses the wcs-xy2rd routine to compute the ra, dec where the target is for a given pixel.
-    Sometime the pywcs does not seem to be providing the correct answer, as it does not seem
+    Sometime the wcs module does not seem to be providing the correct answer, as it does not seem
     to be using the SIP extension.
     
     '''
@@ -895,10 +895,9 @@ def is_on_target(image):
     ra, dec = cc.hour2deg(fitsutils.get_par(image, 'OBJRA'), fitsutils.get_par(image, 'OBJDEC'))
 
     impf = fits.open(image)
-    w = wcs.WCS(impf[0].header)
+    w = WCS(impf[0].header)
     
     filt = fitsutils.get_par(image, "FILTER")
-    #pra, pdec = wcs.wcs_sky2pix(np.array([ra, dec], ndmin=2), 1)[0]
     pra, pdec = get_xy_coords(image, ra,dec)
 
     shape = impf[0].data.shape

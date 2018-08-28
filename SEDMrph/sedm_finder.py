@@ -9,9 +9,8 @@ from __future__ import print_function
 
 import matplotlib
 matplotlib.use("Agg")
-import pyfits as pf
-import zscale
-import pywcs
+from astropy.io import fits as pf
+from astropy.wcs import WCS
 import numpy as np
 import aplpy
 import coordinates_conversor
@@ -20,9 +19,10 @@ import datetime
 import os, sys
 import glob
 import argparse
-import subprocess
-from scipy import ndimage
+
 from matplotlib import pylab as plt
+
+import rcred
  
 from ConfigParser import SafeConfigParser
 import codecs
@@ -47,10 +47,10 @@ def finder(myfile, searchrad=0.2/60.):
     img = hdulist.data * 1.            
     img = img.T
 
-    wcs = pywcs.WCS(hdulist.header)
+    wcs = WCS(hdulist.header)
 
-    target_pix = wcs.wcs_sky2pix([(np.array([ra,dec], np.float_))], 1)[0]
-    corner_pix = wcs.wcs_sky2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
+    target_pix = wcs.wcs_world2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    corner_pix = wcs.wcs_world2pix([(np.array([ra,dec+searchrad], np.float_))], 1)[0]
     dx = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
     
     imgslice = img[int(target_pix[0])-2*dx:int(target_pix[0])+2*dx, int(target_pix[1])-2*dx:int(target_pix[1])+2*dx]
@@ -134,56 +134,116 @@ def simple_finder(myfile, searchrad=0.2/60.):
 
     return findername
 
+def simple_finder_astro(myfile, searchrad=28./3600):  
 
+    hdulist = pf.open(myfile)[0]
+    img = hdulist.data * 1.            
+
+    name = fitsutils.get_par(myfile, "NAME")
+    filter = fitsutils.get_par(myfile, "FILTER")
+
+    ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
+    
+    wcs = WCS(hdulist.header)
+
+    target_pix = wcs.wcs_world2pix([(np.array([ra,dec], np.float_))], 1)[0]
+    corner_pix = wcs.wcs_world2pix([(np.array([ra+searchrad,dec+searchrad], np.float_))], 1)[0]
+    X = int(target_pix[0])
+    Y = int(target_pix[1])
+    #Size of the finder in pixels
+    
+    dx = int(np.abs(np.ceil(corner_pix[0] - target_pix[0])))
+    dy = int(np.abs(np.ceil(corner_pix[1] - target_pix[1])))
+    
+    #size = int( (searchrad/0.394)/2)
+    
+    #zmin, zmax = zscale.zscale()
+    newimg = img[X-dx : X+dx, Y-dy : Y+dy]
+
+    zmin = np.percentile(newimg.flatten(), 5)
+    zmax = np.percentile(newimg.flatten(), 98.5)
+    
+    print ("X %d Y %d Size %d, %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,dx,dy,zmin,zmax, newimg.shape))
+
+    plt.figure(figsize=(10,9))
+    plt.imshow(np.flip(newimg,axis=0), \
+        origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
+
+    plt.plot(dx, dy, "+", color="r", ms=20, mfc=None, mew=2)
+
+    findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
+
+    print ("Created ", findername)
+
+    plt.savefig(findername)
+
+    return findername
+    
 if __name__=="__main__":  
     parser = argparse.ArgumentParser(description=\
     '''
-
+    
     Creates a finder chart for every acquisition image in the folder specified as a parameter.
     As a final step, it copies the acquisition image to the "agn" machine to visualize it.
         
     ''', formatter_class=argparse.RawTextHelpFormatter)
     
     parser.add_argument('-d', '--photdir', type=str, dest="photdir", help='Fits directory file with tonight images.', default=None)
-
+    
     args = parser.parse_args()
     
     photdir = args.photdir
     
     
     if (photdir is None):
-    	timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
-    	timestamp = timestamp.split("T")[0].replace("-","")
+        timestamp=datetime.datetime.isoformat(datetime.datetime.utcnow())
+        timestamp = timestamp.split("T")[0].replace("-","")
         photdir = os.path.join(_photpath, timestamp)
     else:
-	timestamp = os.path.basename(os.path.abspath(photdir))
-
+        timestamp = os.path.basename(os.path.abspath(photdir))
+    
     os.chdir(photdir)
     print ("Changed to directory where the data is. %s"%photdir)
     
     if not (os.path.isdir("finders")):
-	os.makedirs("finders")
-
-    #We only generate onle finder with the first image.
-    files = glob.glob("a_*fits")
+        os.makedirs("finders")
+    
+    #We gather all RC images to locate the Acquisition ones.
+    files = glob.glob("rc*fits")
     files.sort()
+    filesacq = []
+    
     for f in files:
-	object = fitsutils.get_par(f, "OBJECT").upper()
-        if (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION" or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE" ):
-	    findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-	    print ("Generating finder", findername)
-
-	    if(not os.path.isfile("finders/" + findername)):
-		try:
-            		findername = finder(f)
-		except AttributeError:
-            		plt.close("all")
-			print ("Error when generating the finder for file %s"%f)
-			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
-		except IndexError:
-            		plt.close("all")
-			print ("Error when generating the finder for file %s"%f)
-			print (sys.exc_info()[0])
-            		findername = simple_finder(f)
+        if ( (fitsutils.get_par(f, "IMGTYPE").upper() == "ACQUISITION"  or "ACQ" in fitsutils.get_par(f, "IMGTYPE").upper()) and ("TEST" not in fitsutils.get_par(f, "IMGTYPE").upper())):
+            filesacq.append(f)
+    
+    print ("Found %d files for finders: %s"%(len(filesacq), filesacq))
+    
+    for f in filesacq:
+        try:
+            object = fitsutils.get_par(f, "OBJECT").upper()
+        except:
+            print ('There is no object in this file %s. Skipping the finder and moving to the next file.'%f)
+            continue
+    
+    	#We generate only one finder for each object.
+    
+    	findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+    	if not os.path.isfile(os.path.join("finders/",findername)):
+        	print ("Generating finder", findername)
+        	#Solving for astrometry
+        	astrof = rcred.solve_astrometry(f)
+    
+            	try:
+                	findername = finder(astrof)
+            	except AttributeError:
+                	print ("Error when generating the finder for file %s"%f)
+                	print (sys.exc_info()[0])
+    
+                	findername = simple_finder_astro(astrof)
+    
+            	except:
+                	print ("Error when generating the finder for file %s. Probably montage is broken."%astrof)
+                	print (sys.exc_info()[0])
+                	findername = simple_finder_astro(astrof)
 

@@ -4,7 +4,7 @@ Created on Tue Nov 24 17:59:15 2015
 
 @author: nadiablago
 """
-import pywcs
+from astropy.wcs import WCS
 import glob, os
 import numpy as np
 import pyfits as pf
@@ -20,7 +20,7 @@ def plot_offset_shift(dirname):
     m = []
     for f in glob.glob(os.path.join(dirname,"*new")):
         image = pf.open(f)
-        wcs = pywcs.WCS(image[0].header)
+        wcs = WCS(image[0].header)
         rra, rdec = cc.hour2deg(image[0].header['RA'],image[0].header['DEC'] )
         pra, pdec = wcs.wcs_pix2sky(np.array([[1293., 1280.]] , np.float_), 1)[0]
         dra, ddec = cc.get_offset(pra, pdec, rra, rdec)
