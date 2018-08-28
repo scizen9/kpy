@@ -642,6 +642,8 @@ def find_recent_fluxcal(redd, fname, destdir):
                 print("Found %s in directory %s, linking to %s" %
                       (fname, d, newfile))
                 break
+            if ret:
+                break
     if not ret:
         print("%s not found" % fname)
     return ret
