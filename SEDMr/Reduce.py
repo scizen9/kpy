@@ -496,7 +496,10 @@ if __name__ == '__main__':
     reduxdir = '/'.join(curdir.split('/')[:-1])
     reduxenv = os.getenv("SEDMREDUXPATH")
     # Test if environment set correctly
-    if reduxenv not in reduxdir:
-        print("ERROR: setenv SEDMREDUXPATH correctly and try again")
+    if reduxenv is None:
+        print("ERROR: please set SEDMREDUXPATH to something")
     else:
-        red_loop(outdir=curdir, upld=args.upload, slack=args.toslack)
+        if reduxenv not in reduxdir:
+            print("ERROR: setenv SEDMREDUXPATH correctly and try again")
+        else:
+            red_loop(outdir=curdir, upld=args.upload, slack=args.toslack)
