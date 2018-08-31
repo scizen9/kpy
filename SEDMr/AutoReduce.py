@@ -986,7 +986,7 @@ def obs_loop(rawlist=None, redd=None, check_precal=True, indir=None,
                                          '_WaveSolution_range*.pkl'))
                         print("Finished %d out of %d parts"
                               % (len(wslist), nsub))
-                    print("Finished all parts, merging...")
+                    print("Finished all %d parts, merging..." % nsub)
                     # Merge the solutions
                     os.system("derive_wavesolution.py %s --merge"
                               % cur_date_str)

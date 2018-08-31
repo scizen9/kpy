@@ -152,7 +152,8 @@ def create_masterbias(biasdir=None, channel='rc'):
     if len(lfastbias) > 0 and dofast:
         bfile_fast ="lbias_fast_"+channel
         np.savetxt(bfile_fast, np.array(lfastbias), fmt="%s")
-        if (os.path.isfile("Bias_stats_fast")): os.remove("Bias_stats_fast")
+        if (os.path.isfile("Bias_stats_fast")): 
+            os.remove("Bias_stats_fast")
         iraf.imstat("@"+bfile_fast, Stdout="Bias_stats_fast")
         
         st = np.genfromtxt("Bias_stats_fast", names=True, dtype=None)
@@ -168,9 +169,9 @@ def create_masterbias(biasdir=None, channel='rc'):
         newdir = os.path.join("../../refphot/", os.path.basename(os.path.abspath(biasdir)))
         if (not os.path.isdir(newdir)):
             os.makedirs(newdir)
-        shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )
-    else:
-        copy_ref_calib(biasdir, "Bias")
+            shutil.copy(outf, os.path.join(newdir, os.path.basename(outf)) )
+        else:
+            copy_ref_calib(biasdir, "Bias")
 
 
     if len(lslowbias) > 0 and doslow:
@@ -1289,7 +1290,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--photdir', type=str, help='Directory containing the science fits for the night.', default=None)
     parser.add_argument('-c', '--clean', action="store_true", help='Clean the reduced images?', default=False)
     parser.add_argument('-o', '--overwrite', action="store_true", help='re-reduce and overwrite the reduced images?', default=False)
-    parser.add_argument('-p', '--copy', action="store_true", help='copy the reduced folder to transient', default=False)
+    parser.add_argument('-p', '--copy', action="store_false", help='disable the copy the reduced folder to transient', default=True)
 
     parser.add_argument('--cosmic', action="store_true", default=False, help='Whether cosmic rays should be removed.')
 

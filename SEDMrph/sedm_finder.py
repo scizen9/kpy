@@ -11,6 +11,8 @@ import matplotlib
 matplotlib.use("Agg")
 from astropy.io import fits as pf
 from astropy.wcs import WCS
+from astropy import units as u
+
 import numpy as np
 import aplpy
 import coordinates_conversor
@@ -165,12 +167,24 @@ def simple_finder_astro(myfile, searchrad=28./3600):
     
     print ("X %d Y %d Size %d, %d zmin=%.2f zmax=%.2f. Size = %s"%(X,Y,dx,dy,zmin,zmax, newimg.shape))
 
+    from astropy.visualization.wcsaxes import SphericalCircle
+
     plt.figure(figsize=(10,9))
-    plt.imshow(np.flip(newimg,axis=0), \
+    ax = plt.subplot(projection=wcs)
+    ax.imshow(np.flip(newimg, axis=0), \
         origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
+    r = SphericalCircle((ra * u.deg, dec * u.deg), 5./3600 * u.degree,
+                     edgecolor='red', facecolor='none',
+                     transform=ax.get_transform('fk5'))
+    ax.add_patch(r)
 
-    plt.plot(dx, dy, "+", color="r", ms=20, mfc=None, mew=2)
+    #ax = plt.gca()
+    #ax.scatter(ra, dec, transform=ax.get_transform('fk5'), s=20,
+    #       edgecolor='red', facecolor='none')
 
+    #plt.plot(dy, dx, "+", color="r", ms=20, mfc=None, mew=2)
+    #plt.plot(Y, X, "+", color="r", ms=20, mfc=None, mew=2)
+    #plt.xlim(Y-dy, Y+dy, X-dx, X+dx)
     findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
 
     print ("Created ", findername)

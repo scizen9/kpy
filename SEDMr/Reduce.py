@@ -435,7 +435,7 @@ def red_loop(outdir=None, upld=False, slack=False):
                                          '_WaveSolution_range*.pkl'))
                         print("Finished %d out of %d parts"
                               % (len(wslist), nsub))
-                    print("Finished all parts, merging...")
+                    print("Finished all %d parts, merging..." % nsub)
                     # Merge the solutions
                     os.system("derive_wavesolution.py %s --merge"
                               % cur_date_str)
@@ -496,7 +496,10 @@ if __name__ == '__main__':
     reduxdir = '/'.join(curdir.split('/')[:-1])
     reduxenv = os.getenv("SEDMREDUXPATH")
     # Test if environment set correctly
-    if reduxenv not in reduxdir:
-        print("ERROR: setenv SEDMREDUXPATH correctly and try again")
+    if reduxenv is None:
+        print("ERROR: please set SEDMREDUXPATH to something")
     else:
-        red_loop(outdir=curdir, upld=args.upload, slack=args.toslack)
+        if reduxenv not in reduxdir:
+            print("ERROR: setenv SEDMREDUXPATH correctly and try again")
+        else:
+            red_loop(outdir=curdir, upld=args.upload, slack=args.toslack)
