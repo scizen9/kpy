@@ -189,7 +189,7 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     for k, v in keywords.items():
         try:
             out = subprocess.check_output('grep %s %s' % (v, inputfile),
-                                          shell=True)
+                                          shell=True, universal_newlines=True)
             if k.upper() == 'EXPTIME':
                 outstr = out.split(sep, 1)[-1]
                 print(outstr)
