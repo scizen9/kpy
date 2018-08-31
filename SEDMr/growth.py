@@ -2,7 +2,7 @@ import os
 import json
 import glob
 import requests
-import commands
+import subprocess
 import datetime
 
 
@@ -187,7 +187,7 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
     return_dict = {}
 
     for k, v in keywords.iteritems():
-        out = commands.getoutput('grep %s %s' % (v, inputfile))
+        out = subprocess.check_output('grep %s %s' % (v, inputfile), shell=True)
         if k.upper() == 'EXPTIME':
             outstr = out.split(sep, 1)[-1]
             print(outstr)
