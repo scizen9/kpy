@@ -190,14 +190,15 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
         try:
             out = subprocess.check_output('grep %s %s' % (v, inputfile),
                                           shell=True)
+            if k.upper() == 'EXPTIME':
+                outstr = out.split(sep, 1)[-1]
+                print(outstr)
+                return_dict[k] = int(outstr.split('.')[0])
+            else:
+                return_dict[k] = out.split(sep, 1)[-1]
         except subprocess.CalledProcessError:
             print("Not found: %s" % k)
-        if k.upper() == 'EXPTIME':
-            outstr = out.split(sep, 1)[-1]
-            print(outstr)
-            return_dict[k] = int(outstr.split('.')[0])
-        else:
-            return_dict[k] = out.split(sep, 1)[-1]
+
     return return_dict
 
 
