@@ -1290,7 +1290,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--photdir', type=str, help='Directory containing the science fits for the night.', default=None)
     parser.add_argument('-c', '--clean', action="store_true", help='Clean the reduced images?', default=False)
     parser.add_argument('-o', '--overwrite', action="store_true", help='re-reduce and overwrite the reduced images?', default=False)
-    parser.add_argument('-p', '--copy', action="store_true", help='copy the reduced folder to transient', default=False)
+    parser.add_argument('-n', '--nocopy', action="store_false", help='disable the copy the reduced folder to transient', default=True)
 
     parser.add_argument('--cosmic', action="store_true", default=False, help='Whether cosmic rays should be removed.')
 
