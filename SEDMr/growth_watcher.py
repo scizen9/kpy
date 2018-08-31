@@ -222,9 +222,8 @@ def get_prior_mag(mag_dict):
     if not isinstance(mag_dict, dict):
         print("Not a dictionary so using mag=17")
         return 17
-    
-        
-    for k, v in mag_dict.iteritems():
+
+    for k, v in mag_dict.items():
         mag = v['mag']
 
     try:
