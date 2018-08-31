@@ -27,7 +27,7 @@ def check_for_new_request(request_path="requests/", request_date="",
 
     # 3. If there are no request then we are done and can exit
     if len(requests) == 0:
-        print "No new requests have been sent"
+        print("No new requests have been sent")
         return False
 
     # 4. If there are request then we need to check and see if they are new
@@ -93,14 +93,14 @@ def process_new_request(request, status='ACCEPTED', add2db=False,
     # 3. Check if we are adding it to the SEDm DB if not continue
     if add2db:
 
-        print "Adding request to database"
-        print add_request_to_db(req)
-        print "Done adding request to database"
+        print("Adding request to database")
+        print(add_request_to_db(req))
+        print("Done adding request to database")
         pass
 
     # 4. Assuming it passed the above conditions send back the response
     ret = growth.update_request(request_id=req['requestid'], status=status)
-    print ret.text
+    print(ret.text)
 
     # 5. If the update was successful add it to the archive
     if archive:
@@ -125,16 +125,16 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
                                                  where_dict={'marshal_id':request['requestid']})
          
         if not sedm_requestid:
-            print "No request matching that id"
+            print("No request matching that id")
             return False
         else:
             
             for i in sedm_requestid:
                 try:
-                    print sedmdb.update_request({'id':i[0], 'status':'CANCELED'})
+                    print(sedmdb.update_request({'id':i[0], 'status':'CANCELED'}))
                     return True
                 except Exception, e:
-                    print str(e)
+                    print(str(e))
                     return False
     # TODO ADD UPDATE CHECK
     
@@ -169,12 +169,12 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
         object_id, msg = sedmdb.add_object(objdict)
 
         if object_id == -1:
-            print "TARGET IN DB ALREADY"
-            print msg
+            print("TARGET IN DB ALREADY")
+            print(msg)
             object_id = sedmdb.get_from_object(values=['id'],
                                                where_dict={'name': request['sourcename'].lower()})[0][0]
         priority = request['priority']
-        print priority
+        print(priority)
         # TODO: Replace this and only use the programname to add request
         if request['programname'] == 'ZTF Science Validation':
             name = 'GROWTH classification program'
@@ -188,7 +188,7 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
                                                    where_dict={'program_id':program_id,
                                                                'active':True})[0][0]
 
-        print allocation_id
+        print(allocation_id)
     start_date = request['startdate']
     end_date = request['enddate']
 
@@ -206,8 +206,8 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
         'enddate': end_date,
         'marshal_id': int(request['requestid'])
     }
-    print request_dict
-    print sedmdb.add_request(request_dict)
+    print(request_dict)
+    print(sedmdb.add_request(request_dict))
 
 
 def get_prior_mag(mag_dict):
@@ -216,11 +216,11 @@ def get_prior_mag(mag_dict):
     :param mag_dict: 
     :return: 
     """
-    print "GETTING MAGNITUDE"
-    print mag_dict
-    print type(mag_dict)
+    print("GETTING MAGNITUDE")
+    print(mag_dict)
+    print(type(mag_dict))
     if not isinstance(mag_dict, dict):
-        print "Not a dictionary so using mag=17"
+        print("Not a dictionary so using mag=17")
         return 17
     
         
@@ -230,10 +230,10 @@ def get_prior_mag(mag_dict):
     try:
         mag = float(mag)
     except Exception, e:
-        print str(e), "Error getting magnitude"
+        print(str(e), "Error getting magnitude")
         mag = 17
-    print mag
-    return mag
+    print(mag)
+    return(mag)
 
 
 def get_observing_sequence(obs_str, mag=17):
@@ -243,15 +243,15 @@ def get_observing_sequence(obs_str, mag=17):
     :param obs_str: 
     :return: 
     """
-    print obs_str
+    print(obs_str)
     sequence, filters = obs_str.split('|', 1)
-    print sequence
-    print filters
+    print(sequence)
+    print(filters)
     sequence_list = []
     exptime_list = []
 
     if sequence:
-        print "Found sequence"
+        print("Found sequence")
         if sequence == 'IFU':
             sequence_list.append('1ifu')
             exptime_list.append(get_exptime(obsfilter='ifu', mag=mag))
@@ -263,7 +263,7 @@ def get_observing_sequence(obs_str, mag=17):
         elif sequence == 'Three Shot (r,g,i)':
             obs_list = ['1r', '1g', '1i']
             for o in obs_list:
-                print o
+                print(o)
                 sequence_list.append(o)
                 exptime_list.append(get_exptime(obsfilter=o[1], mag=mag))
         elif sequence == 'Fourshot + IFU':
@@ -280,8 +280,8 @@ def get_observing_sequence(obs_str, mag=17):
             sequence_list.append('1%s' % f)
             exptime_list.append(get_exptime(obsfilter=f.lower(), mag=mag))
 
-    print sequence_list
-    print exptime_list
+    print(sequence_list)
+    print(exptime_list)
 
     sequence_str = '{%s}' % ','.join(sequence_list)
     exptime_str = '{%s}' % ','.join(exptime_list)
@@ -297,7 +297,7 @@ def get_exptime(obsfilter, mag):
     """
 
     mag = float(mag)
-    print "Finding exptime for filter:%s at magnitude:%s" % (obsfilter, mag) 
+    print("Finding exptime for filter:%s at magnitude:%s" % (obsfilter, mag) )
     if mag > 18:
         ifu_exptime = 3600
         r_exptime = 180
@@ -359,7 +359,7 @@ def get_exptime(obsfilter, mag):
     elif obsfilter == 'u':
         return str(u_exptime)
     else:
-        print "No valid filter"
+        print("No valid filter")
         return str(0)
 
 
@@ -378,16 +378,16 @@ def start_watcher():
 
         # noinspection PyTypeChecker
         for r in new_requests:
-            print "Processing %s" % r
+            print("Processing %s" % r)
             try:
                 ret = process_new_request(r, request_date=request_date, add2db=True)
-                print ret
+                print(ret)
             except:
                 os.system('cp -r %s /home/sedm/growth_marshal/archived/failed/' % r)
                 os.system('cp -r %s /home/sedm/growth_marshal/archived/%s/' % (r, request_date))
             
 
-        print "Waiting %ss before checking for new request" % 5
+        print("Waiting %ss before checking for new request" % 5)
         time.sleep(5)
 
 
