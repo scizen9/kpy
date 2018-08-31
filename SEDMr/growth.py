@@ -132,7 +132,6 @@ def get_keywords_from_file(inputfile, keywords, sep=':'):
                                           shell=True, universal_newlines=True)
             if k.upper() == 'EXPTIME':
                 outstr = out.split(sep, 1)[-1]
-                print(outstr)
                 return_dict[k] = int(outstr.split('.')[0])
             else:
                 return_dict[k] = out.split(sep, 1)[-1]
@@ -200,13 +199,13 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
         quality = int(submission_dict['quality'])
         del submission_dict['quality']
 
-    print(type(format_type), type(request_id), type(instrument_id))
+    # print(type(format_type), type(request_id), type(instrument_id))
     submission_dict.update({'format': format_type.rstrip().lstrip(),
                            'instrument_id': instrument_id,
                             'request_id': request_id,
                             'observer': observer.rstrip().lstrip()})
     
-    print(type(submission_dict['instrument_id']))
+    # print(type(submission_dict['instrument_id']))
 
     # 1a. [Optional] Check the quality if it is smaller or equal to min quality
     # then upload spectra
@@ -222,7 +221,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     # 3. Send the request
     ret = requests.post(growth_spec_url, auth=(user, pwd),
                         files={'jsonfile': jsonFile, 'upfile': upfile})
-    print(ret)
+    print("Request posted with response: " + ret)
 
     # 4. Close files and send request response
     upfile.close()
@@ -260,7 +259,6 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
     """
     status_ret = False
     spec_ret = False
-    phot_ret = False
     # 1. Start by looking at all files in the target directory
     # this is currently the directory that holds all incoming request
     # dictionary from growth.
@@ -335,7 +333,7 @@ def update_target_by_object(objname, add_spectra=False, spectra_file='',
 
     return_link = growth_view_source_url + "name=%s" % target['sourcename']
 
-    return return_link, spec_ret, status_ret, phot_ret
+    return return_link, spec_ret, status_ret
 
           
 def parse_ztf_by_dir(target_dir, upfil=None):
@@ -374,12 +372,12 @@ def parse_ztf_by_dir(target_dir, upfil=None):
             if upfil not in fi:
                 continue
         # Upload
-        r, spec, stat, phot = update_target_by_object(objname,
-                                                      add_status=True,
-                                                      status='Completed',
-                                                      add_spectra=True,
-                                                      spectra_file=fi,
-                                                      pull_requests=pr)
+        r, spec, stat = update_target_by_object(objname,
+                                                add_status=True,
+                                                status='Completed',
+                                                add_spectra=True,
+                                                spectra_file=fi,
+                                                pull_requests=pr)
         # Mark as uploaded
         os.system("touch " + fi.split('.')[0] + ".upl")
         # Only need to pull requests the first time
@@ -396,7 +394,7 @@ def parse_ztf_by_dir(target_dir, upfil=None):
             out.write("OK ")
         else:
             out.write("NO ")
-        print(r)
+        print("URL: " + r)
         out.write("%s\n" % r)
 
     # Close log file
