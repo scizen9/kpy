@@ -108,7 +108,7 @@ def update_request(status, request_id, instrument_id='',
         os.remove(output_file)
 
     # 5. Print the request response for the user
-    print(ret)
+    print("Status updated with response: " + ret)
 
     return True
 
@@ -221,7 +221,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     # 3. Send the request
     ret = requests.post(growth_spec_url, auth=(user, pwd),
                         files={'jsonfile': jsonFile, 'upfile': upfile})
-    print("Request posted with response: " + ret)
+    print("Spectrum posted with response: " + ret)
 
     # 4. Close files and send request response
     upfile.close()
