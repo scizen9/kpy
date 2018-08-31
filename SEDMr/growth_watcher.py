@@ -133,7 +133,7 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
                 try:
                     print(sedmdb.update_request({'id':i[0], 'status':'CANCELED'}))
                     return True
-                except Exception, e:
+                except Exception as e:
                     print(str(e))
                     return False
     # TODO ADD UPDATE CHECK
@@ -154,7 +154,7 @@ def add_request_to_db(request, custom_dict=None, fill_by_custom_dict=False):
             user_id = sedmdb.get_from_users(values=['id'],
                                         where_dict={'username':
                                                     request['username']})[0][0]
-        except Exception, e:
+        except Exception as e:
             user_id = 189                                            
         # 1b. Create an entry in the database
         objdict = {
@@ -229,7 +229,7 @@ def get_prior_mag(mag_dict):
 
     try:
         mag = float(mag)
-    except Exception, e:
+    except Exception as e:
         print(str(e), "Error getting magnitude")
         mag = 17
     print(mag)
