@@ -234,8 +234,8 @@ def extract_star_sequence(imfile, band, plot=True, survey='ps1', debug=False, re
     img = f[0].data
     img[img<0] = 0
     
-    ra, dec = wcs.wcs_pix2sky(np.array([img.shape[0]/2, img.shape[1]/2], ndmin=2), 1)[0]
-    ra0, dec0 = wcs.wcs_pix2sky(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
+    ra, dec = wcs.wcs_pix2world(np.array([img.shape[0]/2, img.shape[1]/2], ndmin=2), 1)[0]
+    ra0, dec0 = wcs.wcs_pix2world(np.array([img.shape[0], img.shape[1]], ndmin=2), 1)[0]
 
 
     sr = 2*np.abs(dec-dec0)
@@ -1297,7 +1297,7 @@ def main(reduced):
 
     for f in glob.glob("*_a_*.fits"):
         logger.info("Starting calibration of zeropoint for %s"% f)
-        if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE") == "SCIENCE"):
+        if (not fitsutils.has_par(f, "IMGTYPE") or fitsutils.get_par(f, "IMGTYPE").upper() == "SCIENCE"):
             calibrate_zeropoint(f, plotdir=plotdir)
     if (os.path.isfile("zeropoint.log")):
         plot_zp("zeropoint.log", plotdir)
