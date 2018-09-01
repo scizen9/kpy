@@ -108,7 +108,7 @@ def update_request(status, request_id, instrument_id='',
         os.remove(output_file)
 
     # 5. Print the request response for the user
-    print("Status updated with response: " + ret)
+    print(ret)
 
     return True
 
