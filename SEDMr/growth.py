@@ -221,7 +221,7 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
     # 3. Send the request
     ret = requests.post(growth_spec_url, auth=(user, pwd),
                         files={'jsonfile': jsonFile, 'upfile': upfile})
-    print("Spectrum posted with response: " + ret)
+    print(ret)
 
     # 4. Close files and send request response
     upfile.close()
