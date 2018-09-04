@@ -40,7 +40,7 @@ with codecs.open(configfile, 'r') as f:
 _logpath = parser.get('paths', 'logpath')
 _photpath = parser.get('paths', 'photpath')
 
-def finder(myfile, searchrad=0.2/60.):
+def finder(myfile, findername, searchrad=0.2/60.):
     
     ra, dec = coordinates_conversor.hour2deg(fitsutils.get_par(myfile, "OBJRA"), fitsutils.get_par(myfile, "OBJDEC"))
     
@@ -105,13 +105,11 @@ def finder(myfile, searchrad=0.2/60.):
     gc.add_label(0.05, 0.9, 'Coordinates: RA=%s DEC=%s'%(coordinates_conversor.deg2hour(ra, dec)), relative=True, color="white", horizontalalignment="left")
     gc.add_label(0.05, 0.84, 'Filter: SDSS %s'%filter, relative=True, color="white", horizontalalignment="left")
     
-    findername = 'finders/finder_%s_%s.png'%(name, filter)
-
     gc.save(findername)
     
-    return findername
 
-def simple_finder(myfile, searchrad=0.2/60.):  
+
+def simple_finder(myfile, findername, searchrad=0.2/60.):  
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
@@ -128,15 +126,12 @@ def simple_finder(myfile, searchrad=0.2/60.):
     plt.figure(figsize=(10,9))
     plt.imshow(newimg, origin="lower", cmap=plt.get_cmap('gray'), vmin=zmin, vmax=zmax)
 
-    findername = 'finders/finder_%s_%s.png'%(name, filter)
-
-    print (findername)
 
     plt.savefig(findername)
 
-    return findername
+    print ("Created ", findername)
 
-def simple_finder_astro(myfile, searchrad=28./3600):  
+def simple_finder_astro(myfile, findername, searchrad=28./3600):  
 
     hdulist = pf.open(myfile)[0]
     img = hdulist.data * 1.            
@@ -185,13 +180,11 @@ def simple_finder_astro(myfile, searchrad=28./3600):
     #plt.plot(dy, dx, "+", color="r", ms=20, mfc=None, mew=2)
     #plt.plot(Y, X, "+", color="r", ms=20, mfc=None, mew=2)
     #plt.xlim(Y-dy, Y+dy, X-dx, X+dx)
-    findername = 'finders/finder_simple_%s_%s.png'%(name, filter)
-
-    print ("Created ", findername)
 
     plt.savefig(findername)
 
-    return findername
+    print ("Created ", findername)
+
     
 if __name__=="__main__":  
     parser = argparse.ArgumentParser(description=\
@@ -241,23 +234,24 @@ if __name__=="__main__":
             continue
     
     	#We generate only one finder for each object.
-    
-    	findername = 'finder_%s_%s.png'%(fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
-    	if not os.path.isfile(os.path.join("finders/",findername)):
-        	print ("Generating finder", findername)
+    	name = f.split(".")[0]
+    	findername = 'finder_%s_%s_%s.png'%(name, fitsutils.get_par(f, "NAME"), fitsutils.get_par(f, "FILTER"))
+	finderpath = os.path.join(photdir, os.path.join("finders/",findername))
+    	if not os.path.isfile(finderpath):
+        	print ("Generating finder", finderpath)
         	#Solving for astrometry
         	astrof = rcred.solve_astrometry(f)
     
             	try:
-                	findername = finder(astrof)
+                	finder(astrof, finderpath)
             	except AttributeError:
                 	print ("Error when generating the finder for file %s"%f)
                 	print (sys.exc_info()[0])
     
-                	findername = simple_finder_astro(astrof)
+                	simple_finder_astro(astrof, finderpath)
     
             	except:
                 	print ("Error when generating the finder for file %s. Probably montage is broken."%astrof)
                 	print (sys.exc_info()[0])
-                	findername = simple_finder_astro(astrof)
+                	simple_finder_astro(astrof, finderpath)
 
