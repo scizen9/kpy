@@ -56,11 +56,11 @@ def build_image_report(indir=None, fspec=None):
 
     # Output Spectra
     all_spectra_files = glob.glob("spec*"+fspec+"*.png")
-    extention = "*%s.png" % object_name
-    pysedm_spec_file = glob.glob("spec*"+fspec+extention)[0]
+    extention = "%s.png" % object_name
+    pysedm_spec_file = glob.glob("spec*"+fspec+"*"+extention)[0]
     if not STD:
         typed_spectra = [f for f in all_spectra_files if not f.endswith(extention)]
-        used_spec_file = pysedm_spec_file if len(typed_spectra) == 0 else typed_spectra
+        used_spec_file = pysedm_spec_file if len(typed_spectra) == 0 else typed_spectra[0]
     else:
         calib_spectra = glob.glob("calibcheck_spec_"+filesourcename + "*.png")
         used_spec_file = pysedm_spec_file if len(calib_spectra) == 0 else calib_spectra[0]
