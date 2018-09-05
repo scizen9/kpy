@@ -4,6 +4,10 @@ Created on Sun Jun 14 13:11:52 2015
 
 @author: nadiablago
 """
+
+import matplotlib
+matplotlib.use('Agg')
+
 import fitsutils
 import os, glob, shutil, sys
 import numpy as np
@@ -15,7 +19,6 @@ except:
 from astropy.io import fits
 from astropy.wcs import WCS
 
-import matplotlib
 from matplotlib import pylab as plt
 import subprocess
 import argparse

@@ -5,11 +5,12 @@ Created on Sat May 23 18:23:02 2015
 @author: nadiablago
 """
 
-import numpy as np
 import matplotlib
-import datetime
 matplotlib.use("Agg", warn=False)
 from matplotlib import pylab as plt
+
+import numpy as np
+import datetime
 
 try:
     from pyraf import iraf 
