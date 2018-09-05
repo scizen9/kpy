@@ -57,7 +57,9 @@ def build_image_report(indir=None, fspec=None):
     # Output Spectra
     all_spectra_files = glob.glob("spec"+fspec+"*.png")
     extention = "*%s.png" % object_name.split("+")[-1] if "+" in object_name else "*%s.png" % object_name
+    print(extention)
     pysedm_spec_file = glob.glob("spec*"+fspec+extention)[0]
+    print(pysedm_spec_file)
     if not STD:
         typed_spectra = [f for f in all_spectra_files if not f.endswith(extention)]
         used_spec_file = pysedm_spec_file if len(typed_spectra) == 0 else typed_spectra
