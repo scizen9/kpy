@@ -75,7 +75,8 @@ def build_image_report(indir=None, fspec=None):
     # ---------
     # PSF
     try:
-        img_psf = pil.Image.open(glob.glob("psfprofile_"+filesourcename+"*.png")[0])
+        img_psf = pil.Image.open(glob.glob("psfprofile_"+filesourcename +
+                                           "*.png")[0]).crop((50, 0, 995, 500))
     except:
         img_psf = pil.get_buffer([15, 4], "PSF Profile image missing",
                                  **prop_missing)
