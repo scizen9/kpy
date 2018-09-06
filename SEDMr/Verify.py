@@ -74,7 +74,7 @@ def build_image_report(indir=None, fspec=None):
     try:
         img_find = pil.Image.open(glob.glob("/scr2/sedm/phot/"+indir +
                                             "/finders/finder_*ACQ-" +
-                                            object_name+"_NA.png"))
+                                            object_name+"_NA.png")[0])
     except FileNotFoundError:
         img_find = pil.get_buffer([13, 7], "Finder image missing",
                                   **prop_missing)
