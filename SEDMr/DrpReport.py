@@ -11,7 +11,7 @@ def report():
     print("\nReport generated on %s" % time.strftime("%c"))
     print("\nSEDM DRP run in %s\nFound %d spec_*.txt files" %
           (os.getcwd(), len(flist)))
-    print("See http://pharos.caltech.edu/data_access/ifu?date=%s\n" %
+    print("See http://pharos.caltech.edu/data_access/ifu?obsdate=%s\n" %
           os.getcwd().split('/')[-1])
 
     print("UTStart  Object                    Exptime Air    Flxcal"
