@@ -46,8 +46,10 @@ def build_image_report(indir=None, fspec=None):
 
     # Spaxels used:
     try:
-        img_spax = pil.Image.open(glob.glob("ifu_spaxels*"+fspec+"*.png")[0])
-    except FileNotFoundError:
+        spaxel_file = glob.glob("ifu_spaxels*"+fspec+"*.png")[0]
+        img_spax = pil.Image.open(spaxel_file)
+    except IndexError:
+        print("Cannot find ifu spaxel file")
         img_spax = pil.get_buffer([7, 7], "Spaxel IFU image missing",
                                   **prop_missing)
 
@@ -72,10 +74,13 @@ def build_image_report(indir=None, fspec=None):
 
     # Acquisition finder
     try:
-        img_find = pil.Image.open(glob.glob("/scr2/sedm/phot/"+indir +
-                                            "/finders/finder_*ACQ-" +
-                                            object_name+"_NA.png")[0])
-    except FileNotFoundError:
+        finder_file = glob.glob("/scr2/sedm/phot/"+indir +
+                                "/finders/finder_*ACQ-" +
+                                object_name+"_NA.png")[0]
+        img_find = pil.Image.open(finder_file)
+    except IndexError:
+        print("Cannot find /scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" %
+              (indir, object_name))
         img_find = pil.get_buffer([13, 7], "Finder image missing",
                                   **prop_missing)
 
@@ -84,10 +89,10 @@ def build_image_report(indir=None, fspec=None):
     # ---------
     # PSF
     try:
-        img_psf = pil.Image.open(glob.glob("psfprofile_"+filesourcename +
-                                           "*.png")[0]).crop((50, 0,
-                                                              995, 500))
-    except FileNotFoundError:
+        psf_file = glob.glob("psfprofile_"+filesourcename + "*.png")[0]
+        img_psf = pil.Image.open(psf_file).crop((50, 0, 995, 500))
+    except IndexError:
+        print("Cannot find psfprofile image")
         img_psf = pil.get_buffer([15, 4], "PSF Profile image missing",
                                  **prop_missing)
 
