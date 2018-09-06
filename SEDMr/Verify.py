@@ -74,9 +74,13 @@ def build_image_report(indir=None, fspec=None):
 
     # Acquisition finder
     try:
-        finder_file = glob.glob("/scr2/sedm/phot/"+indir +
-                                "/finders/finder_*ACQ-" +
-                                object_name+"_NA.png")[0]
+        if is_std:
+            fspec = "/scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" % \
+                    (indir, object_name.split("STD-")[-1])
+        else:
+            fspec = "/scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" % \
+                    (indir, object_name)
+        finder_file = glob.glob(fspec)[0]
         img_find = pil.Image.open(finder_file)
     except IndexError:
         print("Cannot find /scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" %
