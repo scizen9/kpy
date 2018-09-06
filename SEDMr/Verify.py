@@ -70,6 +70,13 @@ def build_image_report(indir=None, fspec=None):
         img_spec = pil.get_buffer([13, 7], "Spectra image missing",
                                   **prop_missing)
 
+    # Acquisition finder
+    try:
+        img_find = pil.Image.open(glob.glob("/scr2/sedm/phot/"+indir+"/finders/finder_*ACQ-"+object_name+"_NA.png"))
+    except:
+        img_find = pil.get_buffer([13, 7], "Finder image missing",
+                                  **prop_missing)
+
     # ---------
     # PSF Extraction Specials
     # ---------
@@ -93,11 +100,11 @@ def build_image_report(indir=None, fspec=None):
     title_img = pil.get_buffer([8, 1], title, fontsize=16, hline=[0.3, 0.7],
                                barprop=dict(lw=1))
 
-    img_upperright = pil.get_image_column([title_img,  img_spec])
+    img_upperright = pil.get_image_column([title_img,  img_find])
     img_upperleft  = pil.get_image_row([img_spax])
     img_upper      = pil.get_image_row([img_upperleft, img_upperright])
 
-    img_lower      = pil.get_image_row([img_psf])
+    img_lower      = pil.get_image_row([img_psf, img_spec])
 
     img_combined = pil.get_image_column([img_upper, img_lower, footer])
             
