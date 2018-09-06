@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import SEDMr.pil as pil
 import datetime
 from astropy.io import fits
@@ -34,15 +33,13 @@ def build_image_report(indir=None, fspec=None):
     object_name = header['OBJECT'].split()[0]  # remove the [A] in 'TARGET [A]'
     
     if "STD" in filesourcename:
-        STD = True
+        is_std = True
     else:
-        STD = False
+        is_std = False
 
     # Spectrum ID
-    spec_id = filesourcename.split("ifu"+indir+"_")[-1].split("_"+object_name)[0]
-        
-    # Extraction Mode    
-    extraction_mode = header["EXTRTYPE"] if "EXTRTYPE" in header else "auto"
+    spec_id = filesourcename.split("ifu"+indir+"_")[-1].split("_" +
+                                                              object_name)[0]
     
     # Missing plot format
     prop_missing = dict(fontsize=30, textprop=dict(color="C1"))
@@ -50,7 +47,7 @@ def build_image_report(indir=None, fspec=None):
     # Spaxels used:
     try:
         img_spax = pil.Image.open(glob.glob("ifu_spaxels*"+fspec+"*.png")[0])
-    except:
+    except FileNotFoundError:
         img_spax = pil.get_buffer([7, 7], "Spaxel IFU image missing",
                                   **prop_missing)
 
@@ -58,22 +55,27 @@ def build_image_report(indir=None, fspec=None):
     all_spectra_files = glob.glob("spec*"+fspec+"*.png")
     extention = "%s.png" % object_name
     pysedm_spec_file = glob.glob("spec*"+fspec+"*"+extention)[0]
-    if not STD:
-        typed_spectra = [f for f in all_spectra_files if not f.endswith(extention)]
-        used_spec_file = pysedm_spec_file if len(typed_spectra) == 0 else typed_spectra[0]
+    if not is_std:
+        typed_spectra = [f for f in all_spectra_files
+                         if not f.endswith(extention)]
+        used_spec_file = pysedm_spec_file if len(typed_spectra) == 0 \
+            else typed_spectra[0]
     else:
         calib_spectra = glob.glob("calibcheck_spec_"+filesourcename + "*.png")
-        used_spec_file = pysedm_spec_file if len(calib_spectra) == 0 else calib_spectra[0]
+        used_spec_file = pysedm_spec_file if len(calib_spectra) == 0 \
+            else calib_spectra[0]
     try:
         img_spec = pil.Image.open(used_spec_file)
-    except:
+    except FileNotFoundError:
         img_spec = pil.get_buffer([13, 7], "Spectra image missing",
                                   **prop_missing)
 
     # Acquisition finder
     try:
-        img_find = pil.Image.open(glob.glob("/scr2/sedm/phot/"+indir+"/finders/finder_*ACQ-"+object_name+"_NA.png"))
-    except:
+        img_find = pil.Image.open(glob.glob("/scr2/sedm/phot/"+indir +
+                                            "/finders/finder_*ACQ-" +
+                                            object_name+"_NA.png"))
+    except FileNotFoundError:
         img_find = pil.get_buffer([13, 7], "Finder image missing",
                                   **prop_missing)
 
@@ -83,8 +85,9 @@ def build_image_report(indir=None, fspec=None):
     # PSF
     try:
         img_psf = pil.Image.open(glob.glob("psfprofile_"+filesourcename +
-                                           "*.png")[0]).crop((50, 0, 995, 500))
-    except:
+                                           "*.png")[0]).crop((50, 0,
+                                                              995, 500)[0])
+    except FileNotFoundError:
         img_psf = pil.get_buffer([15, 4], "PSF Profile image missing",
                                  **prop_missing)
 
@@ -101,10 +104,10 @@ def build_image_report(indir=None, fspec=None):
                                barprop=dict(lw=1))
 
     img_upperright = pil.get_image_column([title_img,  img_find])
-    img_upperleft  = pil.get_image_row([img_spax])
-    img_upper      = pil.get_image_row([img_upperleft, img_upperright])
+    img_upperleft = pil.get_image_row([img_spax])
+    img_upper = pil.get_image_row([img_upperleft, img_upperright])
 
-    img_lower      = pil.get_image_row([img_psf, img_spec])
+    img_lower = pil.get_image_row([img_psf, img_spec])
 
     img_combined = pil.get_image_column([img_upper, img_lower, footer])
             
