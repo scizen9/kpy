@@ -6,7 +6,21 @@ import datetime
 from astropy.io import fits
 import glob
 
-    
+
+def time_from_fspec(filespec=None, imtype="ifu"):
+    """Return time in seconds based on filename"""
+    fsec = -1
+    if filespec is not None:
+        try:
+            tstr = filespec.split(imtype)[-1].split('_')[1:4]
+        except IndexError:
+            pass
+        if len(tstr) == 3:
+            fsec = int(tstr[0]) * 3600 + int(tstr[1]) * 60 + int(tstr[2])
+
+    return fsec
+
+
 def build_image_report(indir=None, fspec=None):
     """ """
     now = datetime.datetime.now()
@@ -73,6 +87,7 @@ def build_image_report(indir=None, fspec=None):
                                   **prop_missing)
 
     # Acquisition finder
+    t_obs = time_from_fspec(filespec=fspec)
     try:
         if is_std:
             fspec = "/scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" % \
@@ -80,7 +95,17 @@ def build_image_report(indir=None, fspec=None):
         else:
             fspec = "/scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" % \
                     (indir, object_name)
-        finder_file = glob.glob(fspec)[0]
+        finder_file = glob.glob(fspec)
+        # do we have more than one finder for this object name?
+        if len(finder_file) > 1:
+            for f in finder_file:
+                # Use the one that is closest to the observation time
+                if abs(t_obs - time_from_fspec(filespec=f, imtype="rc")) < 120:
+                    finder_file = f
+                    break
+        else:
+            finder_file = finder_file[0]
+
         img_find = pil.Image.open(finder_file)
     except IndexError:
         print("Cannot find /scr2/sedm/phot/%s/finders/finder_*ACQ-%s_NA.png" %
