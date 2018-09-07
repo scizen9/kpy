@@ -129,7 +129,9 @@ def get_sextractor_stats(files):
                     continue 
 
                 if not os.path.isfile(sexfiles[i]):
-                    sf =  sextractor.run_sex([f])[0]
+                    sflist =  sextractor.run_sex([f])
+		    if (not sflist is None and len(sflist) > 0):
+			sf = sflist[0]
                 else:
                     sf = sexfiles[i]
 
@@ -242,10 +244,4 @@ if __name__ == '__main__':
     print "Running stats on", glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits"))
     get_sextractor_stats(glob.glob(os.path.join(os.path.abspath(photdir), "rc*[0-9].fits")))
     plot_stats(os.path.join(os.path.abspath(photdir), "stats/stats.log")) 
-    cmd = "rcp -r %s/%s/stats/ sedm@agn.caltech.edu:/usr/apache/htdocs/astro/sedm/stats/%s/"%(_photpath, timestamp, timestamp)
-    print cmd
-    try:
-	subprocess.call(cmd, shell=True)
-    except IOError:
-	print "IoError when calling the command %s"%cmd
 
