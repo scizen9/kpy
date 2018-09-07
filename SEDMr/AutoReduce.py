@@ -456,6 +456,10 @@ def dosci(destdir='./', datestr=None):
                         if retcode > 0:
                             print("Error running report for " +
                                   fn.split('.')[0])
+                        # run Verify.py
+                        cmd = "~/kpy/SEDMr/Verify.py %s --contains %s" % \
+                              (datestr, fn.split('.')[0])
+                        os.system(cmd)
             else:
                 # Build cube for science observation
                 print("Building science cube for " + fn)
@@ -498,6 +502,10 @@ def dosci(destdir='./', datestr=None):
                         retcode = os.system(cmd)
                         if retcode > 0:
                             print("Error uploading spectra to marshal")
+                        # run Verify.py
+                        cmd = "~/kpy/SEDMr/Verify.py %s --contains %s" % \
+                              (datestr, fn.split('.')[0])
+                        os.system(cmd)
     return ncp, copied
     # END: dosci
 
