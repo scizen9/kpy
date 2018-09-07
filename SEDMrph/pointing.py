@@ -7,7 +7,7 @@ Created on Tue Nov 24 17:59:15 2015
 from astropy.wcs import WCS
 import glob, os
 import numpy as np
-import pyfits as pf
+from astropy.io import fits as pf
 import coordinates_conversor as cc
 from matplotlib import pylab as plt
 import matplotlib

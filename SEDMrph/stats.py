@@ -13,7 +13,7 @@ import fitsutils
 import coordinates_conversor as cc
 import numpy as np
 import sextractor 
-import pyfits as pf
+from astropy.io import fits as pf
 from matplotlib import pylab as plt
 import time_utils
 import matplotlib.dates as md

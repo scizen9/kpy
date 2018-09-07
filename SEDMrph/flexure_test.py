@@ -13,7 +13,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from matplotlib import pylab as plt
 import argparse
-import pyfits as pf
+from astropy.io import fits as pf
 import fitsutils
 import datetime
 import argparse

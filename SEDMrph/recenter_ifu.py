@@ -6,7 +6,7 @@ Created on Thu Jan  7 11:30:32 2016
 """
 import fitsutils
 import subprocess, os, sys
-import pyfits as pf
+from astropy.io import fits as pf
 from astropy.wcs import WCS
 import coordinates_conversor as cc
 import numpy as np

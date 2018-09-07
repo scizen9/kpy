@@ -7,7 +7,7 @@ Created on Thu Mar  3 15:34:47 2016
 import glob
 import fitsutils
 import rcred
-import pyfits as pf
+from astropy.io import fits as pf
 import numpy as np
 import datetime
 import time_utils
