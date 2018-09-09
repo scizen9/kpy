@@ -41,7 +41,11 @@ def build_image_report(indir=None, fspec=None):
         return None, None
 
     print("Reading %s header" % specfile)
-    header = fits.getheader(specfile)
+    try:
+        header = fits.getheader(specfile)
+    except OSError:
+        print("This observation failed, fix and remove spec_*_failed.fits")
+        return None, None
 
     filesourcename = specfile.split("spec_")[-1].split(".fits")[0]
         
