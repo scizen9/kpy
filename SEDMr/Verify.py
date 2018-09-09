@@ -40,6 +40,7 @@ def build_image_report(indir=None, fspec=None):
         print("No spec_*%s*.fits file found" % fspec)
         return None, None
 
+    print("Reading %s header" % specfile)
     header = fits.getheader(specfile)
 
     filesourcename = specfile.split("spec_")[-1].split(".fits")[0]
@@ -170,8 +171,8 @@ if __name__ == "__main__":
     # ================ #
     args = parser.parse_args()
 
-    print("Verifying observation %s in directory %s" % (args.infile,
-                                                        args.contains))
+    print("Verifying observation %s in directory %s" % (args.contains,
+                                                        args.infile))
 
     img_report, report_filename = build_image_report(indir=args.infile,
                                                      fspec=args.contains)
