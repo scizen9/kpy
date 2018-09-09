@@ -180,4 +180,5 @@ if __name__ == "__main__":
 
     img_report, report_filename = build_image_report(indir=args.infile,
                                                      fspec=args.contains)
-    img_report.save(report_filename, dpi=(1000, 1000))
+    if img_report is not None and report_filename is not None:
+        img_report.save(report_filename, dpi=(1000, 1000))
