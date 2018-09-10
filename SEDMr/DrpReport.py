@@ -91,6 +91,15 @@ def report():
     recs.sort()
     for r in recs:
         print(r)
+    # Check for failed extractions
+    flist = glob.glob("spec_*failed.fits")
+    if len(flist) > 0:
+        flist.sort()
+        print("\nThere were/was %d failed extraction(s)" % len(flist))
+        for f in flist:
+            print(f)
+    else:
+        print("\nThere were no failed extractions")
 
 
 if __name__ == '__main__':
