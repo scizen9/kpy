@@ -6,6 +6,8 @@ import time
 def report():
     """Generate DRP report using output spec_*.txt files"""
 
+    # TODO: handle failed extractions
+
     flist = glob.glob("spec_*.txt")
     flist.sort()
     print("\nReport generated on %s" % time.strftime("%c"))

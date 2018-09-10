@@ -40,7 +40,12 @@ def build_image_report(indir=None, fspec=None):
         print("No spec_*%s*.fits file found" % fspec)
         return None, None
 
-    header = fits.getheader(specfile)
+    print("Reading %s header" % specfile)
+    try:
+        header = fits.getheader(specfile)
+    except OSError:
+        print("This observation failed, fix and remove spec_*_failed.fits")
+        return None, None
 
     filesourcename = specfile.split("spec_")[-1].split(".fits")[0]
         
@@ -170,9 +175,10 @@ if __name__ == "__main__":
     # ================ #
     args = parser.parse_args()
 
-    print("Verifying observation %s in directory %s" % (args.infile,
-                                                        args.contains))
+    print("Verifying observation %s in directory %s" % (args.contains,
+                                                        args.infile))
 
     img_report, report_filename = build_image_report(indir=args.infile,
                                                      fspec=args.contains)
-    img_report.save(report_filename, dpi=(1000, 1000))
+    if img_report is not None and report_filename is not None:
+        img_report.save(report_filename, dpi=(1000, 1000))
