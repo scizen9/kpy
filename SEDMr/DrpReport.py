@@ -1,12 +1,11 @@
 import glob
 import os
 import time
+import subprocess
 
 
 def report():
     """Generate DRP report using output spec_*.txt files"""
-
-    # TODO: handle failed extractions
 
     flist = glob.glob("spec_*.txt")
     flist.sort()
@@ -99,7 +98,11 @@ def report():
         flist.sort()
         print("\nThere were/was %d failed extraction(s)" % len(flist))
         for f in flist:
-            print(f)
+            tstr = ':'.join(f.split('ifu')[-1].split('_')[1:4])
+            tok = f.split("_failed")[0].split("ifu")[-1]
+            out = subprocess.check_output(('grep', tok, 'what.list'),
+                                          universal_newlines=True)
+            print("%8s %-25s FAILED" % (tstr, out.split()[3]))
     else:
         print("\nThere were no failed extractions")
 
