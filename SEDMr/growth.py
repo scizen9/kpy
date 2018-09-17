@@ -362,7 +362,7 @@ def parse_ztf_by_dir(target_dir, upfil=None):
                                           universal_newlines=True)
         quality = int(qualstr.split(':', 1)[-1])
         if quality > 2:
-            print("Low quality spectrum: %s" % fi)
+            print("Low quality (%d>2) spectrum: %s" % (quality, fi))
             continue
         # Extract object name
         if "spec" in fi:
