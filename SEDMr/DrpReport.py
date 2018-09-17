@@ -85,6 +85,11 @@ def report():
         if ctype == "":
             if "STD" in f:
                 ctype = " STD"
+            else:
+                qstr = subprocess.check_output(('grep', 'QUALITY', f),
+                                               universal_newlines=True)
+                quality = int(qstr.split(':', 1)[-1])
+                ctype = " QUALITY_%d" % quality
 
         recs.append("%8s %-25s %7s %5s  %6s %32s %12s  %12s  %6s %-9s  %6s" %
                     (tstr, objname, expt, air, flxcal, meth, prid, ctype, stype,
