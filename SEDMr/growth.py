@@ -191,10 +191,6 @@ def upload_spectra(spec_file, fill_by_file=False, instrument_id=65,
             keywords_dict.update({'obsdate': 'OBSDATE'})
 
         submission_dict = get_keywords_from_file(spec_file, keywords_dict)
-        if 'crr_b_ifu' in spec_file:
-            submission_dict.update({'quality': 0})
-            reducer = os.getenv("SEDM_USER")
-            submission_dict.update({'reducedby': reducer})
 
         quality = int(submission_dict['quality'])
         del submission_dict['quality']
@@ -360,6 +356,13 @@ def parse_ztf_by_dir(target_dir, upfil=None):
             continue
         # Is it flux calibrated?
         if "notfluxcal" in fi:
+            continue
+        # Is is it good quality?
+        out = subprocess.check_output(('grep', 'QUALITY', fi),
+                                      universal_newlines=True)
+        quality = int(out.split(':', 1)[-1])
+        if quality > 2:
+            print("Low quality spectrum: %s" % fi)
             continue
         # Extract object name
         if "spec" in fi:
