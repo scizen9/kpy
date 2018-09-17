@@ -358,9 +358,9 @@ def parse_ztf_by_dir(target_dir, upfil=None):
         if "notfluxcal" in fi:
             continue
         # Is is it good quality?
-        out = subprocess.check_output(('grep', 'QUALITY', fi),
-                                      universal_newlines=True)
-        quality = int(out.split(':', 1)[-1])
+        qualstr = subprocess.check_output(('grep', 'QUALITY', fi),
+                                          universal_newlines=True)
+        quality = int(qualstr.split(':', 1)[-1])
         if quality > 2:
             print("Low quality spectrum: %s" % fi)
             continue
