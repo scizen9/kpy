@@ -791,21 +791,25 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
 
     if os.path.isfile(astro):
         try:
-		is_on_target(img)
+		is_on_target(astro)
         except InconsistentAxisTypesError as e:
 		fitsutils.update_par(img, "ONTARGET", 0)
-		print "Error detected with WCS when reading file %s. \n %s"%(img, e)
-        
-    if (not outimage is None and overwrite and os.path.isfile(astro)):
-        shutil.move(astro, outimage)
-	return outimage
-    elif (outimage is None and overwrite and os.path.isfile(astro)):
-        shutil.move(astro, img)
-	return img
+		print ("Error detected with WCS when reading file %s. \n %s"%(img, e))
+
+	if (not outimage is None and overwrite and os.path.isfile(astro)):
+		shutil.move(astro, outimage)
+		return outimage
+	elif (outimage is None and overwrite and os.path.isfile(astro)):
+		shutil.move(astro, img)
+		return img
+	else:
+		return astro
     else:
-    	return astro
-
-
+	print ("Astrometry failed on image %s, returning the same one!"%img)
+	fitsutils.update_par(img, "ONTARGET", 0)
+	fitsutils.update_par(img, "IQWCS", 0)
+	return img
+	
 
     
 
@@ -1092,17 +1096,19 @@ def reduce_image(image, flatdir=None, biasdir=None, cosmic=False, astrometry=Tru
         
     #Initialize the basic parameters.
     init_header_reduced(image)
-
     astro = ""
     if (astrometry):
         logger.info( "Solving astometry for the whole image...")
         img = solve_astrometry(image)
-        if (os.path.isfile(img)):
-            astro="a_"
+        if (os.path.isfile(img) and os.path.basename(img).startswith("a_")):
             fitsutils.update_par(img, "IQWCS", 1)
+            astro = "a_"
+        elif os.path.isfile(img):
+            fitsutils.update_par(img, "IQWCS", 0)
         else:
             logger.error( "ASTROMETRY DID NOT SOLVE ON IMAGE %s"% image)
             img = image
+            fitsutils.update_par(img, "IQWCS", 0)
 
     #Update noise parameters needed for cosmic reection
     if (fitsutils.get_par(img, "ADCSPEED")==2):
