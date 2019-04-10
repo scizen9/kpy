@@ -775,7 +775,7 @@ def solve_astrometry(img, outimage=None, radius=3, with_pix=True, overwrite=Fals
     cmd = "solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s \
       -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
-        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.4"
+        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.35 --scale-high 0.41"
     #logger.info( cmd)
 
     subprocess.call(cmd, shell=True)

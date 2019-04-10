@@ -73,7 +73,7 @@ def solve_astrometry(img, radius=3.0, with_pix=True, tweak=3):
     
     cmd = " solve-field --ra %s --dec %s --radius %.4f -p --new-fits %s --cpulimit 45 -W none -B none -P none -M none -R none -S none -t %d --overwrite %s "%(ra, dec, radius, astro, tweak, img)
     if (with_pix):
-        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.375 --scale-high 0.425"
+        cmd = cmd + " --scale-units arcsecperpix  --scale-low 0.350 --scale-high 0.425"
     print cmd
     logger.info(cmd)
     
