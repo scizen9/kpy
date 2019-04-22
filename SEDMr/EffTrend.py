@@ -4,7 +4,7 @@
 import glob
 import os
 import csv
-from itertools import izip
+# from itertools import izip
 
 import pylab as pl
 import numpy as np
@@ -16,6 +16,7 @@ dlist = sorted([d for d in glob.glob(fspec) if os.path.isdir(d)])[1:]
 
 jd0 = 2457000.0
 jd = []
+da = []
 pjd = []
 ef1 = []
 ef2 = []
@@ -91,15 +92,23 @@ for d in dlist:
         ef5.append(e5)
         efs.append(s)
 
+        da.append(ddate[0:4] + '-' + ddate[4:6] + '-' + ddate[6:])
         jd.append(dtime.jd)
         pjd.append(dtime.jd - jd0)
 
-pl.plot(pjd, ef1, '^', linestyle='None', markersize=2.0, label='400-500 nm')
-pl.plot(pjd, ef2, 'v', linestyle='None', markersize=2.0, label='500-600 nm')
-pl.plot(pjd, ef3, 'x', linestyle='None', markersize=2.0, label='600-700 nm')
-pl.plot(pjd, ef4, 'D', linestyle='None', markersize=2.0, label='700-800 nm')
-pl.plot(pjd, ef5, 'o', linestyle='None', markersize=2.0, label='800-900 nm')
-pl.xlabel('JD - 2457000')
+t = Time(da)
+pl.plot_date(t.plot_date, ef1, '^', linestyle='None', markersize=2.0,
+             label='400-500 nm')
+pl.plot_date(t.plot_date, ef2, 'v', linestyle='None', markersize=2.0,
+             label='500-600 nm')
+pl.plot_date(t.plot_date, ef3, 'x', linestyle='None', markersize=2.0,
+             label='600-700 nm')
+pl.plot_date(t.plot_date, ef4, 'D', linestyle='None', markersize=2.0,
+             label='700-800 nm')
+pl.plot_date(t.plot_date, ef5, 'o', linestyle='None', markersize=2.0,
+             label='800-900 nm')
+pl.gcf().autofmt_xdate()
+pl.xlabel('Date (UTC)')
 pl.ylabel('Efficiency(%)')
 pl.title('Efficiency Trend')
 pl.legend(loc=2)
@@ -110,6 +119,6 @@ tfil = os.path.join(sdir, 'SEDM_eff_trend.txt')
 pl.savefig(ofil)
 with open(tfil, 'wb') as dfil:
     dat_writer = csv.writer(dfil, delimiter=" ", quoting=csv.QUOTE_MINIMAL)
-    dat_writer.writerows(izip(jd, ef1, ef2, ef3, ef4, ef5, efs))
+    dat_writer.writerows(zip(da, ef1, ef2, ef3, ef4, ef5, efs))
 
 
