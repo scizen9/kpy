@@ -33,7 +33,7 @@ for d in dlist:
     slist = glob.glob(fspec)
 
     for s in slist:
-        ss = np.load(s)[0]
+        ss = np.load(s, encoding='latin1')[0]
         if 'efficiency' not in ss:
             continue
         if ss['quality'] != 0:
@@ -117,7 +117,7 @@ pl.ylim(-1, 15)
 ofil = os.path.join(sdir, 'SEDM_eff_trend.pdf')
 tfil = os.path.join(sdir, 'SEDM_eff_trend.txt')
 pl.savefig(ofil)
-with open(tfil, 'wb') as dfil:
+with open(tfil, 'w') as dfil:
     dat_writer = csv.writer(dfil, delimiter=" ", quoting=csv.QUOTE_MINIMAL)
     dat_writer.writerows(zip(da, ef1, ef2, ef3, ef4, ef5, efs))
 
