@@ -2317,7 +2317,7 @@ def handle_dual(afile, bfile, fine, outname=None, offset=None, radius=2.,
         res[0]['var'] = varspec
         res[0]['radius_as'] = radius_used_a
         res[0]['positionA'] = posa
-        res[0]['positionB'] = posa
+        res[0]['positionB'] = posb
         res[0]['N_spaxA'] = len(nsxA)
         res[0]['N_spaxB'] = len(nsxB)
         res[0]['meta'] = meta
